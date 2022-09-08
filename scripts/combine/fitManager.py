@@ -93,8 +93,6 @@ def prepareChargeFit(options, charges=["plus"]):
         
         txt2hdf5Cmd = 'text2hdf5.py {cf} --dataset {dn} --X-allow-no-signal'.format(cf=combinedCard, dn=options.dataname)
             
-        if not options.doSystematics:
-            txt2hdf5Cmd = txt2hdf5Cmd + " -S 0 "
         if len(postfix):
             txt2hdf5Cmd = txt2hdf5Cmd + " --postfix " + postfix
         if options.clipSystVariations > 0.0:
@@ -115,14 +113,13 @@ def prepareChargeFit(options, charges=["plus"]):
 
         bbboptions = " --binByBinStat "
         if not options.noCorrelateXsecStat: bbboptions += "--correlateXsecStat "
-        combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --saveHists --computeHistErrors --doh5Output --POIMode none '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
+        combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --doImpacts --saveHists --computeHistErrors --doh5Output --POIMode none '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
         if options.combinetfOption:
             combineCmd += " %s" % options.combinetfOption
-        if options.doSystematics and options.doImpactsOnMW:
-            combineCmd += " --doImpacts  "
 
         fitdir_data = "{od}/fit/data/".format(od=os.path.abspath(cardSubfolderFullName))
         fitdir_Asimov = fitdir_data.replace("/fit/data/", "/fit/hessian/")
+        fitdir_toys = fitdir_data.replace("/fit/data/", "/fit/toys/")
         for fitdir in [fitdir_data, fitdir_Asimov]:
             if not os.path.exists(fitdir):
                 print("Creating folder", fitdir)
@@ -132,9 +129,13 @@ def prepareChargeFit(options, charges=["plus"]):
 
         print("Use the following command to run combine (add --seed <seed> to specify the seed, if needed). See other options in combinetf.py")
         print
-        combineCmd_data = combineCmd.replace("-t -1 ","-t 0 ")
-        combineCmd_data = combineCmd_data + " --postfix Data{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_data, b="0" if options.noBBB else "1_cxs0" if options.noCorrelateXsecStat else "1_cxs1")
-        combineCmd_Asimov = combineCmd + " --postfix Asimov{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_Asimov,  b="0" if options.noBBB else "1_cxs0" if options.noCorrelateXsecStat else "1_cxs1")
+        combineCmd_data = combineCmd.replace("-t -1 ", "-t 0 ")
+        combineCmd_toys = combineCmd.replace("-t -1 ", "-t {} ".format(options.toys))
+
+        bbbtext = "0" if options.noBBB else "1_cxs0" if options.noCorrelateXsecStat else "1_cxs1"
+        combineCmd_data   = combineCmd_data + " --postfix Data{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_data, b=bbbtext)
+        combineCmd_Asimov = combineCmd      + " --postfix Asimov{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_Asimov, b=bbbtext)
+        combineCmd_toys   = combineCmd_toys + " --postfix Toys{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_toys,  b=bbbtext)
         if not options.skip_combinetf and not options.skipFitData:
             safeSystem(combineCmd_data, dryRun=options.dryRun)
         else:
@@ -144,7 +145,13 @@ def prepareChargeFit(options, charges=["plus"]):
             safeSystem(combineCmd_Asimov, dryRun=options.dryRun)
         else:
             print(combineCmd_Asimov)
-
+        print
+        if not options.skip_combinetf and options.toys:
+            safeSystem(combineCmd_toys, dryRun=options.dryRun)
+        else:
+            print(combineCmd_toys)
+        print
+            
     else:
         print("Warning, I couldn't find the following cards. Check names and paths")
         for card in datacards:
@@ -167,7 +174,6 @@ if __name__ == "__main__":
     parser.add_argument(     '--postfix',    dest='postfix', type=str, default="", help="Postfix for .hdf5 file created with text2hdf5.py");
     parser.add_argument('--wlike', dest='isWlike', action="store_true", default=False, help="Make cards for the W-like analysis. Default is Wmass");
     # options for card maker and fit
-    parser.add_argument("-S",  "--doSystematics", type=int, default=1, help="enable systematics when running text2hdf5.py (-S 0 to disable them)")
     parser.add_argument(       "--clipSystVariations", type=float, default=-1.,  help="Clipping of syst variations, passed to text2hdf5.py")
     parser.add_argument(       "--clipSystVariationsSignal", type=float, default=-1.,  help="Clipping of signal syst variations, passed to text2hdf5.py")
     parser.add_argument(       '--no-bbb'  , dest='noBBB', default=False, action='store_true', help='Do not use bin-by-bin uncertainties')
@@ -179,10 +185,9 @@ if __name__ == "__main__":
     parser.add_argument(       '--no-combinetf'  , dest='skip_combinetf', default=False, action='store_true', help='skip running combinetf.py at the end, just print command (useful for tests)')
     parser.add_argument(       '--skip-fit-data', dest='skipFitData' , default=False, action='store_true', help='If True, fit only Asimov')
     parser.add_argument(       '--skip-fit-asimov', dest='skipFitAsimov' , default=False, action='store_true', help='If True, fit only data')
-    # --impacts-mW might not be needed or might not work, to be checked
-    parser.add_argument(      '--impacts-mW', dest='doImpactsOnMW', default=False, action='store_true', help='Set up cards to make impacts of nuisances on mW')
     parser.add_argument("-D", "--dataset",  dest="dataname", default="data_obs",  type=str,  help="Name of the observed dataset (pass name without x_ in the beginning). Useful to fit another pseudodata histogram")
     parser.add_argument("--combinetf-option",  dest="combinetfOption", default="",  type=str,  help="Pass other options to combinetf (TODO: some are already activated with other options, might move them here)")
+    parser.add_argument("-t",  "--toys", type=int, default=0, help="Run combinetf for N toys if argument N is positive")
     args = parser.parse_args()
 
     if not args.dryRun:

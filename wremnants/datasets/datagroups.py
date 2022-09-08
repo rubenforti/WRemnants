@@ -1,4 +1,4 @@
-from wremnants import boostHistHelpers as hh
+from utilities import boostHistHelpers as hh
 from wremnants import histselections as sel
 from wremnants.datasets import datasets2016
 import logging
@@ -33,6 +33,9 @@ class datagroups(object):
             
         self.nominalName = "nominal"
 
+    def setNominalName(self, name):
+        self.nominalName = name
+
     def processScaleFactor(self, proc):
         if proc.is_data:
             return 1
@@ -44,7 +47,7 @@ class datagroups(object):
     ## procName are grouped into datagroups
     ## baseName takes values such as "nominal"
     def setHists(self, baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-            selectSignal=True, forceNonzero=True):
+            selectSignal=True, forceNonzero=True, preOpMap=None, preOpArgs=None):
         if not label:
             label = syst if syst else baseName
         if not procsToRead:
@@ -67,8 +70,13 @@ class datagroups(object):
                     else:
                         logging.warning(str(e))
                         continue
+
+                if preOpMap and member.name in preOpMap:
+                    h = preOpMap[member.name](h, **preOpArgs)
+
                 group[label] = h if not group[label] else hh.addHists(h, group[label])
-            if selectSignal and group[label] and "signalOp" in group and group["signalOp"]:
+
+            if selectSignal and group[label]:
                 group[label] = group["signalOp"](group[label])
         # Avoid situation where the nominal is read for all processes for this syst
         if not foundExact:
@@ -113,11 +121,11 @@ class datagroups(object):
         return name
 
     def loadHistsForDatagroups(self, baseName, syst, procsToRead=None, excluded_procs=None, channel="", label="", nominalIfMissing=True,
-            selectSignal=True, forceNonzero=True, pseudodata=False):
+            selectSignal=True, forceNonzero=True, pseudodata=False, preOpMap=None, preOpArgs={}):
         if self.rtfile and self.combine:
             self.setHistsCombine(baseName, syst, channel, procsToRead, excluded_procs, label)
         else:
-            self.setHists(baseName, syst, procsToRead, label, nominalIfMissing, selectSignal, forceNonzero)
+            self.setHists(baseName, syst, procsToRead, label, nominalIfMissing, selectSignal, forceNonzero, preOpMap, preOpArgs)
 
     def getDatagroups(self, excluded_procs=[]):
         if type(excluded_procs) == str: excluded_procs = list(excluded_procs)
@@ -136,14 +144,23 @@ class datagroups(object):
     def processes(self):
         return self.groups.keys()
 
-    def addSummedProc(self, refname, name, label, color="red", exclude=["Data"]):
-        self.loadHistsForDatagroups(refname, syst=name)
+    def addSummedProc(self, refname, name, label, color="red", exclude=["Data"], relabel=None, reload=False):
+        if reload:
+            self.loadHistsForDatagroups(refname, syst=name, excluded_procs=exclude)
+
         self.groups[name] = dict(
             label=label,
             color=color,
             members=[],
         )
-        self.groups[name][refname] = sum([self.groups[x][name] for x in self.groups.keys() if x not in exclude+[name]])
+        tosum = []
+        for proc in filter(lambda x: x not in exclude+[name], self.groups.keys()):
+            h = self.groups[proc][name]
+            if not h:
+                raise ValueError(f"Failed to find hist for proc {proc}, histname {name}")
+            tosum.append(h)
+        histname = refname if not relabel else relabel
+        self.groups[name][histname] = hh.sumHists(tosum)
 
     def copyWithAction(self, action, name, refproc, refname, label, color):
         self.groups[name] = dict(
@@ -152,7 +169,6 @@ class datagroups(object):
             members=[],
         )
         self.groups[name][refname] = action(self.groups[refproc][refname])
-
 
 class datagroups2016(datagroups):
     def __init__(self, infile, combine=False, wlike=False, pseudodata_pdfset = None):
@@ -229,7 +245,9 @@ class datagroups2016(datagroups):
         # This is kind of hacky to deal with the different naming from combine
         if baseName != "x" and (syst == "" or syst == self.nominalName):
             return baseName
-        if (baseName == "" or baseName == "x") and syst:
+        if baseName in ["", "x", "nominal"] and syst:
+            return syst
+        if syst[:len(baseName)] == baseName:
             return syst
         return "_".join([baseName,syst])
     
