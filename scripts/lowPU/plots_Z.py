@@ -7,6 +7,10 @@ ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
+import hist
+import numpy as np
+
+
 import plotter
 import functions
 
@@ -14,7 +18,7 @@ import lz4.frame
 import pickle
 import narf
 
-from wremnants.datasets.datagroupsLowPU import datagroupsLowPU_Z
+from wremnants.datasets.datagroupsLowPU import make_datagroups_lowPU
 
 
 
@@ -269,14 +273,15 @@ def addUnc(hTarget, hNom, hUp, hDw=None):
 
     for k in range(1, hTarget.GetNbinsX()+1):
 
-        if hDw != None: sigma = 0.5*abs(abs(hUp.GetBinContent(k)-hNom.GetBinContent(k)) + abs(hDw.GetBinContent(k)-hNom.GetBinContent(k)))
+        #if hDw != None: sigma = 0.5*abs(abs(hUp.GetBinContent(k)-hNom.GetBinContent(k)) + abs(hDw.GetBinContent(k)-hNom.GetBinContent(k)))
+        if hDw != None: sigma = 0.5*abs(hUp.GetBinContent(k)-hDw.GetBinContent(k))
         else: sigma = abs(hUp.GetBinContent(k)-hNom.GetBinContent(k))
         hTarget.SetBinError(k, math.sqrt(sigma*sigma + hTarget.GetBinError(k)*hTarget.GetBinError(k)))
                             
 
 
 def recoilStatUncertainty(systName, sysHists, rebin):
-
+    return
     systHistName = systs[systName]['histName']
                     
     # get the nominal (only for DY)
@@ -331,9 +336,7 @@ def parseProc(histCfg, procName, syst="", rebin=1):
     hName = histCfg['name']
     
     label = "%s_%s" % (hName, procName)
-    groups.setHists(hName, "", label=label, procsToRead=[procName], selectSignal=False)
-    bhist = groups.groups[procName][label]
-    #print(bhist)
+    bhist = functions.readBoostHistProc(groups, hName, [procName])
     rhist = narf.hist_to_root(bhist)
     rhist = functions.Rebin(rhist, rebin)
     rhist.SetName(label)
@@ -342,15 +345,61 @@ def parseProc(histCfg, procName, syst="", rebin=1):
     if procName == "SingleMuon" or procName == "SingleElectron": pass
     else: rhist.Scale(MC_SF)
 
-    print("Get histogram %s, yield=%d" % (label, rhist.Integral()))
+    print("Get histogram %s, yield=%.2f" % (label, rhist.Integral()))
     return rhist
-                        
-                        
-def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
+ 
+
+def doRecoilStatSyst(histCfg, procName, hNom, h_syst, rebin):
+    
+    #return
+    hName = histCfg['name']
+    
+    hists = ["recoil_corr_rec_para_qT", "recoil_corr_rec_para", "recoil_corr_rec_perp", "MET_corr_rec_pt", "mT_corr_rec", "recoil_corr_rec_magn", "recoil_corr_rec_para_qT_qTrw", "recoil_corr_rec_para_qTrw", "recoil_corr_rec_perp_qTrw", "MET_corr_rec_pt_qTrw", "recoil_corr_rec_magn_qTrw", "mT_corr_rec_qTrw"]
+    if not hName in hists: return
+    if procName != "Zmumu": return
+
+    tags = ["target_para", "target_perp", "source_para", "source_perp", "target_para_bkg", "target_perp_bkg"] # , "source_para", "source_perp", "target_para_bkg", "target_perp_bkg"
+    #tags = ["target_para_bkg", "target_perp_bkg"]
+    groups.setHists(hName, "", label=hName, procsToRead=[procName])
+    bhist_nom = groups.groups[procName][hName]
+    rhist_nom = narf.hist_to_root(bhist_nom)
+    for tag in tags:
+        
+        label = "%s_recoilSyst_%s" % (hName, tag)
+        groups.setHists(label, "", label=label, procsToRead=[procName])
+        bhist_pert = groups.groups[procName][label]
+
+        if procName == "SingleMuon" or procName == "SingleElectron": pass
+        else: bhist_pert *= MC_SF
+            
+        rhist_pert = narf.hist_to_root(bhist_pert)
+        
+        for i in range(1, int(rhist_pert.GetNbinsY()/2)+1):
+            hUp = rhist_pert.ProjectionX("upvar%d" % i, 2*i-1, 2*i-1)
+            hDw = rhist_pert.ProjectionX("dwvar%d" % i, 2*i, 2*i)
+            hUp = functions.Rebin(hUp, rebin)
+            hDw = functions.Rebin(hDw, rebin)
+            hUp = doOverlow(hUp)
+            hDw = doOverlow(hDw)
+            #for k in range(0, hNom.GetNbinsX()): print(tag, i, hNom.GetBinCenter(k), hNom.GetBinContent(k), hUp.GetBinContent(k), hNom.GetBinContent(k)/hUp.GetBinContent(k) if hUp.GetBinContent(k) > 0 else 1)
+            addUnc(h_syst, hNom, hUp, hDw)
+            #if i == 1: continue
+        '''
+        for i in range(1, rhist_pert.GetNbinsY()+1):
+            print(i)
+            hUp = rhist_pert.ProjectionX("upvar%d" % i, i, i)
+            hUp = functions.Rebin(hUp, rebin)
+            hUp = doOverlow(hUp)
+            #for k in range(0, hNom.GetNbinsX()): print(tag, i, hNom.GetBinCenter(k), hNom.GetBinContent(k), hUp.GetBinContent(k), hNom.GetBinContent(k)/hUp.GetBinContent(k) if hUp.GetBinContent(k) > 0 else 1)
+            addUnc(h_syst, hNom, hUp)
+        '''
+
+                         
+def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False, statOnly=True):
 
     h_data = parseProc(histCfg, data, rebin=rebin)
     leg.AddEntry(h_data, groups.groups[data]['label'], "PE")
-
+    
     st = ROOT.THStack()
     st.SetName("stack")
     h_bkg = h_data.Clone("bkg_nominal")
@@ -366,7 +415,9 @@ def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
         leg.AddEntry(hist, groups.groups[proc]['label'], "F")
         st.Add(hist)
         h_bkg.Add(hist)
-       
+        
+        print(proc, hist.Integral())
+ 
     h_bkg.SetLineColor(ROOT.kBlack)
     h_bkg.SetFillColor(0)
     h_bkg.SetLineWidth(2)
@@ -381,13 +432,31 @@ def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
     h_err.SetMarkerSize(0)
     h_err.SetLineWidth(0)
     h_err.SetFillStyle(3004)    
-    leg.AddEntry(h_err, "Stat. + Syst. Unc.", "F")
+    leg.AddEntry(h_err, "Stat. Unc." if statOnly else "Stat. + Syst. Unc.", "F")
     
+    h_syst = h_bkg.Clone("syst_group%d" % i)
+    h_syst.SetFillColor(ROOT.kBlack)
+    h_syst.SetFillColorAlpha(ROOT.kBlack, 1)
+    h_syst.SetMarkerSize(0)
+    h_syst.SetLineWidth(0)
+    h_syst.SetFillStyle(3004)
+    for iBin in range(0, h_syst.GetNbinsX()+1): h_syst.SetBinError(iBin, 0) # reset errors for non-stat ones
+            
+            
+    print(h_data.GetBinContent(1), h_data.GetBinError(1), h_bkg.GetBinContent(1), h_bkg.GetBinError(1))
+    
+    
+    systs = {}
     
     # do systematics
-    for i,bkg in enumerate(procs):
+    for i,proc in enumerate(procs):
 
-        break
+        hNom = parseProc(histCfg, proc, rebin=rebin)
+        hPert = doRecoilStatSyst(histCfg, proc, hNom, h_err, rebin)
+        
+        continue
+        
+      
         hist = None
         for proc in plotcfg[bkg]['samples']:
         
@@ -404,6 +473,11 @@ def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
             hNom = thn.Projection(0, "E")
             hNom.SetTitle("hNom_%s" % histName)
             hNom = parseHist(hNom, lumi, rebin)
+            
+            
+            
+            sys.exit()
+            continue
 
             for systName in systs:
             
@@ -584,8 +658,7 @@ def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
                         sigma = 0.5*abs(abs(hScaleUp.GetBinContent(k)-hNom.GetBinContent(k)) + abs(hScaleDown.GetBinContent(k)-hNom.GetBinContent(k)))
                         h_bkg_err.SetBinError(k, math.sqrt(sigma*sigma + h_bkg_err.GetBinError(k)*h_bkg_err.GetBinError(k)))
                     '''
-
-            
+       
     # ratios (bands)
     h_bkg_ratio = h_bkg.Clone("h_bkg_ratio") # nominal point, need to remove stat. error
     h_err_ratio = h_err.Clone("syst_ratio")
@@ -606,7 +679,7 @@ def parseHists(histCfg, leg, rebin=1, projectionx=[], noData=False):
 
 
 
-def singlePlot(histCfg, fOut, xMin, xMax, yMin, yMax, xLabel, yLabel, logY=True, rebin=1, legPos=[], projectionx=[], yRatio = 1.3):
+def singlePlot(histCfg, fOut, xMin, xMax, yMin, yMax, xLabel, yLabel, logY=True, rebin=1, legPos=[], projectionx=[], yRatio = 1.3, statOnly=False):
     
     # default cfg
     cfg = {
@@ -633,12 +706,13 @@ def singlePlot(histCfg, fOut, xMin, xMax, yMin, yMax, xLabel, yLabel, logY=True,
     }
     
     
-    leg = ROOT.TLegend(.20, 0.88-(len(procs)+2)*0.05, .5, .88)
+    leg = ROOT.TLegend(.50, 0.88-(len(procs)+2)*0.05, .8, .88)
     leg.SetBorderSize(0)
     leg.SetFillStyle(0)
     leg.SetTextSize(0.040)
     
-    h_data, st, h_bkg, h_ratio, h_err, h_err_ratio = parseHists(histCfg, leg, rebin, projectionx=projectionx)
+    
+    h_data, st, h_bkg, h_ratio, h_err, h_err_ratio = parseHists(histCfg, leg, rebin, projectionx=projectionx, statOnly=statOnly)
 
     cfg['logy'] = logY
     cfg['xmin'] = xMin
@@ -682,7 +756,7 @@ def singlePlot(histCfg, fOut, xMin, xMax, yMin, yMax, xLabel, yLabel, logY=True,
     dummyB.Draw("HIST")
     dummyL.Draw("SAME")
     
-    h_ratio.Draw("P SAME") # E2 SAME
+    h_ratio.Draw("PE0 SAME") # E2 SAME
     h_err_ratio.Draw("E2 SAME")
 
     ROOT.gPad.SetTickx()
@@ -761,88 +835,258 @@ def singlePlot_noData(hName, fOut, xMin, xMax, yMin, yMax, xLabel, yLabel, logY=
     canvas.SaveAs("%s/%s.pdf" % (outDir, fOut))
     canvas.Close()
 
-	
+
+def MET2d(type_="ratio"):
+
+    histCfg = {"name": "recoil_corr_rec_para_perp_2d", "axis": "recoil_perp" }
+    h_data = parseProc(histCfg, data)
+    hist_mc = None
+    for i,proc in enumerate(procs):
+    
+        hist = parseProc(histCfg, proc)
+        if hist_mc == None: hist_mc = hist
+        else: hist_mc.Add(hist)
+ 
+    h_ratio = h_data.Clone("ratio")
+    h_ratio.Divide(hist_mc)
+    
+    '''
+    for i in range(1, h_data.GetNbinsX()+1):
+        for j in range(1, h_data.GetNbinsX()+1):
+        
+            val = h_data.GetBinContent(i, j)
+            if val >= 1 and val < 1.05: newval = 1.025
+            elif val >= 1.05 and val < 1.1: newval = 1.075
+            elif val >= 1.1 and val < 1.15: newval = 1.125
+            elif val >= 1.15 and val < 1.2: newval = 1.175
+            elif val >= 1.2: newval = 1.3
+            elif val <= 1 and val > 0.95: newval = 0.975
+            elif val <= 0.95 and val > 0.9: newval = 0.925
+            elif val <= 0.9 and val > 0.85: newval = 0.875
+            elif val <= 0.85 and val > 0.8: newval = 0.825
+            elif val <= 0.8: newval = 0.7
+            h_data.SetBinContent(i, j, newval)
+            #print("%.3f " % h_data.GetBinContent(i, j), end="")
+    '''
+    
+    cfg = {
+
+        'logy'              : False,
+        'logx'              : False,
+    
+        'xmin'              : -10,
+        'xmax'              : 10,
+        'ymin'              : -10,
+        'ymax'              : 10,
+        
+        'xtitle'            : "Recoil parallel",
+        'ytitle'            : "Recoil perp",
+        
+        'topRight'          : "199 pb^{#minus1} (13 TeV)", 
+        'topLeft'           : "#bf{CMS} #scale[0.7]{#it{Preliminary}}",
+    }
+    
+
+    
+    #ROOT.gStyle.SetPalette(6, [ROOT.kRed+2, ROOT.kOrange+2 , ROOT.kGreen +2 , ROOT.kGreen +2 , ROOT.kAzure +2, ROOT.kBlue  +2])
+    #ROOT.gStyle.SetNumberContours(6)
+    #ROOT.gStyle.SetPalette(ROOT.kVisibleSpectrum)
+    
+
+    plotter.cfg = cfg
+    canvas = plotter.canvas()
+    canvas.SetRightMargin(0.12)
+    #canvas.SetLogz()
+    dummy = plotter.dummy()  
+    canvas.cd()
+    dummy.Draw("HIST")
+    
+    ROOT.gStyle.SetPaintTextFormat("4.3f")
+    h_data.SetMarkerSize(0.4) 
+    
+    if type_ == "data":
+        #h_data.GetZaxis().SetRangeUser(0.8, 1.2)
+        #h_data.Draw("SAME COLZ TEXTE")
+        h_data.Draw("SAME COLZ")      
+    elif type_ == "mc":
+        #h_mc.GetZaxis().SetRangeUser(0.8, 1.2)
+        #h_data.Draw("SAME COLZ TEXTE")
+        hist_mc.Draw("SAME COLZ")      
+    else:
+        #h_ratio.GetZaxis().SetRangeUser(0.8, 1.2)
+        #h_data.Draw("SAME COLZ TEXTE")
+        h_ratio.Draw("SAME COLZ")      
+    
+    ells = []
+    for r in [1, 2, 3]:
+        met1 = ROOT.TEllipse(0., 0., r, r)
+        met1.SetFillStyle(4000)
+        met1.SetLineWidth(1)
+        met1.Draw("SAME")
+        ells.append(met1)
+
+    
+    plotter.aux(canvas)
+    
+    canvas.Modify()
+    canvas.Update()
+    canvas.Draw()
+    canvas.RedrawAxis()
+    canvas.SaveAs("%s/MET_2d_%s.png" % (outDir, type_))
+    canvas.SaveAs("%s/MET_2d_%s.pdf" % (outDir, type_))
+    canvas.Delete()
+    
+    for i in range(1, h_data.GetNbinsX()+1):
+        for j in range(1, h_data.GetNbinsX()+1):
+        
+            print("%.3f " % h_data.GetBinContent(i, j), end="")
+        print()
+    
+        #hx = h_data.ProjectionX("x", i, i)
+        #hy = h_data.ProjectionY("y", i, i)
+        
+        #print(hx.Integral()/hx.GetNbinsX(), hy.Integral()/hy.GetNbinsX())
+    
+def doYields():
+
+
+        
+    histCfg = {"name": "mZ", "axis": "mll" }
+    h_data = parseProc(histCfg, data)
+    print("Data \t\t %.2f" % h_data.Integral())
+    
+    hTot = 0
+    for i,proc in enumerate(procs):
+    
+        hist = parseProc(histCfg, proc,)
+        hTot += hist.Integral()
+        print("%s \t\t %.2f" % (proc, hist.Integral()))
+        
+    print("MC tot \t\t %.2f" % hTot)
+    print("Data/MC ratio: \t %.3f" % (h_data.Integral()/hTot))
+            
 	
 if __name__ == "__main__":
 
-    flavor = "mumu"
-    #flavor = "ee"
+    print("Start")
+    met = "RawPFMET" # RawPFMET DeepMETReso
+    flavor = "mumu" # mu, e, mumu, ee
     
     MC_SF = 1.0
-    if flavor == "mumu": MC_SF = 1.026
-
-    outDir = "/eos/user/j/jaeyserm/www/wmass/lowPU/Z%s/plots_new_2/" % flavor
-    functions.prepareDir(outDir)
-      
-    groups = datagroupsLowPU_Z("mz_lowPU_%s.pkl.lz4" % flavor, flavor=flavor)
+    if flavor == "mumu": MC_SF = 1.0165 # 1.026
     
-    if False: # Gen MET
-    
-        label = "test"
-        groups.setHists("GenMET_pt", "", label=label, procsToRead=["DYmumu"], selectSignal=False, forceNonzero=False)
-        bhist = groups.groups["DYmumu"][label]
-        print(bhist)
-        sys.exit()
-        
-        
+    suffix = ""
+    #suffix = "_scetlibCorr"
 
+    outDir = "/eos/user/j/jaeyserm/www/wmass/lowPU/Z%s_%s/plots%s/" % (flavor, met, suffix)
+    functions.prepareDir(outDir, remove=True)
+    
+    print("Open")
+    groups = make_datagroups_lowPU("lowPU_%s_%s%s.pkl.lz4" % (flavor, met, suffix), flavor=flavor)
+    
     if flavor == "mumu":
-    
-        procs = ['EWK', 'TTbar', 'DYmumu']
-        data = 'SingleMuon'
-        
+        procs, data = ['EWK', 'Top', 'Zmumu'], 'SingleMuon'
+
     if flavor == "ee":
-    
-        procs = ['EWK', 'TTbar', 'DYee']
-        data = 'SingleElectron'    
-    
-    singlePlot({"name": "massZ", "axis": "mll" }, "massZ_nolog", 60, 120, 0, 2.5e4, "m(l, l) (GeV)", "Events", logY=False)
-    singlePlot({"name": "massZ", "axis": "mll" }, "massZ", 60, 120, 1e0, 1e6, "m(l, l) (GeV)", "Events")
-    mZ_bins = [60, 65, 70, 72, 74, 76, 78, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 102, 104, 106, 108, 110, 115, 120]
-    singlePlot({"name": "massZ", "axis": "mll" }, "massZ_binned", 60, 120, 1e0, 1e6, "m(l, l) (GeV)", "Events", rebin=mZ_bins, yRatio = 1.15)
-    
-    mT_bins = [0, 10, 15, 20, 25, 30, 35,] + list(range(40, 100, 2)) + [102, 104, 106, 108, 110, 115, 120, 125, 130, 140, 160, 200]
-    singlePlot({"name": "mt", "axis": "mt" }, "mt", 0, 200, 1e-1, 1e6, "m_{T}  (GeV)", "Events", rebin=mT_bins)
-    
-    singlePlot({"name": "yZ", "axis": "yll" }, "yZ", -2.5, 2.5, 1e1, 1e6, "Rapidity (l, l)", "Events", rebin=1)
-    singlePlot({"name": "ptZ", "axis": "ptll" }, "ptZ", 0, 300, 1e0, 1e5, "p_{T}(l, l) (GeV)", "Events", rebin=1)
-    
-    singlePlot({"name": "lep_pt", "axis": "ptl" }, "lep_pt", 0, 200, 1e0, 1e7, "p_{T} leptons (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_leading", "axis": "ptl" }, "lep_pt_leading", 0, 200, 1e0, 1e7, "p_{T} leading lepton (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_subleading", "axis": "ptl" }, "lep_pt_subleading", 0, 200, 1e0, 1e7, "p_{T} subleading lepton (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_plus", "axis": "ptl" }, "lep_pt_plus", 0, 200, 1e0, 1e7, "p_{T} positive lepton (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_minus", "axis": "ptl" }, "lep_pt_minus", 0, 200, 1e0, 1e7, "p_{T} negative lepton (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_trg", "axis": "ptl" }, "lep_pt_trg", 0, 200, 1e0, 1e7, "p_{T} triggered lepton(s)  (GeV)", "Events", rebin=1)
-    singlePlot({"name": "lep_pt_nontrg", "axis": "ptl" }, "lep_pt_nontrg", 0, 200, 1e0, 1e7, "p_{T} non-triggered lepton (GeV)", "Events", rebin=1)
-    
-    singlePlot({"name": "lep_eta", "axis": "etal" }, "lep_eta", -2.5, 2.5, 1e1, 1e6, "#eta leptons", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_leading", "axis": "etal" }, "lep_eta_leading", -2.5, 2.5, 1e1, 1e6, "#eta leading lepton", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_subleading", "axis": "etal" }, "lep_eta_subleading", -2.5, 2.5, 1e1, 1e6, "#eta subleading lepton", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_plus", "axis": "etal" }, "lep_eta_plus", -2.5, 2.5, 1e1, 1e6, "#eta positive lepton", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_minus", "axis": "etal" }, "lep_eta_minus", -2.5, 2.5, 1e1, 1e6, "#eta negative lepton", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_trg", "axis": "etal" }, "lep_eta_trg", -2.5, 2.5, 1e1, 1e6, "#eta triggered lepton(s)", "Events", rebin=1)
-    singlePlot({"name": "lep_eta_nontrg", "axis": "etal" }, "lep_eta_nontrg", -2.5, 2.5, 1e1, 1e6, "#eta non-triggered lepton", "Events", rebin=1)
-    
-    singlePlot({"name": "noTrigMatch", "axis": "lin" }, "noTrigMatch", 0, 5, 100, 1e7, "Number of matched triggered objects", "Events", rebin=1)
+        procs, data = ['EWK', 'Top', 'Zee'], 'SingleElectron'    
+        
+   
+    print("Plotting")    
     
     
-    singlePlot({"name": "qT", "axis": "recoil_qT" }, "qT", 0, 300, 0.1, 1e6, "q_{T} (GeV)", "Events", rebin=1)
-    singlePlot({"name": "npv", "axis": "recoil_npv" }, "npv", 0, 20, 1e1, 1e7, "Number of primary vertices", "Events", rebin=1)
+    singlePlot({"name": "mZ", "axis": "mll" }, "mZ", 60, 120, 1e0, 1e7, "m(l, l) (GeV)", "Events", yRatio=1.15)
     
-    singlePlot({"name": "MET_uncorr_pt", "axis": "MET_pt" }, "MET_uncorr_pt", 0, 100, 1, 1e7, "MET (uncorrected)", "Events", rebin=2)
-    singlePlot({"name": "MET_corr_lep_pt", "axis": "MET_pt" }, "MET_corr_lep_pt", 0, 100, 1, 1e7, "MET (lepton corrected)", "Events", rebin=2)
-    singlePlot({"name": "MET_corr_rec_pt", "axis": "MET_pt" }, "MET_corr_rec_pt", 0, 100, 1, 1e7, "MET (recoil corrected)", "Events", rebin=2)
+    #singlePlot({"name": "counts", "axis": "MET_xy" }, "counts", 0, 5, 0, 150, "MET y", "Events", rebin=1, logY=False)
+    #singlePlot({"name": "counts_weighted", "axis": "MET_xy" }, "counts_weighted", 0, 5, 0, 150, "MET y", "Events", rebin=1, logY=False)
+    #singlePlot({"name": "MET_corr_rec_pt", "axis": "MET_pt" }, "MET_corr_rec_pt", 0, 100, 1, 1e7, "MET p_{T} (recoil corrected)", "Events", rebin=1)
     
-    singlePlot({"name": "recoil_uncorr_magn", "axis": "recoil_magn" }, "recoil_uncorr_magn", 0, 300, 1e0, 1e6, "Recoil (magnitude)", "Events", rebin=5)
-    singlePlot({"name": "recoil_uncorr_para", "axis": "recoil_para" }, "recoil_uncorr_para", -200, 100, 1e0, 1e6, "Recoil (parallel)", "Events", rebin=5)
-    singlePlot({"name": "recoil_uncorr_perp", "axis": "recoil_perp" }, "recoil_uncorr_perp", -200, 200, 1e0, 1e6, "Recoil (perpendicular)", "Events", rebin=5)
+    #bins_recoil_para_perp = [-10000, -100, -80, -70, -60, -50, -46, -42, -38, -34] + list(range(-30, 30, 2)) + [30, 34, 38, 42, 46, 50, 60, 70, 80, 100, 10000]
+    #singlePlot({"name": "recoil_corr_rec_para_qT", "axis": "recoil_para" }, "recoil_corr_rec_para_qT", -100, 100, 1e-1, 1e6, "U_{#perp}  (GeV) (recoil corrected)", "Events", rebin=bins_recoil_para_perp)
+    
+    doYields()
+    #quit()
+
+    #MET2d("data")
+    #MET2d("mc")
+    #MET2d()
+    
+    ## recoil plots
+    bins_recoil_para_perp = [-10000, -100, -80, -70, -60, -50, -46, -42, -38, -34] + list(range(-30, 30, 2)) + [30, 34, 38, 42, 46, 50, 60, 70, 80, 100, 10000]
+    bins_recoil_magn = list(range(0, 50, 5)) + list(range(50, 100, 5)) + [100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200]
+    singlePlot({"name": "recoil_uncorr_para", "axis": "recoil_perp" }, "recoil_uncorr_para", -100, 100, 1e-1, 1e7, "U_{#parallel} (GeV) (uncorrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_uncorr_perp", "axis": "recoil_perp" }, "recoil_uncorr_perp", -100, 100, 1e-1, 1e7, "U_{#perp}  (GeV) (uncorrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_uncorr_magn", "axis": "recoil_magn" }, "recoil_uncorr_magn", 0, 200, 1e-1, 1e7, "|U| (GeV) (uncorrected)", "Events", rebin=bins_recoil_magn)    
+    
+    singlePlot({"name": "recoil_corr_lep_para", "axis": "recoil_perp" }, "recoil_corr_lep_para", -100, 100, 1e-1, 1e7, "U_{#parallel} (GeV) (lepton corrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_corr_lep_perp", "axis": "recoil_perp" }, "recoil_corr_lep_perp", -100, 100, 1e-1, 1e7, "U_{#perp}   (GeV) (lepton corrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_corr_lep_magn", "axis": "recoil_magn" }, "recoil_corr_lep_magn", 0, 200, 1e-1, 1e7, "|U| (GeV) (lepton corrected)", "Events", rebin=bins_recoil_magn)
+    
+    singlePlot({"name": "recoil_corr_xy_para", "axis": "recoil_perp" }, "recoil_corr_xy_para", -100, 100, 1e-1, 1e7, "U_{#parallel} (GeV) (XY corrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_corr_xy_perp", "axis": "recoil_perp" }, "recoil_corr_xy_perp", -100, 100, 1e-1, 1e7, "U_{#perp}   (GeV) (XY corrected)", "Events", rebin=bins_recoil_para_perp)
+    singlePlot({"name": "recoil_corr_xy_magn", "axis": "recoil_magn" }, "recoil_corr_xy_magn", 0, 200, 1e-1, 1e7, "|U| (GeV) (XY corrected)", "Events", rebin=bins_recoil_magn)
+
+    singlePlot({"name": "recoil_corr_rec_para", "axis": "recoil_para_qT" }, "recoil_corr_rec_para", -100, 100, 1e-1, 1e7, "U_{#parallel} (GeV) (recoil corrected)", "Events", rebin=bins_recoil_para_perp, yRatio=1.15)
+    singlePlot({"name": "recoil_corr_rec_para_qTrw", "axis": "recoil_para_qT" }, "recoil_corr_rec_para_qTrw", -100, 100, 1e-1, 1e7, "U_{#parallel} (GeV) (recoil corrected, q_{T} rw)", "Events", rebin=bins_recoil_para_perp, yRatio=1.15)
+    
+    singlePlot({"name": "recoil_corr_rec_perp", "axis": "recoil_perp" }, "recoil_corr_rec_perp", -100, 100, 1e-1, 1e7, "U_{#perp}   (GeV) (recoil corrected)", "Events", rebin=bins_recoil_para_perp, yRatio=1.15)
+    singlePlot({"name": "recoil_corr_rec_perp_qTrw", "axis": "recoil_perp" }, "recoil_corr_rec_perp_qTrw", -100, 100, 1e-1, 1e7, "U_{#perp}   (GeV) (recoil corrected, q_{T} rw)", "Events", rebin=bins_recoil_para_perp, yRatio=1.15)
+    
+    singlePlot({"name": "recoil_corr_rec_magn", "axis": "recoil_magn" }, "recoil_corr_rec_magn", 0, 200, 1e-1, 1e7, "|U| (GeV) (recoil corrected)", "Events", rebin=bins_recoil_magn, yRatio=1.15)
+    singlePlot({"name": "recoil_corr_rec_magn_qTrw", "axis": "recoil_magn_qTrw" }, "recoil_corr_rec_magn_qTrw", 0, 200, 1e-1, 1e7, "|U| (GeV) (recoil corrected, q_{T} rw)", "Events", rebin=bins_recoil_magn, yRatio=1.15)
+
+ 
+    singlePlot({"name": "recoil_corr_xy_para_qT", "axis": "recoil_para" }, "recoil_corr_xy_para_qT", -200, 100, 1e-1, 1e7, "U_{#parallel} #minus q_{T} (GeV)", "Events", rebin=5)
+    singlePlot({"name": "recoil_corr_rec_para_qT", "axis": "recoil_para" }, "recoil_corr_rec_para_qT", -200, 100, 1e-1, 1e7, "U_{#parallel} #minus q_{T} (GeV) (recoil corrected)", "Events", rebin=5, yRatio=1.15)
+    singlePlot({"name": "recoil_corr_rec_para_qT_qTrw", "axis": "recoil_para_qTrw" }, "recoil_corr_rec_para_qT_qTrw", -200, 100, 1e-1, 1e7, "U_{#parallel} #minus q_{T} (GeV) (recoil corrected, q_{T} rw)", "Events", rebin=5, yRatio=1.15)
+   
+    
+    ##### MET PLOTS
+    bins_MET = list(range(0, 50, 2)) + list(range(50, 70, 4)) + [70, 80, 90, 100] # was 2 before
+    bins_MET = [0, 0.5, 1, 1.5] + list(range(2, 20, 1)) + list(range(20, 50, 2)) + list(range(50, 70, 4)) + [70, 80, 90, 100] # was 2 before
+    singlePlot({"name": "MET_uncorr_pt", "axis": "MET_pt" }, "MET_uncorr_pt", 0, 100, 1, 1e7, "MET p_{T} (uncorrected)", "Events", rebin=bins_MET)
+    singlePlot({"name": "MET_corr_lep_pt", "axis": "MET_pt" }, "MET_corr_lep_pt", 0, 100, 1, 1e7, "MET p_{T} (lepton corrected)", "Events", rebin=bins_MET)
+    singlePlot({"name": "MET_corr_xy_pt", "axis": "MET_pt" }, "MET_corr_xy_pt", 0, 100, 1, 1e7, "MET p_{T} (XY corrected)", "Events", rebin=bins_MET)
+    singlePlot({"name": "MET_corr_rec_pt", "axis": "MET_pt" }, "MET_corr_rec_pt", 0, 100, 1, 1e7, "MET p_{T} (recoil corrected)", "Events", rebin=bins_MET, yRatio=1.15)
+    singlePlot({"name": "MET_corr_rec_pt_qTrw", "axis": "MET_pt" }, "MET_corr_rec_pt_qTrw", 0, 100, 1, 1e7, "MET p_{T} (recoil corrected, q_{T} rw)", "Events", rebin=bins_MET, yRatio=1.15)
+    
+
+    
+    singlePlot({"name": "MET_uncorr_phi", "axis": "recoil_MET_phi" }, "MET_uncorr_phi", -4, 4, 1e1, 1e7, "MET #phi (uncorrected)", "Events", rebin=1)
+    singlePlot({"name": "MET_corr_lep_phi", "axis": "recoil_MET_phi" }, "MET_corr_lep_phi", -4, 4, 1e1, 1e7, "MET #phi (lepton corrected)", "Events", rebin=1)
+    singlePlot({"name": "MET_corr_xy_phi", "axis": "recoil_MET_phi" }, "MET_corr_xy_phi", -4, 4, 1e1, 1e7, "MET #phi (XY corrected)", "Events", rebin=1)
+    singlePlot({"name": "MET_corr_rec_phi", "axis": "recoil_MET_phi" }, "MET_corr_rec_phi", -4, 4, 1e1, 1e7, "MET #phi (recoil corrected)", "Events", rebin=1, yRatio=1.3)
+    
+    mT_bins = [0, 10, 15, 20, 25, 30, 35,] + list(range(40, 100, 2)) + [100, 102, 104, 106, 108, 110, 115, 120, 125, 130, 140, 160, 200]
+    singlePlot({"name": "mT_uncorr", "axis": "mt" }, "mT_uncorr", 0, 200, 1e-1, 1e6, "m_{T} (GeV) (uncorrected)", "Events", rebin=mT_bins)
+    singlePlot({"name": "mT_corr_lep", "axis": "mt" }, "mT_corr_lep", 0, 200, 1e-1, 1e6, "m_{T} (GeV) (lepton corrected)", "Events", rebin=mT_bins)
+    singlePlot({"name": "mT_corr_xy", "axis": "mt" }, "mT_corr_xy", 0, 200, 1e-1, 1e6, "m_{T} (GeV) (XY corrected)", "Events", rebin=mT_bins)
+    singlePlot({"name": "mT_corr_rec", "axis": "mt" }, "mT_corr_rec", 0, 200, 1e-1, 1e6, "m_{T} (GeV)  (recoil corrected)", "Events", rebin=mT_bins, yRatio=1.15)
+    singlePlot({"name": "mT_corr_rec_qTrw", "axis": "mt" }, "mT_corr_rec_qTrw", 0, 200, 1e-1, 1e6, "m_{T} (GeV)  (recoil corrected, q_{T} rw)", "Events", rebin=mT_bins, yRatio=1.15)    
     
     
-    singlePlot({"name": "recoil_corr_magn", "axis": "recoil_magn" }, "recoil_corr_magn", 0, 300, 1e-1, 1e6, "|U| (GeV)", "Events", rebin=5)
-    singlePlot({"name": "recoil_corr_para", "axis": "recoil_para" }, "recoil_corr_para", -200, 100, 1e-1, 1e6, "U_{#parallel} (GeV)", "Events", rebin=5)
-    singlePlot({"name": "recoil_corr_para_qT", "axis": "recoil_perp" }, "recoil_corr_para_qT", -100, 100, 1e-1, 1e6, "U_{#parallel} + q_{T} (GeV)", "Events", rebin=5)
-    singlePlot({"name": "recoil_corr_perp", "axis": "recoil_perp" }, "recoil_corr_perp", -200, 200, 1e-1, 1e6, "U_{#perp}  (GeV)", "Events", rebin=5)
     
+    recoil_qTbins = list(range(0, 30, 1)) + list(range(30, 50, 2)) + list(range(50, 70, 5)) + list(range(70, 100, 10)) + [100]
+    recoil_qTbins = list(range(0, 30, 1)) + list(range(30, 50, 2)) + list(range(50, 70, 5)) + list(range(70, 120, 10)) + [120, 150]
+    singlePlot({"name": "qT", "axis": "qT" }, "qT", 0, 100, 0.1, 1e6, "q_{T} (GeV)", "Events", rebin=recoil_qTbins, yRatio=1.15)
+    singlePlot({"name": "qT_qTrw", "axis": "qT" }, "qT_qTrw", 0, 100, 0.1, 1e6, "q_{T} (GeV) (q_{T} rw)", "Events", rebin=recoil_qTbins, yRatio=1.15)
+ 
+    singlePlot({"name": "METx_uncorr", "axis": "MET_xy" }, "METx_uncorr", -100, 100, 1e1, 1e6, "MET x (uncorrected)", "Events", rebin=1)
+    singlePlot({"name": "METy_uncorr", "axis": "MET_xy" }, "METy_uncorr", -100, 100, 1e1, 1e6, "MET y (uncorrected)", "Events", rebin=1)
     
+    singlePlot({"name": "METx_corr_lep", "axis": "MET_xy" }, "METx_corr_lep", -100, 100, 1e1, 1e6, "MET x (lepton corrected)", "Events", rebin=1)
+    singlePlot({"name": "METy_corr_lep", "axis": "MET_xy" }, "METy_corr_lep", -100, 100, 1e1, 1e6, "MET y (lepton corrected)", "Events", rebin=1)
+ 
+    singlePlot({"name": "METx_corr_xy", "axis": "MET_xy" }, "METx_corr_xy", -100, 100, 1e1, 1e6, "MET x (XY corrected)", "Events", rebin=1)
+    singlePlot({"name": "METy_corr_xy", "axis": "MET_xy" }, "METy_corr_xy", -100, 100, 1e1, 1e6, "MET y (XY corrected)", "Events", rebin=1)
     
+    singlePlot({"name": "METx_corr_rec", "axis": "MET_xy" }, "METx_corr_rec", -100, 100, 1e1, 1e6, "MET x (recoil corrected)", "Events", rebin=1)
+    singlePlot({"name": "METy_corr_rec", "axis": "MET_xy" }, "METy_corr_rec", -100, 100, 1e1, 1e6, "MET y (recoil corrected)", "Events", rebin=1)
     
+    singlePlot({"name": "npv", "axis": "recoil_npv" }, "npv", 0, 15, 1e1, 1e7, "Number of primary vertices", "Events", rebin=1, yRatio=1.8)
+ 
+ 
+    #singlePlot({"name": "MET_corr_xy_ll_dPhi", "axis": "recoil_MET_phi" }, "MET_corr_xy_ll_dPhi", -4, 4, 1e1, 1e6, "#Delta#phi(MET xy corr, ll) (lepton corrected)", "Events", rebin=1)
+    #singlePlot({"name": "MET_corr_rec_ll_dPhi", "axis": "recoil_MET_phi" }, "MET_corr_rec_ll_dPhi", -4, 4, 1e1, 1e6, "#Delta#phi(MET rec corr, ll) (lepton corrected)", "Events", rebin=1)
+    #singlePlot({"name": "ll_phi", "axis": "recoil_MET_phi" }, "ll_phi", -4, 4, 1e1, 1e6, "ll #phi (lepton corrected)", "Events", rebin=1)
+    #singlePlot({"name": "MET_corr_rec_xy_dPhi", "axis": "recoil_MET_phi" }, "MET_corr_rec_xy_dPhi", -4, 4, 1e1, 1e6, "#phi(MET rec corr) - #phi(MET xy corr)", "Events", rebin=1)
+ 

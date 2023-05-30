@@ -4,11 +4,11 @@
 #
 # charge combination
 #
-# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/ --cf testChargeComb -c "plus,minus" --impacts-mW --comb [--skip-fit-data]
+# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/  --comb [--skip-fit-data]
 #
 # single charge (can select a single charge as -c plus, otherwise both are done in sequence)
 #
-# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/ --cf testSingleCharge -c "plus,minus" --impacts-mW --fit-single-charge [--skip-fit-data]
+# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/  -c "plus,minus" --fit-single-charge [--skip-fit-data]
 
 import os, re, copy, math, array
 
@@ -22,6 +22,7 @@ import ROOT
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
+
 
 def safeSystem(cmd, dryRun=False, quitOnFail=True):
     print(cmd)
@@ -37,6 +38,11 @@ def safeSystem(cmd, dryRun=False, quitOnFail=True):
         return res
     else:
         return 0
+
+def createFolder(checkdir, dryRun=False):
+    if not os.path.exists(checkdir):
+        print("Creating folder", checkdir)
+        safeSystem("mkdir -p " + checkdir, dryRun=dryRun)
 
 def prepareChargeFit(options, charges=["plus"]):
 
@@ -121,9 +127,7 @@ def prepareChargeFit(options, charges=["plus"]):
         fitdir_Asimov = fitdir_data.replace("/fit/data/", "/fit/hessian/")
         fitdir_toys = fitdir_data.replace("/fit/data/", "/fit/toys/")
         for fitdir in [fitdir_data, fitdir_Asimov]:
-            if not os.path.exists(fitdir):
-                print("Creating folder", fitdir)
-                safeSystem("mkdir -p " + fitdir, dryRun=options.dryRun)
+            createFolder(fitdir, options.dryRun)
         print("")
         fitPostfix = "" if not len(postfix) else ("_"+postfix)
 
@@ -168,7 +172,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--input', dest='inputdir', default='', type=str, help='input directory with the root files inside (cards are eventually stored in the foldr specified with option --cf)')
     parser.add_argument('--cf','--card-folder', dest='cardFolder', default='nominal', type=str, help='Subfolder created inside inputdir to store all cards and fit results in a given configuration, for better bookkeeping when doing tests')
-    parser.add_argument('-c','--charge', dest='charge', default='plus,minus', type=str, help='process given charge. default is both')
+    parser.add_argument('-c','--charge', dest='charge', default='both', choices=['plus','minus','both'], type=str, help='process given charge. default is both')
     parser.add_argument(     '--comb'   , dest='combineCharges' , default=False, action='store_true', help='Combine W+ and W-, if single cards are done')
     parser.add_argument(      '--fit-single-charge', dest='fitSingleCharge', default=False, action='store_true', help='Prepare datacard for single-charge fit. For each charge, a postfix is appended to option --postfix, so no need to add the charge explicitly')
     parser.add_argument(     '--postfix',    dest='postfix', type=str, default="", help="Postfix for .hdf5 file created with text2hdf5.py");
@@ -207,22 +211,15 @@ if __name__ == "__main__":
         args.inputdir += "/"
             
     if args.cardFolder:
-        testName = args.cardFolder.rstrip("/")
-        if testName in ["plus", "minus"]:
-            # these names are already used, they contain the configurations used to make histograms
-            print("Warning: folder specified with --card-folder cannot be named as plus|minus/ (you used %s)" % args.cardFolder)
-            quit()
         if not args.cardFolder.endswith("/"):
             args.cardFolder += "/"
         cardFolderFullName = args.inputdir + args.cardFolder
-        if not os.path.exists(cardFolderFullName):
-            print("Creating folder", cardFolderFullName)
-            safeSystem("mkdir -p " + cardFolderFullName, dryRun=False) # always create this folder, even for tests
+        createFolder(cardFolderFullName, dryRun=False) # always create this folder, even for tests
         fcmd = open(cardFolderFullName+"cardMaker_command.txt", "w")
         fcmd.write("%s\n\n" % " ".join(sys.argv))
         fcmd.close()
 
-    fitCharges = args.charge.split(',')
+    fitCharges = ["plus", "minus"] if args.charge == "both" else [args.charge]
 
     if not args.combineCharges and not args.fitSingleCharge:
         print("Warning: must pass one option between --fit-single-charge and --comb to fit single charge or combination.")

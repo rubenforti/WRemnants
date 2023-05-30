@@ -8,135 +8,157 @@ xsec_WmmunuPostVFP = 8703.87
 Z_TAU_TO_LEP_RATIO = (1.-(1. - BR_TAUToMU - BR_TAUToE)**2)
 
 dataDictV9 = {
-    'dataPostVFP' : { 'name' :  "dataPostVFP",
-                      'filepaths' : ["/scratch/shared/NanoAOD/TrackRefitv2/NanoV9DataPostVFP/Run2016F_220627_141813/*/*.root",
-                                     "/scratch/shared/NanoAOD/TrackRefitv2/NanoV9DataPostVFP/Run2016G_220627_141950/*/*.root",
-                                     "/scratch/shared/NanoAOD/TrackRefitv2/NanoV9DataPostVFP/Run2016H_220627_142357/*/*.root",]
+    'dataPostVFP' : { 
+                      'filepaths' : ["{BASE_PATH}/SingleMuon/NanoV9Run2016FDataPostVFP_{NANO_PROD_TAG}/*/*/*.root",
+                                     "{BASE_PATH}/SingleMuon/NanoV9Run2016GDataPostVFP_{NANO_PROD_TAG}/*/*/*.root",
+                                     "{BASE_PATH}/SingleMuon/NanoV9Run2016HDataPostVFP_{NANO_PROD_TAG}/*/*/*.root",
+                                     ],
+                      'group': "Data",
+
     },
-    'ZmmPostVFP' : { 'name' : "ZmumuPostVFP",
+    'ZmumuPostVFP' : { 
                    'filepaths' :
-                    ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220729_152749/*/*.root"],
+                    ["{BASE_PATH}/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
                    'xsec' : xsec_ZmmPostVFP,
+                   'group': "Zmumu",
     },
-    'ZttPostVFP' : { 'name' : "ZtautauPostVFP",
+    'ZtautauPostVFP' : { 
                    'filepaths' : 
-                   ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220823_073001/000*/*.root"],
+                   ["{BASE_PATH}/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
                    # At least one tau->e or mu decay, so everything that's not all other decays
                    'xsec' : xsec_ZmmPostVFP*Z_TAU_TO_LEP_RATIO,
+                   'group': "Ztautau",
     },
 
-    'WpmunuPostVFP' : { 'name' : "WplusmunuPostVFP",
+    'WplusmunuPostVFP' : { 
                       'filepaths' : 
-                      ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220729_152523/*/*.root"],
-                      'xsec' : xsec_WpmunuPostVFP
+                      ["{BASE_PATH}/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
+                      'xsec' : xsec_WpmunuPostVFP,
+                      'group': "Wmunu",
     },
-    'WmmunuPostVFP' : { 'name' : "WminusmunuPostVFP",
+    'WminusmunuPostVFP' : { 
                       'filepaths' : 
-                      ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220729_152430/*/*.root"],
-                      'xsec' : xsec_WmmunuPostVFP
+                      ["{BASE_PATH}/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
+                      'xsec' : xsec_WmmunuPostVFP,
+                      'group': "Wmunu",
     },
 
-    'WptaunuPostVFP' : { 'name' : "WplustaunuPostVFP",
+    'WplustaunuPostVFP' : { 
                          'filepaths' : 
-                         ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220823_121429/*/*.root"],
+                         ["{BASE_PATH}/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
                          'xsec' : BR_TAUToMU*xsec_WpmunuPostVFP,
+                         'group': "Wtaunu",
     },
     
-    'WmtaunuPostVFP' : { 'name' : "WminustaunuPostVFP",
+    'WminustaunuPostVFP' : { 
                          'filepaths' : 
-                         ["/scratch/shared/NanoAOD/TrackRefitv2_GenPartPrecision/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP/220823_073247/0000/*.root"],
+                         ["{BASE_PATH}/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}/*/*/*.root"],
                          'xsec' : BR_TAUToMU*xsec_WmmunuPostVFP,
+                         'group': "Wtaunu",
     },
-    'ttbarlnuPostVFP' : { 'name' : "TTLeptonicPostVFP",
+    'TTLeptonicPostVFP' : { 
                           'filepaths' : 
-                          ["/scratch/shared/NanoAOD/BKGV9/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                          ["{BASE_PATH}/BKGV9/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/*.root"],
                           'xsec' : 88.29,
                           'group' : "Top",
     },
 
-    'ttbarlqPostVFP' : { 'name' : "TTSemileptonicPostVFP",
+    'TTSemileptonicPostVFP' : { 
                          'filepaths' : 
-                         ["/scratch/shared/NanoAOD/BKGV9/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/*.root"],
-                         'xsec' : 365.34,
+                         ["{BASE_PATH}/BKGV9/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                         'xsec' : 366.34,
                          'group' : "Top",
     },
-    # TODO: these samples and cross sections are preliminary
-    'singleTop_schanLepDecaysPostVFP' : { 'name' : "SingleTschanLepDecaysPostVFP",
+    'SingleTschanLepDecaysPostVFP' : { 
                                           'filepaths' : 
-                                          ["/scratch/shared/NanoAOD/BKGV9/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/*.root"],
-                                          'xsec' : 3.74,
+                                          ["{BASE_PATH}/BKGV9/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/*.root"],
+                                          'xsec' : 3.609,
                                           'group' : "Top",
     },
-    'singleTop_tWAntitopPostVFP' : { 'name' : "SingleTtWAntitopPostVFP",
+    'SingleTtWAntitopPostVFP' : { 
                                      'filepaths' : 
-                                     ["/scratch/shared/NanoAOD/BKGV9/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                                     ["{BASE_PATH}/BKGV9/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                                     'xsec' : 19.55, # 35.85 * (1.0-((1-0.1086*3)*(1-0.1086*3))) = 19.5 pb
+                                     'group' : "Top",
+    },
+    'SingleTtWTopPostVFP' : { 
+                                     'filepaths' : 
+                                     ["{BASE_PATH}/BKGV9/ST_tW_top_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
                                      'xsec' : 19.55,
                                      'group' : "Top",
     },
-    'singleTop_tchanAntitopPostVFP' : { 'name' : "SingleTtchanAntitopPostVFP",
+    'SingleTtchanAntitopPostVFP' : { 
                                         'filepaths' : 
-                                        ["/scratch/shared/NanoAOD/BKGV9/ST_t-channel_antitop_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
-                                        'xsec' : 70.79,
+                                        ["{BASE_PATH}/BKGV9/ST_t-channel_antitop_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                                        'xsec' : 80.0,
                                         'group' : "Top",
     },
-    'singleTop_tchanTopPostVFP' : { 'name' : "SingleTtchanTopPostVFP",
+    'SingleTtchanTopPostVFP' : { 
                                     'filepaths' : 
-                                    ["/scratch/shared/NanoAOD/BKGV9/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
-                                    'xsec' : 119.71,
+                                    ["{BASE_PATH}/BKGV9/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"],
+                                    'xsec' : 134.2,
                                     'group' : "Top",
     },   
-    # TODO: should really use the specific decay channels
-    'wwPostVFP' : { 'name' : "WWPostVFP",
-                    'filepaths' : 
-                    ["/scratch/shared/NanoAOD/BKGV9/WW_TuneCP5_13TeV-pythia8/*.root"],
-                    'xsec' : 75.8,
-                    'group' : "Diboson",
+    # inclusive samples, keep for reference
+    # 'WWPostVFP' : { 
+    #                 'filepaths' : 
+    #                 ["{BASE_PATH}/BKGV9/WW_TuneCP5_13TeV-pythia8/*.root"],
+    #                 'xsec' : 118.7,
+    #                 'group' : "Diboson",
+    # },
+    # 'WZPostVFP' : { 
+    #                 'filepaths' : 
+    #                 ["{BASE_PATH}/BKGV9/WZ_TuneCP5_13TeV-pythia8/*.root"],
+    #                 'xsec' : 47.026760,  # to check, taken from WZTo1L1Nu2Q dividing by BR: 10.71/(3*0.1086)/(1-3*0.033658-0.2)
+    #                 'group' : "Diboson",
+    # },
+    ##
+    'WWTo2L2Nu' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/*/*.root"],
+        'xsec' : 12.6, # 118.7*0.1086*0.1086*9
+        'group' : "Diboson",
     },
-    'wzPostVFP' : { 'name' : "WZPostVFP",
-                    'filepaths' : 
-                    ["/scratch/shared/NanoAOD/BKGV9/WZ_TuneCP5_13TeV-pythia8/*.root"],
-                    'xsec' : 27.6,
-                    'group' : "Diboson",
+    'WWTo1L1Nu2QPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/*/*.root"],
+        'xsec' : 52.146, # 118.7*[(3*0.1086)*(1-3*0.1086)]*2 (2 is because one W or the other can go to Q)
+        'group' : "Diboson",
     },
-    'zz2l2nuPostVFP' : { 'name' : "ZZ2l2nuPostVFP",
-                         'filepaths' : 
-                         ["/scratch/shared/NanoAOD/BKGV9/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/*.root"],
-                         'xsec' : 0.564,
-                         'group' : "Diboson",
+    'WZTo3LNuPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8/*/*.root"],
+        'xsec' : 4.91, # 4.42965*1.109, 1.109 is the NLO to NNLO kfactor, for this one would need to make sure about the NLO XS, depends a lot on the dilepton mass cut
+        'group' : "Diboson",
+    },
+    'WZTo2Q2LPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/*/*.root"],
+        'xsec' : 5.4341, # 4.9*1.109
+        'group' : "Diboson",
+    },
+    'WZTo1L1Nu2QPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/*/*.root"],
+        'xsec' : 11.781, # 10.71*1.10
+        'group' : "Diboson",
+    },
+    'ZZTo2L2NuPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/*.root"],
+        'xsec' : 0.60,
+        'group' : "Diboson",
+    },
+    'ZZTo2Q2LPostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/*/*.root"],
+        'xsec' : 5.1,
+        'group' : "Diboson",
+    },
+    'QCDmuEnrichPt15PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/BKGV9/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/*/*.root"],
+        'xsec' : 238800,
+        'group' : "QCD",
     }
 }
-
-###Pisa server
-dataDictV9_pisa = copy.deepcopy(dataDictV9)
-
-dataDictV9_pisa['dataPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/Run2016F_220627_141813/*/*.root", "/scratchnvme/wmass/NANOV9/postVFP/Run2016G_220627_141950//*/*.root", "/scratchnvme/wmass/NANOV9/postVFP/Run2016H_220627_142357/*/*.root"]
-
-dataDictV9_pisa['ZmmPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/*/*/*/*.root"]
-                   
-dataDictV9_pisa['ZttPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/TrackRefitv1/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV8MCPostVFPWeightFix/*/*/*.root"]
-                   
-dataDictV9_pisa['WpmunuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/*/*/*/*.root"]
-
-dataDictV9_pisa['WmmunuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/*/*/*/*.root"]
-
-dataDictV9_pisa['WptaunuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/TrackRefitv1/WplusJetsToTauNu_TauToMu_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV8MCPostVFPWeightFix/*/*/*.root"]
-    
-dataDictV9_pisa['WmtaunuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/TrackRefitv1/WminusJetsToTauNu_TauToMu_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV8MCPostVFPWeightFix/*/*/*.root"]
-
-dataDictV9_pisa['ttbarlnuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/*.root"]
-
-dataDictV9_pisa['ttbarlqPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/*.root"]
-
-dataDictV9_pisa['singleTop_schanLepDecaysPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/*.root"]
-
-dataDictV9_pisa['singleTop_tWAntitopPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/*.root"]
-
-dataDictV9_pisa['singleTop_tchanAntitopPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/ST_t-channel_antitop_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"]
-
-dataDictV9_pisa['singleTop_tchanTopPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/*.root"]
-
-dataDictV9_pisa['wwPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/WW_TuneCP5_13TeV-pythia8/*.root"]
-
-dataDictV9_pisa['wzPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/WZ_TuneCP5_13TeV-pythia8/*.root"]
-
-dataDictV9_pisa['zz2l2nuPostVFP']['filepaths']=["/scratchnvme/wmass/NANOV9/postVFP/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/*.root"]

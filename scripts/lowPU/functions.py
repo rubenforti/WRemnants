@@ -1,18 +1,46 @@
 
-import sys,array,math,os,copy,shutil
-
+import sys,array,math,os,copy,shutil,decimal
+import json
 
 import ROOT
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
+import narf
+import hist
+import numpy as np
+
+
+def loadJSON(jsIn):
+    with open(jsIn) as f: jsDict = json.load(f)
+    return jsDict
+
+def writeJSON(jsOut, outDict):
+    with open(jsOut, "w") as outfile: json.dump(outDict, outfile, indent=4)
+
+def parseBoostHist(groups, histCfg, procName, rebin=1):
+
+    axis = histCfg['axis']
+    hName = histCfg['name']
+    
+    label = "%s_%s" % (hName, procName)
+    groups.setHists(hName, "", label=label, procsToRead=[procName], selectSignal=False)
+    bhist = groups.groups[procName][label]
+    rhist = narf.hist_to_root(bhist)
+    rhist = Rebin(rhist, rebin)
+    rhist.SetName(label)
+    rhist = doOverlow(rhist)
+
+    print("Get histogram %s, yield=%.2f" % (label, rhist.Integral()))
+    return rhist
+ 
 
 def prepareDir(outDir, remove=True):
 
     if os.path.exists(outDir) and os.path.isdir(outDir) and remove: shutil.rmtree(outDir)
     os.system("mkdir -p %s" % outDir)
-    os.system("cp /eos/user/j/jaeyserm/www/wmass/index.php %s" % outDir)
+    #os.system("cp /eos/user/j/jaeyserm/www/wmass/index.php %s" % outDir)
 
     
 def doOverlow(h):
@@ -58,9 +86,37 @@ def Rebin(h, newbins, binWidth=True):
 
     if isinstance(newbins, int):
         h.Rebin(newbins)
+        if binWidth: h.Scale(1, "width")
         return h
     else:
         mybins = array.array('d', newbins)
         h1 = h.Rebin(len(mybins)-1, h.GetName(), mybins)
         if binWidth: h1.Scale(1, "width")
         return h1
+
+
+def drange(x, y, jump):
+    while x < y:
+        yield float(x)
+        #x += decimal.Decimal(jump)
+        x += jump
+        
+        
+def readBoostHistProc(datagroups, hName, procNames, charge=None):
+
+    label = "%s_tmp" % (hName)
+    datagroups.setHists(hName, "", label=label, procsToRead=procNames)
+    bhist = None
+    for procName in procNames:
+        h = datagroups.groups[procName][label]
+        if bhist == None: bhist = h
+        else: bhist = bhist + h
+      
+    axes = [ax.name for ax in bhist.axes]
+    if "charge" in axes:
+        s = hist.tag.Slicer()
+        if charge and charge == "combined": bhist = bhist[{"charge" : s[::hist.sum]}]
+        elif charge and charge == "plus": bhist = bhist[{"charge" : bhist.axes["charge"].index(+1)}]
+        elif charge and charge == "minus": bhist = bhist[{"charge" : bhist.axes["charge"].index(-1)}]
+        
+    return bhist 

@@ -1,10 +1,9 @@
 import numpy as np
 import lz4.frame
 import pickle
-import logging
 from wremnants import plot_tools, theory_corrections, theory_tools
 from utilities import boostHistHelpers as hh
-from utilities import common, input_tools, output_tools
+from utilities import common, input_tools, output_tools, logging
 import hist
 import argparse
 
@@ -16,11 +15,12 @@ parser.add_argument("-g", "--generator", type=str, choices=["scetlib", ], defaul
     required=True, help="Generator used to produce correction hist")
 parser.add_argument("--outpath", type=str, default=f"{common.data_dir}/TheoryCorrections", help="Output path")
 parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
+parser.add_argument("--debug", action='store_true', help="Print debug output")
 parser.add_argument("--proc", type=str, required=True, choices=["z", "w", ], help="Process")
 
 args = parser.parse_args()
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.setup_base_logger("makeDataMCStackPlot", args.debug)
 
 def read_corr(procName, generator, corr, isA4=False):
     charge = 0 if procName[0] == "Z" else (1 if "Wplus" in procName else -1)
@@ -46,12 +46,13 @@ elif args.proc == "w":
     filesByProc = { "WplusmunuPostVFP" : (args.corr_ul[plus_idx], args.corr_a4[plus_idx4]),
         "WminusmunuPostVFP" : (args.corr_ul[not plus_idx], args.corr_a4[not plus_idx4])}
 
+# TODO: Read taus here already
 minnloh = input_tools.read_all_and_scale(args.minnlo_file, list(filesByProc.keys()), ["helicity_moments_scale"])[0]
 # # TODO: Really need to reuse code here and for the inclusive corr
 # Get more stats in the correction
 add_taus = True 
 if add_taus:
-    logging.info("Combine muon and tau decay samples for increased stats")
+    logger.info("Combine muon and tau decay samples for increased stats")
     from wremnants.datasets.datasetDict_v9 import Z_TAU_TO_LEP_RATIO,BR_TAUToMU
     taus = ["WplustaunuPostVFP", "WminustaunuPostVFP"] if args.proc == "w" else ["ZtautauPostVFP"]
     taush = input_tools.read_all_and_scale(args.minnlo_file, taus, ["helicity_moments_scale"])[0]
@@ -80,10 +81,10 @@ with lz4.frame.open(outfile, "wb") as f:
             "meta_data" : output_tools.metaInfoDict(),
         }, f, protocol = pickle.HIGHEST_PROTOCOL)
 
-logging.info("Correction binning is")
+logger.info("Correction binning is")
 for ax in corrh.axes:
-    logging.info(f"Axis {ax.name}: {ax.edges}")
+    logger.info(f"Axis {ax.name}: {ax.edges}")
 helcorr = np.average(corrh[{'helicity' : -1.j, 'corr' : True}])
-logging.info(f"Average correction for sigmaUL is {helcorr}")
-logging.info(f"Wrote file {outfile}")
+logger.info(f"Average correction for sigmaUL is {helcorr}")
+logger.info(f"Wrote file {outfile}")
 

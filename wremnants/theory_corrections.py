@@ -6,10 +6,37 @@ import narf
 import numpy as np
 import lz4.frame
 import pickle
+import re
+import glob
 from .correctionsTensor_helper import makeCorrectionsTensor
-from utilities import boostHistHelpers as hh, common
+from utilities import boostHistHelpers as hh, common, logging
 from wremnants import theory_tools
-import logging
+
+logger = logging.child_logger(__name__)
+
+def valid_theory_corrections():
+    corr_files = glob.glob(common.data_dir+"TheoryCorrections/*Corr*.pkl.lz4")
+    matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
+    return [m[1] for m in matches if m]
+
+def load_corr_helpers(procs, generators):
+    corr_helpers = {}
+    for proc in procs:
+        corr_helpers[proc] = {}
+        for generator in generators:
+            fname = f"{common.data_dir}/TheoryCorrections/{generator}Corr{proc[0]}.pkl.lz4"
+            if not os.path.isfile(fname):
+                logger.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
+                continue
+            helper_func = make_corr_helper if "Helicity" not in generator else make_corr_by_helicity_helper
+            # Hack for now
+            corr_hist_name = get_corr_name(generator)
+            corr_helpers[proc][generator] = helper_func(fname, proc[0], corr_hist_name)
+    for generator in generators:
+        if not any([generator in corr_helpers[proc] for proc in procs]):
+            raise ValueError(f"Did not find correction for generator {generator} for any processes!")
+    return corr_helpers
+
 
 def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusive_{{process}}_pT.npz", isW=True):
     if isW:
@@ -56,6 +83,11 @@ def make_corr_by_helicity_helper(filename, proc, histname):
 
     return makeCorrectionsTensor(corrh, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
 
+def get_corr_name(generator):
+    # Hack for now
+    label = generator.replace("1D", "")
+    return f"{label}_minnlo_ratio" if "Helicity" not in generator else f"{label.replace('Helicity', '')}_minnlo_coeffs"
+
 def load_corr_helpers(procs, generators):
     corr_helpers = {}
     for proc in procs:
@@ -63,10 +95,10 @@ def load_corr_helpers(procs, generators):
         for generator in generators:
             fname = f"{common.data_dir}/TheoryCorrections/{generator}Corr{proc[0]}.pkl.lz4"
             if not os.path.isfile(fname):
-                logging.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
+                logger.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
                 continue
+            corr_hist_name = get_corr_name(generator)
             helper_func = make_corr_helper if "Helicity" not in generator else make_corr_by_helicity_helper
-            corr_hist_name = f"{generator}_minnlo_ratio" if "Helicity" not in generator else f"{generator.replace('Helicity', '')}_minnlo_coeffs"
             corr_helpers[proc][generator] = helper_func(fname, proc[0], corr_hist_name)
     for generator in generators:
         if not any([generator in corr_helpers[proc] for proc in procs]):
@@ -81,8 +113,7 @@ def rebin_corr_hists(hists, ndim=-1, use_predefined_bins=False):
             hists = [hh.rebinHist(h, "pt" if "pt" in h.axes.name else "ptVgen", common.ptV_binning[:-2]) for h in hists]
             hists = [hh.rebinHist(h, "absy" if "absy" in h.axes.name else "absYVgen", common.absYV_binning[:-1]) for h in hists]
         except ValueError as e:
-            logging.warning("Can't rebin axes to predefined binning")
-    print("Number of dims", ndims)
+            logger.warning("Can't rebin axes to predefined binning")
     for i in range(ndims):
         # This is a workaround for now for the fact that MiNNLO has mass binning up to
         # Inf whereas SCETlib has 13 TeV
@@ -114,14 +145,14 @@ def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], use_predefined_bins=rebin)
 
     corrh = hh.divideHists(num_hist, denom_hist)
-    return set_corr_ratio_flow(corrh)
+    return set_corr_ratio_flow(corrh), denom_hist, num_hist
 
 def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, ndim=3):
     ref_helicity_hist, target_sigmaul, target_sigma4 = rebin_corr_hists([ref_helicity_hist, target_sigmaul, target_sigma4], ndim, True)
     
     ref_coeffs = theory_tools.moments_to_angular_coeffs(ref_helicity_hist)
 
-    target_a4_coeff = make_a4_coeff(target_sigma4, target_sigmaul)
+    target_a4_coeff = make_angular_coeff(target_sigma4, target_sigmaul)
     sigmaUL_ratio = hh.divideHists(target_sigmaul, ref_helicity_hist[{"helicity" : -1.j}])
 
     corr_ax = hist.axis.Boolean(name="corr")
@@ -140,6 +171,6 @@ def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, ndim
     corr_coeffs = set_corr_ratio_flow(corr_coeffs)
     return corr_coeffs
 
-def make_a4_coeff(sigma4_hist, ul_hist):
-    return hh.divideHists(sigma4_hist, ul_hist, cutoff=0.0001)
+def make_angular_coeff(sigmai_hist, ul_hist):
+    return hh.divideHists(sigmai_hist, ul_hist, cutoff=0.0001)
 

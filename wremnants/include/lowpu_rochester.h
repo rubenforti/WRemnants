@@ -5,7 +5,8 @@
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include "defines.h"
 
-#include <boost/math/special_functions/erf.hpp>
+//#include <boost/math/special_functions/erf.hpp>
+#include "TMath.h"
 
 namespace wrem {
     
@@ -45,7 +46,8 @@ struct CrystalBall{
 	double ex = exp(-fa*fa/2);
 	double A  = pow(n/fa, n) * ex;
 	double C1 = n/fa/(n-1) * ex; 
-	double D1 = 2 * sqrtPiOver2 * erf(fa/sqrt2);
+	//double D1 = 2 * sqrtPiOver2 * erf(fa/sqrt2);
+	double D1 = 2 * sqrtPiOver2 * TMath::Erf(fa/sqrt2);
 
 	B = n/fa-fa;
 	C = (D1+2*C1)/C1;   
@@ -82,13 +84,15 @@ struct CrystalBall{
 	double d = (x-m)/s;
 	if(d<-a) return NC / pow(F-s*d/G, n-1);
 	if(d>a) return NC * (C - pow(F+s*d/G, 1-n) );
-	return Ns * (D - sqrtPiOver2 * erf(-d/sqrt2));
+	//return Ns * (D - sqrtPiOver2 * erf(-d/sqrt2));
+	return Ns * (D - sqrtPiOver2 * TMath::Erf(-d/sqrt2));
     }
 
     double invcdf(double u) const{
 	if(u<cdfMa) return m + G*(F - pow(NC/u, k));
 	if(u>cdfPa) return m - G*(F - pow(C-u/NC, -k) );
-	return m - sqrt2 * s * boost::math::erf_inv((D - u/Ns )/sqrtPiOver2);
+	//return m - sqrt2 * s * boost::math::erf_inv((D - u/Ns )/sqrtPiOver2);
+	return m - sqrt2 * s * TMath::ErfInverse((D - u/Ns )/sqrtPiOver2);
     }
 };
 
@@ -519,8 +523,8 @@ double RoccoR::kScaleAndSmearMCerror(int Q, double pt, double eta, double phi, i
 
 
 
-RoccoR * rochester = new RoccoR("wremnants/data/lowPU/rochester/RoccoR2017.txt"); // https://gitlab.cern.ch/akhukhun/roccor
-//RoccoR * rochester = new RoccoR("wremnants/data/lowPU/rochester/RoccoR_lowPU_v0.txt"); // v0 version for lowPU
+//RoccoR * rochester = new RoccoR("wremnants/data/lowPU/rochester/RoccoR2017.txt"); // https://gitlab.cern.ch/akhukhun/roccor
+RoccoR * rochester = new RoccoR("wremnants/data/lowPU/rochester/RoccoR_lowPU_v0.txt"); // v0 version for lowPU
 
 Vec_f applyRochesterMC(Vec_f pt, Vec_f eta, Vec_f phi, Vec_f ch, Vec_i gen_idx, Vec_f gen_pt, Vec_i nTrackerLayers, int fluctuation=0) {
 
