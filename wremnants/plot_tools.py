@@ -19,9 +19,10 @@ hep.style.use(hep.style.ROOT)
 
 logger = logging.child_logger(__name__)
 
-def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
-    grid_on_main_plot = False, grid_on_ratio_plot = False, plot_title = None, title_padding = 0,
-    x_ticks_ndp = None, bin_density = 300, cms_label = None, logy=False, logx=False,
+def figure(href, xlabel, ylabel, ylim=None, xlim=None,
+    grid = False, plot_title = None, title_padding = 0,
+    bin_density = 300, cms_label = None, logy=False, logx=False,
+    width_scale=1
 ):
     if not xlim:
         xlim = [href.axes[0].edges[0], href.axes[0].edges[-1]]
@@ -31,7 +32,42 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
     width = math.ceil(raw_width)
 
-    fig = plt.figure(figsize=(8*width,8))
+    fig = plt.figure(figsize=(width_scale*8*width,8))
+    ax1 = fig.add_subplot() 
+    if cms_label: hep.cms.text(cms_label)
+
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel(ylabel)
+    ax1.set_xlim(xlim)
+
+    if ylim is not None:
+        ax1.set_ylim(ylim)
+    else:
+        ax1.autoscale(axis='y')
+
+    if logy:
+        ax1.set_yscale('log')
+    if logx:
+        ax1.set_xscale('log')
+
+    if grid:  ax1.grid(which = "both")
+    if plot_title: ax1.set_title(plot_title, pad = title_padding)
+    return fig,ax1 
+
+def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
+    grid_on_main_plot = False, grid_on_ratio_plot = False, plot_title = None, title_padding = 0,
+    x_ticks_ndp = None, bin_density = 300, cms_label = None, logy=False, logx=False,
+    width_scale=1
+):
+    if not xlim:
+        xlim = [href.axes[0].edges[0], href.axes[0].edges[-1]]
+    hax = href.axes[0]
+    xlim_range = float(xlim[1] - xlim[0])
+    original_xrange = float(hax.edges[-1] - hax.edges[0])
+    raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
+    width = math.ceil(raw_width)
+
+    fig = plt.figure(figsize=(width_scale*8*width,8))
     ax1 = fig.add_subplot(4, 1, (1, 3)) 
     if cms_label: hep.cms.text(cms_label)
     ax2 = fig.add_subplot(4, 1, 4) 
@@ -71,8 +107,6 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
-    #handles= reversed(handles)
-    #labels= reversed(labels)
     text_size = text_size*(0.7 if shape == 1 else 1.3)
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc='upper right')
 
@@ -139,7 +173,7 @@ def makeStackPlotWithRatio(
             hname = f"expproc_{p}_{fittype}" if p != "Data" else "obs"
             vals = combine_result[hname].to_hist().values()
             if len(histInfo[p].hists[histName].values()) != len(vals):
-                raise ValueError(f"The size of the combine histogram {(len(vals))} is not consistent with the xlim or input hist")
+                raise ValueError(f"The size of the combine histogram ({(vals.shape)}) is not consistent with the xlim or input hist ({histInfo[p].hists[histName].shape})")
 
             histInfo[p].hists[histName].values()[...] = vals
             if p == "Data":
@@ -212,6 +246,8 @@ def makeStackPlotWithRatio(
             )
 
         for proc,style in zip(unstacked, linestyles):
+            if ratio_to_data and proc == "Data":
+                continue
             unstack = histInfo[proc].hists[histName]
             if not fitresult or proc not in to_read:
                 unstack = action(unstack)[select]
@@ -379,21 +415,6 @@ def format_axis_num(val):
         # This is kinda dumb and I might change it
         return f"{val:.0f}" if val > 5 else f"{val:0.1f}"
     return f"{val:0.3g}" if val > 10 else f"{val:0.2g}"
-
-def make_plot_dir(outpath, outfolder):
-    full_outpath = "/".join([outpath, outfolder])
-    if not os.path.isdir(outpath):
-        raise IOError(f"The path {outpath} doesn't not exist. You should create it (and possibly link it to your web area)")
-        
-    if not os.path.isdir(full_outpath):
-        try:
-            os.makedirs(full_outpath)
-            logger.info(f"Creating folder {full_outpath}")
-        except FileExistsError as e:
-            logger.warning(e)
-            pass
-
-    return full_outpath
 
 def save_pdf_and_png(outdir, basename, fig=None):
     fname = f"{outdir}/{basename}.pdf"

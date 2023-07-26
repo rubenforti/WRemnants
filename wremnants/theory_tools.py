@@ -140,6 +140,12 @@ only_central_pdf_datasets = [
 extended_pdf_datasets = [x for x in common.vprocs+common.vprocs_lowpu if not any(y in x for y in ["NNLOPS", "MiNLO"])]
 
 def define_prefsr_vars(df):
+    if "prefsrLeps" in df.GetColumnNames():
+        logger.debug("PreFSR leptons are already defined, do nothing here.")
+        return df
+
+    logger.info("Defining preFSR variables")
+
     df = df.Define("prefsrLeps", "wrem::prefsrLeptons(GenPart_status, GenPart_statusFlags, GenPart_pdgId, GenPart_genPartIdxMother)")
     df = df.Define("genl", "ROOT::Math::PtEtaPhiMVector(GenPart_pt[prefsrLeps[0]], GenPart_eta[prefsrLeps[0]], GenPart_phi[prefsrLeps[0]], GenPart_mass[prefsrLeps[0]])")
     df = df.Define("genlanti", "ROOT::Math::PtEtaPhiMVector(GenPart_pt[prefsrLeps[1]], GenPart_eta[prefsrLeps[1]], GenPart_phi[prefsrLeps[1]], GenPart_mass[prefsrLeps[1]])")
@@ -240,8 +246,7 @@ def define_central_pdf_weight(df, dataset_name, pdf):
     return df.Define("central_pdf_weight", f"std::clamp<float>({pdfBranch}[0], -theory_weight_truncate, theory_weight_truncate)")
 
 def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
-    if "prefsrLeps" not in df.GetColumnNames():
-        df = define_prefsr_vars(df)
+    df = define_prefsr_vars(df)
         
     df = define_ew_vars(df)
 
@@ -256,6 +261,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
     df = define_pdf_columns(df, dataset_name, args.pdfs, args.altPdfOnlyCentral)
         
     return df 
+
 
 def build_weight_expr(df, exclude_weights=[]):
     valid_cols = df.GetColumnNames()
@@ -294,6 +300,8 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
     for i, generator in enumerate(generators):
         if generator not in dataset_helpers:
             continue
+        
+        logger.debug(f"Now at generator {i}: {generator}")
 
         helper = dataset_helpers[generator]
 
@@ -324,9 +332,9 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
             continue
         
         if i == 0 and modify_central_weight:
-            nominal_uncorr = df.HistoBoost(f"{name}_uncorr", axes, [*cols, "nominal_weight_uncorr"], storage=hist.storage.Double())
-            res.append(nominal_uncorr)
-            res.append(df.HistoBoost("weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], storage=hist.storage.Double()))
+            res.append(df.HistoBoost(f"{name}_uncorr", axes, [*cols, "nominal_weight_uncorr"], storage=hist.storage.Double()))
+            if name == "nominal":
+                res.append(df.HistoBoost(f"weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], storage=hist.storage.Double()))
 
         hist_name = f"{name}_{generator}Corr"
         unc = df.HistoBoost(hist_name, axes, [*cols, f"{generator}Weight_tensor"], tensor_axes=helpers[generator].tensor_axes[-1:], storage=hist.storage.Double())
@@ -362,14 +370,17 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
 
     return res
 
-def scale_angular_moments(hist_moments_scales, sumW2=False):
+def scale_angular_moments(hist_moments_scales, sumW2=False, createNew=False):
     # e.g. from arxiv:1708.00008 eq. 2.13, note A_0 is NOT the const term!
     scales = np.array([1., -10., 5., 10., 4., 4., 5., 5., 4.])
 
     hel_idx = hist_moments_scales.axes.name.index("helicity")
     scaled_vals = np.moveaxis(hist_moments_scales.view(flow=True), hel_idx, -1)*scales
-    hnew = hist.Hist(*hist_moments_scales.axes, storage = hist.storage.Weight() if sumW2 else hist.storage.Double())
-    hnew[...] = np.moveaxis(scaled_vals, -1, hel_idx) 
+    if createNew:
+        hnew = hist.Hist(*hist_moments_scales.axes, storage = hist.storage.Weight() if sumW2 else hist.storage.Double())
+    else:
+        hnew = hist_moments_scales
+    hnew.view(flow=True)[...] = np.moveaxis(scaled_vals, -1, hel_idx) 
     return hnew
 
 def replace_by_neighbors(vals, replace):
@@ -380,6 +391,8 @@ def replace_by_neighbors(vals, replace):
     return vals[tuple(indices)]
 
 def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5, sumW2=False):
+    sumW2 = sumW2 and hist_moments_scales._storage_type == hist.storage.Weight
+
     if hist_moments_scales.empty():
        raise ValueError("Cannot make coefficients from empty hist")
     # broadcasting happens right to left, so move to rightmost then move back

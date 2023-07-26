@@ -1,3 +1,4 @@
+import ROOT
 import hist
 import numpy as np
 from utilities import boostHistHelpers as hh, common, logging
@@ -132,17 +133,20 @@ def syst_transform_map(base_hist, hist_name):
     return transforms
 
 def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], rebinPtV=None):
-    
     s = hist.tag.Slicer()
+    axisNames = scale_hist.axes.name
+
+    sum_expr = {axis : s[::hist.sum] for axis in sum_axes if axis in axisNames}
+    scale_hist = scale_hist[sum_expr]
+    axisNames = scale_hist.axes.name
+    
     # select nominal QCD scales, but keep the sliced axis at size 1 for broadcasting
     nom_scale_hist = scale_hist[{"muRfact" : s[1.j:1.j+1], "muFfact" : s[1.j:1.j+1]}]
-    axisNames = scale_hist.axes.name
     # select nominal QCD scales and project down to nominal axes
     genAxes = ["ptVgen", "chargeVgen", "helicity"]
-    nom_hist = nom_scale_hist[{"muRfact" : s[1.j], "muFfact" : s[1.j] }]
-    for genAxis in genAxes:
-        if genAxis in axisNames:
-            nom_hist = nom_hist[{genAxis : s[::hist.sum]}]
+    nom_sel = {"muRfact" : s[1.j], "muFfact" : s[1.j] }
+    nom_sel.update({genAxis : s[::hist.sum] for genAxis in genAxes if genAxis in axisNames})
+    nom_hist = nom_scale_hist[nom_sel]
     
     hasHelicityAxis = "helicity" in axisNames
     hasPtAxis = "ptVgen" in axisNames
@@ -161,13 +165,6 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], rebinPtV=None):
             scale_hist = scale_hist[{"ptVgen" : s[::hist.rebin(rebinPtV)]}]
             nom_scale_hist = nom_scale_hist[{"ptVgen" : s[::hist.rebin(rebinPtV)]}]
 
-    for axis in sum_axes:
-        if axis in axisNames:
-            scale_hist = scale_hist[{axis : s[::hist.sum]}]
-            nom_scale_hist = nom_scale_hist[{axis : s[::hist.sum]}]
-        else:
-            logger.warning(f"In scale_helicity_hist_to_variations: axis '{axis}' not found in histogram.")
-        
     # difference between a given scale and the nominal, plus the sum
     # this emulates the "weight if idx else nominal" logic and corresponds to the decorrelated
     # variations
@@ -177,10 +174,10 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], rebinPtV=None):
         out_name = scale_hist.name + "_variations"
 
     expd = scale_hist.ndim - nom_hist.ndim
-    expandnom = np.expand_dims(nom_hist.view(flow=True), [-expd+i for i in range(expd)])
-    systhist = scale_hist.view(flow=True) - nom_scale_hist.view(flow=True) + expandnom
+    expandnom = np.expand_dims(nom_hist.values(flow=True), [-expd+i for i in range(expd)])
+    systhist = scale_hist.values(flow=True) - nom_scale_hist.values(flow=True) + expandnom
 
-    scale_variation_hist = hist.Hist(*scale_hist.axes, storage = scale_hist._storage_type(), 
+    scale_variation_hist = hist.Hist(*scale_hist.axes, 
                                      name = out_name, data = systhist)
 
     return scale_variation_hist 
@@ -196,7 +193,7 @@ def hist_to_variations(hist_in):
 
     genAxes = ["absYVgenNP", "chargeVgenNP"]
 
-    nom_hist = hist_in[{"vars" : "pdf0"}]
+    nom_hist = hist_in[{"vars" : 0}]
     nom_hist_sum = nom_hist[{genAxis : s[::hist.sum] for genAxis in genAxes}]
 
     variation_data = hist_in.view(flow=True) - nom_hist.view(flow=True)[...,None] + nom_hist_sum.view(flow=True)[..., None, None, None]
@@ -223,7 +220,7 @@ def define_mass_weights(df, proc):
     return df
 
 def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc=""):
-    name = Datagroups.histName(base_name, syst="massWeight")
+    name = Datagroups.histName(base_name, syst="massWeight"+(proc[0] if len(proc) else proc))
     massWeight = df.HistoBoost(name, axes, [*cols, "massWeight_tensor_wnom"], 
                     tensor_axes=[hist.axis.StrCategory(massWeightNames(proc=proc), name="massShift")], 
                     storage=hist.storage.Double())
@@ -232,10 +229,10 @@ def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc=""):
 def massWeightNames(matches=None, proc=""):
     central=10
     nweights=21
-    names = [f"massShift{int(abs(central-i)*10)}MeV{'' if i == central else ('Down' if i < central else 'Up')}" for i in range(nweights)]
+    names = [f"massShift{proc[0] if len(proc) else proc}{int(abs(central-i)*10)}MeV{'' if i == central else ('Down' if i < central else 'Up')}" for i in range(nweights)]
     if proc and proc in common.zprocs_all:
         # This is the PDG uncertainty (turned off for now since it doesn't seem to have been read into the nano)
-        names.extend(["massShift2p1MeVDown", "massShift2p1MeVUp"])
+        names.extend(["massShiftZ2p1MeVDown", "massShiftZ2p1MeVUp"])
 
     # If name is "" it won't be stored
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
@@ -288,22 +285,52 @@ def add_QCDbkg_jetPt_hist(results, df, nominal_axes, nominal_cols, base_name="no
     dQCDbkGVar = dQCDbkGVar.Filter(f"passMT || Sum(goodCleanJetsPt{jet_pt})>=1")
     qcdJetPt = dQCDbkGVar.HistoBoost(name, nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Double())
     results.append(qcdJetPt)
-                                        
-def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", is_w_like=False):
 
-    if is_w_like:
-        muon_columns_stat = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_charge0", "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_charge0"]
-        muon_columns_syst = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_charge0",
-            "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_charge0"]
+def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False):
+    # TODO: update for dilepton
+    if what_analysis == ROOT.wrem.AnalysisType.Wmass:
+        muon_columns_stat = ["goodMuons_pt0", "goodMuons_eta0",
+                             "goodMuons_uT0", "goodMuons_charge0"]
+        muon_columns_syst = ["goodMuons_pt0", "goodMuons_eta0",
+                             "goodMuons_SApt0", "goodMuons_SAeta0",
+                             "goodMuons_uT0", "goodMuons_charge0",
+                             "passIso"]
     else:
-        muon_columns_stat = ["goodMuons_pt0", "goodMuons_eta0", "goodMuons_charge0"]
-        muon_columns_syst = ["goodMuons_pt0", "goodMuons_eta0", "goodMuons_SApt0", "goodMuons_SAeta0", "goodMuons_charge0", "passIso"]
+        muvars_stat = ["pt0", "eta0", "uT0", "charge0"]
+        muon_columns_stat_trig    = [f"trigMuons_{v}" for v in muvars_stat]
+        muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
-    for key,helper in helper_stat.items():
-        if "iso" in key and not is_w_like:
-            df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat, "passIso", "nominal_weight"])        
+        muvars_syst = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0"]
+        muon_columns_syst_trig    = [f"trigMuons_{v}" for v in muvars_syst]
+        muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
+        
+        if what_analysis == ROOT.wrem.AnalysisType.Wlike:
+            muon_columns_stat = [*muon_columns_stat_trig, *muon_columns_stat_nonTrig]
+            muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
+        elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
+            muon_columns_stat = [*muon_columns_stat_trig, "trigMuons_passTrigger0", *muon_columns_stat_nonTrig, "nonTrigMuons_passTrigger0"]
+            muon_columns_syst = [*muon_columns_syst_trig, "trigMuons_passTrigger0", *muon_columns_syst_nonTrig, "nonTrigMuons_passTrigger0"]
         else:
-            df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat, "nominal_weight"])
+            raise ValueError(f"add_muon_efficiency_unc_hists: analysis {what_analysis} not implemented.")
+            
+        
+    if not smooth3D:
+        # will use different helpers and member functions
+        muon_columns_stat = [x for x in muon_columns_stat if "_uT0" not in x]
+        muon_columns_syst = [x for x in muon_columns_syst if "_uT0" not in x]
+
+    # change variables for tracking, to use standalone variables
+    muon_columns_stat_tracking = [x.replace("_pt0", "_SApt0").replace("_eta0", "_SAeta0") for x in muon_columns_stat]
+        
+    for key,helper in helper_stat.items():
+        if "tracking" in key:
+            muon_columns_stat_step = muon_columns_stat_tracking
+        elif "iso" in key and what_analysis == ROOT.wrem.AnalysisType.Wmass:
+            muon_columns_stat_step = muon_columns_stat + ["passIso"]
+        else:
+            muon_columns_stat_step = muon_columns_stat
+            
+        df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
         name = Datagroups.histName(base_name, syst=f"effStatTnP_{key}")
         effStatTnP = df.HistoBoost(name, axes, [*cols, f"effStatTnP_{key}_tensor"], tensor_axes = helper.tensor_axes, storage=hist.storage.Double())
         results.append(effStatTnP)
@@ -312,7 +339,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
     name = Datagroups.histName(base_name, syst=f"effSystTnP")
     effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_weight"], tensor_axes = helper_syst.tensor_axes, storage=hist.storage.Double())
     results.append(effSystTnP)
-
+    
     return df
 
 def add_L1Prefire_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal"):

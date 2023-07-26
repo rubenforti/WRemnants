@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from wremnants import histselections as sel
 from utilities import boostHistHelpers as hh, common, output_tools, logging
 import narf
 import ROOT
@@ -28,6 +29,7 @@ class CardTool(object):
         self.channels = ["plus", "minus"]
         self.cardContent = {}
         self.cardGroups = {}
+        self.cardSumGroups = "" # POI sum groups
         self.nominalTemplate = ""
         self.spacing = 28
         self.systTypeSpacing = 16
@@ -47,11 +49,13 @@ class CardTool(object):
         self.pseudoDataProcsRegexp = None
         self.excludeSyst = None
         self.writeByCharge = True
+        self.unroll = False # unroll final histogram before writing to root
         self.keepSyst = None # to override previous one with exceptions for special cases
         #self.loadArgs = {"operation" : "self.loadProcesses (reading hists from file)"}
         self.lumiScale = 1.
         self.project = None
         self.xnorm = False
+        self.absolutePathShapeFileInCard = False
         self.chargeIdDict = {"minus" : {"val" : -1, "id" : "q0", "badId" : "q1"},
                              "plus"  : {"val" : 1., "id" : "q1", "badId" : "q0"},
                              "inclusive" : {"val" : "sum", "id" : "none", "badId" : None},
@@ -80,8 +84,8 @@ class CardTool(object):
     def setLumiScale(self, lumiScale):
         self.lumiScale = lumiScale
 
-    def setCrossSectionOutput(self, xnorm):
-        self.xnorm = xnorm
+    def setAbsolutePathShapeInCard(self, setRelative=False):
+        self.absolutePathShapeFileInCard = False if setRelative else True
         
     def getProcsNoStatUnc(self):
         return self.noStatUncProcesses
@@ -117,7 +121,7 @@ class CardTool(object):
 
     def setPseudodata(self, pseudodata, idx = 0, pseudoDataProcsRegexp=".*"):
         self.pseudoData = pseudodata
-        self.pseudoDataIdx = idx
+        self.pseudoDataIdx = idx if not idx.isdigit() else int(idx)
         self.pseudoDataProcsRegexp = re.compile(pseudoDataProcsRegexp)
         
     # Needs to be increased from default for long proc names
@@ -476,12 +480,13 @@ class CardTool(object):
         for ax in decorrByBinDict.keys():
             decorrDict = decorrByBinDict[ax]
             decorrSystLabel = decorrDict["label"]
+            logger.info(f"Decorrelating syst {name} by {ax} bins using {decorrSystLabel}")
             if ax != "xy":
                 for ibin in range(len(decorrDict["edges"]) -1):
                     upDown = "Up" if name.endswith("Up") else "Down" if name.endswith("Down") else ""
-                    newname = name.rstrip(upDown)
+                    newname = name[:-len(upDown)] if len(upDown) else name[:]
                     newname = f"{newname}_{decorrSystLabel}{ibin}{upDown}"
-                    logger.warning(f"Decorrelating syst {name} by {ax} bins: preparing new histogram {newname}")
+                    logger.debug(f"Decorrelating syst {name} by {ax} bins: preparing new histogram {newname}")
                     # FIXME: do not assume we can only have eta and pt axes (or eta-pt when implemented)
                     # bin ID are retrieved adding some small constants to bin edges, low/high edge is increased/decreased
                     if ax == "x":
@@ -509,7 +514,7 @@ class CardTool(object):
                         ybinLow = hnomiroot.GetYaxis().FindFixBin(edgesY[iy]+0.001)
                         ybinHigh = hnomiroot.GetYaxis().FindFixBin(edgesY[iy+1]-0.001)
                         upDown = "Up" if name.endswith("Up") else "Down" if name.endswith("Down") else ""
-                        newname = name.rstrip(upDown)
+                        newname = name[:-len(upDown)] if len(upDown) else name[:]
                         newname = f"{newname}_{decorrSystLabel[0]}{ix}{decorrSystLabel[1]}{iy}{upDown}"
                         logger.warning(f"Decorrelating syst {name} by {ax} bins: preparing new histogram {newname}")
                         hsystrootDecorr = copy.deepcopy(hnomiroot.Clone(newname))
@@ -520,7 +525,7 @@ class CardTool(object):
         return ret
 
                 
-    def writeForProcess(self, h, proc, syst):
+    def writeForProcess(self, h, proc, syst, check_systs=True):
         decorrelateByBin = {}
         hnom = None
         systInfo = None
@@ -539,8 +544,7 @@ class CardTool(object):
                 decorrelateByBin = systInfo["decorrByBin"]
         logger.info(f"Preparing to write systematic {syst} for process {proc}")
         var_map = self.systHists(h, syst)
-        # TODO: Make this optional
-        if syst != self.nominalName:
+        if check_systs and syst != self.nominalName:
             self.checkSysts(var_map, proc,
                             skipSameSide=systInfo["mirrorDownVarEqualToUp"],
                             skipOneAsNomi=systInfo["mirrorDownVarEqualToNomi"])
@@ -549,16 +553,17 @@ class CardTool(object):
             logger.info(f"Zeroing statistical uncertainty for process {proc}")
             setZeroStatUnc = True
         # this is a big loop a bit slow, but it might be mainly the hist->root conversion and writing into the root file
+        logger.debug("Before self.writeHist(...)")
         for name, var in var_map.items():
             if name != "":
-                self.writeHist(var, self.variationName(proc, name), setZeroStatUnc=setZeroStatUnc,
+                self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc,
                                decorrByBin=decorrelateByBin, hnomi=hnom)
         logger.debug("After self.writeHist(...)")
 
     def addPseudodata(self, processes, processesFromNomi=[]):
         datagroups = self.datagroups if not self.pseudodata_datagroups else self.pseudodata_datagroups
         datagroups.loadHistsForDatagroups(
-            baseName=self.pseudoData, syst="", label=self.pseudoData,
+            baseName=self.nominalName, syst=self.pseudoData, label=self.pseudoData,
             procsToRead=processes,
             scaleToNewLumi=self.lumiScale)
         procDict = datagroups.getDatagroups()
@@ -569,7 +574,7 @@ class CardTool(object):
             logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
             datagroupsFromNomi = self.datagroups
             datagroupsFromNomi.loadHistsForDatagroups(
-                baseName=self.pseudoData, syst="", label=self.pseudoData,
+                baseName=self.pseudoData, syst=self.nominalName, label=self.pseudoData,
                 procsToRead=processesFromNomi,
                 scaleToNewLumi=self.lumiScale)
             procDictFromNomi = datagroupsFromNomi.getDatagroups()
@@ -580,14 +585,15 @@ class CardTool(object):
         for systAxName in ["systIdx", "tensor_axis_0", "vars"]:
             if systAxName in [ax.name for ax in hdata.axes]:
                 hdata = hdata[{systAxName : self.pseudoDataIdx }] 
-        self.writeHist(hdata, self.pseudoData+"_sum")
 
-    def writeForProcesses(self, syst, processes, label):
+        self.writeHist(hdata, self.dataName, self.pseudoData+"_sum")
+
+    def writeForProcesses(self, syst, processes, label, check_systs=True):
         for process in processes:
             hvar = self.datagroups.groups[process].hists[label]
             if not hvar:
                 raise RuntimeError(f"Failed to load hist for process {process}, systematic {syst}")
-            self.writeForProcess(hvar, process, syst)
+            self.writeForProcess(hvar, process, syst, check_systs=check_systs)
         if syst != self.nominalName:
             self.fillCardWithSyst(syst)
 
@@ -602,13 +608,15 @@ class CardTool(object):
             self.outfile = outfile
             self.outfile.cd()
             
-    def writeOutput(self, args=None):
+    def writeOutput(self, args=None, xnorm=False, forceNonzero=True, check_systs=True):
+        self.xnorm = xnorm
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
             label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale)
-        self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName)
+            scaleToNewLumi=self.lumiScale, 
+            forceNonzero=forceNonzero)
+        self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
         if self.pseudoData and not self.xnorm:
             self.addPseudodata([x for x in self.datagroups.groups.keys() if x != "Data"],
@@ -623,14 +631,14 @@ class CardTool(object):
             self.datagroups.loadHistsForDatagroups(
                 self.nominalName, systName, label="syst",
                 procsToRead=processes, 
-                forceNonzero=systName != "qcdScaleByHelicity",
+                forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                 preOpMap=systMap["actionMap"], preOpArgs=systMap["actionArgs"],
                 # Needed to avoid always reading the variation for the fakes, even for procs not specified
                 forceToNominal=[x for x in self.datagroups.getProcNames() if x not in 
                                 self.datagroups.getProcNames([p for p in processes if p != "Fake"])],
                 scaleToNewLumi=self.lumiScale,
             )
-            self.writeForProcesses(syst, label="syst", processes=processes)
+            self.writeForProcesses(syst, label="syst", processes=processes, check_systs=check_systs)
             
         output_tools.writeMetaInfoToRootFile(self.outfile, exclude_diff='notebooks', args=args)
         if self.skipHist:
@@ -644,6 +652,7 @@ class CardTool(object):
                 card.write(self.cardContent[chan])
                 card.write("\n")
                 card.write(self.cardGroups[chan])
+                card.write(self.cardSumGroups)
 
     def addSystToGroup(self, groupName, chan, members, groupLabel="group"):
         group_expr = f"{groupName} {groupLabel} ="
@@ -652,6 +661,46 @@ class CardTool(object):
             self.cardGroups[chan] = self.cardGroups[chan][:idx] + " " + members + self.cardGroups[chan][idx:]
         else:
             self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
+
+    def addPOISumGroups(self, keys=None):
+        
+        if keys is None:
+            # make a sum group for each gen axis
+            keys = self.datagroups.gen_axes
+            # also include combinations of axes in case there are more than 2 axes
+            for n in range(2, len(self.datagroups.gen_axes)):
+                keys += [k for k in itertools.combinations(self.datagroups.gen_axes, n)]
+
+        for axes in keys:
+            logger.debug(f"Add sum group for {axes}")
+
+            if isinstance(axes, str):
+                axes = [axes]
+
+            pois_axis = [x for x in self.unconstrainedProcesses if all([a in x for a in axes])]
+
+            # in case of multiple base processes (e.g. in simultaneous unfoldings) loop over all base processes
+            base_processes = set(map(lambda x: x.split("_")[0], pois_axis))
+            for base_process in base_processes:
+                pois = [x for x in pois_axis if base_process in x.split("_")]
+
+                sum_groups = set(["_".join([a + p.split(a)[1].split("_")[0] for a in axes]) for p in pois])
+
+                for sum_group in sorted(sum_groups):
+                    members = " ".join([p for p in pois if all([g in p.split("_") for g in sum_group.split("_")])])
+                    self.addPOISumGroup(f"{base_process}_{sum_group}", members)
+
+    def addPOISumGroup(self, groupName, members, groupLabel="sumGroup"):
+        # newName sumGroup = poi_bin1 poi_bin2 poi_bin3
+        group_expr = f"{groupName} {groupLabel} ="
+        if groupName in self.cardSumGroups.split(" "):
+            logger.debug(f"Append existing POI sum group {groupName} with members {members}")
+            idx = self.cardSumGroups.index(groupName)+len(group_expr)
+            self.cardSumGroups = self.cardSumGroups[:idx] + " " + members + self.cardSumGroups[idx:]
+        else:
+            logger.debug(f"Add new POI sum group {groupName} with members {members}")
+            self.cardSumGroups += f"\n{group_expr} {members}"   
+        
 
     def writeLnNSystematics(self):
         nondata = self.predictedProcesses()
@@ -734,15 +783,19 @@ class CardTool(object):
             args = {
                 "channel" :  chan,
                 "channelPerProc" : chan.ljust(self.procColumnsSpacing)*nprocs,
-                "processes" : "".join([x.ljust(self.procColumnsSpacing) for x in procs]),
+                "processes" : " ".join([x.ljust(self.procColumnsSpacing) for x in procs]),
                 "labels" : "".join([str(x).ljust(self.procColumnsSpacing) for x in self.processLabels()]),
                 # Could write out the proper normalizations pretty easily
                 "rates" : "-1".ljust(self.procColumnsSpacing)*nprocs,
                 "inputfile" : self.outfile if type(self.outfile) == str  else self.outfile.GetName(),
                 "dataName" : self.dataName,
                 "histName" : self.histName,
-                "pseudodataHist" : self.pseudoData+"_sum" if self.pseudoData else f"{self.histName}_{self.dataName}"
+                "pseudodataHist" : f"{self.histName}_{self.dataName}_{self.pseudoData}_sum" if self.pseudoData else f"{self.histName}_{self.dataName}"
             }
+            if not self.absolutePathShapeFileInCard:
+                # use the relative path because absolute paths are slow in text2hdf5.py conversion
+                args["inputfile"] = os.path.basename(args["inputfile"])
+
             self.cardContent[chan] = output_tools.readTemplate(self.nominalTemplate, args)
             self.cardGroups[chan] = ""
             
@@ -752,13 +805,13 @@ class CardTool(object):
             hout = narf.hist_to_root(self.getBoostHistByCharge(h, q))
             hout.SetName(name+f"_{charge}")
             hout.Write()
-
+        
     def writeHistWithCharges(self, h, name):
         hout = narf.hist_to_root(h)
         hout.SetName(f"{name}_{self.channels[0]}")
         hout.Write()
     
-    def writeHist(self, h, name, setZeroStatUnc=False, decorrByBin={}, hnomi=None):
+    def writeHist(self, h, proc, syst, setZeroStatUnc=False, decorrByBin={}, hnomi=None):
         if self.skipHist:
             return
         if self.project:
@@ -773,23 +826,34 @@ class CardTool(object):
                 logger.debug(f"Projecting {h.axes.name} into {axes}")
                 h = h.project(*axes)
 
+        if self.unroll:
+            logger.debug(f"Unrolling histogram")
+            h = sel.unrolledHist(h, axes)
+
         if not self.nominalDim:
             self.nominalDim = h.ndim
             if self.nominalDim-self.writeByCharge > 3:
                 raise ValueError("Cannot write hists with > 3 dimensions as combinetf does not accept THn")
 
         if h.ndim != self.nominalDim:
-            raise ValueError(f"Histogram {name} does not have the correct dimensions. Found {h.ndim}, expected {self.nominalDim}")
+            raise ValueError(f"Histogram {proc}/{syst} does not have the correct dimensions. Found {h.ndim}, expected {self.nominalDim}")
 
         if setZeroStatUnc:
             h.variances(flow=True)[...] = 0.
 
+        # make sub directories for each process or return existing sub directory
+        directory = self.outfile.mkdir(proc, proc, True)
+        directory.cd()
+
+        name = self.variationName(proc, syst)
+
         hists = {name: h} # always keep original variation in output file for checks
         if decorrByBin:
-            hists.update(self.makeDecorrelatedSystHistograms(h, hnomi, name, decorrByBin))
+            hists.update(self.makeDecorrelatedSystHistograms(h, hnomi, syst, decorrByBin))
             
-        for hname,histo in hists.items():
+        for hname, histo in hists.items():
             if self.writeByCharge:
                 self.writeHistByCharge(histo, hname)
             else:
                 self.writeHistWithCharges(histo, hname)
+        self.outfile.cd()

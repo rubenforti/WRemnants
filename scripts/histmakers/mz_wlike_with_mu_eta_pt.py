@@ -2,20 +2,25 @@ from utilities import boostHistHelpers as hh, common, output_tools, logging, dif
 
 parser,initargs = common.common_parser(True)
 
+import ROOT
 import narf
 import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
+from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 import hist
 import lz4.frame
 import math
 import time
 import os
+import numpy as np
 
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
+parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
-    
+
+thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles,
                                               filt=args.filterProcs,
                                               excl=args.excludeProcs, 
@@ -25,6 +30,13 @@ if args.validateByMassWeights:
     raise NotImplementedError("Validation of muon scale hists. by massWeights are not implemented!")
 
 era = args.era
+
+# dilepton invariant mass cuts
+mass_min = 60
+mass_max = 120
+
+# transverse boson mass cut
+mtw_min=45 # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 
 # custom template binning
 template_neta = int(args.eta[0])
@@ -45,8 +57,11 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge")
 
 nominal_axes = [axis_eta, axis_pt, axis_charge]
+nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
 
-unfolding_axes, unfolding_cols = differential.get_pt_eta_charge_axes(args.genBins, template_minpt, template_maxpt, template_maxeta)
+if args.unfolding:
+    unfolding_axes, unfolding_cols = differential.get_pt_eta_charge_axes(args.genBins[0], template_minpt, template_maxpt, args.genBins[1])
+    datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
 
 # axes for mT measurement
 axis_mt = hist.axis.Regular(200, 0., 200., name = "mt",underflow=False, overflow=True)
@@ -61,16 +76,10 @@ qcdScaleByHelicity_helper = wremnants.makeQCDScaleByHelicityHelper(is_w_like = T
 if args.binnedScaleFactors:
     logger.info("Using binned scale factors and uncertainties")
     # add usePseudoSmoothing=True for tests with Asimov
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_binned(filename = args.sfFile,
-                                                                                                                                     era = era,
-                                                                                                                                     max_pt = axis_pt.edges[-1],
-                                                                                                                                     is_w_like = True) 
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_binned(filename = args.sfFile, era = era, max_pt = axis_pt.edges[-1], is_w_like = True) 
 else:
     logger.info("Using smoothed scale factors and uncertainties")
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile,
-                                                                                                                                     era = era,
-                                                                                                                                     max_pt = axis_pt.edges[-1],
-                                                                                                                                     is_w_like = True, directIsoSFsmoothing=args.directIsoSFsmoothing)
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf)
 logger.info(f"SF file: {args.sfFile}")
 
 pileup_helper = wremnants.make_pileup_helper(era = era)
@@ -96,7 +105,7 @@ def build_graph(df, dataset):
     results = []
     isW = dataset.name in common.wprocs
     isZ = dataset.name in common.zprocs
-    unfold = args.unfolding and dataset.name == "ZmumuPostVFP"
+    isWorZ = isW or isZ
     apply_theory_corr = args.theoryCorr and dataset.name in corr_helpers
 
     if dataset.is_data:
@@ -106,9 +115,22 @@ def build_graph(df, dataset):
 
     weightsum = df.SumAndCount("weight")
 
-    if unfold:
+    axes = nominal_axes
+    cols = nominal_cols
+
+    if args.unfolding and dataset.name == "ZmumuPostVFP":
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
-        unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
+
+        if hasattr(dataset, "out_of_acceptance"):
+            logger.debug("Reject events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=False)
+        else:
+            logger.debug("Select events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=True)
+
+            unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
+            axes = [*nominal_axes, *unfolding_axes] 
+            cols = [*nominal_cols, *unfolding_cols]
 
     df = df.Filter("HLT_IsoTkMu24 || HLT_IsoMu24")
 
@@ -123,9 +145,9 @@ def build_graph(df, dataset):
     df = muon_selections.select_veto_muons(df, nMuons=2)
     df = muon_selections.select_good_muons(df, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True)
 
-    df = muon_selections.define_trigger_muons(df)
+    df = muon_selections.define_trigger_muons(df, what_analysis=thisAnalysis)
 
-    df = muon_selections.select_z_candidate(df, args.pt[1], args.pt[2])
+    df = muon_selections.select_z_candidate(df, template_minpt, template_maxpt, mass_min, mass_max)
 
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "trigMuons")
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "nonTrigMuons")
@@ -134,8 +156,16 @@ def build_graph(df, dataset):
 
     if not dataset.is_data:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
-        df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_charge0",
-                                                                                      "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_charge0"])
+
+        columnsForSF = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_uT0", "trigMuons_charge0",
+                        "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_uT0", "nonTrigMuons_charge0"]
+        df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons")
+        df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons")
+        if not args.smooth3dsf:
+            columnsForSF.remove("trigMuons_uT0")
+            columnsForSF.remove("nonTrigMuons_uT0")
+        
+        df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
         df = df.Define("weight_newMuonPrefiringSF", muon_prefiring_helper, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId"])
 
         df = df.Define("exp_weight", "weight_pu*weight_fullMuonSF_withTrackingReco*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom")
@@ -159,26 +189,23 @@ def build_graph(df, dataset):
     # utility plots of transverse mass, with or without recoil corrections
     ###########
     met_vars = ("MET_pt", "MET_phi")
-    df = df.Define("transverseMass_uncorr", f"wrem::mt_wlike_nano(trigMuons_pt0, trigMuons_phi0, nonTrigMuons_pt0, nonTrigMuons_phi0, {', '.join(met_vars)})")
+    df = df.Define("transverseMass_uncorr", f"wrem::get_mt_wlike(trigMuons_pt0, trigMuons_phi0, nonTrigMuons_pt0, nonTrigMuons_phi0, {', '.join(met_vars)})")
     results.append(df.HistoBoost("transverseMass_uncorr", [axis_mt], ["transverseMass_uncorr", "nominal_weight"]))
     ###########
     met_vars = ("MET_corr_rec_pt", "MET_corr_rec_phi")
-    df = df.Define("transverseMass", f"wrem::mt_wlike_nano(trigMuons_pt0, trigMuons_phi0, nonTrigMuons_pt0, nonTrigMuons_phi0, {', '.join(met_vars)})")
+    df = df.Define("met_wlike_TV2", f"wrem::get_met_wlike(nonTrigMuons_pt0, nonTrigMuons_phi0, {', '.join(met_vars)})")
+    df = df.Define("transverseMass", "wrem::get_mt_wlike(trigMuons_pt0, trigMuons_phi0, met_wlike_TV2)")
     results.append(df.HistoBoost("transverseMass", [axis_mt], ["transverseMass", "nominal_weight"]))
     results.append(df.HistoBoost("MET", [hist.axis.Regular(20, 0, 100, name="MET")], ["MET_corr_rec_pt", "nominal_weight"]))
+    df = df.Define("met_wlike_TV2_pt", "met_wlike_TV2.Mod()")
+    results.append(df.HistoBoost("WlikeMET", [hist.axis.Regular(20, 0, 100, name="Wlike-MET")], ["met_wlike_TV2_pt", "nominal_weight"]))
     ###########
     
-    df = df.Filter("transverseMass >= 45.") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
+    # cutting after storing mt distributions for plotting, since the cut is only on corrected met
+    df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
+    df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
+    df = df.Filter(f"transverseMass >= {mtw_min}")
     
-    nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
-
-    if unfold:
-        axes = [*nominal_axes, *unfolding_axes] 
-        cols = [*nominal_cols, *unfolding_cols]
-    else:
-        axes = nominal_axes
-        cols = nominal_cols
-
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
@@ -187,12 +214,12 @@ def build_graph(df, dataset):
 
     if not dataset.is_data and not args.onlyMainHistograms:
 
-        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, is_w_like=True)
+        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
         df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
-        if isW or isZ:
+        if isWorZ:
 
             df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, for_wmass=False)
 
@@ -202,8 +229,16 @@ def build_graph(df, dataset):
                     results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols,
                     muon_eta="trigMuons_eta0")
 
+    if hasattr(dataset, "out_of_acceptance"):
+        # Rename dataset to not overwrite the original one
+        dataset.name = "Bkg"+dataset.name
+
     return results, weightsum
 
 resultdict = narf.build_and_run(datasets, build_graph)
+
+if not args.noScaleToData:
+    scale_to_data(resultdict)
+    aggregate_groups(datasets, resultdict, args.aggregateGroups)
 
 output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args, update_name=not args.forceDefaultName)

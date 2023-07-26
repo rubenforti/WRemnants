@@ -1,10 +1,12 @@
-from utilities import boostHistHelpers as hh, common, output_tools, logging
+from utilities import boostHistHelpers as hh, common, output_tools, logging, differential
 
 parser,initargs = common.common_parser(True)
 
+import ROOT
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections
+from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
+from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 import hist
 import lz4.frame
 import math
@@ -15,12 +17,16 @@ import os
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
 parser.add_argument("--finePtBinning", action='store_true', help="Use fine binning for ptll")
+parser.add_argument("--genVars", type=str, nargs="+", default=["ptVGen"], choices=["ptVGen", "absYVGen"], help="Generator level variable")
 
 parser = common.set_parser_default(parser, "pt", [44,26.,70.])
-parser = common.set_parser_default(parser, "eta", [6,-2.4,2.4])
+parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
+parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+thisAnalysis = ROOT.wrem.AnalysisType.Dilepton
 
 datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles,
                                               filt=args.filterProcs,
@@ -29,12 +35,16 @@ datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles,
 
 era = args.era
 
+# dilepton invariant mass cuts
+mass_min = 60
+mass_max = 120
+
 # available axes for dilepton validation plots
 all_axes = {
     "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll"),
-    "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False),
-    "ptll": hist.axis.Variable(common.ptV_binning if not args.finePtBinning else range(60), name = "ptll", underflow=False),
+    "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
+    "ptll": hist.axis.Variable(common.ptV_binning if not args.finePtBinning else range(60), name = "ptll", underflow=False, overflow=not args.excludeFlow),
     "etaPlus": hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "etaPlus"),
     "etaMinus": hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "etaMinus"),
     "etaSum": hist.axis.Regular(12, -4.8, 4.8, name = "etaSum"),
@@ -43,21 +53,29 @@ all_axes = {
     "ptMinus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptMinus"),
     "cosThetaStarll": hist.axis.Regular(20, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
     "phiStarll": hist.axis.Regular(20, -math.pi, math.pi, circular = True, name = "phiStarll"),
-    "charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
+    #"charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
 }
 
 for a in args.axes:
     if a not in all_axes.keys():
         logger.error(f" {a} is not a known axes! Supported axes choices are {list(axes.keys())}")
 
-cols = args.axes
+nominal_cols = args.axes
 
 if args.csVarsHist:
-    cols += ["cosThetaStarll", "phiStarll"]
+    nominal_cols += ["cosThetaStarll", "phiStarll"]
 
-cols.append("charge")
+nominal_axes = [all_axes[a] for a in nominal_cols] 
 
-axes = [all_axes[a] for a in cols] 
+gen_axes = {
+    "ptVGen": hist.axis.Variable(common.ptV_binning if not args.finePtBinning else range(60), name = "ptVGen", underflow=False, overflow=False),
+    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),  
+}
+
+if args.unfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+    datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
+
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -67,6 +85,8 @@ qcdScaleByHelicity_helper = wremnants.makeQCDScaleByHelicityHelper(is_w_like = T
 # extra axes which can be used to label tensor_axes
 if args.binnedScaleFactors:
     logger.info("Using binned scale factors and uncertainties")
+    # might never use it really anymore, but let's warn the user that this is obsolete
+    logger.warning("Only SF with no uT dependence are implemented, and the treatment for trigger is like Wlike")
     # add usePseudoSmoothing=True for tests with Asimov
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_binned(filename = args.sfFile,
                                                                                                                                      era = era,
@@ -77,7 +97,7 @@ else:
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile,
                                                                                                                                      era = era,
                                                                                                                                      max_pt = args.pt[2],
-                                                                                                                                     is_w_like = True, directIsoSFsmoothing=args.directIsoSFsmoothing)
+                                                                                                                                     what_analysis = thisAnalysis, isoEfficiencySmoothing=args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf)
 logger.info(f"SF file: {args.sfFile}")
 
 pileup_helper = wremnants.make_pileup_helper(era = era)
@@ -97,7 +117,10 @@ def build_graph(df, dataset):
     results = []
     isW = dataset.name in common.wprocs
     isZ = dataset.name in common.zprocs
+    isWorZ = isW or isZ
 
+    cvh_helper = data_calibration_helper if dataset.is_data else mc_calibration_helper
+    jpsi_helper = data_jpsi_crctn_helper if dataset.is_data else mc_jpsi_crctn_helper
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
     else:
@@ -105,45 +128,62 @@ def build_graph(df, dataset):
 
     weightsum = df.SumAndCount("weight")
 
+    axes = nominal_axes
+    cols = nominal_cols
+
+    if args.unfolding and dataset.name == "ZmumuPostVFP":
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
+
+        if hasattr(dataset, "out_of_acceptance"):
+            logger.debug("Reject events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
+                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=False)
+        else:
+            logger.debug("Select events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
+                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=True)
+
+            unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
+            axes = [*nominal_axes, *unfolding_axes] 
+            cols = [*nominal_cols, *unfolding_cols]
+
     df = df.Filter("HLT_IsoTkMu24 || HLT_IsoMu24")
 
     df = muon_selections.veto_electrons(df)
     df = muon_selections.apply_met_filters(df)
-
-    cvh_helper = data_calibration_helper if dataset.is_data else mc_calibration_helper
-    jpsi_helper = data_jpsi_crctn_helper if dataset.is_data else mc_jpsi_crctn_helper
 
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=2)
     df = muon_selections.select_good_muons(df, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True)
 
-    df = muon_selections.define_trigger_muons(df)
+    # for dilepton analysis we will call trigMuons (nonTrigMuons) those with charge plus (minus). In fact both might be triggering, naming scheme might be improved
+    df = muon_selections.define_trigger_muons(df, what_analysis=thisAnalysis)
 
-    df = muon_selections.select_z_candidate(df, args.pt[1], args.pt[2])
+    df = muon_selections.select_z_candidate(df, args.pt[1], args.pt[2], mass_min, mass_max)
 
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "trigMuons")
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "nonTrigMuons")
 
-    df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons_eta0", "trigMuons_phi0")
+    df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons_eta0", "trigMuons_phi0", "nonTrigMuons_eta0", "nonTrigMuons_phi0")
 
     df = df.Define("ptll", "ll_mom4.pt()")
     df = df.Define("yll", "ll_mom4.Rapidity()")
     df = df.Define("absYll", "std::fabs(yll)")
-    df = df.Define("csSineCosThetaPhill", "trigMuons_charge0 == -1 ? wrem::csSineCosThetaPhi(trigMuons_mom4, nonTrigMuons_mom4) : wrem::csSineCosThetaPhi(nonTrigMuons_mom4, trigMuons_mom4)")
-    
     # "renaming" to write out corresponding axis
-    df = df.Alias("charge", "trigMuons_charge0")
-    df = df.Define("etaPlus", "trigMuons_charge0 == -1 ? nonTrigMuons_eta0 : trigMuons_eta0") 
-    df = df.Define("etaMinus", "trigMuons_charge0 == 1 ? nonTrigMuons_eta0 : trigMuons_eta0") 
-    df = df.Define("ptPlus", "trigMuons_charge0 == -1 ? nonTrigMuons_pt0 : trigMuons_pt0") 
-    df = df.Define("ptMinus", "trigMuons_charge0 == 1 ? nonTrigMuons_pt0 : trigMuons_pt0") 
+    df = df.Define("etaPlus", "trigMuons_eta0")
+    df = df.Define("etaMinus", "nonTrigMuons_eta0")
+    df = df.Define("ptPlus", "trigMuons_pt0")
+    df = df.Define("ptMinus", "nonTrigMuons_pt0")
 
     df = df.Define("etaSum", "nonTrigMuons_eta0 + trigMuons_eta0") 
-    df = df.Define("etaDiff", "nonTrigMuons_eta0 - trigMuons_eta0") 
+    df = df.Define("etaDiff", "trigMuons_eta0-nonTrigMuons_eta0") # plus - minus 
 
-    df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
-    df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
+    if args.csVarsHist:
+        df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(nonTrigMuons_mom4, trigMuons_mom4)")
+    
+        df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
+        df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
 
     logger.debug(f"Define weights and store nominal histograms")
 
@@ -151,8 +191,16 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("nominal", axes, cols))
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
-        df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_charge0",
-                                                                                      "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_charge0"])
+        columnsForSF = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_uT0", "trigMuons_charge0", "trigMuons_passTrigger0",
+                        "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_uT0", "nonTrigMuons_charge0", "nonTrigMuons_passTrigger0"]
+        df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons")
+        df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons")
+        if not args.smooth3dsf:
+            columnsForSF.remove("trigMuons_uT0")
+            columnsForSF.remove("nonTrigMuons_uT0")
+
+        # FIXME: add flags for pass_trigger for both leptons
+        df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
         df = df.Define("weight_newMuonPrefiringSF", muon_prefiring_helper, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId"])
 
         df = df.Define("exp_weight", "weight_pu*weight_fullMuonSF_withTrackingReco*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom")
@@ -161,21 +209,40 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
-    for obs in ["ptll", "mll", "yll"]:
+    for obs in ["ptll", "mll", "yll", "etaPlus", "etaMinus", "ptPlus", "ptMinus"]:
         if dataset.is_data:
             results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs]))
         else:
             results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs, "nominal_weight"]))
-
+    # test plots
+    if args.validationHists:
+        df_plusTrig = df.Filter("trigMuons_passTrigger0")
+        df_minusTrig = df.Filter("nonTrigMuons_passTrigger0")
+        df_bothTrig = df.Filter("trigMuons_passTrigger0 && nonTrigMuons_passTrigger0")
+        df_plusTrigOnly = df.Filter("trigMuons_passTrigger0 && !nonTrigMuons_passTrigger0")
+        df_minusTrigOnly = df.Filter("nonTrigMuons_passTrigger0 && !trigMuons_passTrigger0")
+        for obs in ["etaPlus", "etaMinus", "ptPlus", "ptMinus"]:
+            if dataset.is_data:
+                results.append(df_plusTrig.HistoBoost(f"nominal_{obs}_plusTrig", [all_axes[obs]], [obs]))
+                results.append(df_minusTrig.HistoBoost(f"nominal_{obs}_minusTrig", [all_axes[obs]], [obs]))
+                results.append(df_bothTrig.HistoBoost(f"nominal_{obs}_bothTrig", [all_axes[obs]], [obs]))
+                results.append(df_plusTrigOnly.HistoBoost(f"nominal_{obs}_plusTrigOnly", [all_axes[obs]], [obs]))
+                results.append(df_minusTrigOnly.HistoBoost(f"nominal_{obs}_minusTrigOnly", [all_axes[obs]], [obs]))
+            else:
+                results.append(df_plusTrig.HistoBoost(f"nominal_{obs}_plusTrig", [all_axes[obs]], [obs, "nominal_weight"]))
+                results.append(df_minusTrig.HistoBoost(f"nominal_{obs}_minusTrig", [all_axes[obs]], [obs, "nominal_weight"]))
+                results.append(df_bothTrig.HistoBoost(f"nominal_{obs}_bothTrig", [all_axes[obs]], [obs, "nominal_weight"]))
+                results.append(df_plusTrigOnly.HistoBoost(f"nominal_{obs}_plusTrigOnly", [all_axes[obs]], [obs, "nominal_weight"]))
+                results.append(df_minusTrigOnly.HistoBoost(f"nominal_{obs}_minusTrigOnly", [all_axes[obs]], [obs, "nominal_weight"]))
 
     if not dataset.is_data and not args.onlyMainHistograms:
 
-        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, is_w_like=True)
+        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
         df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
-        if isW or isZ:
+        if isWorZ:
 
             df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, for_wmass=False)
 
@@ -183,10 +250,18 @@ def build_graph(df, dataset):
             if not "tau" in dataset.name:
                 syst_tools.add_muonscale_hist(
                     results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols,
-                    muon_eta="trigMuons_eta0")
+                    muon_eta="trigMuons_eta0") ## FIXME: what muon to choose ?
+
+    if hasattr(dataset, "out_of_acceptance"):
+        # Rename dataset to not overwrite the original one
+        dataset.name = "Bkg"+dataset.name
     
     return results, weightsum
 
 resultdict = narf.build_and_run(datasets, build_graph)
+
+if not args.noScaleToData:
+    scale_to_data(resultdict)
+    aggregate_groups(datasets, resultdict, args.aggregateGroups)
 
 output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args, update_name=not args.forceDefaultName)

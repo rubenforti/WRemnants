@@ -12,7 +12,7 @@ from utilities import common
 
 narf.clingutils.Declare('#include "muon_efficiencies_binned.h"')
 
-data_dir = f"{pathlib.Path(__file__).parent}/data/"
+data_dir = common.data_dir
 
 def make_muon_efficiency_helpers_binned(filename = data_dir + "/testMuonSF/allSmooth_GtoH.root",
                                         era = None, is_w_like = False, max_pt = np.inf,
@@ -160,7 +160,7 @@ def make_muon_efficiency_helpers_binned(filename = data_dir + "/testMuonSF/allSm
         axis_eff_type = None
         axis_charge_def = None
         histPrefix = "effData" if "effData" in effStatKey else "effMC" if "effMC" in effStatKey else "SF"
-        for charge, charge_tag in charges.items():
+        for ic, (charge, charge_tag) in enumerate(charges.items()):
             for eff_type in effStat_manager[effStatKey]["axisLabels"]:
                 if eff_type in chargeDependentSteps:
                     axis_charge_def = axis_charge

@@ -133,7 +133,7 @@ namespace wrem {
     template <typename T>
     bool cropNegatives(T& h, Long64_t nbins, double cropValue, bool cropError) {
         bool hasCroppedBins = false;
-        for (Long64_t globalBin = 0; globalBin <= nbins; globalBin++) {
+        for (Long64_t globalBin = 0; globalBin < nbins; globalBin++) {
             double binContent = h.GetBinContent(globalBin);
             if (binContent < 0.0) {
                 hasCroppedBins = true;
@@ -173,7 +173,7 @@ namespace wrem {
 
     template <typename T>
     void initializeHistogram(T& h, Long64_t nbins, double init = 0.0) {
-        for (Long64_t globalBin = 0; globalBin <= nbins; globalBin++) {
+        for (Long64_t globalBin = 0; globalBin < nbins; globalBin++) {
             h.SetBinContent(globalBin, init);
             h.SetBinError(globalBin, 0.0);
         }
@@ -185,13 +185,29 @@ namespace wrem {
 
     template <typename T>
     void setHistogramError(T& h, Long64_t nbins, double init = 0.0) {
-        for (Long64_t globalBin = 0; globalBin <= nbins; globalBin++) {
+        for (Long64_t globalBin = 0; globalBin < nbins; globalBin++) {
             h.SetBinError(globalBin, 0.0);
         }
     }
     void setRootHistogramError(TH1& h, double init = 0.0) {
         Long64_t nbins = h.GetNcells();
         setHistogramError<TH1>(h, nbins, init);
+    }
+
+    void setRootHistFromHistError(TH1& h, TH1& hin, bool poisson = false) {
+        Long64_t nbins = h.GetNcells();
+        for (Long64_t globalBin = 0; globalBin < nbins; globalBin++) {
+            h.SetBinContent(globalBin, poisson ? std::sqrt(hin.GetBinContent(globalBin)) : hin.GetBinError(globalBin));
+            h.SetBinError(globalBin, 0.0);
+        }        
+    }
+
+    void makeHistStatUncertaintyRatio(TH1& h, TH1& hin) {
+        Long64_t nbins = h.GetNcells();
+        for (Long64_t globalBin = 0; globalBin <= nbins; globalBin++) {
+            h.SetBinContent(globalBin, hin.GetBinError(globalBin) / std::sqrt(hin.GetBinContent(globalBin)));
+            h.SetBinError(globalBin, 0.0);
+        }        
     }
     
     TH2D projectTH2FromTH3(TH3& hist3D, const char* name, size_t binStart, size_t binEnd=0) {
