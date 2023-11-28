@@ -16,6 +16,7 @@ logger = logging.child_logger(__name__)
 # trying to use same colors as mathplotlib in wremnants
 colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
                  "Zmumu"      : ROOT.TColor.GetColor("#87CEFA"), #lightskyblue, #ADD8E6 is lightblue #ROOT.kAzure+2,
+                 "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"), #deepskyblue,
                  "Wtau"       : ROOT.TColor.GetColor("#FFA500"), #ROOT.kCyan+1, #backward compatibility
                  "Wtaunu"     : ROOT.TColor.GetColor("#FFA500"), # orange, use #FF8C00 for darkOrange #ROOT.kCyan+1,
                  "Ztautau"    : ROOT.TColor.GetColor("#00008B"), #ROOT.kSpring+9,
@@ -28,6 +29,7 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
 
 legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "Zmumu"      : "Z#rightarrow#mu#mu",
+                     "DYlowMass"  : "Z#rightarrow#mu#mu 10<m<50 GeV",
                      "Wtau"       : "W#rightarrow#tau#nu", #backward compatibility
                      "Wtaunu"     : "W#rightarrow#tau#nu",
                      "Ztautau"    : "Z#rightarrow#tau#tau",
@@ -66,7 +68,7 @@ def checkHistInFile(h, hname, fname, message=""):
 
 def safeGetObject(fileObject, objectName, quitOnFail=True, silent=False, detach=True):
     obj = fileObject.Get(objectName)
-    if obj == None:
+    if obj is None:
         if not silent:
             logger.error(f"Could not get {objectName} from file {fileObject.GetName()}")
         if quitOnFail:
@@ -393,11 +395,11 @@ def fillTH2fromTH3zbin(h2, h3, zbin=1):
 
 #########################################################################
 
-def prepareLegend(x1, y1, x2, y2, textSize=0.035, nColumns=3):
+def prepareLegend(x1, y1, x2, y2, textSize=0.035, nColumns=3, fillColorAlpha=0.6):
     leg = ROOT.TLegend(x1,y1,x2,y2)
     leg.SetNColumns(nColumns)
     leg.SetFillColor(0)
-    leg.SetFillColorAlpha(0,0.6)
+    leg.SetFillColorAlpha(0, fillColorAlpha)
     leg.SetShadowColor(0)
     leg.SetLineColor(0)
     leg.SetBorderSize(0)
@@ -1519,6 +1521,7 @@ def drawNTH1(hists=[],
              legendCoords="0.15,0.35,0.8,0.9",  # x1,x2,y1,y2
              canvasSize="600,700",  # use X,Y to pass X and Y size     
              lowerPanelHeight = 0.3,  # number from 0 to 1, 0.3 means 30% of space taken by lower panel. 0 means do not draw lower panel with relative error
+             drawLineTopPanel=None,
              drawLineLowerPanel="", # if not empty, draw band at 1+ number after ::, and add legend with title
              passCanvas=None,
              lumi=None,
@@ -1646,6 +1649,8 @@ def drawNTH1(hists=[],
                 #h1.SetMarkerSize(2)
         else:
             h.SetLineWidth(lineWidth)
+            h.SetFillStyle(0)
+
     #ymax = max(ymax, max(h1.GetBinContent(i)+h1.GetBinError(i) for i in range(1,h1.GetNbinsX()+1)))
     # if min and max were not set, set them based on histogram content
     if ymin == ymax == 0.0:
@@ -1794,6 +1799,13 @@ def drawNTH1(hists=[],
             latCMS.DrawLatex(0.1, 0.95, '#bf{CMS} #it{Preliminary}')
             if lumi != None: latCMS.DrawLatex(0.85, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
             else:            latCMS.DrawLatex(0.90, 0.95, '(13 TeV)')
+
+    if drawLineTopPanel != None:
+        topline = ROOT.TF1("horiz_line",f"{drawLineTopPanel}",h1.GetXaxis().GetBinLowEdge(1),h1.GetXaxis().GetBinLowEdge(h1.GetNbinsX()+1))
+        topline.SetLineColor(ROOT.kBlack)
+        topline.SetLineWidth(1)
+        topline.SetLineStyle(2)
+        topline.Draw("Lsame")
 
     if lowerPanelHeight:
         pad2.Draw()
@@ -3684,7 +3696,7 @@ def roll1Dto2D(h1d, histo, invertXY=False):
 
     return histo
 
-def unroll2Dto1D(h, newname='', cropNegativeBins=True, silent=False):
+def unroll2Dto1D(h, newname='', cropNegativeBins=True, silent=False, invertUnroll=False):
     nbins = h.GetNbinsX() * h.GetNbinsY()
     goodname = h.GetName()
     #h.SetName(goodname+"_2d")
@@ -3692,11 +3704,19 @@ def unroll2Dto1D(h, newname='', cropNegativeBins=True, silent=False):
     newh.Sumw2()
     if 'TH2' not in h.ClassName():
         raise RuntimeError("Calling rebin2Dto1D on something that is not TH2")
-    for i in range(h.GetNbinsX()):
-        for j in range(h.GetNbinsY()):
-            ibin = 1 + i + j * h.GetNbinsX()
-            newh.SetBinContent(ibin, h.GetBinContent(i+1, j+1))
-            newh.SetBinError(ibin, h.GetBinError(i+1, j+1))
+    if invertUnroll:
+        for i in range(h.GetNbinsX()):
+            for j in range(h.GetNbinsY()):
+                ibin = 1 + j + i * h.GetNbinsY()
+                newh.SetBinContent(ibin, h.GetBinContent(i+1, j+1))
+                newh.SetBinError(ibin, h.GetBinError(i+1, j+1))
+    else:
+        for i in range(h.GetNbinsX()):
+            for j in range(h.GetNbinsY()):
+                ibin = 1 + i + j * h.GetNbinsX()
+                newh.SetBinContent(ibin, h.GetBinContent(i+1, j+1))
+                newh.SetBinError(ibin, h.GetBinError(i+1, j+1))
+
     if cropNegativeBins:
         for ibin in range(1, nbins+1):
             if newh.GetBinContent(ibin)<0:

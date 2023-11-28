@@ -3,11 +3,12 @@
 ## make MC efficiency for W vs eta-pt-ut for trigger and isolation
 ## Requires event yields made with the W  histmaker, with proper event selection
 
-from wremnants.datasets.datagroups2016 import make_datagroups_2016
+from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
 #from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
+from utilities.io_tools import input_tools, output_tools
 
 import narf
 import wremnants
@@ -15,7 +16,6 @@ from wremnants import theory_tools,syst_tools,theory_corrections
 import hist
 
 import numpy as np
-from utilities import input_tools
 
 import pickle
 import lz4.frame
@@ -43,14 +43,16 @@ from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import plot
 
 sys.path.append(os.getcwd())
 
-def getBoostEff(n_pass, n_tot, integrateVar=[]):
+def getBoostEff(n_pass, n_tot, integrateVar=[], rebinUt=-1):
     s = hist.tag.Slicer()
+    num = n_pass.copy()
+    den = n_tot.copy()
+    if rebinUt > 0 and "ut" not in integrateVar:
+        num = num[{"ut": s[::hist.rebin(rebinUt)]}]
+        den = den[ {"ut": s[::hist.rebin(rebinUt)]}]
     if len(integrateVar):
-        num = n_pass[{v: s[::hist.sum] for v in integrateVar}]
-        den = n_tot[ {v: s[::hist.sum] for v in integrateVar}]
-    else:
-        num = n_pass
-        den = n_tot
+        num = num[{v: s[::hist.sum] for v in integrateVar}]
+        den = den[ {v: s[::hist.sum] for v in integrateVar}]
     eff_boost = hh.divideHists(num, den, cutoff=0.1, allowBroadcast=True, createNew=True, cutoff_val=0.0)
     vals = eff_boost.values()
     vals[vals < 0.0] = 0.0
@@ -64,9 +66,9 @@ def getEtaPtEff(n_pass, n_tot, getRoot=False, rootName="", rootTitle=""):
         eff_root = narf.hist_to_root(eff_boost)
         eff_root.SetName(rootName if len(rootName) else "tmp_root_eff")
         eff_root.SetTitle(rootTitle)
-        return eff_root
+        return eff_boost,eff_root
     else:
-        return eff_boost
+        return eff_boost,None
 
 
 if __name__ == "__main__":
@@ -79,8 +81,9 @@ if __name__ == "__main__":
     parser.add_argument(     '--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
     parser.add_argument(     '--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument(     '--passMt', action='store_true',   help='Measure efficiencies only for events passing mT, otherwise stay inclusive')
-    parser.add_argument('-p','--processes', default=["Wmunu"], nargs='+', type=str,
+    parser.add_argument('-p','--processes', default=["Wmunu"], nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
+    parser.add_argument(     '--rebinUt', default=-1, type=int, help='If positive, rebin yields versus uT by this number before deriving efficiencies in 3D')
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -96,10 +99,13 @@ if __name__ == "__main__":
     xAxisName = "Muon #eta"
     yAxisName = "Muon p_{T} (GeV)"
 
-    groups = make_datagroups_2016(fname, filterGroups=args.processes, excludeGroups=None if args.processes else ['QCD'])
+    groups = Datagroups(fname)
     datasets = groups.getNames()
-    # if args.processes is not None and len(args.processes):
-    #     datasets = list(filter(lambda x: x in args.processes, datasets))
+    if args.processes is not None and len(args.processes):
+        datasets = list(filter(lambda x: x in args.processes, datasets))
+    else:
+        datasets = list(filter(lambda x: x != "QCD", datasets))
+
     logger.debug(f"Using these processes: {datasets}")
     inputHistName = args.baseName
     groups.setNominalName(inputHistName)
@@ -163,58 +169,65 @@ if __name__ == "__main__":
         # For now we use boost directly, using n/N but assuming uncorrelated n and N, so the uncertainties are maximally wrong (but we might not use them)
         
         # test, integrate uT and plot efficiencies vs eta-pt
-        eff_iso = getEtaPtEff(n_iso_pass, n_iso_tot, getRoot=True, rootName=f"{d}_MC_eff_iso", rootTitle="P(iso | trig)")
+        eff_iso_boost2D,eff_iso = getEtaPtEff(n_iso_pass, n_iso_tot, getRoot=True, rootName=f"{d}_MC_eff_iso", rootTitle="P(iso | trig)")
         drawCorrelationPlot(eff_iso, xAxisName, xAxisName, f"MC isolation efficiency",
                             f"{eff_iso.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
 
-        eff_isonotrig = getEtaPtEff(n_isonotrig_pass, n_isonotrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isonotrig", rootTitle="P(iso | ID+IP)")
+        eff_isonotrig_boost2D,eff_isonotrig = getEtaPtEff(n_isonotrig_pass, n_isonotrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isonotrig", rootTitle="P(iso | ID+IP)")
         drawCorrelationPlot(eff_isonotrig, xAxisName, xAxisName, f"MC isolation efficiency",
                             f"{eff_isonotrig.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
 
-        eff_isoantitrig = getEtaPtEff(n_isoantitrig_pass, n_isoantitrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isoantitrig", rootTitle="P(iso | ID+IP & fail trig)")
+        eff_isoantitrig_boost2D,eff_isoantitrig = getEtaPtEff(n_isoantitrig_pass, n_isoantitrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isoantitrig", rootTitle="P(iso | ID+IP & fail trig)")
         drawCorrelationPlot(eff_isoantitrig, xAxisName, xAxisName, f"MC isolation efficiency",
                             f"{eff_isoantitrig.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
 
-        eff_triggerplus = getEtaPtEff(n_triggerplus_pass, n_triggerplus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerplus", rootTitle="P(trig | ID+IP)")
+        eff_triggerplus_boost2D,eff_triggerplus = getEtaPtEff(n_triggerplus_pass, n_triggerplus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerplus", rootTitle="P(trig | ID+IP)")
         drawCorrelationPlot(eff_triggerplus, xAxisName, xAxisName, f"MC trigger plus efficiency",
                             f"{eff_triggerplus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
 
-        eff_triggerminus = getEtaPtEff(n_triggerminus_pass, n_triggerminus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerminus", rootTitle="P(trig | ID+IP)")
+        eff_triggerminus_boost2D,eff_triggerminus = getEtaPtEff(n_triggerminus_pass, n_triggerminus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerminus", rootTitle="P(trig | ID+IP)")
         drawCorrelationPlot(eff_triggerminus, xAxisName, xAxisName, f"MC trigger minus efficiency",
                             f"{eff_triggerminus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
 
-        eff_iso_3D = getBoostEff(n_iso_pass, n_iso_tot)
-        eff_isonotrig_3D = getBoostEff(n_isonotrig_pass, n_isonotrig_tot)
-        eff_isoantitrig_3D = getBoostEff(n_isoantitrig_pass, n_isoantitrig_tot)
-        eff_triggerplus_3D = getBoostEff(n_triggerplus_pass, n_triggerplus_tot)
-        eff_triggerminus_3D = getBoostEff(n_triggerminus_pass, n_triggerminus_tot)
+        eff_iso_3D = getBoostEff(n_iso_pass, n_iso_tot, rebinUt=args.rebinUt)
+        #eff_isonotrig_3D = getBoostEff(n_isonotrig_pass, n_isonotrig_tot, rebinUt=args.rebinUt)
+        #eff_isoantitrig_3D = getBoostEff(n_isoantitrig_pass, n_isoantitrig_tot, rebinUt=args.rebinUt)
+        eff_triggerplus_3D = getBoostEff(n_triggerplus_pass, n_triggerplus_tot, rebinUt=args.rebinUt)
+        eff_triggerminus_3D = getBoostEff(n_triggerminus_pass, n_triggerminus_tot, rebinUt=args.rebinUt)
 
         resultDict[f"{d}_MC_eff_iso_etaptut"] = eff_iso_3D
-        resultDict[f"{d}_MC_eff_isonotrig_etaptut"] = eff_isonotrig_3D
-        resultDict[f"{d}_MC_eff_isoantitrig_etaptut"] = eff_isoantitrig_3D
+        #resultDict[f"{d}_MC_eff_isonotrig_etaptut"] = eff_isonotrig_3D
+        #resultDict[f"{d}_MC_eff_isoantitrig_etaptut"] = eff_isoantitrig_3D
         resultDict[f"{d}_MC_eff_triggerplus_etaptut"] = eff_triggerplus_3D
         resultDict[f"{d}_MC_eff_triggerminus_etaptut"] = eff_triggerminus_3D
+        # also 2D version (they are also saved in a root file as ROOT histograms but better to have them here too)
+        resultDict[f"{d}_MC_eff_iso_etapt"] = eff_iso_boost2D
+        #resultDict[f"{d}_MC_eff_isonotrig_etapt"] = eff_isonotrig_boost2D
+        #resultDict[f"{d}_MC_eff_isoantitrig_etapt"] = eff_isoantitrig_boost2D
+        resultDict[f"{d}_MC_eff_triggerplus_etapt"] = eff_triggerplus_boost2D
+        resultDict[f"{d}_MC_eff_triggerminus_etapt"] = eff_triggerminus_boost2D
 
+        
         # plot uT distribution for each charge, vs mT (pass or fail, or inclusive), integrate anything else
-        # do it for events passing trigger ans isolation
+        # do it for events passing trigger and isolation
         nPtBins = hTestUt.axes["pt"].size
         hTestUt = hTestUt[{"eta" : s[::hist.sum],
-                           "pt" :  s[0:nPtBins-1:hist.sum], # would s[::hist.sum] sum overflow pt bins?
+                           "pt" :  s[0:nPtBins:hist.sum], # would s[::hist.sum] sum overflow pt bins?
                            "passTrigger" : True,
                            "passIso" : True}]
         for charge in [-1, 1]:
@@ -239,12 +252,16 @@ if __name__ == "__main__":
                 
     postfix = ""
     toAppend = []
-    #if args.passMt:
-    #    toAppend.append("passMt")
+    if args.passMt:
+        toAppend.append("passMt")
+    if args.rebinUt > 0:
+        toAppend.append(f"rebinUt{args.rebinUt}")     
     postfix = "_".join(toAppend)
     if len(postfix):
         postfix = "_" + postfix
-        
+
+    resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})    
+
     outfile = outdir + f"efficiencies3D{postfix}.pkl.lz4"
     logger.info(f"Going to store 3D histograms {resultDict.keys()} in file {outfile}")
     with lz4.frame.open(outfile, 'wb') as f:

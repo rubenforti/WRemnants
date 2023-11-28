@@ -8,8 +8,10 @@ import lz4.frame
 import pickle
 import re
 import glob
+import h5py
 from .correctionsTensor_helper import makeCorrectionsTensor
 from utilities import boostHistHelpers as hh, common, logging
+from utilities.io_tools import input_tools
 from wremnants import theory_tools
 
 logger = logging.child_logger(__name__)
@@ -17,9 +19,9 @@ logger = logging.child_logger(__name__)
 def valid_theory_corrections():
     corr_files = glob.glob(common.data_dir+"TheoryCorrections/*Corr*.pkl.lz4")
     matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
-    return [m[1] for m in matches if m]
+    return [m[1] for m in matches if m]+["none"]
 
-def load_corr_helpers(procs, generators):
+def load_corr_helpers(procs, generators, make_tensor=True):
     corr_helpers = {}
     for proc in procs:
         corr_helpers[proc] = {}
@@ -28,15 +30,18 @@ def load_corr_helpers(procs, generators):
             if not os.path.isfile(fname):
                 logger.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
                 continue
-            helper_func = make_corr_helper if "Helicity" not in generator else make_corr_by_helicity_helper
-            # Hack for now
-            corr_hist_name = get_corr_name(generator)
-            corr_helpers[proc][generator] = helper_func(fname, proc[0], corr_hist_name)
+            logger.debug(f"Make theory correction helper for file: {fname}")
+            corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
+            if not make_tensor:
+                corr_helpers[proc][generator] = corrh
+            elif "Helicity" in generator:
+                corr_helpers[proc][generator] = makeCorrectionsTensor(corrh, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
+            else:
+                corr_helpers[proc][generator] = makeCorrectionsTensor(corrh)
     for generator in generators:
         if not any([generator in corr_helpers[proc] for proc in procs]):
             raise ValueError(f"Did not find correction for generator {generator} for any processes!")
     return corr_helpers
-
 
 def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusive_{{process}}_pT.npz", isW=True):
     if isW:
@@ -67,57 +72,33 @@ def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusi
     corrh[:,hist.overflow,...] = 1.
     corrh[:,:,hist.overflow,...] = 1.
 
-    return makeCorrectionsTensor(corrh, ROOT.wrem.TensorCorrectionsHelper, tensor_rank=1)
+    return makeCorrectionsTensor(corrh)
 
-def make_corr_helper(filename, proc, histname):
+def load_corr_hist(filename, proc, histname):
     with lz4.frame.open(filename) as f:
         corr = pickle.load(f)
         corrh = corr[proc][histname]
-
-    return makeCorrectionsTensor(corrh, ROOT.wrem.TensorCorrectionsHelper, tensor_rank=1)
-
-def make_corr_by_helicity_helper(filename, proc, histname):
-    with lz4.frame.open(filename) as f:
-        corr = pickle.load(f)
-        corrh = corr[proc][histname]
-
-    return makeCorrectionsTensor(corrh, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
+    return corrh
 
 def get_corr_name(generator):
     # Hack for now
     label = generator.replace("1D", "")
     return f"{label}_minnlo_ratio" if "Helicity" not in generator else f"{label.replace('Helicity', '')}_minnlo_coeffs"
 
-def load_corr_helpers(procs, generators):
-    corr_helpers = {}
-    for proc in procs:
-        corr_helpers[proc] = {}
-        for generator in generators:
-            fname = f"{common.data_dir}/TheoryCorrections/{generator}Corr{proc[0]}.pkl.lz4"
-            if not os.path.isfile(fname):
-                logger.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
-                continue
-            corr_hist_name = get_corr_name(generator)
-            helper_func = make_corr_helper if "Helicity" not in generator else make_corr_by_helicity_helper
-            corr_helpers[proc][generator] = helper_func(fname, proc[0], corr_hist_name)
-    for generator in generators:
-        if not any([generator in corr_helpers[proc] for proc in procs]):
-            raise ValueError(f"Did not find correction for generator {generator} for any processes!")
-    return corr_helpers
-
-def rebin_corr_hists(hists, ndim=-1, use_predefined_bins=False):
+def rebin_corr_hists(hists, ndim=-1, binning=None):
     # Allow trailing dimensions to be different (e.g., variations)
     ndims = min([x.ndim for x in hists]) if ndim < 0 else ndim
-    if use_predefined_bins:
+    if binning:
         try:
-            hists = [hh.rebinHist(h, "pt" if "pt" in h.axes.name else "ptVgen", common.ptV_binning[:-2]) for h in hists]
-            hists = [hh.rebinHist(h, "absy" if "absy" in h.axes.name else "absYVgen", common.absYV_binning[:-1]) for h in hists]
+            hists = [h if not h else hh.rebinHistMultiAx(h, binning) for h in hists]
         except ValueError as e:
             logger.warning("Can't rebin axes to predefined binning")
+        return hists
+
     for i in range(ndims):
         # This is a workaround for now for the fact that MiNNLO has mass binning up to
         # Inf whereas SCETlib has 13 TeV
-        if all([h.axes[i].size == 1 for h in hists]):
+        if all([h.axes[i].size == 1 for h in hists if h]):
             continue
         hists = hh.rebinHistsToCommon(hists, i)
     return hists
@@ -142,35 +123,207 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
-    denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], use_predefined_bins=rebin)
 
-    corrh = hh.divideHists(num_hist, denom_hist)
+    denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
+
+
+    corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
 
-def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, ndim=3):
-    ref_helicity_hist, target_sigmaul, target_sigma4 = rebin_corr_hists([ref_helicity_hist, target_sigmaul, target_sigma4], ndim, True)
-    
+def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, coeff_hist=None, coeffs_from_hist=[], binning=None, ndim=3):
+    ref_helicity_hist, target_sigmaul, target_sigma4 = rebin_corr_hists([ref_helicity_hist, target_sigmaul, target_sigma4], ndim, binning)
+
+    apply_coeff_corr = coeff_hist is not None and coeffs_from_hist
+
+    # broadcast back mass and helicity axes (or vars axis)
+    sigmaUL_ratio = hh.divideHists(target_sigmaul, ref_helicity_hist[{"massVgen" : 0, "helicity" : -1.j}], 
+                                   flow=False, by_ax_name=False).values()[np.newaxis,...,np.newaxis,:] \
+                            if target_sigmaul else np.ones_like(ref_helicity_hist)[...,np.newaxis]
+
     ref_coeffs = theory_tools.moments_to_angular_coeffs(ref_helicity_hist)
 
-    target_a4_coeff = make_angular_coeff(target_sigma4, target_sigmaul)
-    sigmaUL_ratio = hh.divideHists(target_sigmaul, ref_helicity_hist[{"helicity" : -1.j}])
-
     corr_ax = hist.axis.Boolean(name="corr")
-    vars_ax = target_sigmaul.axes["vars"]
+    vars_ax = target_sigmaul.axes["vars"] if target_sigmaul else hist.axis.Regular(1 ,0, 1, name="vars")
     corr_coeffs = hist.Hist(*ref_coeffs.axes, corr_ax, vars_ax)
     # Corr = False is the uncorrected coeffs, corrected coeffs have the new A4
     # NOTE: the corrected coeffs are multiplied through by the sigmaUL correction, so that the 
     # new correction can be made as the ratio of the sum. To get the correct coeffs, this should
     # be divided back out
-    corr_coeffs[...] = ref_coeffs.values(flow=True)[...,np.newaxis,np.newaxis]
-    corr_coeffs[...,4.j,True,:] = target_a4_coeff.values()
-    # Add back the helicity dimension and keep the variation dimension from the correction
-    rescaled_coeffs = corr_coeffs[{"corr" : True}].values(flow=True)*sigmaUL_ratio.values(flow=True)[...,np.newaxis,:]
-    corr_coeffs[...,True,:] = rescaled_coeffs
+    corr_coeffs[...] = ref_coeffs.values()[...,np.newaxis,np.newaxis]
+
+    if target_sigma4:
+        target_a4_coeff = make_angular_coeff(target_sigma4, target_sigmaul)
+        corr_coeffs[...,4.j,True,:] = target_a4_coeff.values()
+
+    if apply_coeff_corr:
+        for coeff in coeffs_from_hist:
+            scale = -1 if coeff in [1, 4] else 1
+            idx = complex(0, coeff)
+            corr_coeffs[...,idx,True,:] = coeff_hist[{"helicity" : idx}].values()[...,np.newaxis]*scale
+    # Scale by the sigmaUL correction, 
+    corr_coeffs.values()[...,corr_coeffs.axes["corr"].index(True),:] *= sigmaUL_ratio
 
     corr_coeffs = set_corr_ratio_flow(corr_coeffs)
     return corr_coeffs
 
+def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
+    if filename is None:
+        filename = f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
+
+    # load moments from file
+    with h5py.File(filename, "r") as h5file:
+        results = narf.ioutils.pickle_load_h5py(h5file["results"])
+        moments = results["Z"] if is_w_like else results["W"]
+
+    moments_nom = moments[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
+
+    # set disallowed combinations of mur/muf equal to nominal
+    moments.values()[..., 0, 2] = moments_nom
+    moments.values()[..., 2, 0] = moments_nom
+
+    # flatten scale variations and compute envelope
+    moments_flat = np.reshape(moments.values(), (*moments.values().shape[:-2], -1))
+    moments_min = np.min(moments_flat, axis=-1)
+    moments_max = np.max(moments_flat, axis=-1)
+
+    # build variation histogram in the format expected by the corrector
+    corr_ax = hist.axis.Boolean(name="corr")
+
+    def get_names(ihel):
+        base_name = f"helicity_{ihel}"
+        return f"{base_name}_Down", f"{base_name}_Up"
+
+    var_names = []
+    var_names.append("nominal")
+    for ihel in range(-1, 8):
+        var_names.extend(get_names(ihel))
+
+    vars_ax = hist.axis.StrCategory(var_names, name="vars")
+
+    axes_no_scale = moments.axes[:-2]
+    corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, vars_ax)
+
+    # set all moments, including overflow/underflow to default safe value (leads to weight of 1.0 by construction)
+    corr_coeffs.values(flow=True)[...] = 1.
+
+    # set all moments equal to nominal
+    corr_coeffs.values()[...] = moments_nom[..., None, None]
+
+    # set envelope variations
+    for ihel in range(-1, 8):
+        downvar, upvar = get_names(ihel)
+
+        corr_coeffs.values()[..., ihel+1, 1, var_names.index(downvar)] = moments_min[..., ihel+1]
+        corr_coeffs.values()[..., ihel+1, 1, var_names.index(upvar)] = moments_max[..., ihel+1]
+
+    helper = makeCorrectionsTensor(corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
+
+    # override tensor_axes since the output is different here
+    helper.tensor_axes = [vars_ax]
+
+    return helper
+
+def make_helicity_test_corrector(is_w_like = False, filename = None):
+
+    # load moments from file
+    with h5py.File(filename, "r") as h5file:
+        results = narf.ioutils.pickle_load_h5py(h5file["results"])
+        moments = results["Z"] if is_w_like else results["W"]
+
+    coeffs = theory_tools.moments_to_angular_coeffs(moments)
+
+    coeffs_nom = coeffs[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
+
+    corr_ax = hist.axis.Boolean(name="corr")
+    vars_ax = hist.axis.StrCategory(["test_ai", "test_sigmaUL","test_all"], name="vars")
+
+    axes_no_scale = coeffs.axes[:-2]
+    corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, vars_ax)
+
+    corr_coeffs.values()[...] = coeffs_nom[..., None, None]
+
+    # set synthetic test variation
+    corr_coeffs.values()[..., 1, 1, 0] *= 1.1
+
+    corr_coeffs.values()[..., :, 1, 1] *= 1.1
+
+    corr_coeffs.values()[..., :, 1, 2] *= 1.1
+    corr_coeffs.values()[..., 1, 1, 2] *= 1.2
+    corr_coeffs.values()[..., 2, 1, 2] *= 1.3
+    corr_coeffs.values()[..., 3, 1, 2] *= 1.4
+    corr_coeffs.values()[..., 4, 1, 2] *= 1.5
+    corr_coeffs.values()[..., 5, 1, 2] *= 1.6
+    corr_coeffs.values()[..., 6, 1, 2] *= 1.7
+    corr_coeffs.values()[..., 7, 1, 2] *= 1.8
+    corr_coeffs.values()[..., 8, 1, 2] *= 1.9
+
+    print("corr_coeffs", corr_coeffs)
+
+    helper = makeCorrectionsTensor(corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
+
+    # override tensor_axes since the output is different here
+    helper.tensor_axes = [vars_ax]
+
+    return helper
+
 def make_angular_coeff(sigmai_hist, ul_hist):
     return hh.divideHists(sigmai_hist, ul_hist, cutoff=0.0001)
 
+def read_combined_corrs(procNames, generator, corr_files, axes=[], absy=True, rebin={}):
+    h = None
+    if not corr_files:
+        return h
+
+    for procName in procNames:
+        if procName[0] == "W":
+            proc_files = list(filter(lambda x: procName[:2].lower() in x.lower(), corr_files))
+            charge = 1 if procName[:2] == "Wp" else -1
+        else:
+            charge = 0
+            proc_files = corr_files
+        hproc = read_corr(generator, proc_files, charge, axes)
+        h = hproc if not h else h+hproc
+
+    if absy and "Y" in axes:
+        h = hh.makeAbsHist(h, "Y")
+
+    if rebin:
+        h = hh.rebinHistMultiAx(h, rebin)
+
+    return h
+
+def read_corr(generator, corr_files, charge, axes=[]):
+    if "scetlib" in generator:
+        coeff=None
+        if any("A4" in c for c in corr_files):
+            coeff = "a4"
+        if "dyturbo" in generator:
+            scetlib_files = [x for x in corr_files if pathlib.Path(x).suffix == ".pkl"]
+            if len(scetlib_files) != 2:
+                raise ValueError(f"scetlib_dyturbo correction requires two SCETlib files (resummed and FO singular). Found {len(scetlib_files)}")
+            if not any("nnlo_sing" in x for x in scetlib_files):
+                raise ValueError("Must pass in a fixed order singular file")
+            nnlo_sing_idx = 0 if "nnlo_sing" in scetlib_files[0] else 1
+            resumf = scetlib_files[~nnlo_sing_idx]
+            nnlo_singf = scetlib_files[nnlo_sing_idx]
+
+            dyturbo_files = [x for x in corr_files if pathlib.Path(x).suffix == ".txt"]
+            if len(dyturbo_files) != 1:
+                raise ValueError("scetlib_dyturbo correction requires one DYTurbo file (fixed order contribution)")
+
+            corrh = input_tools.read_matched_scetlib_dyturbo_hist(resumf, nnlo_singf, dyturbo_files[0], axes, charge=charge, coeff=coeff)
+        else:
+            corrh = input_tools.read_scetlib_hist(corr_files[0], charge=charge, nonsing=nons, flip_y_sign=coeff=="a4")
+    else:
+        if generator == "matrix_radish":
+            h = input_tools.read_matrixRadish_hist(corr_file[0], axes[0])
+        elif generator == "dyturbo":
+            h = input_tools.read_dyturbo_hist(corr_files, axes=axes, charge=charge)
+
+        vars_ax = h.axes["vars"] if "vars" in h.axes.name else hist.axis.StrCategory(["central"], name="vars") 
+        hnD = hist.Hist(*h.axes, vars_ax)
+        # Leave off the overflow, we won't use it anyway
+        hnD[...] = np.reshape(h.values(), hnD.shape)
+        corrh = hnD
+
+    return corrh

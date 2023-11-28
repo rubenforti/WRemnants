@@ -2,10 +2,12 @@ import ROOT
 import hist
 import numpy as np
 import copy
+from math import pi
 from utilities import boostHistHelpers as hh,common,logging
 from wremnants import theory_corrections
 from scipy import ndimage
 import narf.clingutils
+from math import sqrt
 
 logger = logging.child_logger(__name__)
 narf.clingutils.Declare('#include "theoryTools.h"')
@@ -45,49 +47,33 @@ pdfMap = {
         "branch" : "LHEPdfWeight",
         "combine" : "symHessian",
         "entries" : 101,
-        "alphas" : ["LHEPdfWeight[101]", "LHEPdfWeight[102]"],
+        "alphas" : ["LHEPdfWeight[0]", "LHEPdfWeight[101]", "LHEPdfWeight[102]"],
         "alphasRange" : "001", # TODO: Check this
     },
     "ct18" : {
         # This has CT18 + CT18Z in it :-/
         "name" : "pdfCT18",
-        "branch" : "LHEPdfWeightAltSet18",
+        "branch" : "LHEPdfWeightAltSet11",
         "combine" : "asymHessian",
         "entries" : 59,
-        "alphas" : ["LHEPdfWeightAltSet18[59]", "LHEPdfWeightAltSet18[60]"],
+        "alphas" : ["LHEPdfWeightAltSet11[0]", "LHEPdfWeightAltSet11[59]", "LHEPdfWeightAltSet18[62]"],
         "alphasRange" : "002",
         "scale" : 1/1.645 # Convert from 90% CL to 68%
-    },
-    "mmht" : {
-        "name" : "pdfMMHT",
-        "branch" : "LHEPdfWeightAltSet19",
-        "combine" : "asymHessian",
-        "entries" : 51,
-        "alphas" : ["LHEPdfWeightAltSet20[1]", "LHEPdfWeightAltSet20[2]"],
-        "alphasRange" : "001",
     },
     "nnpdf30" : {
         "name" : "pdfNNPDF30",
         "branch" : "LHEPdfWeightAltSet13",
         "combine" : "symHessian",
         "entries" : 101,
-        "alphas" : ["LHEPdfWeightAltSet15[0]", "LHEPdfWeightAltSet16[0]"],
+        "alphas" : ["LHEPdfWeightAltSet13[0]", "LHEPdfWeightAltSet15[0]", "LHEPdfWeightAltSet16[0]"],
         "alphasRange" : "001",
     },
-}
-
-pdfMapExtended = copy.deepcopy(pdfMap)
-pdfMapExtended["ct18"]["branch"] = "LHEPdfWeightAltSet11"
-pdfMapExtended["ct18"]["alphas"] = ["LHEPdfWeightAltSet11[59]", "LHEPdfWeightAltSet11[62]"]
-pdfMapExtended["mmht"]["branch"] = "LHEPdfWeightAltSet13"
-pdfMapExtended["mmht"]["alphas"] = ["LHEPdfWeightAltSet13[1]", "LHEPdfWeightAltSet13[2]"]
-pdfMapExtended.update({
     "nnpdf40" : {
         "name" : "pdfNNPDF40",
         "branch" : "LHEPdfWeightAltSet3",
         "combine" : "symHessian",
         "entries" : 53,
-        "alphas" : ["LHEPdfWeightAltSet3[51]", "LHEPdfWeightAltSet3[52]"],
+        "alphas" : ["LHEPdfWeightAltSet3[0]", "LHEPdfWeightAltSet3[51]", "LHEPdfWeightAltSet3[52]"],
         "alphasRange" : "002", # TODO: IS that true?
     },
     "pdf4lhc21" : {
@@ -95,7 +81,7 @@ pdfMapExtended.update({
         "branch" : "LHEPdfWeightAltSet10",
         "combine" : "symHessian",
         "entries" : 41,
-        "alphas" : ["LHEPdfWeightAltSet10[41]", "LHEPdfWeightAltSet10[42]"],
+        "alphas" : ["LHEPdfWeightAltSet10[0]", "LHEPdfWeightAltSet10[41]", "LHEPdfWeightAltSet10[42]"],
         "alphasRange" : "002", # TODO: IS that true?
     },
     "msht20" : {
@@ -103,8 +89,18 @@ pdfMapExtended.update({
         "branch" : "LHEPdfWeightAltSet12",
         "combine" : "asymHessian",
         "entries" : 65,
-        "alphas" : ["LHEPdfWeightAltSet12[67]", "LHEPdfWeightAltSet12[70]"],
+        "alphas" : ["LHEPdfWeightAltSet12[0]", "LHEPdfWeightAltSet12[67]", "LHEPdfWeightAltSet12[70]"],
         # 66-71 - are LHAPDF ID 27500 = 27506, 27501 is 0.0116 and 27504 is 0.0120
+        "alphasRange" : "002", 
+    },
+    "msht20an3lo" : {
+        "name" : "pdfMSHT20an3lo",
+        "branch" : "LHEPdfWeightAltSet24",
+        "combine" : "asymHessian",
+        "entries" : 105,
+        "alphas" : ["LHEPdfWeightAltSet24[0]", "LHEPdfWeightAltSet24[108]", "LHEPdfWeightAltSet24[111]"],
+        # 105-111 - are the alphas small range vars: 
+        # mem = 0 => default fit alpha_S(M_Z) = 0.118; mem=1-6 => alpha_S(M_Z) = 0.114, 0.115, 0.116, 0.117, 0.119, 0.120
         "alphasRange" : "002", 
     },
     "ct18z" : {
@@ -114,7 +110,7 @@ pdfMapExtended.update({
         "combine" : "asymHessian",
         "entries" : 59,
         "first_entry" : 63,
-        "alphas" : ["LHEPdfWeightAltSet18[122]", "LHEPdfWeightAltSet18[123]"],
+        "alphas" : ["LHEPdfWeightAltSet18[63]", "LHEPdfWeightAltSet18[122]", "LHEPdfWeightAltSet18[123]"],
         "alphasRange" : "002",
         "scale" : 1/1.645 # Convert from 90% CL to 68%
     },
@@ -123,12 +119,18 @@ pdfMapExtended.update({
         "branch" : "LHEPdfWeightAltSet19",
         "combine" : "asymHessian",
         "entries" : 33,
-        "alphas" : ["LHEPdfWeight[41]", "LHEPdfWeight[42]"],
+        "alphas" : ["LHEPdfWeight[0]", "LHEPdfWeight[41]", "LHEPdfWeight[42]"],
         "alphasRange" : "002", # TODO: IS that true?
     },
-
-
-})
+    "herapdf20" : {
+        "name" : "pdfHERAPDF20",
+        "branch" : "LHEPdfWeightAltSet20",
+        "combine" : "asymHessian",
+        "entries" : 29,
+        "alphas" : ["LHEPdfWeightAltSet20[0]", "LHEPdfWeightAltSet22[0]", "LHEPdfWeightAltSet23[0]"], # alphas 116-120
+        "alphasRange" : "002",
+    },
+}
 
 only_central_pdf_datasets = [
     "Wplusmunu_bugfix",
@@ -137,7 +139,20 @@ only_central_pdf_datasets = [
     "Zmumu_bugfix_slc7",
 ]
 
-extended_pdf_datasets = [x for x in common.vprocs+common.vprocs_lowpu if not any(y in x for y in ["NNLOPS", "MiNLO"])]
+extended_pdf_datasets = [x for x in common.vprocs_all if not any(y in x for y in ["NNLOPS", "MiNLO"])]
+
+def expand_pdf_entries(pdf):
+    info = pdfMap[pdf]
+    first_entry = info.get("first_entry", 0)
+    last_entry = first_entry+info["entries"]
+    return [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
+
+theory_corr_weight_map = {
+        "scetlib_dyturboMSHT20_pdfas" : pdfMap["msht20"]["alphas"],
+        "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
+        "scetlib_dyturboMSHT20an3lo_pdfas" : pdfMap["msht20an3lo"]["alphas"],
+        "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
+}
 
 def define_prefsr_vars(df):
     if "prefsrLeps" in df.GetColumnNames():
@@ -157,9 +172,18 @@ def define_prefsr_vars(df):
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define("chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]")
     df = df.Define("csSineCosThetaPhi", "wrem::csSineCosThetaPhi(genlanti, genl)")
+
+    # define gen lepton in wlike case for ew corrections
+    df = df.Define("ptgen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
+    df = df.Define("etagen", "event % 2 == 0 ? genlanti.eta() : genl.eta()")
+    df = df.Define("qgen", "event % 2 == 0 ? -1 : 1")
+
     return df
 
 def define_scale_tensor(df):
+    if "scaleWeights_tensor" in df.GetColumnNames():
+        logger.debug("scaleWeight_tensor already defined, do nothing here.")
+        return df
     # convert vector of scale weights to 3x3 tensor and clip weights to |weight|<10.
     df = df.Define("scaleWeights_tensor", f"wrem::makeScaleTensor(LHEScaleWeight, theory_weight_truncate);")
     df = df.Define("scaleWeights_tensor_wnom", "auto res = scaleWeights_tensor; res = nominal_weight*res; return res;")
@@ -167,15 +191,21 @@ def define_scale_tensor(df):
     return df
 
 def define_ew_vars(df):
-    df = df.Define("ewLeptons", "wrem::ewLeptons(GenPart_status, GenPart_statusFlags, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_pt, GenPart_eta, GenPart_phi)")
+    df = df.Define("ewLeptons", "wrem::ewLeptons(GenPart_status, GenPart_statusFlags, GenPart_pdgId, GenPart_pt, GenPart_eta, GenPart_phi)")
     df = df.Define("ewPhotons", "wrem::ewPhotons(GenPart_status, GenPart_statusFlags, GenPart_pdgId, GenPart_pt, GenPart_eta, GenPart_phi)")
+    df = df.Define('ewGenV', 'wrem::ewGenVPhos(ewLeptons, ewPhotons)')
     df = df.Define('ewMll', '(ewLeptons[0]+ewLeptons[1]).mass()')
-    df = df.Define('ewMlly', 'wrem::ewMLepPhos(ewLeptons, ewPhotons)')
+    df = df.Define('ewMlly', 'ewGenV.mass()')
     df = df.Define('ewLogDeltaM', 'log10(ewMlly-ewMll)')
+
+    df = df.Define('ewPTll', '(ewLeptons[0]+ewLeptons[1]).pt()')
+    df = df.Define('ewPTlly', 'ewGenV.pt()')
+    df = df.Define('ewYll', '(ewLeptons[0]+ewLeptons[1]).Rapidity()')
+    df = df.Define('ewYlly', 'ewGenV.Rapidity()')
 
     return df
 
-def make_ew_binning(mass = 91.1535, width = 2.4932, initialStep = 0.1):
+def make_ew_binning(mass = 91.1535, width = 2.4932, initialStep = 0.1, bin_edges_low=[], bin_edges_high=[]):
     maxVal = ROOT.Math.breitwigner_pdf(mass, width, mass)
     bins = [mass]
     currentMass = mass
@@ -187,18 +217,28 @@ def make_ew_binning(mass = 91.1535, width = 2.4932, initialStep = 0.1):
         if lowMass - binSize > 0:
             bins.insert(0, lowMass)
     bins.insert(0, 0.)
+
+    if bin_edges_low:
+        bins = bin_edges_low + [b for b in bins if b > bin_edges_low[-1]][1:]
+    if bin_edges_high:
+        bins = [b for b in bins if b < bin_edges_high[-1]][:-1] + bin_edges_high
+
     return bins
 
 def pdf_info_map(dataset, pdfset):
-    infoMap = pdfMap if dataset not in extended_pdf_datasets else pdfMapExtended
+    infoMap = pdfMap 
 
-    if "horace" in dataset or (pdfset != "nnpdf31" and dataset in only_central_pdf_datasets) or pdfset not in infoMap:
+    # Just ignore PDF variations for non W/Z samples
+    if not (dataset[0] in ["W", "Z"] and dataset[1] not in ["W", "Z"]) \
+        or "horace" in dataset or (pdfset != "nnpdf31" and dataset in only_central_pdf_datasets) \
+        or pdfset not in infoMap:
         raise ValueError(f"Skipping PDF {pdfset} for dataset {dataset}")
     return infoMap[pdfset]
 
 def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     if dataset_name not in common.vprocs_all or \
             "horace" in dataset_name or \
+            "winhac" in dataset_name or \
             "LHEPdfWeight" not in df.GetColumnNames():
         logger.warning(f"Did not find PDF weights for sample {dataset_name}! Using nominal PDF in sample")
         return df
@@ -216,6 +256,9 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         entries = 1 if i != 0 and noAltUnc else pdfInfo["entries"]
         start = 0 if "first_entry" not in pdfInfo else pdfInfo["first_entry"]
 
+        if pdfBranch not in df.GetColumnNames():
+            return df
+
         df = df.Define(tensorName, f"auto res = wrem::clip_tensor(wrem::vec_to_tensor_t<double, {entries}>({pdfBranch}, {start}), theory_weight_truncate); res = nominal_weight/central_pdf_weight*res; return res;")
 
         if i == 0:
@@ -224,9 +267,8 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         if pdfName == "pdfMSHT20":
             df = pdfBugfixMSHT20(df, tensorName)
 
-        df = df.Define(tensorASName, "Eigen::TensorFixedSize<double, Eigen::Sizes<2>> res; "
-                f"res(0) = nominal_weight/central_pdf_weight*{pdfInfo['alphas'][0]}; "
-                f"res(1) = nominal_weight/central_pdf_weight*{pdfInfo['alphas'][1]}; "
+        df = df.Define(tensorASName, f"Eigen::TensorFixedSize<double, Eigen::Sizes<{len(pdfInfo['alphas'])}>> res; " + \
+                " ".join([f"res({i}) = nominal_weight/central_pdf_weight*{p};" for i,p in enumerate(pdfInfo['alphas'])]) + \
                 "return wrem::clip_tensor(res, theory_weight_truncate)")
 
     return df
@@ -278,14 +320,16 @@ def build_weight_expr(df, exclude_weights=[]):
 
     if "extra_weight" in valid_cols:
         logger.info("Adding additional weight '{extra_weight}'")
-        found_weights.append(extra_weight)
+        found_weights.append("extra_weight")
 
     weight_expr = "*".join(found_weights)
+
     logger.debug(f"Weight is {weight_expr}")
 
     return weight_expr
 
 def define_nominal_weight(df):
+    logger.debug("Defining nominal weight")
     return df.Define(f"nominal_weight", build_weight_expr(df))
 
 def define_theory_corr(df, dataset_name, helpers, generators, modify_central_weight):
@@ -295,7 +339,6 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
 
     if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
         df = df.DefinePerSample("theory_corr_weight", "1.0")
-        return df
 
     for i, generator in enumerate(generators):
         if generator not in dataset_helpers:
@@ -308,19 +351,28 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
         if "Helicity" in generator:
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight_uncorr"])
         elif 'ew' in generator:
-            # Used as a placeholder to match the helper dimensionality 
-            df = df.DefinePerSample(f"{generator}Dummy", "0.")
-            multiplicative_weight = i != 0 and modify_central_weight
             if i != 0 and modify_central_weight:
-                df = df.Define(f"ew_corr_weight", build_weight_expr(df))
+                df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
             else:
-                df = df.Alias("ew_corr_weight", "nominal_weight_uncorr")
-            df = df.Define(f"{generator}Weight_tensor", helper, ["ewMll", "ewLogDeltaM", f"{generator}Dummy", "chargeVgen", "ew_corr_weight"]) # multiplying with nominal QCD weight
+                df = df.Alias(f"ew_{generator}corr_weight", "nominal_weight_uncorr")
+            df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
         else:
-            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "nominal_weight_uncorr"])
+            df = define_theory_corr_weight_column(df, generator)
+            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", f"{generator}_corr_weight"])
 
         if i == 0 and modify_central_weight:
-            df = df.Define("theory_corr_weight", f"{generator}Weight_tensor(0)/nominal_weight_uncorr")
+            df = df.Define("theory_corr_weight", f"nominal_weight_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_uncorr")
+
+    return df
+
+def define_theory_corr_weight_column(df, generator):
+    if generator in theory_corr_weight_map:
+        values = theory_corr_weight_map[generator]
+        df = df.Define(f"{generator}_corr_weight", f"Eigen::TensorFixedSize<double, Eigen::Sizes<{len(values)}>> res; " + \
+            "; ".join([f"res({i}) = {entry}*nominal_weight_uncorr/central_pdf_weight" for i,entry in enumerate(values)]) + \
+            "; return res;")
+    else:
+        df = df.Alias(f"{generator}_corr_weight", "nominal_weight_uncorr")
 
     return df
 
@@ -342,46 +394,40 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
 
         var_axis = helpers[generator].tensor_axes[-1]
 
-        # special treatment for Omega since it needs to be decorrelated in charge and rapidity
-        if any(var_label.startswith("Omega") for var_label in var_axis):
-            omegaidxs = [var_axis.index(var_label) for var_label in var_axis if var_label.startswith("Omega")]
+        def is_flavor_dependent_np(var_label):
+            return var_label.startswith("Omega") \
+                    or var_label.startswith("Delta_Omega") \
+                    or var_label.startswith("Lambda2") \
+                    or var_label.startswith("Delta_Lambda2")
+
+        # special treatment for Lambda2/Omega since they need to be decorrelated in charge and possibly rapidity
+        if isinstance(var_axis, hist.axis.StrCategory) and any(is_flavor_dependent_np(var_label) for var_label in var_axis):
+            omegaidxs = [var_axis.index(var_label) for var_label in var_axis if is_flavor_dependent_np(var_label)]
 
             # include nominal as well
             omegaidxs = [0] + omegaidxs
 
-            df = df.Define(f"{generator}Omega",
-                            f"""
-                            constexpr std::array<std::ptrdiff_t, {len(omegaidxs)}> idxs = {{{",".join([str(idx) for idx in omegaidxs])}}};
-                            Eigen::TensorFixedSize<double, Eigen::Sizes<{len(omegaidxs)}>> res;
-                            for (std::size_t i = 0; i < idxs.size(); ++i) {{
-                              res(i) = {generator}Weight_tensor(idxs[i]);
-                            }}
-                            return res;
-                            """)
+            if f"{generator}Omega" not in df.GetColumnNames():
+                df = df.Define(f"{generator}FlavDepNP",
+                                f"""
+                                constexpr std::array<std::ptrdiff_t, {len(omegaidxs)}> idxs = {{{",".join([str(idx) for idx in omegaidxs])}}};
+                                Eigen::TensorFixedSize<double, Eigen::Sizes<{len(omegaidxs)}>> res;
+                                for (std::size_t i = 0; i < idxs.size(); ++i) {{
+                                res(i) = {generator}Weight_tensor(idxs[i]);
+                                }}
+                                return res;
+                                """)
 
-            axis_Omega = hist.axis.StrCategory([var_axis[idx] for idx in omegaidxs], name = var_axis.name)
+            axis_FlavDepNP = hist.axis.StrCategory([var_axis[idx] for idx in omegaidxs], name = var_axis.name)
 
-            hist_name_Omega = f"{name}_{generator}Omega"
+            hist_name_FlavDepNP = f"{name}_{generator}FlavDepNP"
             axis_chargegen = axis_chargeWgen if isW else axis_chargeZgen
-            axes_Omega = axes + [axis_absYVgen, axis_chargegen]
-            cols_Omega = cols + ["absYVgen", "chargeVgen", f"{generator}Omega"]
-            unc_Omega = df.HistoBoost(hist_name_Omega, axes_Omega, cols_Omega, tensor_axes = [axis_Omega])
-            res.append(unc_Omega)
+            axes_FlavDepNP = axes + [axis_absYVgen, axis_chargegen]
+            cols_FlavDepNP = cols + ["absYVgen", "chargeVgen", f"{generator}FlavDepNP"]
+            unc_FlavDepNP = df.HistoBoost(hist_name_FlavDepNP, axes_FlavDepNP, cols_FlavDepNP, tensor_axes = [axis_FlavDepNP])
+            res.append(unc_FlavDepNP)
 
     return res
-
-def scale_angular_moments(hist_moments_scales, sumW2=False, createNew=False):
-    # e.g. from arxiv:1708.00008 eq. 2.13, note A_0 is NOT the const term!
-    scales = np.array([1., -10., 5., 10., 4., 4., 5., 5., 4.])
-
-    hel_idx = hist_moments_scales.axes.name.index("helicity")
-    scaled_vals = np.moveaxis(hist_moments_scales.view(flow=True), hel_idx, -1)*scales
-    if createNew:
-        hnew = hist.Hist(*hist_moments_scales.axes, storage = hist.storage.Weight() if sumW2 else hist.storage.Double())
-    else:
-        hnew = hist_moments_scales
-    hnew.view(flow=True)[...] = np.moveaxis(scaled_vals, -1, hel_idx) 
-    return hnew
 
 def replace_by_neighbors(vals, replace):
     if np.count_nonzero(replace) == vals.size:
@@ -390,15 +436,13 @@ def replace_by_neighbors(vals, replace):
     indices = ndimage.distance_transform_edt(replace, return_distances=False, return_indices=True)
     return vals[tuple(indices)]
 
-def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5, sumW2=False):
-    sumW2 = sumW2 and hist_moments_scales._storage_type == hist.storage.Weight
-
+def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5):
     if hist_moments_scales.empty():
        raise ValueError("Cannot make coefficients from empty hist")
     # broadcasting happens right to left, so move to rightmost then move back
     hel_ax = hist_moments_scales.axes["helicity"]
     hel_idx = hist_moments_scales.axes.name.index("helicity")
-    vals = np.moveaxis(scale_angular_moments(hist_moments_scales, sumW2).view(flow=True), hel_idx, -1) 
+    vals = np.moveaxis(hist_moments_scales.view(flow=True), hel_idx, -1)
     values = vals.value if hasattr(vals,"value") else vals
     
     # select constant term, leaving dummy axis for broadcasting
@@ -406,20 +450,25 @@ def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5, sumW2=False):
     norm_vals = values[...,unpol_idx:unpol_idx+1]
     norm_vals = np.where(np.abs(norm_vals) < cutoff, np.ones_like(norm_vals), norm_vals)
 
-    # e.g. from arxiv:1708.00008 eq. 2.13, note A_0 is NOT the const term!
-    offsets = np.array([0., 4., 0., 0., 0., 0., 0., 0., 0.])
+    coeffs = vals / norm_vals
 
-    coeffs = vals / norm_vals + offsets
-
-    # replace values in zero-xsec regions (otherwise A0 is spuriously set to 4.0 from offset)
-    coeffs = np.where(np.abs(values) < cutoff, np.full_like(vals, hist.accumulators.WeightedSum(0,0) if sumW2 else 0), coeffs)
     coeffs = np.moveaxis(coeffs, -1, hel_idx)
 
-    hist_coeffs_scales = hist.Hist(*hist_moments_scales.axes, storage = hist.storage.Weight() if sumW2 else hist.storage.Double(), 
+    hist_coeffs_scales = hist.Hist(*hist_moments_scales.axes, storage = hist_moments_scales._storage_type(),
         name = "hist_coeffs_scales", data = coeffs
     )
 
     return hist_coeffs_scales
+
+def moments_to_helicities(hist_moments_scales):
+    factors = np.array([1., 1./2., 1./(2.*sqrt(2.)), 1./4, 1./(4.*sqrt(2.)),1./2.,1./2.,1./(2.*sqrt(2.)),1./(4.*sqrt(2.))])
+    
+    hfactors = hist.Hist(hist_moments_scales.axes["helicity"],
+        data = factors
+            )
+    hist_moments_scales_new = hh.multiplyHists(hfactors,hist_moments_scales)
+
+    return hist_moments_scales_new
 
 def qcdByHelicityLabels():
     coeffs = ["const"]+[f"a{i}" for i in range(8)]
@@ -463,11 +512,10 @@ def pdfSymmetricShifts(hdiff, axis_name):
 def pdfAsymmetricShifts(hdiff, axis_name):
     # Assuming that the last axis is the syst axis
     # TODO: add some check to verify this
-    def shiftHist(vals, varis, hdiff, axis_name):
-        hnew = hdiff.copy()[{axis_name : 0}]
-        vals, varis = hh.multiplyWithVariance(vals, vals, varis, varis)
-        ss = np.stack((np.sum(vals, axis=-1), np.sum(varis, axis=-1)), axis=-1)
-        hnew[...] = ss
+    def shiftHist(vals, hdiff, axis_name):
+        hnew = hdiff[{axis_name : 0}]
+        vals = vals*vals
+        hnew[...] = np.sum(vals, axis=-1)
         return hh.sqrtHist(hnew)
 
     ax = hdiff.axes[axis_name] 
@@ -477,21 +525,17 @@ def pdfAsymmetricShifts(hdiff, axis_name):
         # Remove the overflow from the categorical axis
         end = int((ax.size-1)/2)
         upvals = hdiff[{axis_name : [x for x in ax if "Up" in x]}].values(flow=True)[...,:end]
-        upvars = hdiff[{axis_name : [x for x in ax if "Up" in x]}].variances(flow=True)[...,:end]
         downvals = hdiff[{axis_name : [x for x in ax if "Down" in x]}].values(flow=True)[...,:end]
-        downvars = hdiff[{axis_name : [x for x in ax if "Down" in x]}].variances(flow=True)[...,:end]
         if upvals.shape != downvals.shape:
             raise ValueError("Malformed PDF uncertainty hist! Expect equal number of up and down vars")
     else:
         end = ax.size+underflow
         upvals = hdiff.values(flow=True)[...,1+underflow:end:2]
-        upvars = hdiff.variances(flow=True)[...,1+underflow:end:2]
         downvals = hdiff.values(flow=True)[...,2+underflow:end:2]
-        downvars = hdiff.variances(flow=True)[...,2+underflow:end:2]
 
     # The error sets are ordered up,down,up,down...
-    upshift = shiftHist(upvals, upvars, hdiff, axis_name)
-    downshift = shiftHist(downvals, downvars, hdiff, axis_name)
+    upshift = shiftHist(upvals, hdiff, axis_name)
+    downshift = shiftHist(downvals, hdiff, axis_name)
     return upshift, downshift 
 
 def hessianPdfUnc(h, axis_name="pdfVar", uncType="symHessian", scale=1.):

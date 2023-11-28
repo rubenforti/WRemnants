@@ -1,336 +1,237 @@
-from utilities import boostHistHelpers as hh, common, logging, input_tools
-from wremnants import syst_tools,theory_tools,recoil_tools
+from utilities import boostHistHelpers as hh, common, logging
+from utilities.io_tools import input_tools
+from wremnants import syst_tools,theory_tools,recoil_tools, unfolding_tools
+
+from wremnants import histselections as sel
+import hist
 import numpy as np
-import re
+import uproot
+import h5py
+import itertools
 
 logger = logging.child_logger(__name__)
-
-def add_modeling_uncertainty(card_tool, minnlo_scale, signal_samples, background_samples, to_fakes, resumType, wmass, scaleTNP=1, rebin_pt=None):
-    scale_name = "W" if wmass else "Z"
-    resum_samples = signal_samples+background_samples if wmass and resumType == "tnp" else signal_samples
-    scale_label = scale_name if resumType != "tnp" else ""
-
-    do_resum = resumType and resumType != "none"
-    if do_resum:
-        add_resum_uncertainty(card_tool, resum_samples, to_fakes, 
-                                            uncType=resumType, scale=scaleTNP, name_append=scale_label)
-        # Don't correlate transition uncertainty
-        add_resum_transition_uncertainty(card_tool, signal_samples, to_fakes, name_append=scale_name)
-
-    add_minnlo_scale_uncertainty(card_tool, minnlo_scale, signal_samples, to_fakes, 
-                                          resum=do_resum, name_append=scale_name)
-    # for Z background in W mass case (W background for Wlike is essentially 0, useless to apply QCD scales there)
-    # For now the background (Z) is always MiNNLO scale uncertainty
-    if wmass and background_samples:
-        add_minnlo_scale_uncertainty(card_tool, minnlo_scale, background_samples, to_fakes, 
-                                            resum=do_resum, name_append="Z")
-        add_resum_transition_uncertainty(card_tool, background_samples, to_fakes, name_append="Z")
-
-        if resumType != "tnp":
-            add_resum_uncertainty(card_tool, background_samples, to_fakes, 
-                                            uncType=resumType, scale=scaleTNP, name_append="Z")
-
-    if resumType != "none":
-        add_common_np_uncertainties(card_tool, signal_samples+background_samples, to_fakes)
-        add_decorrelated_np_uncertainties(card_tool, signal_samples, to_fakes, name_append=scale_name)
-        if wmass and background_samples:
-            add_decorrelated_np_uncertainties(card_tool, background_samples, to_fakes, name_append="Z")
-
-def add_minnlo_scale_uncertainty(card_tool, scale_type, samples, to_fakes, resum, name_append="", use_hel_hist=False, rebin_pt=None):
-    if not len(samples):
-        logger.warning(f"Skipping QCD scale syst '{scale_type}', no process to apply it to")
-        return
-        
-    helicity = "Helicity" in scale_type
-    pt_binned = "Pt" in scale_type
-
-    scale_hist = "qcdScale" if not (helicity or use_hel_hist) else "qcdScaleByHelicity"
-
-    # All possible syst_axes
-    # TODO: Move the axes to common and refer to axis_chargeVgen etc by their name attribute, not just
-    # assuming the name is unchanged
-    syst_axes = ["ptVgen", "chargeVgen", "muRfact", "muFfact"]
-    syst_ax_labels = ["PtVBin", "genQ", "muR", "muF"]
-    if helicity:
-        syst_axes.insert(2, "helicity")
-        syst_ax_labels.insert(2, "AngCoeff")
-
-    group_name = f"QCDscale{name_append}"
-    # Exclude all combinations where muR = muF = 1 (nominal) or where
-    # they are extreme values (ratio = 4 or 1/4)
-    skip_entries = [{"muRfact" : 1.j, "muFfact" :  1.j}, {"muRfact" : 0.5j, "muFfact" : 2.j}, 
-                    {"muRfact" : 2.j, "muFfact" : 0.5j}]
-    # In order to make prettier names than the automated ones.
-    # No harm in leaving extra replaces that won't be triggered
-    name_replace = [("muR2muF2", "muRmuFUp"), ("muR0muF0", "muRmuFDown"), ("muR2muF1", "muRUp"), 
-                        ("muR0muF1", "muRDown"), ("muR1muF0", "muFDown"), ("muR1muF2", "muFUp"),
-    ]
-    action_map = {}
-    sum_axes = ["ptVgen", "chargeVgen",]
-    if use_hel_hist or helicity:
-        sum_axes.append("helicity")
-
-    # NOTE: The map needs to be keyed on the base procs not the group names, which is
-    # admittedly a bit nasty
-    expanded_samples = card_tool.datagroups.getProcNames(samples)
-    logger.debug(f"using {scale_hist} histogram for QCD scale systematics")
-    logger.debug(f"expanded_samples: {expanded_samples}")
-    action_map = {proc : syst_tools.scale_helicity_hist_to_variations for proc in expanded_samples}
-        
-    # Determine if it should be summed over based on scale_type passed in. If not,
-    # Remove it from the sum list and set names appropriately
-    def set_sum_over_axis(identifier, ax_name):
-        nonlocal sum_axes,group_name,syst_axes,syst_ax_labels
-        if identifier in scale_type:
-            sum_axes.remove(ax_name)
-            group_name += identifier
-        elif ax_name in syst_axes:
-            idx = syst_axes.index(ax_name)
-            syst_axes.pop(idx)
-            syst_ax_labels.pop(idx)
-
-    for ax,name in zip(sum_axes[:], ["Pt", "Charge", "Helicity"]):
-        set_sum_over_axis(name, ax)
-
-    action_args = {"sum_axes" : sum_axes}
-    if pt_binned:
-        action_args["rebinPtV"] = rebin_pt
-
-    if helicity and resum:
-        # Drop the uncertainty of A5,A6,A7
-        skip_entries.extend([{"helicity" : complex(0, i)} for i in (5,6,7)])
-
-    binning = np.array(common.ptV_10quantiles_binning)
-    pt30_idx = np.argmax(binning > 30)
-    if helicity:
-        # Drop the uncertainties for < 30 for sigma_-1
-        skip_entries.extend([{"helicity" : -1.j, "ptVgen" : complex(0, x)} for x in binning[:pt30_idx-1]])
-    elif pt_binned:
-        # Drop the uncertainties for < 30
-        skip_entries.extend([{"ptVgen" : complex(0, x)} for x in binning[:pt30_idx-1]])
-
-    # Skip MiNNLO unc. 
-    if resum and not (pt_binned or helicity):
-        logger.warning("Without pT or helicity splitting, only the SCETlib uncertainty will be applied!")
-    else:
-        #FIXME put W and Z nuisances in the same group
-        group_name += f"MiNNLO"
-        card_tool.addSystematic(scale_hist,
-            actionMap=action_map,
-            actionArgs=action_args,
-            processes=samples,
-            group=group_name,
-            systAxes=syst_axes,
-            labelsByAxis=syst_ax_labels,
-            # Exclude all combinations where muR = muF = 1 (nominal) or where
-            # they are extreme values (ratio = 4 or 1/4)
-            skipEntries=skip_entries,
-            systNameReplace=name_replace,
-            baseName=group_name+"_",
-            passToFakes=to_fakes,
-            rename=group_name, # Needed to allow it to be called multiple times
-        )
-
-
-def add_resum_uncertainty(card_tool, samples, to_fakes, uncType, name_append="", scale=1):
-    obs = card_tool.project[:]
-    if not obs:
-        raise ValueError("Failed to find the observable names for the resummation uncertainties")
-    
-    theory_hist = theory_unc_hist(card_tool)
-
-    if input_tools.args_from_metadata(card_tool, "theoryCorrAltOnly"):
-        logger.error("The theory correction was only applied as an alternate hist. Using its syst isn't well defined!")
-
-    expanded_samples = card_tool.datagroups.getProcNames(samples)
-
-    syst_ax = "vars"
-    np_nuisances = ["^c_nu-*\d+", "^omega_nu-*\d+", "^Omega-*\d+"]
-    both_exclude = ['^kappaFO.*','^recoil_scheme.*',"^transition_points.*",]+np_nuisances
-    tnp_nuisances = ["^gamma_.*", "^b_.*", "^s+*", "^s-*",]
-    resumscale_nuisances = ["^nuB.*", "nuS.*", "^muB.*", "^muS.*",]
-    scale_nuisances = ["^mu.*", "^mu.*", "^nu",]
-    if uncType == "tnp":
-        # Exclude the scale uncertainty nuisances
-        card_tool.addSystematic(name=theory_hist,
-            processes=samples,
-            group="resumTNP",
-            systAxes=["vars"],
-            passToFakes=to_fakes,
-            systNameReplace=[("central", ""), ("pdf0", ""), ("+1", "Up"), ("-1", "Down"), ("-0.5", "Down"), ("+0.5", "Up"), ("up", "Up"), ("down", "Down")],
-            scale=scale,
-            skipEntries=[{syst_ax : x} for x in both_exclude+scale_nuisances],
-            rename=f"resumTNP{name_append}",
-            systNamePrepend=f"resumTNP_",
-        )
-    else:
-        # Exclude the tnp uncertainty nuisances
-        card_tool.addSystematic(name=theory_hist,
-            processes=samples,
-            group="resumTNP",
-            passToFakes=to_fakes,
-            skipEntries=[{syst_ax : x} for x in both_exclude+tnp_nuisances],
-            systAxes=["downUpVar"], # Is added by the actionMap
-            actionMap={s : lambda h: hh.syst_min_and_max_env_hist(h, obs, "vars", 
-                [x for x in h.axes["vars"] if any(re.match(y, x) for y in resumscale_nuisances)]) for s in expanded_samples},
-            outNames=[f"scetlibResumScale{name_append}Up", f"scetlibResumScale{name_append}Down"],
-            rename=f"resumScale{name_append}",
-            systNamePrepend=f"resumScale{name_append}_",
-        )
-        card_tool.addSystematic(name=theory_hist,
-            processes=samples,
-            group="resumScale",
-            passToFakes=to_fakes,
-            systAxes=["vars"],
-            actionMap={s : lambda h: h[{"vars" : ["kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5", "mufdown", "mufup",]}] for s in expanded_samples},
-            outNames=[f"scetlib_kappa{name_append}Up", f"scetlib_kappa{name_append}Down", f"scetlib_muF{name_append}Up", f"scetlib_muF{name_append}Down"],
-            rename=f"resumFOScale{name_append}",
-            systNamePrepend=f"resumScale{name_append}_",
-        )
-
-def add_resum_transition_uncertainty(card_tool, samples, to_fakes, name_append=""):
-    obs = card_tool.project[:]
-    theory_hist = theory_unc_hist(card_tool)
-    expanded_samples = card_tool.datagroups.getProcNames(samples)
-
-    card_tool.addSystematic(name=theory_hist,
-        processes=samples,
-        group="resumTransition",
-        systAxes=["downUpVar"],
-        passToFakes=to_fakes,
-        # NOTE: I don't actually remember why this used no_flow=ptVgen previously, I don't think there's any harm in not using it...
-        actionMap={s : lambda h: hh.syst_min_and_max_env_hist(h, obs, "vars", 
-            [x for x in h.axes["vars"] if "transition_point" in x]) for s in expanded_samples},
-        outNames=[f"resumTransition{name_append}Up", f"resumTransition{name_append}Down"],
-        rename=f"scetlibResumTransition{name_append}",
-    )
-
-def add_decorrelated_np_uncertainties(card_tool, samples, to_fakes, name_append, nuisances=["Omega"]):
-    obs = card_tool.project[:]
-    if not obs:
-        raise ValueError("Failed to find the observable names for the resummation uncertainties")
-
-    expanded_samples = card_tool.datagroups.getProcNames(samples)
-    for np_nuisance in nuisances:
-        theory_hist = theory_unc_hist(card_tool, np_nuisance)
-        nuisance_name = f"scetlibNP{np_nuisance}{name_append}"
-        # only Omega is decorrelated between W and Z
-        #FIXME avoid hardcoding the histogram name here?
-        card_tool.addSystematic(name=theory_hist,
-            processes=samples,
-            group="resumNonpert",
-            systAxes=["absYVgenNP", "chargeVgenNP", "downUpVar"],
-            passToFakes=to_fakes,
-            actionMap={s : lambda h,np=np_nuisance: hh.syst_min_and_max_env_hist(syst_tools.hist_to_variations(h), obs, "vars",
-                [x for x in h.axes["vars"] if re.match(f"^{np}-*\d+", x)]) for s in expanded_samples},
-            baseName=f"scetlibNP{nuisance_name}_",
-            rename=nuisance_name,
-        )
-
-def theory_unc_hist(card_tool, unc=""):
-    theory_unc = input_tools.args_from_metadata(card_tool, "theoryCorr")
-    if not theory_unc:
-        logger.error("Can not add resummation uncertainties. No theory correction was applied!")
-    if theory_unc[0] != "scetlib_dyturbo":
-        raise ValueError(f"The theory uncertainty hist {theory_unc} doesn't have the resummation uncertainty implemented")
-
-    return theory_unc[0]+("Corr" if not unc else unc)
-
-def add_common_np_uncertainties(card_tool, samples, to_fakes):
-
-    # NOTE: The map needs to be keyed on the base procs not the group names, which is
-    # admittedly a bit nasty
-    expanded_samples = card_tool.datagroups.getProcNames(samples)
-    logger.debug(f"expanded_samples: {expanded_samples}")
-    obs = card_tool.project[:]
-    if not obs:
-        raise ValueError("Failed to find the observable names for the resummation uncertainties")
-
-    theory_hist = theory_unc_hist(card_tool)
-
-    for np_nuisance in ["c_nu", "omega_nu"]:
-        nuisance_name = f"scetlibNP{np_nuisance}"
-        card_tool.addSystematic(name=theory_hist,
-            processes=samples,
-            group="resumNonpert",
-            systAxes=["downUpVar"],
-            passToFakes=to_fakes,
-            actionMap={s : lambda h,np=np_nuisance: hh.syst_min_and_max_env_hist(h, obs, "vars",
-                [x for x in h.axes["vars"] if re.match(f"^{np}-*\d+", x)]) for s in expanded_samples},
-            outNames=[f"{nuisance_name}Up", f"{nuisance_name}Down"],
-            rename=nuisance_name,
-        )
-
-def add_pdf_uncertainty(card_tool, samples, to_fakes, action=None, from_corr=False, scale=1):
-    pdf = input_tools.args_from_metadata(card_tool, "pdfs")[0]
-    pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
-    pdfName = pdfInfo["name"]
-    pdf_hist = pdfName
-
-    if from_corr:
-        theory_unc = input_tools.args_from_metadata(card_tool, "theoryCorr")
-        if not theory_unc:
-            logger.error("Can not add resummation uncertainties. No theory correction was applied!")
-        pdf_hist = f"scetlib_dyturbo{pdf.upper()}Vars" 
-        if pdf_hist not in theory_unc:
-            logger.error(f"Did not find {pdf_hist} correction in file! Cannot use SCETlib+DYTurbo PDF uncertainties")
-        pdf_hist += "Corr"
-
-    logger.info(f"Using PDF hist {pdf_hist}")
-
-    pdf_ax = "vars" if from_corr else "pdfVar"
-    symHessian = pdfInfo["combine"] == "symHessian"
-    pdf_args = dict(
-        processes=samples,
-        mirror=True if symHessian else False,
-        group=pdfName,
-        passToFakes=to_fakes,
-        actionMap=action,
-        scale=pdfInfo.get("scale", 1)*scale,
-        systAxes=[pdf_ax],
-    )
-    if from_corr:
-        card_tool.addSystematic(pdf_hist, 
-            outNames=[""]+theory_tools.pdfNamesAsymHessian(pdfInfo['entries'], pdfset=pdf.upper())[1:],
-            **pdf_args
-        )
-    else:
-        card_tool.addSystematic(pdf_hist, 
-            skipEntries=[{pdf_ax : "^pdf0[a-z]*"}],
-            **pdf_args
-        )
-
-    # TODO: For now only MiNNLO alpha_s is supported
-    asRange = pdfInfo['alphasRange']
-    card_tool.addSystematic(f"{pdfName}alphaS{asRange}", 
-        processes=samples,
-        mirror=False,
-        group=pdfName,
-        systAxes=["alphasVar"],
-        systNameReplace=[("as", "pdfAlphaS")]+[("0116", "Down"), ("0120", "Up")] if asRange == "002" else [("0117", "Down"), ("0119", "Up")],
-        scale=0.75, # TODO: this depends on the set, should be provided in theory_tools.py
-        passToFakes=to_fakes,
-    )
 
 
 def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="highPU", flavor="", group_compact=True):
     met = input_tools.args_from_metadata(card_tool, "met")
     if flavor == "":
         flavor = input_tools.args_from_metadata(card_tool, "flavor")
-    rtag = f"{pu_type}_{flavor}_{met}"
-    if not rtag in recoil_tools.recoil_cfg:
-        logger.warning(f"Recoil corrections for {pu_type}, {flavor}, {met} not available.")
-        return
-    recoil_cfg = recoil_tools.recoil_cfg[rtag]
-    recoil_vars = list(recoil_cfg['corr_z'].keys()) + list(recoil_cfg['unc_z'].keys())
-    recoil_grps = recoil_vars
-    if group_compact:
-        recoil_grps = ["CMS_recoil"]*len(recoil_cfg)
-    for i, tag in enumerate(recoil_vars):
-        card_tool.addSystematic("recoilUnc_%s" % tag,
+    if pu_type == "highPU" and (met in ["RawPFMET", "DeepMETReso"]):
+
+        card_tool.addSystematic("recoil_stat",
             processes=samples,
-            mirror = False,
-            group = recoil_grps[i],
-            systAxes = ["recoilVar"],
+            mirror = True,
+            group = "recoil" if group_compact else "recoil_stat",
+            systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
         )
+
+        card_tool.addSystematic("recoil_syst",
+            processes=samples,
+            mirror = True,
+            group = "recoil" if group_compact else "recoil_syst",
+            systAxes = ["recoil_unc"],
+            passToFakes=passSystToFakes,
+        )
+
+
+def setSimultaneousABCD(cardTool,
+    thresholdMT=40, integrateMT=False, axis_name_mt="mt", 
+    variation_fakerate=0.5, variation_normalization_fake=0.1
+):
+    # Having 1 process for fakes, for each bin 3 free floating parameters, 2 normalization for lowMT and highMT and one fakerate between iso and anti iso
+    logger.info(f"Set processes for simultaneous ABCD fit")
+
+    # expected fake contribution
+    hist_fake = sum([group.hists[cardTool.nominalName] if name == cardTool.getDataName() else -1*group.hists[cardTool.nominalName] for name, group in cardTool.datagroups.groups.items()])
+
+    # setting errors to 0
+    hist_fake.view(flow=True)[...] = np.stack((hist_fake.values(flow=True), np.zeros_like(hist_fake.values(flow=True))), axis=-1)
+
+    nameMT, failMT, passMT = sel.get_mt_selection(hist_fake, thresholdMT, axis_name_mt, integrateLowMT=False, integrateHighMT=False)
+    cardTool.nameMT = nameMT
+    cardTool.failMT = failMT
+    cardTool.passMT = passMT
+
+    if common.passIsoName not in hist_fake.axes.name or nameMT not in hist_fake.axes.name:
+        raise RuntimeError(f'{common.passIsoName} and {nameMT} expected to be found in histogram, but only have axes {hist_fake.axes.name}')
+
+    # axes in the correct ordering
+    axes = [ax for ax in hist_fake.axes.name if ax not in [common.passIsoName, nameMT]]
+    axes += [common.passIsoName, nameMT]
+
+    if set(hist_fake.axes.name) != set(axes) or hist_fake.axes.name[-2] != common.passIsoName or hist_fake.axes.name[-1] != nameMT:
+        logger.info(f"Axes in histogram '{hist_fake.axes.name}' are not the same as required '{axes}' or in a different order than expected, try to project")
+        hist_fake = hist_fake.project(*axes)
+
+    # set the expected values in the signal region
+    hist_fake.values(flow=True)[...,1, passMT] = sel.fakeHistABCD(hist_fake, fakerate_integration_axes=cardTool.getFakerateIntegrationAxes()).values(flow=True)
+    
+    fakename = cardTool.getFakeName()
+
+    cardTool.datagroups.addGroup(fakename, label = "Nonprompt", color = "grey", members=[],) #TODO check if existing group can be used
+    cardTool.datagroups.groups[fakename].hists[f"{cardTool.nominalName}"] = hist_fake
+
+    # axes in low MT
+    if any(ax not in hist_fake.axes.name for ax in cardTool.fakerateAxes):
+        logger.warning(f"Not all desired fakerate axes found in histogram. Fakerate axes are {cardTool.fakerateAxes}, and histogram axes are {hist_fake.axes.name}")
+
+    fakerate_axes = [ax.name for ax in hist_fake.axes if ax.name in cardTool.fakerateAxes]
+    fakerate_bin_sizes = [ax.size for ax in hist_fake.axes if ax.name in cardTool.fakerateAxes]
+
+    if any(a in hist_fake.axes.name for a in cardTool.getFakerateIntegrationAxes()):
+        hist_failMT_failIso = hist_fake[{**common.failIso, nameMT: failMT}].project(*fakerate_axes)
+        hist_failMT_passIso = hist_fake[{**common.passIso, nameMT: failMT}].project(*fakerate_axes)
+    else:
+        hist_failMT_failIso = hist_fake[{**common.failIso, nameMT: failMT}]
+        hist_failMT_passIso = hist_fake[{**common.passIso, nameMT: failMT}]
+    hFRF = hh.divideHists(hist_failMT_failIso, hist_failMT_failIso+hist_failMT_passIso)
+    
+    # axes other than fakerate axes
+    other_axes = [n for n in cardTool.fit_axes if n not in fakerate_axes]
+    other_bin_sizes = [ax.size for ax in hist_fake.axes if ax.name in other_axes]
+
+    # all axes (except passIso and passMT if passMT is boolean)
+    all_axes = fakerate_axes + other_axes
+
+    # helper function to get indices from a 'flat' bin count
+    def get_ax_idx(bin_sizes, i):
+        current_i = i
+        ax_idx = []
+        for num in reversed(bin_sizes):
+            ax_idx.insert(0, current_i % num)
+            current_i //= num
+        return ax_idx
+
+    # loop over all fakerate axes bins
+    for i in range(np.product(fakerate_bin_sizes)):
+
+        fakerate_ax_idx = get_ax_idx(fakerate_bin_sizes, i)
+        fakerate_bin_name = "_".join([f"{ax}{fakerate_ax_idx[j]}" for j, ax in enumerate(fakerate_axes)])
+        fakerate_indices = {ax: fakerate_ax_idx[j] for j, ax in enumerate(fakerate_axes)}
+        logger.debug(f"Now at fakerate bin {i}/{np.product(fakerate_bin_sizes)}: {fakerate_bin_name}")
+
+        # get fakerate independent of other axes
+        fr = hFRF[fakerate_indices].value
+
+        # systematic variation for fakerate, should be smaller 1 and bigger 0
+        diff = min(fr, 1-fr)
+        frUp = fr + variation_fakerate * diff
+        hist_var_fakerate = hist.Hist(*hist_fake.axes, storage=hist.storage.Double())
+        hist_var_fakerate.view(flow=True)[...] = hist_fake.values(flow=True)
+
+        cardTool.datagroups.groups[fakename].hists[f"{cardTool.nominalName}_r{fakename}_{fakerate_bin_name}"] = hist_var_fakerate
+
+        cardTool.addSystematic(f"r{fakename}_{fakerate_bin_name}",
+            processes=[fakename],
+            group=f"r{fakename}",
+            noConstraint=True,
+            outNames=[f"r{fakename}_{fakerate_bin_name}"],
+            mirror=True
+        )
+
+        # systematic variation for fake normalization in low MT
+        hist_var_lowMT = hist.Hist(*hist_fake.axes, storage=hist.storage.Double())
+        hist_var_lowMT.view(flow=True)[...] = hist_fake.values(flow=True)
+
+        cardTool.datagroups.groups[fakename].hists[f"{cardTool.nominalName}_N{fakename}LowMT_{fakerate_bin_name}"] = hist_var_lowMT
+
+        cardTool.addSystematic(f"N{fakename}LowMT_{fakerate_bin_name}",
+            processes=[fakename],
+            group=f"{fakename}LowMT",
+            noConstraint=True,
+            outNames=[f"N{fakename}LowMT_{fakerate_bin_name}"],
+            mirror=True
+        )
+
+        # loop over all other axes 
+        jMax = np.product(other_bin_sizes) if other_axes else 1
+        for j in range(jMax):
+            other_ax_idx = get_ax_idx(other_bin_sizes, j)
+            other_indices = {ax: other_ax_idx[k] for k, ax in enumerate(other_axes)}
+
+            # Set bins in low MT
+            if axis_name_mt not in other_indices or other_indices[axis_name_mt] < failMT.stop:
+
+                n_lowMT = hist_fake[{**common.failIso, nameMT: failMT, **fakerate_indices, **other_indices}].value \
+                    + hist_fake[{**common.passIso, nameMT: failMT, **fakerate_indices, **other_indices}].value
+
+                # set lowMT variation histogram
+                hist_var_lowMT[{**common.failIso, nameMT: failMT, **fakerate_indices, **other_indices}] = (1+variation_normalization_fake) * n_lowMT * fr
+                hist_var_lowMT[{**common.passIso, nameMT: failMT, **fakerate_indices, **other_indices}] = (1+variation_normalization_fake) * n_lowMT * (1-fr)
+
+                # set fakerate variation histogram
+                hist_var_fakerate[{**common.failIso, nameMT: failMT, **fakerate_indices, **other_indices}] = n_lowMT * frUp
+                hist_var_fakerate[{**common.passIso, nameMT: failMT, **fakerate_indices, **other_indices}] = n_lowMT * (1-frUp)
+
+            # Set bins in high MT
+            if axis_name_mt not in other_indices or other_indices[axis_name_mt] >= passMT.start:
+
+                all_ax_idx = fakerate_ax_idx + other_ax_idx
+
+                highMT_bin_name = "_".join([f"{ax}{all_ax_idx[k]}" for k, ax in enumerate(all_axes)])
+                highMT_histname = f"{cardTool.nominalName}_N{fakename}HighMT_{highMT_bin_name}"
+
+                # systematic variation for fake normalization in high MT
+                logger.debug(f"Create new hist with name {highMT_histname}")
+                hist_var_highMT = hist.Hist(*hist_fake.axes, storage=hist.storage.Double())
+                hist_var_highMT.view(flow=True)[...] = hist_fake.values(flow=True)
+
+                cardTool.datagroups.groups[fakename].hists[highMT_histname] = hist_var_highMT
+
+                cardTool.addSystematic(f"N{fakename}HighMT_{highMT_bin_name}",
+                    processes=[fakename],
+                    group=f"{fakename}HighMT",
+                    noConstraint=True,
+                    outNames=[f"N{fakename}HighMT_{highMT_bin_name}"],
+                    mirror=True
+                )
+
+                n_highMT = hist_fake[{**common.failIso, nameMT: passMT, **fakerate_indices, **other_indices}].value \
+                    + hist_fake[{**common.passIso, nameMT: passMT, **fakerate_indices, **other_indices}].value
+
+                # set highMT variations histogram
+                hist_var_highMT[{**common.failIso, nameMT: passMT, **fakerate_indices, **other_indices}] = (1+variation_normalization_fake) * n_highMT * fr
+                hist_var_highMT[{**common.passIso, nameMT: passMT, **fakerate_indices, **other_indices}] = (1+variation_normalization_fake) * n_highMT * (1-fr)    
+
+                # set fakerate variation histogram
+                hist_var_fakerate[{**common.failIso, nameMT: passMT, **fakerate_indices, **other_indices}] = n_highMT * frUp
+                hist_var_fakerate[{**common.passIso, nameMT: passMT, **fakerate_indices, **other_indices}] = n_highMT * (1-frUp)
+
+
+def projectABCD(cardTool, h, return_variances=False, dtype="float64"):
+    # in case the desired axes are different at low MT and high MT we need to project each seperately, and then concatenate
+
+    if any(ax not in h.axes.name for ax in cardTool.fakerateAxes):
+        logger.warning(f"Not all desired fakerate axes found in histogram. Fakerate axes are {cardTool.fakerateAxes}, and histogram axes are {h.axes.name}")
+
+    fakerate_axes = [n for n in h.axes.name if n in cardTool.fakerateAxes]
+
+    lowMT_axes = [n for n in h.axes.name if n in fakerate_axes]
+    highMT_failIso_axes = [n for n in h.axes.name if n in [*fakerate_axes, *cardTool.fit_axes]]
+    highMT_passIso_axes = [n for n in h.axes.name if n in cardTool.fit_axes]
+
+    hist_lowMT = h[{cardTool.nameMT : cardTool.failMT}].project(*[*lowMT_axes, common.passIsoName])
+    hist_highMT_failIso = h[{cardTool.nameMT : cardTool.passMT, **common.failIso}].project(*[*highMT_failIso_axes])
+    hist_highMT_passIso = h[{cardTool.nameMT : cardTool.passMT, **common.passIso}].project(*[*highMT_passIso_axes])
+
+    flat_lowMT = hist_lowMT.values(flow=False).flatten().astype(dtype)
+    flat_highMT_failIso = hist_highMT_failIso.values(flow=False).flatten().astype(dtype)
+    flat_highMT_passIso = hist_highMT_passIso.values(flow=False).flatten().astype(dtype)
+
+    flat = np.append(flat_lowMT, flat_highMT_failIso)
+    flat = np.append(flat, flat_highMT_passIso)
+
+    if not return_variances:
+        return flat
+
+    flat_variances_lowMT = hist_lowMT.variances(flow=False).flatten().astype(dtype)
+    flat_variances_highMT_failIso = hist_highMT_failIso.variances(flow=False).flatten().astype(dtype)
+    flat_variances_highMT_passIso = hist_highMT_passIso.variances(flow=False).flatten().astype(dtype)
+
+    flat_variances = np.append(flat_variances_lowMT, flat_variances_highMT_failIso)
+    flat_variances = np.append(flat_variances, flat_variances_highMT_passIso)
+
+    return flat, flat_variances
+
+

@@ -3,6 +3,7 @@ import hist
 from narf.ioutils import H5PickleProxy
 import numpy as np
 from utilities import logging
+from utilities.styles import styles
 
 logger = logging.child_logger(__name__)
 
@@ -11,8 +12,8 @@ class Datagroup(object):
     def __init__(self, name, members=[], scale=None, selectOp=None, selectOpArgs={}, memberOp=None, rebinOp=None, label=None, color=None):
         self.name = name
         self.scale = scale
-        self.label = label
-        self.color = color
+        self.label = styles.process_labels.get(name, name) if label is None else label
+        self.color = styles.process_colors.get(name, "grey") if color is None else color
 
         self.members = members              # list of narf datasets
 
@@ -25,8 +26,6 @@ class Datagroup(object):
         self.hists = {}                     # list of histograms processed from narf datasets
 
     def copy(self, new_name, member_filter=None):
-        logger.debug(f"Make a copy of group {self.name}, named {new_name}!")
-
         x = deepcopy(self)
         x.name = new_name
 
@@ -34,6 +33,7 @@ class Datagroup(object):
             # Invert the member filter and exclude those members
             x.deleteMembers([m for m in filter(lambda x,f=member_filter: not f(x), x.members)])
 
+        logger.debug(f"Make a copy of group {self.name}, named {new_name} with members {[m.name for m in x.members]}")
         return x
 
     def addMembers(self, members, member_operations=None):
@@ -56,7 +56,10 @@ class Datagroup(object):
         self.memberOp.append(deepcopy(member_operation))
         self.members.append(member)
 
-    def deleteMembers(self, members):
+    def deleteMembers(self, members=None):
+        if members is None:
+            # delete all members
+            members = self.members[:]
         for m in members:
             self.deleteMember(m)
 

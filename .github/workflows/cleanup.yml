@@ -1,0 +1,22 @@
+name: EOS Cleanup
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Run on Sunday morning at 3h00 UTC
+  workflow_dispatch:
+
+env: 
+  EOS_DIR: /eos/user/c/cmsmwbot/
+
+jobs:
+  cleanup:
+    runs-on: [self-hosted, linux, x64]
+
+    # delete old folders, keep the 5 newest ones
+    steps:
+      - name: cleanup main
+        run: scripts/ci/cleanup_directory.sh $EOS_DIR/ScheduledBuilds/ 5
+
+      - name: cleanup main
+        run: scripts/ci/cleanup_directory.sh $EOS_DIR/ScheduledBuilds_unfolding/ 5
+
+          

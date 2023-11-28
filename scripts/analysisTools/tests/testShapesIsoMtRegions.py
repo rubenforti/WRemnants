@@ -1,7 +1,6 @@
-## example
-# python tests/testShapesIsoMtRegions.py path/to/pickle/file.pkl.lz4 /path/to/plot/folder/testShapesIsoMtRegions/ [-c minus] [--isoMtRegion 2]
+#!/usr/bin/env python3
 
-from wremnants.datasets.datagroups2016 import make_datagroups_2016
+from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
 #from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh
@@ -13,7 +12,7 @@ from wremnants import theory_tools,syst_tools,theory_corrections
 import hist
 
 import numpy as np
-from utilities import input_tools
+from utilities.io_tools import input_tools
 
 import lz4.frame
 
@@ -46,15 +45,16 @@ if __name__ == "__main__":
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , dest='palette',      default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette', action='store_true',   help='Inverte color ordering in palette')
+    parser.add_argument(     '--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
+    parser.add_argument(     '--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
+    parser.add_argument(     '--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     parser.add_argument('-c','--charges', default="both", choices=["plus", "minus", "both"], type=str,
                         help='Choose what charge to plot')
     parser.add_argument("--isoMtRegion", type=int, nargs='+', default=[0,1,2,3], choices=[0,1,2,3], help="Integer index for iso-Mt regions to plot (conversion is index = passIso * 1 + passMT * 2 as in common.getIsoMtRegionFromID)");
     parser.add_argument(     '--useQCDMC', action='store_true',   help='Use QCD MC instead of Fakes for MC stack')
+    parser.add_argument(     '--noFake', action='store_true',   help='Do not use Fakes for MC stack')
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -101,9 +101,11 @@ if __name__ == "__main__":
             selectOp = sel.histWmass_passMT_passIso
             # customized for fakes later on
             
-        groups = make_datagroups_2016(fname)
+        groups = Datagroups(fname)
         datasets = groups.getNames()
         logger.warning(datasets)
+        if args.noFake:
+            datasets = list(filter(lambda x: x != "Fake", datasets))
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
         logger.info(f"Will plot datasets {datasets}")
@@ -144,7 +146,7 @@ if __name__ == "__main__":
                                         f"{h.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
                 hist2D[charge][f"{d}_{charge}"] = h
         print()
 
@@ -168,7 +170,7 @@ if __name__ == "__main__":
     logger.info(f"Writing some shapes in {rootfile.GetName()}")
     rootfile.Close()
 
-    if (args.processes == None or "Fake" in args.processes):
+    if ((args.processes == None or "Fake" in args.processes) and not args.noFake):
         ptBinRanges = []
         XlabelUnroll = ""
         k = list(histForFRF.keys())[0]

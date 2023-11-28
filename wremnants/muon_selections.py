@@ -18,20 +18,26 @@ def select_veto_muons(df, nMuons=1):
 
     return df
 
-def select_good_muons(df, nMuons=1, use_trackerMuons=False, use_isolation=False):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15):
 
     if use_trackerMuons:
-        if dataset.group in bkgMCprocs:
+        if datasetGroup in bkgMCprocs:
             df = df.Define("Muon_category", "Muon_isTracker && Muon_highPurity")
         else:
             df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
     else:
         df = df.Define("Muon_category", "Muon_isGlobal && Muon_highPurity")
 
-    goodMuonsSelection = "vetoMuons && Muon_mediumId && Muon_category"
+    goodMuonsSelection = f"Muon_correctedPt > {ptLow} && Muon_correctedPt < {ptHigh} && vetoMuons && Muon_mediumId && Muon_category"
     if use_isolation:
         # for w like we directly require isolated muons, for w we need non-isolated for qcd estimation
-        goodMuonsSelection += " && Muon_pfRelIso04_all < 0.15"
+        if isoDefinition == "iso04" or datasetGroup in bkgMCprocs: ## FIXME: at some point backgrounds may have all variables
+            isoBranch = "Muon_pfRelIso04_all"
+        elif isoDefinition == "iso04vtxAgn":
+            isoBranch = "Muon_vtxAgnPfRelIso04_all"
+        else:
+            raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
+        goodMuonsSelection += f" && {isoBranch} < {isoThreshold}"
 
     df = df.Define("goodMuons", goodMuonsSelection) 
     df = df.Filter(f"Sum(goodMuons) == {nMuons}")
@@ -81,11 +87,9 @@ def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuo
         
     return df
 
-def select_z_candidate(df, ptLow, ptHigh, mass_min=60, mass_max=120):
+def select_z_candidate(df, mass_min=60, mass_max=120):
 
     df = df.Filter("Sum(trigMuons) == 1 && Sum(nonTrigMuons) == 1")
-    df = df.Filter(f"trigMuons_pt0 > {ptLow} && trigMuons_pt0 < {ptHigh}")
-    df = df.Filter(f"nonTrigMuons_pt0 > {ptLow} && nonTrigMuons_pt0 < {ptHigh}")
 
     df = df.Define("trigMuons_mom4", "ROOT::Math::PtEtaPhiMVector(trigMuons_pt0, trigMuons_eta0, trigMuons_phi0, wrem::muon_mass)")
     df = df.Define("nonTrigMuons_mom4", "ROOT::Math::PtEtaPhiMVector(nonTrigMuons_pt0, nonTrigMuons_eta0, nonTrigMuons_phi0, wrem::muon_mass)")

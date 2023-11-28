@@ -61,11 +61,17 @@ def prepareChargeFit(options, charges=["plus"]):
         
     datacards=[]; 
     channels=[]
-    binname = "ZMassWLike" if options.isWlike else "WMass"
+    binname = "ZMassWLike" if options.isWlike else "ZMassDilepton" if options.isDilepton else "WMass"
 
     for charge in charges:
         datacards.append(os.path.abspath(options.inputdir)+"/{b}_{ch}.txt".format(b=binname,ch=charge))
         channels.append('{b}_{ch}'.format(b=binname,ch=charge))
+    # add masked channel, only one for both gen charges
+    maskedChannels = []
+    if options.theoryAgnostic:
+        datacards.append(os.path.abspath(options.inputdir)+"/{b}_inclusive_xnorm.txt".format(b=binname))
+        channels.append('inclusive') # FIXME: should track what is done by CardTool.py
+        maskedChannels.append('inclusive')
 
     print('='*30)
     print("Looking for these cards")
@@ -97,7 +103,12 @@ def prepareChargeFit(options, charges=["plus"]):
         if options.doOnlyCard:
             return
         
-        txt2hdf5Cmd = 'text2hdf5.py {cf} --dataset {dn} --X-allow-no-signal'.format(cf=combinedCard, dn=options.dataname)
+        txt2hdf5Cmd = 'text2hdf5.py {cf} --dataset {dn}'.format(cf=combinedCard, dn=options.dataname)
+        if options.theoryAgnostic:
+            maskchan = ["--maskedChan {mc}".format(mc=maskedChannel) for maskedChannel in maskedChannels]
+            txt2hdf5Cmd += " --sparse {mc} --X-allow-no-background".format(mc=" ".join(maskchan))
+        else:
+            txt2hdf5Cmd += " --X-allow-no-signal"
             
         if len(postfix):
             txt2hdf5Cmd = txt2hdf5Cmd + " --postfix " + postfix
@@ -114,15 +125,21 @@ def prepareChargeFit(options, charges=["plus"]):
             safeSystem(txt2hdf5Cmd, dryRun=options.dryRun)
             
         metafilename = combinedCard.replace('.txt','.hdf5')
+        if args.theoryAgnostic:
+            metafilename = metafilename.replace('.hdf5','_sparse.hdf5')
         if len(postfix):
             metafilename = metafilename.replace('.hdf5','_%s.hdf5' % postfix)
-
+            
         bbboptions = " --binByBinStat "
         if not options.noCorrelateXsecStat: bbboptions += "--correlateXsecStat "
-        combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --doImpacts --saveHists --computeHistErrors --doh5Output --POIMode none '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
+        combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --doImpacts --saveHists --computeHistErrors '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
         if options.combinetfOption:
             combineCmd += " %s" % options.combinetfOption
-
+        if args.theoryAgnostic:
+            combineCmd += " --POIMode mu --allowNegativePOI"
+        else:
+            combineCmd += " --POIMode none"                        
+            
         fitdir_data = "{od}/fit/data/".format(od=os.path.abspath(cardSubfolderFullName))
         fitdir_Asimov = fitdir_data.replace("/fit/data/", "/fit/hessian/")
         fitdir_toys = fitdir_data.replace("/fit/data/", "/fit/toys/")
@@ -176,7 +193,8 @@ if __name__ == "__main__":
     parser.add_argument(     '--comb'   , dest='combineCharges' , default=False, action='store_true', help='Combine W+ and W-, if single cards are done')
     parser.add_argument(      '--fit-single-charge', dest='fitSingleCharge', default=False, action='store_true', help='Prepare datacard for single-charge fit. For each charge, a postfix is appended to option --postfix, so no need to add the charge explicitly')
     parser.add_argument(     '--postfix',    dest='postfix', type=str, default="", help="Postfix for .hdf5 file created with text2hdf5.py");
-    parser.add_argument('--wlike', dest='isWlike', action="store_true", default=False, help="Make cards for the W-like analysis. Default is Wmass");
+    parser.add_argument('--wlike', dest='isWlike', action="store_true", default=False, help="Make cards for the Z W-like analysis. Default is Wmass");
+    parser.add_argument('--dilepton', dest='isDilepton', action="store_true", default=False, help="Make cards for the Z dilepton analysis. Default is Wmass");
     # options for card maker and fit
     parser.add_argument(       "--clipSystVariations", type=float, default=-1.,  help="Clipping of syst variations, passed to text2hdf5.py")
     parser.add_argument(       "--clipSystVariationsSignal", type=float, default=-1.,  help="Clipping of signal syst variations, passed to text2hdf5.py")
@@ -192,6 +210,7 @@ if __name__ == "__main__":
     parser.add_argument("-D", "--dataset",  dest="dataname", default="data_obs",  type=str,  help="Name of the observed dataset (pass name without x_ in the beginning). Useful to fit another pseudodata histogram")
     parser.add_argument("--combinetf-option",  dest="combinetfOption", default="",  type=str,  help="Pass other options to combinetf (TODO: some are already activated with other options, might move them here)")
     parser.add_argument("-t",  "--toys", type=int, default=0, help="Run combinetf for N toys if argument N is positive")
+    parser.add_argument(       '--theoryAgnostic', action='store_true', help='Run theory agnostic fit, with masked channels and so on (not needed when using POIs as NOIs)')
     args = parser.parse_args()
 
     if not args.dryRun:
@@ -207,9 +226,16 @@ if __name__ == "__main__":
             print("\n")
             quit()
 
+    if "ZMassWLike_" in args.inputdir and not args.isWlike:
+        print("Warning: ZMassWLike found in input path {}, but option --wlike not specified, please check".format(args.inputdir))
+        quit()
+    if "ZMassDilepton_" in args.inputdir and not args.isDilepton:
+        print("Warning: ZMassDilepton found in input path {}, but option --dilepton not specified, please check".format(args.inputdir))
+        quit()
+
     if not args.inputdir.endswith("/"):
         args.inputdir += "/"
-            
+
     if args.cardFolder:
         if not args.cardFolder.endswith("/"):
             args.cardFolder += "/"
@@ -220,6 +246,13 @@ if __name__ == "__main__":
         fcmd.close()
 
     fitCharges = ["plus", "minus"] if args.charge == "both" else [args.charge]
+    if args.isDilepton:
+        #fitCharges = ["inclusive"]
+        prepareChargeFit(args, charges=["inclusive"])
+        print('-'*30)
+        print("Done with dilepton 'inclusive'")
+        print('-'*30)
+        quit()
 
     if not args.combineCharges and not args.fitSingleCharge:
         print("Warning: must pass one option between --fit-single-charge and --comb to fit single charge or combination.")
