@@ -51,6 +51,7 @@ class CardTool(object):
         self.nominalName = "nominal"
         self.datagroups = None
         self.pseudodata_datagroups = None
+        self.qcd_datagroups = None
         self.unconstrainedProcesses = None
         self.noStatUncProcesses = []
         self.buildHistNameFunc = None
@@ -113,18 +114,22 @@ class CardTool(object):
             
     def setFitAxes(self, axes):
         self.fit_axes = axes[:]
-        self._setFakerateIntegrationAxes()
 
-    def setFakerateAxes(self, fakerate_axes=["eta", "pt", "charge"]):
-        self.datagroups.fakerate_axes = fakerate_axes
-        self._setFakerateIntegrationAxes()
+    def setFakerateAxes(self, fakerate_axes=["eta", "pt", "charge"], datagroups=None, histogram_name=None):
+        if datagroups is None:
+            datagroups = self.datagroups
+        if histogram_name is None:
+            histogram_name = self.nominalName
+        datagroups.fakerate_axes = fakerate_axes
+        # get nominal histogram
+        proc = next(iter(datagroups.groups.values())).members[0].name
+        histo = datagroups.results[proc]["output"][histogram_name].get()
+        axes = histo.axes.name
+        datagroups.setFakerateIntegrationAxes([x for x in axes if x not in datagroups.fakerate_axes])
 
     def getFakerateAxes(self):
         return self.datagroups.fakerate_axes
-
-    def _setFakerateIntegrationAxes(self):
-        self.datagroups.setFakerateIntegrationAxes([x for x in self.fit_axes if x not in self.datagroups.fakerate_axes])
-        
+       
     def getFakerateIntegrationAxes(self):
         return self.datagroups.fakerate_integration_axes
 
@@ -223,7 +228,12 @@ class CardTool(object):
         self.pseudodata_datagroups = datagroups 
         if self.nominalName:
             self.pseudodata_datagroups.setNominalName(self.nominalName)
-        
+
+    def setQCDDatagroups(self, datagroups):
+        self.qcd_datagroups = datagroups 
+        if self.nominalName:
+            self.qcd_datagroups.setNominalName(self.nominalName)
+
     def setChannels(self, channels):
         self.channels = channels
         
@@ -826,6 +836,73 @@ class CardTool(object):
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc,
                                decorrByBin=decorrelateByBin, hnomi=hnom)
 
+    def loadPseudodataFakes(self, forceNonzero=True):
+        # get the nonclosure for fakes/multijet background from QCD MC
+        self.qcd_datagroups.loadHistsForDatagroups(
+            baseName=self.nominalName, syst=self.nominalName, label="syst",
+            procsToRead=['QCD', 'QCDFake'],
+            scaleToNewLumi=self.lumiScale, 
+            forceNonzero=forceNonzero,
+            sumFakesPartial=False)
+        procDict = self.qcd_datagroups.getDatagroups()
+
+        fake_axes = self.qcd_datagroups.fakerate_axes
+        histsCBA = procDict["QCD"].hists["syst"].project(*fake_axes)    # hist from C*B/A
+        histsD = procDict["QCDFake"].hists["syst"].project(*fake_axes)  # hist from D
+        axes = histsD.axes
+
+        # compute the nonclosure
+        if "pt" in axes.name:
+            # perform exp. fit in pt
+            histCorr = histsD.copy()
+            ax_others = [ax for ax in axes if ax.name != "pt"]
+            if len(ax_others) > 0:
+                idx_pt = histsD.axes.name.index("pt")
+                for indices in itertools.product(*[range(a.size) for a in ax_others]):
+
+                    slices = list(indices)
+                    slices.insert(idx_pt, slice(None))
+
+                    ihistsCBA = histsCBA[*slices]
+                    ihistsD = histsD[*slices]
+
+                    histCorr.values()[*slices] = sel.get_multijet_bkg_closure(ihistsCBA, ihistsD)
+            else:
+                histCorr.values()[...] = sel.get_multijet_bkg_closure(histsCBA, histsD)
+        else:
+            # just take the ratio as nonclosure
+            logger.warning(f"pt axis not found in QCD MC histograms but I trust what you do and compute nonclosure for {axes.name} from simple ratio")
+            histCorr = hh.divideHists(histsD, histsCBA)
+
+        # now load the nominal histograms
+        self.datagroups.loadHistsForDatagroups(
+            baseName=self.nominalName, syst=self.nominalName,
+            procsToRead=self.datagroups.groups.keys(),
+            label=self.nominalName, 
+            scaleToNewLumi=self.lumiScale, 
+            forceNonzero=forceNonzero,
+            sumFakesPartial=not self.ABCD)
+        procDictFromNomi = self.datagroups.getDatagroups()
+
+        # apply the nonclosure to fakes derived from data
+        hFake = procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName]
+        if any([a not in hFake.axes for a in histCorr.axes]):
+            # TODO: Make if work for arbitrary axes (maybe as an action when loading nominal histogram, before fakerate axes are integrated e.g. in mt fit)
+            raise NotImplementedError(f"The multijet closure test is not implemented for arbitrary axes, the required axes are {histCorr.axes.name}")
+
+        if self.ABCD:
+            # TODO: Make if work for simultaneous ABCD fit, apply the correction in the signal region (D) only
+            raise NotImplementedError("The multijet closure test is not implemented for simultaneous ABCD fit")
+        else:
+            hFake = hh.multiplyHists(hFake, histCorr)
+        procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName] = hFake
+
+        # done, now sum all histograms
+        hists = [procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses()]
+        hdata = hh.sumHists(hists)
+
+        return hdata
+
     def loadPseudodata(self, forceNonzero=True):
         datagroups = self.pseudodata_datagroups
         processes = [x for x in datagroups.groups.keys() if x != self.getDataName() and self.pseudoDataProcsRegexp.match(x)]
@@ -834,6 +911,11 @@ class CardTool(object):
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
+            
+            if pseudoData == "MultijetClosure":
+                hdatas.append(self.loadPseudodataFakes(forceNonzero=forceNonzero))
+                continue
+
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=pseudoData, label=pseudoData,
                 procsToRead=processes,
@@ -870,6 +952,7 @@ class CardTool(object):
                 raise RuntimeError(f"Pseudodata axis {self.pseudoDataAxes[idx]} not found in {hdata.axes.name}.")
             hdatas.append(hdata)
         return hdatas
+
 
     def addPseudodata(self):
         if len(self.pseudoData) > 1 or len(self.pseudoDataIdxs) > 1:

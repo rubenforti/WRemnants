@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from wremnants import CardTool,combine_helpers,combine_theory_helper, HDF5Writer, syst_tools
+from wremnants import histselections as sel
 from wremnants.syst_tools import massWeightNames
 from wremnants.datasets.datagroups import Datagroups
 from utilities import common, logging, boostHistHelpers as hh
@@ -260,6 +261,19 @@ def setup(args, inputFile, fitvar, xnorm=False):
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
             pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.ABCD, simultaneousABCD=args.ABCD)
             cardTool.setPseudodataDatagroups(pseudodataGroups)
+
+        if "MultijetClosure" in args.pseudoData and not xnorm:
+            datagroups_QCD = Datagroups(inputFile, filterGroups=["QCD"], applySelection=True, simultaneousABCD=False)
+            datagroups_QCD.addGroup("QCDFake",
+                members = datagroups_QCD.get_members_from_results(startswith=["QCD"]),
+                selectOp = sel.fakeHistABCD,
+                selectOpArgs = {"fakerate_integration_axes":["eta"]}
+            )   
+            cardTool.setQCDDatagroups(datagroups_QCD)
+            # fake_axes: QCD MC has low stat, compute the multijet closure on a subset of axes (including pt to perform exp. fit)
+            cardTool.setFakerateAxes(fakerate_axes=["pt", "charge"], datagroups=datagroups_QCD)
+
+
     cardTool.setLumiScale(args.lumiScale)
 
     if not args.theoryAgnostic:
@@ -637,7 +651,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
 
     if wmass:
-        #cardTool.addLnNSystematic("CMS_Fakes", processes=[args.qcdProcessName], size=1.05, group="MultijetBkg")
+        # cardTool.addLnNSystematic("CMS_Fakes", processes=[args.qcdProcessName], size=1.20, group="CMS_background")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")
         cardTool.addSystematic("luminosity",

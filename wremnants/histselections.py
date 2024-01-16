@@ -6,6 +6,8 @@ from utilities import common, logging
 import narf
 import ROOT
 
+from scipy.optimize import curve_fit
+
 logger = logging.child_logger(__name__)
 
 hist_map = {
@@ -22,8 +24,9 @@ def fakeHistABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt
 
     nameMT, failMT, passMT = get_mt_selection(h, thresholdMT, axis_name_mt, integrateLowMT, integrateHighMT)
 
-    if any(a in h.axes.name for a in fakerate_integration_axes):
+    if any(a in h.axes.name for a in fakerate_integration_axes if a not in [common.passIsoName, nameMT]):
         fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName, nameMT]]
+        logger.debug(f"Integrate over fakerate integration axes {fakerate_integration_axes} and keep {fakerate_axes}")
         hPassIsoFailMT = h[{**common.passIso, nameMT: failMT}].project(*fakerate_axes)
         hFailIsoFailMT = h[{**common.failIso, nameMT: failMT}].project(*fakerate_axes)
     else:
@@ -163,3 +166,20 @@ def applyCorrection(h, scale=1.0, offsetCorr=0.0, corrFile=None, corrHist=None, 
         hnew = hh.multiplyHists(hnew, boost_corr)
 
     return hnew
+
+
+def exp_fall(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
+def fit_multijet_bkg(h, p0=[10e5,0.1,10e3]):
+    x = h.axes["pt"].centers
+    y = h.values()
+    y_err = np.sqrt(h.variances())
+    params, cov = curve_fit(exp_fall, x, y, p0=p0, sigma=y_err, absolute_sigma=False)
+    y_fit = exp_fall(x, *params)
+    return y_fit
+
+def get_multijet_bkg_closure(hCBA, hD):
+    yCBA_fit = fit_multijet_bkg(hCBA)
+    yD_fit = fit_multijet_bkg(hD)
+    return yD_fit/yCBA_fit
