@@ -98,7 +98,12 @@ def select_z_candidate(df, mass_min=60, mass_max=120):
     return df
 
 def apply_triggermatching_muon(df, dataset, muon_eta, muon_phi, otherMuon_eta=None, otherMuon_phi=None):
-    df = df.Define("goodTrigObjs", "wrem::goodMuonTriggerCandidate(TrigObj_id,TrigObj_filterBits)")
+
+    if "muEnrichPt5" in dataset.name:
+        df = df.Define("goodTrigObjs", "wrem::goodMuonTriggerCandidate(TrigObj_id,TrigObj_pt,TrigObj_l1pt,TrigObj_l2pt,TrigObj_filterBits)")
+    else:
+        df = df.Define("goodTrigObjs", "wrem::goodMuonTriggerCandidate(TrigObj_id,TrigObj_filterBits)")
+
     if otherMuon_eta is not None:
         # implement OR of trigger matching condition (for dilepton), also create corresponding flags
         # FIXME: should find a better way to pass the variables' name prefix
@@ -121,7 +126,12 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
 
     from utilities.common import muonEfficiency_standaloneNumberOfValidHits as nHitsSA
 
-    if use_trackerMuons:
+    #standalone quantities, only available in custom NanoAOD
+    if "muEnrichPt5" in dataset.name:
+        df = df.Alias(f"{muons}_SApt{idx}",  f"{muons}_pt{idx}")
+        df = df.Alias(f"{muons}_SAeta{idx}", f"{muons}_eta{idx}")
+        df = df.Alias(f"{muons}_SAphi{idx}", f"{muons}_phi{idx}")
+    elif use_trackerMuons:
         # try to use standalone variables when possible
         df = df.Define(f"{muons}_SApt{idx}",  f"Muon_isStandalone[{muons}][{idx}] ? Muon_standalonePt[{muons}][{idx}] : {muons}_pt{idx}")
         df = df.Define(f"{muons}_SAeta{idx}", f"Muon_isStandalone[{muons}][{idx}] ? Muon_standaloneEta[{muons}][{idx}] : {muons}_eta{idx}")
@@ -134,7 +144,10 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
     # the next cuts are mainly needed for consistency with the reco efficiency measurement for the case with global muons
     # note, when SA does not exist this cut is still fine because of how we define these variables
     df = df.Filter(f"{muons}_SApt{idx} > 15.0 && wrem::deltaR2({muons}_SAeta{idx}, {muons}_SAphi{idx}, {muons}_eta{idx}, {muons}_phi{idx}) < 0.09")
-    if nHitsSA > 0 and not use_trackerMuons:
+    # if nHitsSA > 0 and not use_trackerMuons:
+    #     df = df.Filter(f"Muon_standaloneNumberOfValidHits[{muons}][{idx}] >= {nHitsSA}")
+
+    if nHitsSA > 0 and not use_trackerMuons and not ("muEnrichPt5" in dataset.name):
         df = df.Filter(f"Muon_standaloneNumberOfValidHits[{muons}][{idx}] >= {nHitsSA}")
 
     return df

@@ -173,6 +173,78 @@ dataDictV9 = {
         'xsec' : 238800,
         'group' : "QCD",
     },
+    'QCDPt15To20muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-15To20_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v2/"],
+        'xsec' : 2790000,
+        'group' : "QCD",
+    },
+    'QCDPt20To30muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-20To30_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 2519000,
+        'group' : "QCD",
+    },
+    'QCDPt30To50muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-30To50_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 1365000,
+        'group' : "QCD",
+    },
+    'QCDPt50To80muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-50To80_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 378300,
+        'group' : "QCD",
+    },
+    'QCDPt80To120muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-80To120_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 88280,
+        'group' : "QCD",
+    },
+    'QCDPt120To170muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-120To170_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 21250,
+        'group' : "QCD",
+    },
+    'QCDPt170To300muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-170To300_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 6984,
+        'group' : "QCD",
+    },
+    'QCDPt300To470muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-300To470_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 619.0,
+        'group' : "QCD",
+    },
+    'QCDPt470To600muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-470To600_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 59.56,
+        'group' : "QCD",
+    },
+    'QCDPt600To800muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-600To800_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 18.19,
+        'group' : "QCD",
+    },
+    'QCDPt800To1000muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-800To1000_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 3.222,
+        'group' : "QCD",
+    },
+    'QCDPt1000muEnrichPt5PostVFP' : { 
+        'filepaths' : 
+        ["{BASE_PATH}/QCD_Pt-1000_MuEnrichedPt5_TuneCP5_13TeV-pythia8/NANOAODSIM/106X_mcRun2_asymptotic_v17-v1/"],
+        'xsec' : 1.082,
+        'group' : "QCD",
+    },
     'GGToLLMass5to50PostVFP' : { 
         'filepaths' :
         [
