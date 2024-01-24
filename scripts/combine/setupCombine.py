@@ -260,19 +260,18 @@ def setup(args, inputFile, fitvar, xnorm=False):
         if args.pseudoDataFile:
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
             pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.ABCD, simultaneousABCD=args.ABCD)
+            if not xnorm and (args.axlim or args.rebin or args.absval):
+                pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
             cardTool.setPseudodataDatagroups(pseudodataGroups)
 
         if "MultijetClosure" in args.pseudoData and not xnorm:
-            datagroups_QCD = Datagroups(inputFile, filterGroups=["QCD"], applySelection=True, simultaneousABCD=False)
-            datagroups_QCD.addGroup("QCDFake",
-                members = datagroups_QCD.get_members_from_results(startswith=["QCD"]),
-                selectOp = sel.fakeHistABCD,
-                selectOpArgs = {"fakerate_integration_axes":["eta"]}
-            )   
+            datagroups_QCD = Datagroups(inputFile, filterGroups=["QCD"], applySelection=False, simultaneousABCD=False)
+            if not xnorm and (args.axlim or args.rebin or args.absval):
+                datagroups_QCD.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
+
             cardTool.setQCDDatagroups(datagroups_QCD)
             # fake_axes: QCD MC has low stat, compute the multijet closure on a subset of axes (including pt to perform exp. fit)
-            cardTool.setFakerateAxes(fakerate_axes=["pt", "charge"], datagroups=datagroups_QCD)
-
+            cardTool.setFakerateAxes(args.fakerateAxes, datagroups=datagroups_QCD)
 
     cardTool.setLumiScale(args.lumiScale)
 

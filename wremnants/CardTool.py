@@ -840,39 +840,41 @@ class CardTool(object):
         # get the nonclosure for fakes/multijet background from QCD MC
         self.qcd_datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
-            procsToRead=['QCD', 'QCDFake'],
+            procsToRead=['QCD'], 
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
-            sumFakesPartial=False)
+            sumFakesPartial=False,
+            applySelection=False # don't apply selection to fit A,B,C,D regions separately with falling exponentials
+            )
         procDict = self.qcd_datagroups.getDatagroups()
 
         fake_axes = self.qcd_datagroups.fakerate_axes
-        histsCBA = procDict["QCD"].hists["syst"].project(*fake_axes)    # hist from C*B/A
-        histsD = procDict["QCDFake"].hists["syst"].project(*fake_axes)  # hist from D
-        axes = histsD.axes
+
+        hists = procDict["QCD"].hists["syst"]
+        axes = hists.axes
 
         # compute the nonclosure
-        if "pt" in axes.name:
+        histCorr = hists.copy()
+        histCorr = histCorr.project(*fake_axes)
+        if "pt" in fake_axes:
             # perform exp. fit in pt
-            histCorr = histsD.copy()
-            ax_others = [ax for ax in axes if ax.name != "pt"]
+            ax_others = [ax for ax in histCorr.axes if ax.name != "pt"]
             if len(ax_others) > 0:
-                idx_pt = histsD.axes.name.index("pt")
+                idx_pt = histCorr.axes.name.index("pt")
                 for indices in itertools.product(*[range(a.size) for a in ax_others]):
+                    logger.info(f"Set closure for slices {[a.name for a in ax_others]} {indices}")
 
                     slices = list(indices)
                     slices.insert(idx_pt, slice(None))
 
-                    ihistsCBA = histsCBA[*slices]
-                    ihistsD = histsD[*slices]
-
-                    histCorr.values()[*slices] = sel.get_multijet_bkg_closure(ihistsCBA, ihistsD)
+                    histCorr.view()[*slices] = sel.get_multijet_bkg_closure(hists, fake_axes, slices)
+                    print(histCorr.view()[*slices])
             else:
-                histCorr.values()[...] = sel.get_multijet_bkg_closure(histsCBA, histsD)
+                histCorr.view()[...] = sel.get_multijet_bkg_closure(hists, fake_axes)
         else:
             # just take the ratio as nonclosure
-            logger.warning(f"pt axis not found in QCD MC histograms but I trust what you do and compute nonclosure for {axes.name} from simple ratio")
-            histCorr = hh.divideHists(histsD, histsCBA)
+            logger.warning(f"pt axis not found in QCD MC histograms but I trust what you do and compute nonclosure for {fake_axes} from simple ratio")
+            # histCorr = hh.divideHists(hists)
 
         # now load the nominal histograms
         self.datagroups.loadHistsForDatagroups(
