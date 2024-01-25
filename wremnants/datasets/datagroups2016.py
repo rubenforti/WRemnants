@@ -4,7 +4,9 @@ from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
     
-def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelection=True, excludeGroups=None, filterGroups=None, simultaneousABCD=False):
+def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelection=True, excludeGroups=None, filterGroups=None, 
+    simultaneousABCD=False, extendedABCD=False
+):
     # reset datagroups
     dg.groups = {}
 
@@ -12,7 +14,7 @@ def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelec
         fakeOpArgs = {"fakerate_integration_axes":[]}
         if applySelection:
             sigOp = sel.signalHistWmass
-            fakeOp = sel.fakeHistABCD
+            fakeOp = sel.fakeHistExtendedABCD if extendedABCD else sel.fakeHistABCD
         else:
             sigOp = None
             fakeOp = sel.fakeHistSimultaneousABCD

@@ -97,11 +97,13 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
+axis_mt = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt", underflow=False, overflow=True)
+
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_passIso, axis_passMT]
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]#, axis_passMT]
 
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passIso", "passMT"]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso"]#, "passMT"]
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
 axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]

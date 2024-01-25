@@ -64,10 +64,18 @@ def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_
     out = outh.values(flow=flow) if createNew else np.full(outh.values(flow=flow).shape, cutoff_val)
 
     # Apply cutoff to both numerator and denominator
+    # only do the division if denominator is above cutoff, keep nominator values else
     cutoff_criteria = np.abs(h2vals) > cutoff
-    # By the argument that 0/0 = 1
-    out[(np.abs(h2vals) < cutoff) & (np.abs(h1vals) < cutoff)] = cutoff_val
+
+    # if denominator and nominator below cutoff, set to cutoff_val. By the argument that 0/0 = 1
+    cutoff_criteatia2 = (np.abs(h2vals) < cutoff) & (np.abs(h1vals) < cutoff)
+    out[cutoff_criteatia2] = cutoff_val
     val = np.divide(h1vals, h2vals, out=out, where=cutoff_criteria)
+
+    if cutoff_criteatia2.sum():
+        logger.warning(f"Encountered {cutoff_criteatia2.sum()} values below {cutoff} in h1 and h2 in divideHists, these will be set to {cutoff_val}")
+    elif (~cutoff_criteria).sum():
+        logger.warning(f"Encountered {(~cutoff_criteria).sum()} values below {cutoff} in h2 in divideHists, these will be set to h1")
 
     if outh.storage_type == hist.storage.Weight:
         relvars = relVariances(h1vals, h2vals, h1vars, h2vars, cutoff=cutoff)
