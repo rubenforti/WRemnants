@@ -75,7 +75,8 @@ if addVariation and (args.selectAxis or args.selectEntries):
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
-groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'], extendedABCD=not args.simpleABCD)
+groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'], 
+    extendedABCD=not args.simpleABCD, integrateHighMT="mt" not in args.hists)
 
 # There is probably a better way to do this but I don't want to deal with it
 datasets = groups.getNames()

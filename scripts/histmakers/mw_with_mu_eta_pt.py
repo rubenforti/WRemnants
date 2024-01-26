@@ -97,7 +97,7 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable([0,4,10,11,15,20,21,40] + list(range(45, 100, 5)) + [100, 110, 120, 130, 150, 200], name = "mt", underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
@@ -223,6 +223,7 @@ def build_graph(df, dataset):
     isTop = dataset.group == "Top"
     isQCDMC = dataset.group == "QCD"
     require_prompt = "tau" not in dataset.name # for muon GEN-matching   
+    storage_type=hist.storage.Weight() # need weights also for systematic histograms for extendedABCD
     
     # disable auxiliary histograms when unfolding to reduce memory consumptions
     auxiliary_histograms = not args.unfolding and not (args.theoryAgnostic and not args.poiAsNoi) and not args.noAuxiliaryHistograms
@@ -432,7 +433,7 @@ def build_graph(df, dataset):
         return results, weightsum
 
     if not args.onlyMainHistograms:
-        syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30)
+        syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
@@ -450,10 +451,10 @@ def build_graph(df, dataset):
             results.append(yieldsForWeffMC)
 
         if not args.noRecoil and args.recoilUnc:
-            df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal")
+            df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal", storage_type=storage_type)
         if apply_theory_corr:
-            results.extend(theory_tools.make_theory_corr_hists(df, "nominal", axes, cols, 
-                corr_helpers[dataset.name], args.theoryCorr, modify_central_weight=not args.theoryCorrAltOnly, isW = isW)
+            results.extend(theory_tools.make_theory_corr_hists(df, "nominal", axes, cols, corr_helpers[dataset.name], args.theoryCorr, 
+                modify_central_weight=not args.theoryCorrAltOnly, isW = isW, storage_type=storage_type)
             )
         if isWorZ:
             cols_gen, cols_gen_smeared = muon_calibration.make_alt_reco_and_gen_hists(df, results, axes, cols, reco_sel_GF)
@@ -464,23 +465,24 @@ def build_graph(df, dataset):
 
         if not args.onlyTheorySyst:
             if not args.noScaleFactors:
-                df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
-            df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
+                df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
+                    what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+            df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
-            df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols)
+            df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
 
         if isWorZ:
 
-            df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, for_wmass=True)
+            df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, for_wmass=True, storage_type=storage_type)
 
             # Don't think it makes sense to apply the mass weights to scale leptons from tau decays
             if not args.onlyTheorySyst and not "tau" in dataset.name:
-                df = syst_tools.add_muonscale_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols)
+                df = syst_tools.add_muonscale_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols, storage_type=storage_type)
                 if args.muonScaleVariation == 'smearingWeightsGaus':
-                    df = syst_tools.add_muonscale_smeared_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols_gen_smeared)
+                    df = syst_tools.add_muonscale_smeared_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols_gen_smeared, storage_type=storage_type)
 
             ####################################################
             # nuisances from the muon momemtum scale calibration 
@@ -501,15 +503,15 @@ def build_graph(df, dataset):
                 df = muon_calibration.add_jpsi_crctn_stats_unc_hists(
                     args, df, axes, results, cols, cols_gen_smeared,
                     calib_filepaths, jpsi_crctn_data_unc_helper, smearing_weights_procs,
-                    reco_sel_GF, dataset.name, isW
+                    reco_sel_GF, dataset.name, isW, storage_type=storage_type
                 )
                 # add the ad-hoc Z non-closure nuisances from the jpsi massfit to muon scale unc
                 df = muon_calibration.add_jpsi_crctn_Z_non_closure_hists(
                     args, df, axes, results, cols, cols_gen_smeared,
-                    z_non_closure_parametrized_helper, z_non_closure_binned_helper, reco_sel_GF
+                    z_non_closure_parametrized_helper, z_non_closure_binned_helper, reco_sel_GF, storage_type=storage_type
                 )
                 # add nuisances from the data/MC resolution mismatch
-                df = muon_calibration.add_resolution_uncertainty(df, axes, results, cols, smearing_uncertainty_helper, reco_sel_GF)
+                df = muon_calibration.add_resolution_uncertainty(df, axes, results, cols, smearing_uncertainty_helper, reco_sel_GF, storage_type=storage_type)
                 if args.validationHists:
                     df = muon_validation.make_hists_for_muon_scale_var_weights(
                         df, axes, results, cols, cols_gen_smeared
