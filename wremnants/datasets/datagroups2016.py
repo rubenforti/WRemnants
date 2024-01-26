@@ -5,13 +5,13 @@ from wremnants import histselections as sel
 logger = logging.child_logger(__name__)
     
 def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelection=True, excludeGroups=None, filterGroups=None, 
-    simultaneousABCD=False, extendedABCD=False
+    simultaneousABCD=False, extendedABCD=False, integrateHighMT=False
 ):
     # reset datagroups
     dg.groups = {}
 
     if dg.mode == "wmass":
-        fakeOpArgs = {"fakerate_integration_axes":[]}
+        fakeOpArgs = {"fakerate_integration_axes":[], "integrateHighMT":integrateHighMT}
         if applySelection:
             sigOp = sel.signalHistWmass
             fakeOp = sel.fakeHistExtendedABCD if extendedABCD else sel.fakeHistABCD

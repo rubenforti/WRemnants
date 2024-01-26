@@ -50,22 +50,14 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
 
     overflow_mt = h.axes[axis_name_mt].traits.overflow
 
-    main_axes = [n for n in h.axes.name if n!=common.passIsoName]
-    if main_axes.index(axis_name_mt) != len(main_axes)-1:
-        # logger.warning(f"Only passIso axis is allowed to be after {axis_name_mt} axis, reorder histogram. Putting the ")
-        raise RuntimeError(f"Only passIso axis is allowed to be after {axis_name_mt} axis, reorder histogram. Putting the ")
-        # move mt axis last
-
-        # hFRF = hFRF.project(*[n for n in hFRF.axes.name if n != axis_name_mt], axis_name_mt)
-
     # hLowMT = h[{axis_name_mt: slice(None,complex(0,thresholdMT), hist.rebin(20))}]
-
-    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,20,thresholdMT])
+    hLowMT = hh.rebinHist(h, axis_name_mt, [0,15,thresholdMT])
     # hLowMT = hh.rebinHist(h, axis_name_mt, [0,10,20,thresholdMT])
-    hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,11,21,thresholdMT])
+    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,11,21,thresholdMT])
 
-    if any(a in h.axes.name for a in fakerate_integration_axes):
-        fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName, nameMT]]
+    if any(a in h.axes.name for a in fakerate_integration_axes if a != axis_name_mt):
+        logger.info(f"Project {fakerate_axes}")
+        fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName]]
         hLowMT = hLowMT.project(*fakerate_axes)
 
     hLowMTPassIso = hLowMT[common.passIso]
@@ -74,34 +66,36 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
     hFRF = hh.divideHists(hLowMTPassIso, hLowMTFailIso, cutoff=0.1, createNew=True, flow=False)
 
     y = hFRF.values(flow=True)
-    x = hFRF.axes[axis_name_mt].centers
 
+    idx_ax_mt = hFRF.axes.name.index(axis_name_mt)
+    if idx_ax_mt != len(hFRF.axes)-1:
+        y = np.moveaxis(y, idx_ax_mt, -1)
     if overflow_mt:
         # stupit, but if the mt has overflow even if lowMT range is selected we get back an overflow bin with zeros (even when we use the hist slicing methods), strip them off
         y = y[...,:-1]
 
+    x = hFRF.axes[axis_name_mt].centers
     x = np.broadcast_to(x, y.shape)
     x0 = np.ones(x.shape)
     if h.storage_type == hist.storage.Weight:
-        #TODO: need weights for all histograms otherwise get different solutions for variations
         # transform with weights
         w = 1./np.sqrt(hFRF.variances(flow=True))
+        if idx_ax_mt != len(hFRF.axes)-1:
+            w = np.moveaxis(w, idx_ax_mt, -1)
         if overflow_mt:
             w = w[...,:-1]
         x0 = x0*w
         x = x*w
         y = y*w
-
-    logger.debug("Compute fakerate")
+    else:
+        logger.warning("Using extendedABCD on histogram without uncertainties, make an unweighted linear squared solution.")
 
     XTY = np.stack(((x0*y).sum(axis=-1), (x*y).sum(axis=-1)), axis=-1)
 
     # parameter matrix X with the "parameter" axis (here 2 parameters for offset and slope)
     X = np.stack((x0, x), axis=-1)
     # compute the transpose of X for the mt and parameter axes 
-    ax_idx_mt = list(hFRF.axes.name).index(axis_name_mt)
-    axes_transpose = [x if x!=ax_idx_mt else len(hFRF.axes) for x in range(len(hFRF.axes))] + [ax_idx_mt]
-    XT = np.transpose(X, axes=axes_transpose)
+    XT = np.transpose(X, axes=(*range(len(X.shape)-2), len(X.shape)-1, len(X.shape)-2))
     XTX = XT @ X
     # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion), 
     # this term is also the covariance matrix for the parameters
@@ -110,11 +104,12 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
 
     params = np.einsum('...ij,...j->...i', XTXinv, XTY)
 
-    logger.debug("Apply fakerates")
-
     hHighMTFailIso = h[{**common.failIso, axis_name_mt: slice(complex(0,thresholdMT),None)}]
 
     val_c = hHighMTFailIso.values(flow=True)
+    idx_ax_mt = hHighMTFailIso.axes.name.index(axis_name_mt)
+    if idx_ax_mt != len(hHighMTFailIso.axes)-1:
+        val_c = np.moveaxis(val_c, idx_ax_mt, -1)
 
     x_c = hHighMTFailIso.axes[axis_name_mt].centers
     if overflow_mt:
@@ -133,10 +128,15 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
             var_d = (val_c*x_c).sum(axis=-1)**2 * XTXinv[...,1,1] + (val_c).sum(axis=-1)**2 * XTXinv[...,0,0] + 2*(val_c*x_c).sum(axis=-1)*val_c.sum(axis=-1)*XTXinv[...,1,0] 
             # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
             var_c = hHighMTFailIso.variances(flow=True)
+            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
+                var_c = np.moveaxis(var_c, idx_ax_mt, -1)
             var_d += (FRF**2 * var_c).sum(axis=-1)
             val_d = np.stack((val_d.sum(axis=-1), var_d), axis=-1)
     else:
         hHighMTPassIso = hHighMTFailIso.copy()
+
+        if idx_ax_mt != len(hHighMTFailIso.axes)-1:
+            val_d = np.moveaxis(val_d, -1, idx_ax_mt) # move the axis back
 
         if h.storage_type == hist.storage.Weight:
             logger.warning("Using extendedABCD as function of mt without integration of mt will give fakes with incorrect bin by bin uncertainties!")
@@ -145,47 +145,16 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
             var_d = (val_c*x_c)**2 * XTXinv[...,1,1,np.newaxis] + (val_c)**2 * XTXinv[...,0,0,np.newaxis] + 2*(val_c*x_c)*val_c*XTXinv[...,1,0,np.newaxis] 
             # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
             var_c = hHighMTFailIso.variances(flow=True)
+            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
+                var_c = np.moveaxis(var_c, idx_ax_mt, -1)
             var_d += (FRF**2 * var_c)
+            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
+                var_d = np.moveaxis(var_d, -1, idx_ax_mt) # move the axis back
             val_d = np.stack((val_d, var_d), axis=-1)
 
     hHighMTPassIso.view(flow=True)[...] = val_d
 
     return hHighMTPassIso
-
-
-    # below: incorrect uncertainties
-    # y points (value of FRF)
-    # hy0 = hFRF[{axis_name_mt:0}]
-    # hy1 = hFRF[{axis_name_mt:1}]
-
-    # # x points (value of mt), each bin can have a different center but for now just take bin centers
-    # hx0 = hFRF.axes[axis_name_mt].centers[0]
-    # hx1 = hFRF.axes[axis_name_mt].centers[1]
-
-    # # compute slope: m = (y1-y0)/(x1-x0)
-    # # hFRFSlope = hh.divideHists(hh.addHists(hy1, hy0, scale2=-1) , hh.addHists(hx1, hx0, scale2=-1), cutoff=1, createNew=True) # in case x points are histograms
-    # hFRFSlope = hh.scaleHist(hh.addHists(hy1, hy0, scale2=-1), 1./(hx1-hx0))
-
-    # # compute constant part: b = y1 - m*x1
-    # # hFRFOffset = hh.addHists(hy1, hh.multiplyHists(hFRFSlope, hx1), scale2=-1) # in case x points are histograms
-    # hFRFOffset = hh.addHists(hy1, hFRFSlope, scale2=-1*hx1)
-
-    # # apply FRF(x) = m*x + b on high MT
-    # hHighMTFailIso = h[{**common.failIso, axis_name_mt: slice(complex(0,thresholdMT),None)}]
-
-    # # apply constant part
-    # hConst = hh.multiplyHists(hFRFOffset, hHighMTFailIso, createNew=False)
-
-    # # apply slope part
-    # xHighMT = hHighMTFailIso.axes[axis_name_mt].centers
-    # hHighMTx = hist.Hist(hHighMTFailIso.axes[axis_name_mt], storage=h._storage_type())
-    # hHighMTx.values()[...] = xHighMT
-
-    # hSlope = hh.multiplyHists(hFRFSlope, hHighMTFailIso, createNew=False)
-    # hSlope = hh.multiplyHists(hSlope, hHighMTx, createNew=False)
-
-
-    # return hh.addHists(hConst, hSlope)
 
 
 def fakeHistSimultaneousABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt="mt", integrateLowMT=True, integrateHighMT=False):

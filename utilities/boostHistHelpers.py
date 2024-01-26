@@ -189,6 +189,9 @@ def addHists(h1, h2, allowBroadcast=True, createNew=True, scale1=None, scale2=No
             outvars = h1vars if h1.shape == outh.shape else h2vars
             np.add(h1vars, h2vars, out=outvars)
             outh.variances(flow=True)[...] = outvars
+        elif h1._storage_type() == hist.storage.Weight():
+            logger.warning("Histogram h1 has weights but h2 not, values for h1 are updated but variances not.")
+
         return outh
 
 def sumHists(hists):
