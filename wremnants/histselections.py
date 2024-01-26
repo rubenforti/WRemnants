@@ -24,9 +24,6 @@ def fakeHistABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt
 
     nameMT, failMT, passMT = get_mt_selection(h, thresholdMT, axis_name_mt, integrateLowMT, integrateHighMT)
 
-    # FIXME ? : in case this next part is entered because of an axis other than mt in fakerate_integration_axes,
-    # then this will still integrate on mt for failMT because of the projection and how fakerate_axes is filled,
-    # so if the user sets integrateLowMT=False this will not keep the mt axis for low mt
     if any(a in h.axes.name for a in fakerate_integration_axes):
         fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName, nameMT]]
         hPassIsoFailMT = h[{**common.passIso, nameMT: failMT}].project(*fakerate_axes)
@@ -55,7 +52,7 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
 
     # hLowMT = h[{axis_name_mt: slice(None,complex(0,thresholdMT), hist.rebin(20))}]
     hLowMT = hh.rebinHist(h, axis_name_mt, [0,15,thresholdMT])
-    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,10,20,thresholdMT])
+    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,15,thresholdMT])
     # hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,11,21,thresholdMT])
 
     if any(a in h.axes.name for a in fakerate_integration_axes if a != axis_name_mt):
