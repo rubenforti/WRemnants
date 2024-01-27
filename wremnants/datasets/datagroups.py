@@ -16,6 +16,7 @@ import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
 from wremnants.datasets.dataset_tools import getDatasets
+from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
 
@@ -172,6 +173,20 @@ class Datagroups(object):
         
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
+
+    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHighMT=False):
+        sigOp = None
+        fakeOp = None
+        fakeOpArgs = None
+        if self.mode in ["wmass", "lowpu_w"]:
+            fakeOpArgs = {"fakerate_integration_axes":[], "integrateHighMT":integrateHighMT}
+            if applySelection:
+                sigOp = sel.signalHistWmass
+                fakeOp = sel.fakeHistExtendedABCD if extendedABCD else sel.fakeHistABCD
+            elif simultaneousABCD:
+                fakeOp = sel.fakeHistSimultaneousABCD
+
+        return sigOp, fakeOp, fakeOpArgs
 
     def setFakerateIntegrationAxes(self, axes=[]):
         for group in self.groups.values():

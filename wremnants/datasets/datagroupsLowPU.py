@@ -1,25 +1,12 @@
 from utilities import boostHistHelpers as hh, logging
-from wremnants import histselections as sel
-import hist
 
 logger = logging.child_logger(__name__)
 
-def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=None, applySelection=True, simultaneousABCD=False):
+def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=None, **kwargs):
+    sigOp, fakeOp, fakeOpArgs = dg.get_selectOps(**kwargs)
+
     # reset datagroups
     dg.groups = {}
-
-    if dg.mode == "lowpu_w":
-        fakeOpArgs = {"fakerate_integration_axes":[]}
-        if applySelection:
-            sigOp = sel.signalHistWmass
-            fakeOp = sel.fakeHistABCD
-        else:
-            sigOp = None
-            fakeOp = sel.fakeHistSimultaneousABCD
-    else:
-        sigOp = None
-        fakeOp = None
-        fakeOpArgs = None
 
     dg.addGroup("Data",
         members = dg.get_members_from_results(is_data=True),
