@@ -1,5 +1,6 @@
 import pathlib
 import mplhep as hep
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from matplotlib import patches
@@ -38,7 +39,12 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     bin_density = 300, cms_label = None, logy=False, logx=False,
     width_scale=1, automatic_scale=True
 ):
-    fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
+    if isinstance(href, hist.Hist):
+        fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
+    else:
+        raw_width = (len(href)/float(bin_density))
+        width = math.ceil(raw_width)
+        fig = plt.figure(figsize=(width_scale*8*width,8))
 
     ax1 = fig.add_subplot() 
     if cms_label: hep.cms.text(cms_label)
@@ -397,6 +403,83 @@ def makePlotWithRatioToRef(
         xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
     fix_axes(ax1, ax2, yscale=yscale, logy=logy)
     if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
+    return fig
+
+def project(flow=False):
+    # average over bins
+    if flow:
+        return lambda h, axes: h.project(*axes)/np.prod([a.extent for a in h.axes if a.name not in axes])
+    else:
+        return lambda h, axes: hh.projectNoFlow(h, axes)/np.prod([a.size for a in h.axes if a.name not in axes])
+
+def makeHistPlot2D(h2d, flow=False, **kwargs):
+    if flow:
+        xedges, yedges = extendEdgesByFlow(h2d)
+    else:
+        edges = h2d.axes.edges
+        xedges = np.reshape(edges[0], len(edges[0]))
+        yedges = edges[1][0]
+    values = h2d.values(flow=flow)
+    variances = h2d.variances(flow=flow)
+    makePlot2D(values, variances, xedges, yedges, **kwargs)
+
+def makePlot2D(values, variances=None, xedges=None, yedges=None, 
+    density=False, plot_uncertainties=False,
+    xlabel="", ylabel="", zlabel="", colormap="RdBu", plot_title=None,
+    ylim=None, xlim=None, zlim=None, zsymmetrize=None,
+    logz=False, # logy=False, logx=False, #TODO implement
+    cms_label="Work in progress", automatic_scale=False, width_scale=1.2
+):
+    if xedges is None or yedges is None:
+        xbins, ybins = values.shape
+        if xedges is None:
+            xedges = np.arange(xbins)
+        if yedges is None:
+            yedges = np.arange(ybins)
+    # if variances is None:
+    #     logger.warning("No variances given, assume")
+    #     variances = values
+
+    if density:
+        xbinwidths = np.diff(xedges)
+        ybinwidths = np.diff(yedges)
+        binwidths = np.outer(xbinwidths, ybinwidths) 
+        values /= binwidths
+        variances /= binwidths
+    elif plot_uncertainties:
+        # plot relative uncertainties instead
+        values = np.sqrt(hh.relVariance(values, variances, fillOnes=True))
+
+    if xlim is None:
+        xlim = (xedges[0],xedges[-1])
+    if ylim is None:
+        ylim = (yedges[0],yedges[-1])
+
+    fig, ax = figure(values, xlabel=xlabel, ylabel=ylabel, cms_label=cms_label, automatic_scale=automatic_scale, width_scale=width_scale, xlim=xlim, ylim=ylim)
+
+    if zlim is None:
+        if logz:
+            zmin = min(values[values>0]) # smallest value that is not 0
+        else:
+            zmin = values.min()
+        zmax = values.max()
+        zlim = (zmin,zmax)
+        
+    # make symmetric range around value of zsymmetrize
+    if zsymmetrize is not None:
+        zrange = max((zmin-zsymmetrize), (zsymmetrize-zmax))
+        zlim = [zsymmetrize-zrange, zsymmetrize+zrange]
+
+    if logz:
+        colormesh = ax.pcolormesh(xedges, yedges, values.T, cmap=getattr(mpl.cm, colormap), norm=mpl.colors.LogNorm(vmin=zlim[0], vmax=zlim[1]))
+    else:
+        colormesh = ax.pcolormesh(xedges, yedges, values.T, cmap=getattr(mpl.cm, colormap), vmin=zlim[0], vmax=zlim[1])
+    cbar = fig.colorbar(colormesh, ax=ax)
+
+    if plot_title:
+        ax.text(1.0, 1.003, plot_title, transform=ax.transAxes, fontsize=30,
+            verticalalignment='bottom', horizontalalignment="right")
+
     return fig
 
 def extendEdgesByFlow(href, bin_flow_width=0.02):
