@@ -97,13 +97,13 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable([0,4,10,11,15,20,21,40] + list(range(45, 100, 5)) + [100, 110, 120, 130, 150, 200], name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable([0,4,11,21,mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120, 150, 200], name = "mt", underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]#, axis_passMT]
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]
 
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso"]#, "passMT"]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso"]
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
 axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
@@ -227,7 +227,7 @@ def build_graph(df, dataset):
     isTop = dataset.group == "Top"
     isQCDMC = dataset.group == "QCD"
     require_prompt = "tau" not in dataset.name # for muon GEN-matching   
-    storage_type=hist.storage.Weight() # need weights also for systematic histograms for extendedABCD
+    storage_type=hist.storage.Double() # turn off sum weight square for systematic histograms
     
     # disable auxiliary histograms when unfolding to reduce memory consumptions
     auxiliary_histograms = not args.unfolding and not (args.theoryAgnostic and not args.poiAsNoi) and not args.noAuxiliaryHistograms
@@ -407,17 +407,15 @@ def build_graph(df, dataset):
         results.append(mTStudyForFakes)
 
     # add filter of deltaPhi(muon,met) before other histograms (but after histogram mTStudyForFakes)
-    if not args.makeMCefficiency:
+    if not args.makeMCefficiency and args.dphiMuonMetCut>0:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
         
-    df = df.Define("passMT", f"transverseMass >= {mtw_min}")
-
     if auxiliary_histograms:
         # utility plot, mt and met, to plot them later (need eta-pt to make fakes)
-        results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_passIso, axis_passMT], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passIso", "passMT", "nominal_weight"]))
+        results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mt, axis_passIso], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
         results.append(df.HistoBoost("transverseMass", [axis_mt_fakes, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_passIso], ["transverseMass", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passIso", "nominal_weight"]))
-        results.append(df.HistoBoost("ptW", [axis_recoWpt, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_passIso, axis_passMT], ["ptW", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passIso", "passMT", "nominal_weight"]))
+        results.append(df.HistoBoost("ptW", [axis_recoWpt, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mt, axis_passIso], ["ptW", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
 
     if args.poiAsNoi and isW:
         if args.theoryAgnostic and isWmunu: # TODO: might add Wtaunu at some point, not yet
@@ -449,6 +447,7 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
 
         if args.makeMCefficiency:
+            df = df.Define("passMT", f"transverseMass >= {mtw_min}")
             cols_WeffMC = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_uT0", "goodMuons_charge0",
                            "passIso", "passMT", "passTrigger"]
             yieldsForWeffMC = df.HistoBoost("yieldsForWeffMC", axes_WeffMC, [*cols_WeffMC, "nominal_weight"])

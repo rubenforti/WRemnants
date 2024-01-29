@@ -36,37 +36,11 @@ def fakeHistABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt
 
     return hh.multiplyHists(hFRF, h[{**common.failIso, nameMT: passMT}])
 
-def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt="mt", integrateLowMT=True, integrateHighMT=False):
-    logger.debug("Compute fakes with extended ABCD method")
-    # integrateMT=False keeps the mT axis in the returned histogram (can be used to have fakes vs mT)
-
-    # allow for a slope in the FRF with mt
-    # 1) calculate FRF(mt) in each bin of the fakerate axis
-    # 2) obtain offset and slope from lowMT bins using weighted least square fit https://en.wikipedia.org/wiki/Weighted_least_squares
-    # 3) apply the FRF(mt) in high mt bins
-
-    if h.axes[axis_name_mt].traits.underflow:
-        raise NotImplementedError(f"Underflow bins for axis {axis_name_mt} is not supported")
-
-    overflow_mt = h.axes[axis_name_mt].traits.overflow
-
-    # hLowMT = h[{axis_name_mt: slice(None,complex(0,thresholdMT), hist.rebin(20))}]
-    hLowMT = hh.rebinHist(h, axis_name_mt, [0,15,thresholdMT])
-    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,15,thresholdMT])
-    # hLowMT = hh.rebinHist(h, axis_name_mt, [0,4,11,21,thresholdMT])
-
-    if any(a in h.axes.name for a in fakerate_integration_axes if a != axis_name_mt):
-        logger.info(f"Project {fakerate_axes}")
-        fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName]]
-        hLowMT = hLowMT.project(*fakerate_axes)
-
+def compute_fakerate(hLowMT, axis_name_mt, overflow_mt, use_weights=True):
     hLowMTPassIso = hLowMT[common.passIso]
     hLowMTFailIso = hLowMT[common.failIso]
-
     hFRF = hh.divideHists(hLowMTPassIso, hLowMTFailIso, cutoff=0.1, createNew=True, flow=False)
-
     y = hFRF.values(flow=True)
-
     idx_ax_mt = hFRF.axes.name.index(axis_name_mt)
     if idx_ax_mt != len(hFRF.axes)-1:
         y = np.moveaxis(y, idx_ax_mt, -1)
@@ -77,13 +51,16 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
     x = hFRF.axes[axis_name_mt].centers
     x = np.broadcast_to(x, y.shape)
     x0 = np.ones(x.shape)
-    if h.storage_type == hist.storage.Weight:
-        # transform with weights
-        w = 1./np.sqrt(hFRF.variances(flow=True))
-        if idx_ax_mt != len(hFRF.axes)-1:
-            w = np.moveaxis(w, idx_ax_mt, -1)
-        if overflow_mt:
-            w = w[...,:-1]
+    if use_weights:
+        if hFRF.storage_type == hist.storage.Weight:
+            # transform with weights
+            w = 1./np.sqrt(hFRF.variances(flow=True))
+            if idx_ax_mt != len(hFRF.axes)-1:
+                w = np.moveaxis(w, idx_ax_mt, -1)
+            if overflow_mt:
+                w = w[...,:-1]
+        else:
+            raise RuntimeError("Try to compute weighted least square but the histogram has no variances.")
         x0 = x0*w
         x = x*w
         y = y*w
@@ -91,7 +68,6 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
         logger.warning("Using extendedABCD on histogram without uncertainties, make an unweighted linear squared solution.")
 
     XTY = np.stack(((x0*y).sum(axis=-1), (x*y).sum(axis=-1)), axis=-1)
-
     # parameter matrix X with the "parameter" axis (here 2 parameters for offset and slope)
     X = np.stack((x0, x), axis=-1)
     # compute the transpose of X for the mt and parameter axes 
@@ -101,8 +77,49 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
     # this term is also the covariance matrix for the parameters
     XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
     XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
-
     params = np.einsum('...ij,...j->...i', XTXinv, XTY)
+    return params, XTXinv
+
+def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt="mt", integrateLowMT=True, integrateHighMT=False, container=None):
+    logger.debug("Compute fakes with extended ABCD method")
+    # integrateMT=False keeps the mT axis in the returned histogram (can be used to have fakes vs mT)
+
+    # allow for a slope in the FRF with mt
+    # 1) calculate FRF(mt) in each bin of the fakerate axis
+    # 2) obtain offset and slope from lowMT bins using weighted least square https://en.wikipedia.org/wiki/Weighted_least_squares
+    # 3) apply the FRF(mt) in high mt bins
+
+    if h.axes[axis_name_mt].traits.underflow:
+        raise NotImplementedError(f"Underflow bins for axis {axis_name_mt} is not supported")
+
+    overflow_mt = h.axes[axis_name_mt].traits.overflow
+
+    hLowMT = h[{axis_name_mt: slice(None,complex(0,thresholdMT))}]
+
+    if any(a in h.axes.name for a in fakerate_integration_axes if a != axis_name_mt):
+        logger.info(f"Project {fakerate_axes}")
+        fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, common.passIsoName]]
+        hLowMT = hLowMT.project(*fakerate_axes)
+
+    if container is not None:
+        if "hLowMT" in container:
+            # take variances from containered histogram
+            hLowMT_2 = container["hLowMT"]
+
+            val_2 = hLowMT_2.values(flow=True)
+            var_2 = hLowMT_2.variances(flow=True)
+            val_1 = hLowMT.values(flow=True)
+            # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same
+            extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val_1.ndim - val_2.ndim)
+            var_1 = var_2[extra_dimensions] * (val_1 / val_2[extra_dimensions])**2
+
+            hLowMT = hist.Hist(*hLowMT.axes, storage=hist.storage.Weight())
+            hLowMT.view(flow=True)[...] = np.stack((val_1, var_1), axis=-1)
+        else:
+            # store histogram for later
+            container["hLowMT"] = hLowMT
+
+    params, cov = compute_fakerate(hLowMT, axis_name_mt, overflow_mt, use_weights=True)
 
     hHighMTFailIso = h[{**common.failIso, axis_name_mt: slice(complex(0,thresholdMT),None)}]
 
@@ -125,12 +142,136 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
 
         if h.storage_type == hist.storage.Weight:
             # variance from error propagation formula from parameters (first sum bins, then multiply with parameter error)
-            var_d = (val_c*x_c).sum(axis=-1)**2 * XTXinv[...,1,1] + (val_c).sum(axis=-1)**2 * XTXinv[...,0,0] + 2*(val_c*x_c).sum(axis=-1)*val_c.sum(axis=-1)*XTXinv[...,1,0] 
+            var_d_slope = (val_c*x_c).sum(axis=-1)**2 * cov[...,1,1] 
+            var_d_offset = (val_c).sum(axis=-1)**2 * cov[...,0,0] 
+            var_d_correlation = 2*(val_c*x_c).sum(axis=-1)*val_c.sum(axis=-1)*cov[...,1,0] 
             # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
             var_c = hHighMTFailIso.variances(flow=True)
             if idx_ax_mt != len(hHighMTFailIso.axes)-1:
                 var_c = np.moveaxis(var_c, idx_ax_mt, -1)
-            var_d += (FRF**2 * var_c).sum(axis=-1)
+            var_d_application = (FRF**2 * var_c).sum(axis=-1)
+
+            var_d = var_d_slope + var_d_offset + var_d_correlation + var_d_application
+
+            if False:
+                # Do some validation plots
+                var_d_sc = var_d_slope + var_d_correlation
+                var_d_soc = var_d_slope + var_d_offset + var_d_correlation
+                
+                from utilities.styles import styles
+                from utilities.io_tools import output_tools
+
+                xlabel = styles.xlabels[h.axes.name[0]]
+                ylabel = styles.xlabels[h.axes.name[1]]
+                xedges = np.squeeze(h.axes.edges[0])
+                yedges = np.squeeze(h.axes.edges[1])
+
+                from wremnants import plot_tools 
+
+                outpath="/home/d/dwalter/www/WMassAnalysis/240127_extendedABCD/4Bins/"
+
+                def plot2D(outfile, values, postfix="", args={}, **kwargs):
+                    fig = plot_tools.makePlot2D(values=values, xlabel=xlabel, ylabel=ylabel, xedges=xedges, yedges=yedges, cms_label="WIP", **kwargs)
+                    if postfix:
+                        outfile += f"_{postfix}"
+                    plot_tools.save_pdf_and_png(outdir, outfile)
+                    # plot_tools.write_index_and_log(outdir, outfile, args=args)
+
+                def plot1D(outfile, values, variances, var=None, x=None, xerr=None, label=None, xlim=None, bins=None, line=None, outdir="",
+                    ylabel="", postfix="", args={}, avg=None, avg_err=None, edges=None
+                ):
+                    y = values
+                    yerr = np.sqrt(variances)
+
+                    ylim=(min(y-yerr), max(y+yerr))
+                    
+                    fig, ax = plot_tools.figure(values, xlabel=label, ylabel=ylabel, cms_label="Work in progress", xlim=xlim, ylim=ylim)
+                    if line is not None:
+                        ax.plot(xlim, [line,line], linestyle="--", color="grey", marker="")
+
+                    if avg is not None:
+                        ax.stairs(avg, edges, color="blue", label=f"${var}$ integrated")
+                        ax.bar(x=edges[:-1], height=2*avg_err, bottom=avg - avg_err, width=np.diff(edges), align='edge', linewidth=0, alpha=0.3, color="blue", zorder=-1)
+
+                    ax.errorbar(x, values, xerr=xerr, yerr=yerr, marker="", linestyle='none', color="k", label=f"${round(bins[0],1)} < {var} < {round(bins[1],1)}$")
+
+                    plot_tools.addLegend(ax, 1)
+
+                    if postfix:
+                        outfile += f"_{postfix}"
+                    plot_tools.save_pdf_and_png(outdir, outfile)
+
+                hLowMT_pt = hLowMT[{"eta": slice(None,None,hist.sum)}]
+                params_pt, cov_pt = compute_fakerate(hLowMT_pt, axis_name_mt, overflow_mt)
+
+                hLowMT_eta = hLowMT[{"pt": slice(None,None,hist.sum)}]
+                params_eta, cov_eta = compute_fakerate(hLowMT_eta, axis_name_mt, overflow_mt)
+
+                for idx in (0,1):
+                    plot2D(f"offset_{idx}", values=params[...,idx,0], plot_title="Offset "+("(-)" if idx==0 else "(+)"))
+                    plot2D(f"slope_{idx}", values=params[...,idx,1], plot_title="Slope "+("(-)" if idx==0 else "(+)"))
+                    plot2D(f"unc_offset_{idx}", values=np.sqrt(cov[...,idx,0,0]), plot_title="$\Delta$ offset "+("(-)" if idx==0 else "(+)"))
+                    plot2D(f"unc_slope_{idx}", values=np.sqrt(cov[...,idx,1,1]), plot_title="$\Delta$ slope "+("(-)" if idx==0 else "(+)"))
+                    plot2D(f"cov_offset_slope_{idx}", values=cov[...,idx,0,1], plot_title="Cov. "+("(-)" if idx==0 else "(+)"))
+                    plot2D(f"cor_offset_slope_{idx}", values=cov[...,idx,0,1]/(np.sqrt(cov[...,idx,0,0]) * np.sqrt(cov[...,idx,1,1])), plot_title="Corr. "+("(-)" if idx==0 else "(+)"))
+
+                    # different parts for fakes in D
+                    plot2D(f"variance_correlation_{idx}", values=var_d_offset[...,idx])
+                    plot2D(f"variance_application_{idx}", values=var_d_application[...,idx])
+
+                    # relative variances
+                    info = dict(postfix="relative",
+                        plot_uncertainties=True, logz=True, zlim=(0.04, 20)
+                    )
+                    plot2D(f"variance_slope_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_slope[...,idx], plot_title="Rel. var. slope "+("(-)" if idx==0 else "(+)"), **info)
+                    plot2D(f"variance_offset_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_offset[...,idx], plot_title="Rel. var. offset "+("(-)" if idx==0 else "(+)"), **info)
+                    plot2D(f"variance_correlation_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_correlation[...,idx]*-1, plot_title="-1*Rel. var. corr. "+("(-)" if idx==0 else "(+)"), **info)
+                    plot2D(f"variance_application_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_application[...,idx], plot_title="Rel. var. app. "+("(-)" if idx==0 else "(+)"), **info)
+
+                    plot2D(f"variance_slope_correlation_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_sc[...,idx], plot_title="Rel. var. slope+corr. "+("(-)" if idx==0 else "(+)"), **info)
+                    plot2D(f"variance_fakerate_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_soc[...,idx], plot_title="Rel. var. fakerate. "+("(-)" if idx==0 else "(+)"), **info)
+
+
+                    var = "\eta"
+                    label = styles.xlabels[h.axes.name[1]]           
+                    x = yedges[:-1]+(yedges[1:]-yedges[:-1])/2.
+                    xerr = (yedges[1:]-yedges[:-1])/2
+                    xlim=(min(yedges),max(yedges))
+
+                    avg = params_pt[:,idx,0]
+                    avg_err = cov_pt[:,idx,0,0]**0.5
+                    outdir = output_tools.make_plot_dir(outpath, "plots_1D/offset_eta")
+                    for idx_eta, eta_bins in enumerate(h.axes["eta"]):
+                        plot1D(f"offset_charge{idx}_eta{idx_eta}", values=params[idx_eta,:,idx,0], variances=cov[idx_eta,:,idx,0,0], ylabel="offset", 
+                            var=var, x=x, xerr=xerr, label=label, xlim=xlim, bins=eta_bins, outdir=outdir, avg=avg, avg_err=avg_err, edges=yedges)
+
+                    avg = params_pt[:,idx,1]
+                    avg_err = cov_pt[:,idx,1,1]**0.5
+                    outdir = output_tools.make_plot_dir(outpath, "plots_1D/slope_eta")
+                    for idx_eta, eta_bins in enumerate(h.axes["eta"]):
+                        plot1D(f"slope_charge{idx}_eta{idx_eta}", values=params[idx_eta,:,idx,1], variances=cov[idx_eta,:,idx,1,1], ylabel="slope", line=0, 
+                            var=var, x=x, xerr=xerr, label=label, xlim=xlim, bins=eta_bins, outdir=outdir, avg=avg, avg_err=avg_err, edges=yedges)
+
+                    var = "p_\mathrm{T}"
+                    label = styles.xlabels[h.axes.name[0]]
+                    x = xedges[:-1]+(xedges[1:]-xedges[:-1])/2.
+                    xerr = (xedges[1:]-xedges[:-1])/2
+                    xlim=(min(xedges),max(xedges))  
+
+                    avg = params_eta[:,idx,0]
+                    avg_err = cov_eta[:,idx,0,0]**0.5
+                    outdir = output_tools.make_plot_dir(outpath, "plots_1D/offset_pt")
+                    for idx_pt, pt_bins in enumerate(h.axes["pt"]):
+                        plot1D(f"offset_charge{idx}_pt{idx_pt}", values=params[:,idx_pt,idx,0], variances=cov[:,idx_pt,idx,0,0], ylabel="offset", 
+                            var=var, x=x, xerr=xerr, label=label, xlim=xlim, bins=pt_bins, outdir=outdir, avg=avg, avg_err=avg_err, edges=xedges)
+
+                    avg = params_eta[:,idx,1]
+                    avg_err = cov_eta[:,idx,1,1]**0.5
+                    outdir = output_tools.make_plot_dir(outpath, "plots_1D/slope_pt")
+                    for idx_pt, pt_bins in enumerate(h.axes["pt"]):
+                        plot1D(f"slope_charge{idx}_pt{idx_pt}", values=params[:,idx_pt,idx,1], variances=cov[:,idx_pt,idx,1,1], ylabel="slope", line=0, 
+                            var=var, x=x, xerr=xerr, label=label, xlim=xlim, bins=pt_bins, outdir=outdir, avg=avg, avg_err=avg_err, edges=xedges)
+
             val_d = np.stack((val_d.sum(axis=-1), var_d), axis=-1)
     else:
         hHighMTPassIso = hHighMTFailIso.copy()
@@ -142,7 +283,7 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
             logger.warning("Using extendedABCD as function of mt without integration of mt will give fakes with incorrect bin by bin uncertainties!")
             # Wrong but easy solution for the moment, just omit the sums TODO: implement proper solution
             # variance from error propagation formula from parameters
-            var_d = (val_c*x_c)**2 * XTXinv[...,1,1,np.newaxis] + (val_c)**2 * XTXinv[...,0,0,np.newaxis] + 2*(val_c*x_c)*val_c*XTXinv[...,1,0,np.newaxis] 
+            var_d = (val_c*x_c)**2 * cov[...,1,1,np.newaxis] + (val_c)**2 * cov[...,0,0,np.newaxis] + 2*(val_c*x_c)*val_c*cov[...,1,0,np.newaxis] 
             # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
             var_c = hHighMTFailIso.variances(flow=True)
             if idx_ax_mt != len(hHighMTFailIso.axes)-1:
@@ -152,7 +293,7 @@ def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis
                 var_d = np.moveaxis(var_d, -1, idx_ax_mt) # move the axis back
             val_d = np.stack((val_d, var_d), axis=-1)
 
-    hHighMTPassIso.view(flow=True)[...] = val_d
+    hHighMTPassIso.view(flow=True)[...] = val_d 
 
     return hHighMTPassIso
 

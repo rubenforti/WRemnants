@@ -70,6 +70,7 @@ class Datagroups(object):
         self.setGenAxes()
         self.fakerate_axes = ["pt", "eta", "charge"]
         self.fakerate_integration_axes = []
+        self.container = {}
 
         if "lowpu" in self.mode:
             from wremnants.datasets.datagroupsLowPU import make_datagroups_lowPU as make_datagroups
@@ -174,7 +175,7 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHighMT=False):
+    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHighMT=False, use_container=False):
         sigOp = None
         fakeOp = None
         fakeOpArgs = None
@@ -182,7 +183,11 @@ class Datagroups(object):
             fakeOpArgs = {"fakerate_integration_axes":[], "integrateHighMT":integrateHighMT}
             if applySelection:
                 sigOp = sel.signalHistWmass
-                fakeOp = sel.fakeHistExtendedABCD if extendedABCD else sel.fakeHistABCD
+                if extendedABCD:
+                    fakeOpArgs["container"] = self.container if use_container else None
+                    fakeOp = sel.fakeHistExtendedABCD
+                else:
+                    fakeOp = sel.fakeHistABCD
             elif simultaneousABCD:
                 fakeOp = sel.fakeHistSimultaneousABCD
 

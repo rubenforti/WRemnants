@@ -175,7 +175,7 @@ jobs:
 
       - name: wmass combine setup
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --simpleABCD 
           -i $HIST_FILE --lumiScale $LUMI_SCALE --unfold --ABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
@@ -189,7 +189,6 @@ jobs:
           -f $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -m ungrouped --sortDescending -s constraint 
           --debug --grouping max -t utilities/styles/nuisance_translate.json 
           output --outFolder $WEB_DIR/$PLOT_DIR -o pulls_unfolding_mw.html -n 50 --otherExtensions png pdf
-          
 
       - name: wmass combine unfolding plot xsec 
         run: >-

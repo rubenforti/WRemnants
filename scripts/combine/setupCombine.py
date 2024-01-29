@@ -115,7 +115,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     logger.debug(f"Excluding these groups of processes: {args.excludeProcGroups}")
 
     datagroups = Datagroups(inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultanoeusABCD, 
-        simultaneousABCD=args.simultanoeusABCD, extendedABCD=not args.simpleABCD, integrateHighMT="mt" not in fitvar)
+        simultaneousABCD=args.simultanoeusABCD, extendedABCD=not args.simpleABCD, use_container=not args.simpleABCD, integrateHighMT="mt" not in fitvar)
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
