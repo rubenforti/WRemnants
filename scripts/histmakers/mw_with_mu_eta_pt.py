@@ -98,6 +98,7 @@ axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
 axis_mt = hist.axis.Variable([0,4,11,21,mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120, 150, 200], name = "mt", underflow=False, overflow=True)
+# axis_mt = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
@@ -410,7 +411,9 @@ def build_graph(df, dataset):
     if not args.makeMCefficiency and args.dphiMuonMetCut>0:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
-        
+
+    df = df.Define("passMT", f"transverseMass >= {mtw_min}")
+
     if auxiliary_histograms:
         # utility plot, mt and met, to plot them later (need eta-pt to make fakes)
         results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mt, axis_passIso], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
@@ -447,7 +450,6 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
 
         if args.makeMCefficiency:
-            df = df.Define("passMT", f"transverseMass >= {mtw_min}")
             cols_WeffMC = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_uT0", "goodMuons_charge0",
                            "passIso", "passMT", "passTrigger"]
             yieldsForWeffMC = df.HistoBoost("yieldsForWeffMC", axes_WeffMC, [*cols_WeffMC, "nominal_weight"])

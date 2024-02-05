@@ -267,13 +267,14 @@ def normalize(h, scale=1e6, createNew=True):
 def makeAbsHist(h, axis_name, rename=True):
     ax = h.axes[axis_name]
     axidx = list(h.axes).index(ax)
+    axInfo = dict(underflow=False, overflow=ax.traits.overflow, name=f"abs{axis_name}" if rename else axis_name)
     if ax.size == 1 and -ax.edges[0] == ax.edges[-1]:
-        abs_ax = hist.axis.Regular(1, 0, ax.edges[-1], underflow=False, name=f"abs{axis_name}" if rename else axis_name)
+        abs_ax = hist.axis.Regular(1, 0, ax.edges[-1], **axInfo)
         return hist.Hist(*h.axes[:axidx], abs_ax, *h.axes[axidx+1:], storage=h.storage_type(), data=h.view())
 
     if 0 not in ax.edges:
         raise ValueError("Can't mirror around 0 if it isn't a bin boundary")
-    abs_ax = hist.axis.Variable(ax.edges[ax.index(0.):], underflow=False, name=f"abs{axis_name}" if rename else axis_name)
+    abs_ax = hist.axis.Variable(ax.edges[ax.index(0.):], **axInfo)
     hnew = hist.Hist(*h.axes[:axidx], abs_ax, *h.axes[axidx+1:], storage=h.storage_type())
     
     s = hist.tag.Slicer()

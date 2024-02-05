@@ -23,7 +23,9 @@ parser.add_argument("--nominalRef", type=str, help="Specify the nominal his if b
 parser.add_argument("--hists", type=str, nargs='+', required=True, help="List of histograms to plot")
 parser.add_argument("-c", "--channel", type=str, choices=["plus", "minus", "all"], default="all", help="Select channel to plot")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
-parser.add_argument("--rebin", type=int, default=1, help="Rebin (for now must be an int)")
+parser.add_argument("--rebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
+parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
+parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
@@ -78,6 +80,8 @@ outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eos
 groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'], 
     extendedABCD=not args.simpleABCD, integrateHighMT="mt" not in args.hists)
 
+
+
 # There is probably a better way to do this but I don't want to deal with it
 datasets = groups.getNames()
 logger.info(f"Will plot datasets {datasets}")
@@ -99,6 +103,9 @@ if len(args.presel):
             logger.info(f"Integrating boolean {ps} axis")
             presel[ps] = s[::hist.sum]
     groups.setGlobalAction(lambda h: h[presel])
+
+if args.axlim or args.rebin or args.absval:
+    groups.set_rebin_action(args.hists[0].split("-"), args.axlim, args.rebin, args.absval)
 
 if args.selection:
     applySelection=False
@@ -193,6 +200,7 @@ for h in args.hists:
         action = lambda x: sel.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=h.split("-"))
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
+
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             action=action, unstacked=unstack, 

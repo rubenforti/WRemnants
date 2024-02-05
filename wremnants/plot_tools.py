@@ -27,6 +27,8 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
     hax = href.axes[0]
     if not xlim:
         xlim = [hax.edges[0], hax.edges[-1]]
+    if not automatic_scale:
+        return plt.figure(figsize=(width_scale*8,8)), xlim
     xlim_range = float(xlim[1] - xlim[0])
     original_xrange = float(hax.edges[-1] - hax.edges[0])
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
@@ -42,8 +44,11 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     if isinstance(href, hist.Hist):
         fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
     else:
-        raw_width = (len(href)/float(bin_density))
-        width = math.ceil(raw_width)
+        if automatic_scale:
+            raw_width = (len(href)/float(bin_density))
+            width = math.ceil(raw_width)
+        else:
+            width = 1
         fig = plt.figure(figsize=(width_scale*8*width,8))
 
     ax1 = fig.add_subplot() 
