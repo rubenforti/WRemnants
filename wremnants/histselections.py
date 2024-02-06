@@ -36,49 +36,90 @@ def fakeHistABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt
 
     return hh.multiplyHists(hFRF, h[{**common.failIso, nameMT: passMT}])
 
-def compute_fakerate1D(hLowMT, axis_name_mt="mt", overflow_mt=True, use_weights=True, order=1, auxiliary_info=False):
+def compute_fakerate(hLow, axis_name="mt", overflow=True, use_weights=True, order=1, auxiliary_info=False,
+    axis_name_2=None, order_2=None,
+):
+    logger.debug(f"Do the fakerate in order: {order}")
     # fakerate parameterized in one variable, mt, depending on order of polinomial: f(mt) = a + b*mt + c*mt**2 ... 
-    hLowMTPassIso = hLowMT[common.passIso]
-    hLowMTFailIso = hLowMT[common.failIso]
-    hFRF = hh.divideHists(hLowMTPassIso, hLowMTFailIso, cutoff=0.1, createNew=True, flow=False)
+    hLowPass = hLow[common.passIso]
+    hLowFail = hLow[common.failIso]
+    hFRF = hh.divideHists(hLowPass, hLowFail, cutoff=0.1, createNew=True, flow=False)
     y = hFRF.values(flow=True)
-    idx_ax_mt = hFRF.axes.name.index(axis_name_mt)
-    if idx_ax_mt != len(hFRF.axes)-1:
-        y = np.moveaxis(y, idx_ax_mt, -1)
-    if overflow_mt:
-        # stupid, but if the mt has overflow even if lowMT range is selected we get back an overflow bin with zeros (even when we use the hist slicing methods), strip them off
+    idx_ax = hFRF.axes.name.index(axis_name)
+    if idx_ax != len(hFRF.axes)-1:
+        y = np.moveaxis(y, idx_ax, -1)
+    if overflow:
+        # stupid, but if the mt has overflow even if low range is selected we get back an overflow bin with zeros 
+        #   (even when we use the hist slicing methods), strip them off
         y = y[...,:-1]
 
-    x = hFRF.axes[axis_name_mt].centers
-    x = np.broadcast_to(x, y.shape)
-    x0 = np.ones(x.shape)
     if use_weights:
         if hFRF.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1./np.sqrt(hFRF.variances(flow=True))
-            if idx_ax_mt != len(hFRF.axes)-1:
-                w = np.moveaxis(w, idx_ax_mt, -1)
-            if overflow_mt:
+            if idx_ax != len(hFRF.axes)-1:
+                w = np.moveaxis(w, idx_ax, -1)
+            if overflow:
                 w = w[...,:-1]
         else:
             raise RuntimeError("Try to compute weighted least square but the histogram has no variances.")
-        x0 = x0*w
-        x2 = x**2*w
-        x = x*w
-        y = y*w
     else:
         logger.warning("Using extendedABCD on histogram without uncertainties, make an unweighted linear squared solution.")
+        w = np.ones_like(y)
 
-    # parameter matrix X with the "parameter" axis (here 2 parameters for offset and slope)
-    if order==0:
-        X = x0[...,np.newaxis]
-        XTY = (x0*y).sum(axis=-1)[...,np.newaxis]
-    elif order==1:
-        X = np.stack((x0, x), axis=-1)
-        XTY = np.stack(((x0*y).sum(axis=-1), (x*y).sum(axis=-1)), axis=-1)
-    elif order==2:
-        X = np.stack((x0, x, x2), axis=-1)
-        XTY = np.stack(((x0*y).sum(axis=-1), (x*y).sum(axis=-1), (x2*y).sum(axis=-1)), axis=-1)
+    do1D=axis_name_2 is None
+    stackX=[]   # parameter matrix X 
+    stackXTY=[] # and X.T @ Y
+    if do1D:
+        logger.debug(f"Do the fakerate in 1D: {axis_name}")
+        x = hFRF.axes[axis_name].centers
+        x = np.broadcast_to(x, y.shape)
+        for n in range(order+1):
+            stackX.append(w*x**n)
+            stackXTY.append((w**2 * x**n * y).sum(axis=(-1)))
+
+        frf = lambda x, ps, o=order: sum([ps[...,n,np.newaxis] * x**n for n in range(o+1)])
+    else:
+        logger.debug(f"Do the fakerate in 2D: {axis_name},{axis_name_2}")
+
+        idx_ax_2 = hFRF.axes.name.index(axis_name_2)
+        if idx_ax_2 != len(hFRF.axes)-2:
+            y = np.moveaxis(y, idx_ax_2, -2)
+            w = np.moveaxis(w, idx_ax_2, -2)
+
+        x = hFRF.axes[axis_name].centers
+        x_2 = hFRF.axes[axis_name_2].centers
+
+        x, x_2 = np.broadcast_arrays(x[np.newaxis,...], x_2[..., np.newaxis])
+
+        x = np.broadcast_to(x, y.shape)
+        x_2 = np.broadcast_to(x_2, y.shape)
+
+        if order_2 is None:
+            order_2=[0,]*(order+1)
+
+        for n in range(order+1):
+            for m in range(order_2[n]+1):
+                stackX.append(w * x**n * x_2**m)
+                stackXTY.append((w**2 * x**n * x_2**m * y).sum(axis=(-2, -1)))
+
+        def frf(x1, x2, ps, o1=order, o2=order_2):
+            idx=0
+            FRF = 0
+            for n in range(o1+1):
+                for m in range(o2[n]+1):
+                    FRF += ps[...,idx,np.newaxis,np.newaxis] * x1**n * x2**m
+                    idx += 1
+            return FRF
+
+    X = np.stack(stackX, axis=-1)
+    XTY = np.stack(stackXTY, axis=-1)
+    
+    if not do1D:
+        # flatten the 2D array into 1D
+        newshape = (*y.shape[:-2],np.product(y.shape[-2:]))
+        y = y.reshape(newshape)
+        X = X.reshape(*newshape, X.shape[-1])
 
     # compute the transpose of X for the mt and parameter axes 
     XT = np.transpose(X, axes=(*range(len(X.shape)-2), len(X.shape)-1, len(X.shape)-2))
@@ -101,209 +142,134 @@ def compute_fakerate1D(hLowMT, axis_name_mt="mt", overflow_mt=True, use_weights=
 
         logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total}")
 
-        return params, XTXinv, chi2, ndf
+        return params, XTXinv, frf, chi2, ndf
     else:
-        return params, XTXinv
+        return params, XTXinv, frf
 
-def compute_fakerate2D(hLowMT, axis_name_mt="mt", axis_name_pt="pt", overflow_mt=True, use_weights=True, order_mt=1, order_pt=[2,1]):
-    # fakerate parameterized in two variables, mt and pT, 
-    # depending on order of polinomial for mt, e.g. order_mt=2: f(mt, pT) = a(pT) + b(pT)*mt + c(pT)*mt**2
-    # depending on order of polinomial for parameter, e.g. order_pt=[2,]: a(pT) = a1 + a2*pT + a3*pT**2 
 
-    hLowMTPassIso = hLowMT[common.passIso]
-    hLowMTFailIso = hLowMT[common.failIso]
-    hFRF = hh.divideHists(hLowMTPassIso, hLowMTFailIso, cutoff=0.1, createNew=True, flow=False)
-    y = hFRF.values(flow=True)
-    idx_ax_mt = hFRF.axes.name.index(axis_name_mt)
-    if idx_ax_mt != len(hFRF.axes)-1:
-        y = np.moveaxis(y, idx_ax_mt, -1)
-    if overflow_mt:
-        # stupid, but if the mt has overflow even if lowMT range is selected we get back an overflow bin with zeros (even when we use the hist slicing methods), strip them off
-        y = y[...,:-1]
+def fakeHistExtendedABCD(h, fakerate_integration_axes=[], fakerate_axis="mt", fakerate_bins=[0,4,11,21,40], 
+    integrateLowMT=True, integrateHighMT=True, order=2, container=None, axis_name_2="pt", order_2=[2,1,2]):
+    logger.debug(f"Compute fakes with extended ABCD method of order {order}")
+    # fakerate_axis: The axis to parameterize the fakerate in (e.g. transverse mass)
+    # fakerate_bins: The lower bins to solve the parameterization (e.g. transverse mass bins up to 40)
+    # integrate=False keeps the fakerate axis in the returned histogram (can be used to have fakes vs transverse mass)
+    # order: set the order for the parameterization: 0: f(x)=a; 1: f(x)=a+b*x; 2: f(x)=a+b*x+c*x**2; ...
+    # container: Specify a dictionary to store the histogram used in the first call of this function and use it in all succeeding calls 
+    #    (to use the variances of the nominal histogram when processing systematics)
 
-    idx_ax_pt = hFRF.axes.name.index(axis_name_pt)
-    if idx_ax_pt != len(hFRF.axes)-2:
-        y = np.moveaxis(y, idx_ax_pt, -2)
+    # allow for a parameterization in the fakerate factor (FRF) with fakerate axis (x)
+    # 1) calculate FRF(x) in each bin of the fakerate axis
+    # 2) obtain parameters from fakerate bins using weighted least square https://en.wikipedia.org/wiki/Weighted_least_squares
+    # 3) apply the FRF(x) in high bins of fakertae axis
 
-    x_mt = hFRF.axes[axis_name_mt].centers
-    x_pt = hFRF.axes[axis_name_pt].centers
+    if h.axes[fakerate_axis].traits.underflow:
+        raise NotImplementedError(f"Underflow bins for axis {fakerate_axis} is not supported")
 
-    x_mt, x_pt = np.broadcast_arrays(x_mt[np.newaxis,...], x_pt[..., np.newaxis])
-
-    # x_mt = np.broadcast_to(x_mt, y.shape)
-    # x_pt = np.broadcast_to(x_pt, y.shape)
-
-    x0 = np.ones_like(y)
-    if use_weights:
-        if hFRF.storage_type == hist.storage.Weight:
-            # transform with weights
-            w = 1./np.sqrt(hFRF.variances(flow=True))
-            if idx_ax_mt != len(hFRF.axes)-1:
-                w = np.moveaxis(w, idx_ax_mt, -1)
-            if idx_ax_pt != len(hFRF.axes)-2:
-                w = np.moveaxis(w, idx_ax_pt, -2)
-            if overflow_mt:
-                w = w[...,:-1]
-        else:
-            raise RuntimeError("Try to compute weighted least square but the histogram has no variances.")
-        x0 = x0*w
-        x_mt = x_mt*w
-        x_pt = x_pt*w
-        y = y*w
-    else:
-        logger.warning("Using extendedABCD on histogram without uncertainties, make an unweighted linear squared solution.")
-
-    # parameter matrix X with the "parameter" axis (here 2 parameters for offset and slope)
-    if order_mt==0:
-        XTY = (x0 * y).sum(axis=(-2, -1))[..., np.newaxis, np.newaxis]
-        X = x0[..., np.newaxis, np.newaxis]
-    elif order_mt==1:
-        XTY = np.stack(
-            (
-                (x0 * y).sum(axis=(-2, -1), keepdims=True), 
-                (x_mt * y).sum(axis=(-2, -1), keepdims=True),
-                (x_pt * y).sum(axis=(-2, -1), keepdims=True)),
-            axis=-1)
-        X = np.stack((x0, x_mt, x_pt), axis=-1)
-
-    XTY = np.squeeze(XTY)
-
-    newshape = (*y.shape[:-2],np.product(y.shape[-2:]))
-    y = y.reshape(newshape)
-    X = X.reshape(*newshape, X.shape[-1])
-
-    # compute the transpose of X for the mt and parameter axes 
-    XT = np.transpose(X, axes=(*range(len(X.shape)-2), len(X.shape)-1, len(X.shape)-2))
-    XTX = XT @ X
-    # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion), 
-    # this term is also the covariance matrix for the parameters
-    XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
-    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
-    params = np.einsum('...ij,...j->...i', XTXinv, XTY)
-
-    return params, XTXinv
-
-def fakeHistExtendedABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt="mt", 
-    integrateLowMT=True, integrateHighMT=False, bins_mt_fit=[0,4,11,21,40], order=2, container=None):
-    logger.debug("Compute fakes with extended ABCD method")
-    # integrateMT=False keeps the mT axis in the returned histogram (can be used to have fakes vs mT)
-
-    # allow for a slope in the FRF with mt
-    # 1) calculate FRF(mt) in each bin of the fakerate axis
-    # 2) obtain offset and slope from lowMT bins using weighted least square https://en.wikipedia.org/wiki/Weighted_least_squares
-    # 3) apply the FRF(mt) in high mt bins
-
-    if h.axes[axis_name_mt].traits.underflow:
-        raise NotImplementedError(f"Underflow bins for axis {axis_name_mt} is not supported")
-
-    overflow_mt = h.axes[axis_name_mt].traits.overflow
+    overflow = h.axes[fakerate_axis].traits.overflow
 
     if any(a in h.axes.name for a in fakerate_integration_axes):
         fakerate_axes = [n for n in h.axes.name if n not in fakerate_integration_axes]
         logger.info(f"Project {fakerate_axes}")
         h = h.project(*fakerate_axes)
 
-    hLowMT = hh.rebinHist(h, axis_name_mt, bins_mt_fit)
+    hLow = hh.rebinHist(h, fakerate_axis, fakerate_bins)
 
     if container is not None:
-        if "hLowMT" in container:
+        if "h_fakerate_low" in container:
             # take variances from containered histogram
-            hLowMT_2 = container["hLowMT"]
+            hLow_2 = container["h_fakerate_low"]
 
-            val_2 = hLowMT_2.values(flow=True)
-            var_2 = hLowMT_2.variances(flow=True)
-            val_1 = hLowMT.values(flow=True)
+            val_2 = hLow_2.values(flow=True)
+            var_2 = hLow_2.variances(flow=True)
+            val_1 = hLow.values(flow=True)
             # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same
             extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val_1.ndim - val_2.ndim)
             var_1 = var_2[extra_dimensions] * (val_1 / val_2[extra_dimensions])**2
 
-            hLowMT = hist.Hist(*hLowMT.axes, storage=hist.storage.Weight())
-            hLowMT.view(flow=True)[...] = np.stack((val_1, var_1), axis=-1)
+            hLow = hist.Hist(*hLow.axes, storage=hist.storage.Weight())
+            hLow.view(flow=True)[...] = np.stack((val_1, var_1), axis=-1)
         else:
             # store histogram for later
-            container["hLowMT"] = hLowMT
+            container["h_fakerate_low"] = hLow
 
-    params, cov = compute_fakerate1D(hLowMT, axis_name_mt, overflow_mt, use_weights=True, order=order)
-    # params, cov = compute_fakerate2D(hLowMT, axis_name_mt, overflow_mt=overflow_mt, use_weights=True, order_mt=1, order_pt=(2,1))
+    params, cov, frf = compute_fakerate(hLow, fakerate_axis, overflow, axis_name_2=axis_name_2, order_2=order_2, use_weights=True, order=order)
 
-    hHighMTFailIso = h[{**common.failIso, axis_name_mt: slice(complex(0,thresholdMT),None)}]
+    hHighFail = h[{**common.failIso, fakerate_axis: slice(complex(0,fakerate_bins[-1]),None)}]
 
-    val_c = hHighMTFailIso.values(flow=True)
-    idx_ax_mt = hHighMTFailIso.axes.name.index(axis_name_mt)
-    if idx_ax_mt != len(hHighMTFailIso.axes)-1:
-        val_c = np.moveaxis(val_c, idx_ax_mt, -1)
+    val_c = hHighFail.values(flow=True)
+    idx_ax = hHighFail.axes.name.index(fakerate_axis)
+    if idx_ax != len(hHighFail.axes)-1:
+        val_c = np.moveaxis(val_c, idx_ax, -1)
 
-    x_c = hHighMTFailIso.axes[axis_name_mt].centers
-    if overflow_mt:
+    x_c = hHighFail.axes[fakerate_axis].centers
+    if overflow:
         # need an x point for the overflow bin, mirror distance between two last bins 
         x_c = np.append(x_c, x_c[-1]+np.diff(x_c[-2:]))
 
-    x_c = np.broadcast_to(x_c, val_c.shape)
-
-    if order==0:
-        FRF = params[...,0]
-    elif order==1:
-        FRF = params[...,1,np.newaxis] * x_c + params[...,0,np.newaxis]
-    elif order==2:
-        FRF = params[...,2,np.newaxis] * x_c**2 + params[...,1,np.newaxis] * x_c + params[...,0,np.newaxis]
+    if axis_name_2:
+        x_2 = hHighFail.axes[axis_name_2].centers
+        idx_ax_2 = hHighFail.axes.name.index(axis_name_2)
+        if idx_ax_2 != len(hHighFail.axes)-2:
+            val_c = np.moveaxis(val_c, idx_ax_2, -2)
+        x_c, x_2 = np.broadcast_arrays(x_c[np.newaxis,...], x_2[..., np.newaxis])
+        x_c = np.broadcast_to(x_c, val_c.shape)
+        x_2 = np.broadcast_to(x_2, val_c.shape)
+        FRF = frf(x_c, x_2, params)
+        if idx_ax_2 != len(hHighFail.axes)-2:
+            FRF = np.moveaxis(FRF, -2, idx_ax_2)
+            val_c = np.moveaxis(val_c, -2, idx_ax_2)
     else:
-        raise RuntimeError("Unknown fakerate parameterization")
+        x_c = np.broadcast_to(x_c, val_c.shape)
+        FRF = frf(x_c, params)
 
     val_d = val_c * FRF
 
+    if h.storage_type == hist.storage.Weight:
+        # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
+        var_c = hHighFail.variances(flow=True)
+        if idx_ax != len(hHighFail.axes)-1:
+            var_c = np.moveaxis(var_c, idx_ax, -1)
+        var_d = (FRF**2 * var_c).sum(axis=-1)
+
     if integrateHighMT:
-        hHighMTPassIso = hist.Hist(*[a for a in hHighMTFailIso.axes if a.name != axis_name_mt], storage=h.storage_type())
+        hHighPass = hist.Hist(*[a for a in hHighFail.axes if a.name != fakerate_axis], storage=h.storage_type())
 
         if h.storage_type == hist.storage.Weight:
-            # variance from error propagation formula from parameters (first sum bins, then multiply with parameter error)
-            if order==0:
-                var_d_fr = (val_c).sum(axis=-1)**2 * cov[...,0,0] 
-            if order==1:
-                var_d_offset = (val_c).sum(axis=-1)**2 * cov[...,0,0] 
-                var_d_slope = (val_c*x_c).sum(axis=-1)**2 * cov[...,1,1] 
-                var_d_correlation = 2*(val_c*x_c).sum(axis=-1)*val_c.sum(axis=-1)*cov[...,1,0]
-                var_d_fr = var_d_slope + var_d_offset + var_d_correlation
-            if order==2:
-                var_d_offset = (val_c).sum(axis=-1)**2 * cov[...,0,0] 
-                var_d_slope = (val_c*x_c).sum(axis=-1)**2 * cov[...,1,1] 
-                var_d_quad = (val_c*x_c**2).sum(axis=-1)**2 * cov[...,2,2] 
-                var_d_correlation = 2*(val_c*x_c**3).sum(axis=-1)*val_c.sum(axis=-1)*cov[...,2,1] \
-                    + 2*(val_c*x_c**2).sum(axis=-1)*val_c.sum(axis=-1)*cov[...,2,0] \
-                    + 2*(val_c*x_c).sum(axis=-1)*val_c.sum(axis=-1)*cov[...,1,0] 
-                var_d_fr = var_d_quad + var_d_slope + var_d_offset + var_d_correlation
-
-            # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
-            var_c = hHighMTFailIso.variances(flow=True)
-            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
-                var_c = np.moveaxis(var_c, idx_ax_mt, -1)
-            var_d_application = (FRF**2 * var_c).sum(axis=-1)
-
-            var_d = var_d_fr + var_d_application
-            
+            if axis_name_2:
+                # TODO: implement proper uncertainties for fakerate parameters
+                pass
+            else:
+                # variance from error propagation formula from parameters (first sum bins, then multiply with parameter error)
+                for n in range(order+1):
+                    var_d += (val_c*x_c**n).sum(axis=-1)**2 * cov[...,n,n]
+                    for m in range(max(0,n)):
+                        logger.warning(f"n={n},m={m}")
+                        var_d += 2*(val_c*x_c**n).sum(axis=-1)*(val_c*x_c**m).sum(axis=-1)*cov[...,n,m]
             val_d = np.stack((val_d.sum(axis=-1), var_d), axis=-1)
     else:
-        hHighMTPassIso = hHighMTFailIso.copy()
+        hHighPass = hHighFail.copy()
 
-        if idx_ax_mt != len(hHighMTFailIso.axes)-1:
-            val_d = np.moveaxis(val_d, -1, idx_ax_mt) # move the axis back
+        if idx_ax != len(hHighFail.axes)-1:
+            val_d = np.moveaxis(val_d, -1, idx_ax) # move the axis back
 
         if h.storage_type == hist.storage.Weight:
-            logger.warning("Using extendedABCD as function of mt without integration of mt will give fakes with incorrect bin by bin uncertainties!")
-            # Wrong but easy solution for the moment, just omit the sums TODO: implement proper solution
+            logger.warning(f"Using extendedABCD as function of {fakerate_axis} without integration of mt will give fakes with incorrect bin by bin uncertainties!")
+            # TODO: implement proper uncertainties for fakerate parameters
+            # Wrong but easy solution for the moment, just omit the sums
             # variance from error propagation formula from parameters
             var_d = (val_c*x_c)**2 * cov[...,1,1,np.newaxis] + (val_c)**2 * cov[...,0,0,np.newaxis] + 2*(val_c*x_c)*val_c*cov[...,1,0,np.newaxis] 
-            # variance coming from statistical uncertainty in C (indipendent bin errors, sum of squares)
-            var_c = hHighMTFailIso.variances(flow=True)
-            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
-                var_c = np.moveaxis(var_c, idx_ax_mt, -1)
-            var_d += (FRF**2 * var_c)
-            if idx_ax_mt != len(hHighMTFailIso.axes)-1:
-                var_d = np.moveaxis(var_d, -1, idx_ax_mt) # move the axis back
+            for n in range(order+1):
+                var_d += (val_c*x_c**n)**2 * cov[...,n,n]
+                for m in range(max(0,n-1)):
+                    logger.warning(f"n={n},m={m}")
+                    var_d += 2*(val_c*x_c**n)*(val_c*x_c**m)*cov[...,n,m]
+            if idx_ax != len(hHighFail.axes)-1:
+                var_d = np.moveaxis(var_d, -1, idx_ax) # move the axis back
             val_d = np.stack((val_d, var_d), axis=-1)
 
-    hHighMTPassIso.view(flow=True)[...] = val_d 
+    hHighPass.view(flow=True)[...] = val_d 
 
-    return hHighMTPassIso
+    return hHighPass
 
 
 def fakeHistSimultaneousABCD(h, thresholdMT=40.0, fakerate_integration_axes=[], axis_name_mt="mt", integrateLowMT=True, integrateHighMT=False):
