@@ -32,7 +32,11 @@ parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this
 parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
 parser.add_argument("--procFilters", type=str, nargs="*", help="Filter to plot (default no filter, only specify if you want a subset")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
-parser.add_argument("--noFill", action='store_true', help="Don't fill stack")
+parser.add_argument("--noFill", action='store_true', help="Don't fill")
+parser.add_argument("--noStack", action='store_true', help="Don't stack")
+parser.add_argument("--noRatio", action='store_true', help="Don't make ratio plot")
+parser.add_argument("--density", action='store_true', help="Normalize each process to unity, only works with '--noStack'")
+parser.add_argument("--flow", type=str, choices=["show", "sum", "hint", "none"], default="none", help="Whether plot the under/overflow bin")
 parser.add_argument("--fitresult", type=str, help="Specify a fitresult root file to draw the postfit distributions with uncertainty bands")
 parser.add_argument("--prefit", action='store_true', help="Use the prefit uncertainty from the fitresult root file, instead of the postfit. (--fitresult has to be given)")
 parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", help="Don't show stat unc in ratio")
@@ -105,6 +109,7 @@ if len(args.presel):
     groups.setGlobalAction(lambda h: h[presel])
 
 if args.axlim or args.rebin or args.absval:
+    logger.info("Rebin")
     groups.set_rebin_action(args.hists[0].split("-"), args.axlim, args.rebin, args.absval)
 
 if args.selection:
@@ -194,7 +199,7 @@ def collapseSyst(h):
             return h[{ax : 0}].copy()
     return h
 
-overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen"]
+overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "nBHad", "nCHad", "iso", "dxy", "met","mt"]
 for h in args.hists:
     if len(h.split("-")) > 1:
         action = lambda x: sel.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=h.split("-"))
@@ -205,10 +210,10 @@ for h in args.hists:
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
-            xlabel=styles.xlabels.get(h,h), ylabel="Events/bin", rrange=args.rrange, binwnorm=1.0, lumi=groups.lumi,
+            xlabel=styles.xlabels.get(h,h), ylabel=None, rrange=args.rrange, binwnorm=1.0, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
-            xlim=args.xlim, no_fill=args.noFill, cms_decor=args.cmsDecor,
-            legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
+            cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
             ratio_error=args.ratioError)
 
     fitresultstring=""

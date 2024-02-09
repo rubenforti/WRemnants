@@ -243,7 +243,6 @@ def fakeHistExtendedABCD(h, fakerate_integration_axes=[], fakerate_axis="mt", fa
                 for n in range(order+1):
                     var_d += (val_c*x_c**n).sum(axis=-1)**2 * cov[...,n,n]
                     for m in range(max(0,n)):
-                        logger.warning(f"n={n},m={m}")
                         var_d += 2*(val_c*x_c**n).sum(axis=-1)*(val_c*x_c**m).sum(axis=-1)*cov[...,n,m]
             val_d = np.stack((val_d.sum(axis=-1), var_d), axis=-1)
     else:
@@ -261,7 +260,6 @@ def fakeHistExtendedABCD(h, fakerate_integration_axes=[], fakerate_axis="mt", fa
             for n in range(order+1):
                 var_d += (val_c*x_c**n)**2 * cov[...,n,n]
                 for m in range(max(0,n-1)):
-                    logger.warning(f"n={n},m={m}")
                     var_d += 2*(val_c*x_c**n)*(val_c*x_c**m)*cov[...,n,m]
             if idx_ax != len(hHighFail.axes)-1:
                 var_d = np.moveaxis(var_d, -1, idx_ax) # move the axis back

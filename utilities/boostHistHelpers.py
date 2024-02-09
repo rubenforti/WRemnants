@@ -260,9 +260,12 @@ def scaleHist(h, scale, createNew=True, flow=True):
             h.variances(flow=flow)[...] *= scale*scale
         return h
     
-def normalize(h, scale=1e6, createNew=True):
-    scale = scale/h.sum(flow=True).value
-    return scaleHist(h, scale, createNew)
+def normalize(h, scale=1e6, createNew=True, flow=True):
+    if h.storage_type == hist.storage.Weight:
+        scale = scale/h.sum(flow=flow).value
+    else:
+        scale = scale/h.sum(flow=flow)
+    return scaleHist(h, scale, createNew, flow)
 
 def makeAbsHist(h, axis_name, rename=True):
     ax = h.axes[axis_name]

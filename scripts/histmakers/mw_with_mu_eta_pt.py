@@ -98,13 +98,28 @@ axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
 axis_mt = hist.axis.Variable([0,4,11,21,mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120, 150, 200], name = "mt", underflow=False, overflow=True)
-# axis_mt = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
+axis_mtfull = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
+axis_mtfix = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mtfix",underflow=False, overflow=True)
+axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
+
+axis_iso = hist.axis.Regular(100, 0,0.5, name = "iso",underflow=False, overflow=True)
+# axis_iso = hist.axis.Regular(10, 0,0.5, name = "iso",underflow=False, overflow=True)
+axis_dxy = hist.axis.Regular(100, 0,0.1, name = "dxy",underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]
+base_axes = [axis_eta, axis_pt, axis_charge]
+base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
 
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]
 nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso"]
+
+# nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtfix, axis_passIso]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "mtfix", "passIso"]
+
+# nominal_axes = [axis_eta, axis_pt, axis_charge, axis_met, axis_passIso]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "MET_corr_rec_pt", "passIso"]
+
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
 axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
@@ -141,7 +156,6 @@ mTStudyForFakes_axes = [axis_eta, axis_pt, axis_charge, axis_mt_fakes, axis_pass
 axis_eta_utilityHist = hist.axis.Regular(24, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
 axis_pt_utilityHist = hist.axis.Regular(6, 26, 56, name = "pt", overflow=False, underflow=False)
 
-axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 axis_recoWpt = hist.axis.Regular(40, 0., 80., name = "recoWpt", underflow=False, overflow=True)
 
 # define helpers
@@ -339,12 +353,23 @@ def build_graph(df, dataset):
         df = df.Define("goodMuons_pfRelIso04_all0", "Muon_pfRelIso04_all[goodMuons][0]")
     elif args.isolationDefinition == "iso04vtxAgn":
         df = df.Define("goodMuons_pfRelIso04_all0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
+        df = df.Define("goodMuons_oldIso0", "Muon_pfRelIso04_all[goodMuons][0]")
     else:
         raise NotImplementedError(f"Isolation definition {args.isolationDefinition} not implemented")
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
+
+    df = df.Define("goodMuons_dxybs0", "abs(Muon_dxybs[goodMuons][0])")
+
+    # use iso for ABCD method (nominal)
+    # df = df.Filter("goodMuons_dxybs0 < 0.01")
     df = df.Define("passIso", "goodMuons_pfRelIso04_all0 < 0.15")
+
+    # # use dxy for ABCD method (alternative)
+    # df = df.Filter("goodMuons_pfRelIso04_all0 < 0.15")
+    # df = df.Define("passDxy", "goodMuons_dxybs0 < 0.01")
+
 
     ########################################################################
     # define event weights here since they are needed below for some helpers
@@ -370,7 +395,7 @@ def build_graph(df, dataset):
         if not args.smooth3dsf:
             columnsForSF.remove("goodMuons_uT0")
             
-        if not args.noScaleFactors:
+        if not args.noScaleFactors and not isQCDMC:
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
@@ -398,6 +423,12 @@ def build_graph(df, dataset):
 
     df = df.Define("ptW", "wrem::pt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+    df = df.Define("mtfix", "wrem::mt_2(25, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+    # # put pt in center of bin
+    # axis_pt
+    # df = df.Define("goodMuons_ptBinCenter0", "goodMuons_pt0")
+    # df = df.Define("mtfixbin", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+
     df = df.Define("hasCleanJet", "Sum(goodCleanJetsNoPt && Jet_pt > 30) >= 1")
 
     df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(goodMuons_phi0,MET_corr_rec_phi))")
@@ -440,14 +471,36 @@ def build_graph(df, dataset):
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
+    results.append(df.HistoBoost("mt", [axis_mtfull], ["transverseMass", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("mtfix", [axis_mtfixl], ["mtfix", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("met", [axis_met], ["MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("dxy", [axis_dxy], ["goodMuons_dxybs0", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("iso", [axis_iso], ["goodMuons_pfRelIso04_all0", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("oldiso", [axis_iso], ["goodMuons_oldIso0", "nominal_weight"], storage=hist.storage.Double()))
+
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
         results.append(nominal)
-
     else:  
         nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
         results.append(nominal)
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
+
+        # df = df.Define("bHad","GenJet_hadronFlavour==5")
+        # df = df.Define("cHad","GenJet_hadronFlavour==4")
+        # df = df.Define("nBHad","ROOT::VecOps::Sum(bHad)")
+        # df = df.Define("nCHad","ROOT::VecOps::Sum(cHad)")
+
+        # axis_nBHad = hist.axis.Integer(0, 2, overflow=True, underflow=True, name = "nBHad")
+        # axis_nCHad = hist.axis.Integer(0, 2, overflow=True, underflow=True, name = "nCHad")
+
+        # results.append(df.HistoBoost("iso_dxy", [*base_axes, axis_iso, axis_dxy], [*base_cols, "goodMuons_pfRelIso04_all0", "goodMuons_dxybs0", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("mt_met",  [*base_axes, axis_mt, axis_met],  [*base_cols, "transverseMass", "MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("iso_mt",  [*base_axes, axis_iso, axis_mt],  [*base_cols, "goodMuons_pfRelIso04_all0", "transverseMass", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("iso_met", [*base_axes, axis_iso, axis_met], [*base_cols, "goodMuons_pfRelIso04_all0", "MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("dxy_mt",  [*base_axes, axis_dxy, axis_mt],  [*base_cols, "goodMuons_dxybs0", "transverseMass", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("dxy_met", [*base_axes, axis_dxy, axis_met], [*base_cols, "goodMuons_dxybs0", "MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
+        # results.append(df.HistoBoost("mtfix_met",  [*base_axes, axis_mtfix, axis_met],  [*base_cols, "mtfix", "MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
 
         if args.makeMCefficiency:
             cols_WeffMC = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_uT0", "goodMuons_charge0",

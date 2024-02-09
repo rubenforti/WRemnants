@@ -134,13 +134,17 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
 def makeStackPlotWithRatio(
     histInfo, stackedProcs, histName="nominal", unstacked=None, 
     fitresult=None, prefit=False,
-    xlabel="", ylabel="Events/bin", rlabel = "Data/Pred.", rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2,
+    xlabel="", ylabel=None, rlabel = "Data/Pred.", rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2,
     binwnorm=None, select={},  action = (lambda x: x), extra_text=None, extra_text_loc=(0.8, 0.7), grid = False, 
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
-    no_fill=False, bin_density=300, unstacked_linestyles=[],
+    no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
     ratio_error=True,
 ):
+    add_ratio = not (no_stack or no_ratio) 
+    if ylabel is None:
+        ylabel = "Events/bin" if not density else "density"
+
     colors = [histInfo[k].color for k in stackedProcs if histInfo[k].hists[histName]]
     labels = [histInfo[k].label for k in stackedProcs if histInfo[k].hists[histName]]
 
@@ -170,8 +174,13 @@ def makeStackPlotWithRatio(
         else:
             data_hist = h
 
-    fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
-        grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+
+    if add_ratio:
+        fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+    else:
+        fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
+            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
 
     if fitresult:
         import uproot
@@ -209,24 +218,31 @@ def makeStackPlotWithRatio(
                 np.append(nom-std, (nom-std)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
 
-        ax2.fill_between(axis, 
-                np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
-                np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
-            step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+        if add_ratio:
+            ax2.fill_between(axis, 
+                    np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+                    np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
+                step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+    
+    opts=dict(stack=not no_stack, flow=flow)
+    opts2=opts.copy() # no binwnorm for ratio axis
+    opts2["density"]=density
+    if density:
+        opts["density"]=True
+    else:
+        opts["binwnorm"]=binwnorm
 
     hep.histplot(
         stack,
         histtype="fill" if not no_fill else "step",
         color=colors,
         label=labels,
-        stack=True,
         ax=ax1,
-        binwnorm=binwnorm,
         zorder=1,
-        flow='none',
+        **opts
     )
     
-    if "Data" in histInfo and ratio_to_data:
+    if "Data" in histInfo and ratio_to_data and add_ratio:
         hep.histplot(
             hh.divideHists(hh.sumHists(stack), data_hist, cutoff=0.01, by_ax_name=False),
             histtype="step",
@@ -235,7 +251,7 @@ def makeStackPlotWithRatio(
             yerr=False,
             ax=ax2,
             zorder=3,
-            flow='none',
+            **opts
         )
 
     if unstacked:
@@ -251,7 +267,7 @@ def makeStackPlotWithRatio(
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack) 
-        if baseline:
+        if baseline and add_ratio:
             hep.histplot(
                 hh.divideHists(ratio_ref, ratio_ref, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False),
                 histtype="step",
@@ -260,7 +276,7 @@ def makeStackPlotWithRatio(
                 yerr=ratio_error,
                 ax=ax2,
                 linewidth=2,
-                flow='none',
+                **opts2
             )
 
         for proc,style in zip(unstacked, linestyles):
@@ -277,10 +293,9 @@ def makeStackPlotWithRatio(
                 ax=ax1,
                 alpha=0.7 if style != "None" else 1.,
                 linestyle=style,
-                binwnorm=binwnorm,
-                flow='none',
+                **opts
             )
-            if ratio_to_data and proc == "Data":
+            if ratio_to_data and proc == "Data" or not add_ratio:
                 continue
             stack_ratio = hh.divideHists(unstack, ratio_ref, cutoff=0.01, rel_unc=True, flow=False, by_ax_name=False)
             hep.histplot(stack_ratio,
@@ -291,10 +306,10 @@ def makeStackPlotWithRatio(
                 linewidth=2,
                 linestyle=style,
                 ax=ax2,
-                flow='none',
+                **opts2
             )
 
-        if fill_between:
+        if fill_between and add_ratio:
             fill_procs = [x for x in unstacked if x != "Data"]
             if fill_between < 0:
                 fill_between = len(fill_procs)+1
@@ -310,11 +325,15 @@ def makeStackPlotWithRatio(
                     step='pre', color=histInfo[up].color, alpha=0.5)
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-    fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+    if add_ratio:
+        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+    else:
+        fix_axes(ax1, yscale=yscale, logy=logy)
 
     if cms_decor:
+        lumi = float(f"{lumi:.3g}") if not density else None
         scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}"), fontsize=legtext_size*scale, 
+        hep.cms.label(ax=ax1, lumi=None, fontsize=legtext_size*scale, 
             label=cms_decor, data="Data" in histInfo)
 
     return fig
@@ -503,7 +522,7 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
     else:
         return all_edges
 
-def fix_axes(ax1, ax2, yscale=None, logy=False):
+def fix_axes(ax1, ax2=None, yscale=None, logy=False):
     #TODO: Would be good to get this working
     #ax1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     if yscale:
@@ -511,9 +530,14 @@ def fix_axes(ax1, ax2, yscale=None, logy=False):
         ax1.set_ylim(ymin, ymax*yscale)
     if not logy:
         redo_axis_ticks(ax1, "y")
-        redo_axis_ticks(ax2, "x")
-    redo_axis_ticks(ax1, "x", True)
-    ax1.set_xticklabels([])
+        if ax2 is not None:
+            redo_axis_ticks(ax2, "x")
+    if ax2 is not None:
+        redo_axis_ticks(ax1, "x", True)
+        ax1.set_xticklabels([])
+    else:
+        redo_axis_ticks(ax1, "x", False)
+
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()

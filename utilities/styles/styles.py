@@ -51,6 +51,7 @@ xlabels = {
     "MET" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "met" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "mt" : r"m$_{T}^{\ell\nu}$ (GeV)",
+    "mtfix" : r"m$_{T}^\mathrm{fix}$ (GeV)",
     "etaPlus" : r"$\eta^{\ell(+)}$",
     "etaMinus" : r"$\eta^{\ell(-)}$",
     "ptPlus" : r"p$_{\mathrm{T}}^{\ell(+)}$ (GeV)",
@@ -61,6 +62,7 @@ xlabels = {
     "ewMll": "ewMll",
     "ewMlly": "ewMlly",
     "ewLogDeltaM": "ewLogDeltaM",
+    "dxy":"$d_\mathrm{xy}$",
     # add 2d unrolled plots 
     "pt-eta" : r"(p$_{T}^{\ell}$, $\eta^{\ell}$) bin",
     "ptll-yll":r"p$_{\mathrm{T}}^{\ell\ell}$, y$^{\ell\ell}$ bin",

@@ -279,18 +279,20 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     threshold = args.xBinsLow[-1]
 
     info=dict(fakerate_axis=args.xAxisName, fakerate_bins=args.xBinsLow,
-        fakerate_integration_axes=fakerate_integration_axes, integrate=True, axis_name_2=args.xAxisName2, order_2=args.xOrder2
+        fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True, axis_name_2=args.xAxisName2, order_2=args.xOrder2
     )
 
-    hD = sel.fakeHistABCD(h, thresholdMT=threshold, fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True)
+    # hD = sel.fakeHistABCD(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True)
     hD_pol0 = sel.fakeHistExtendedABCD(h, order=0, **info)
     hD_pol1 = sel.fakeHistExtendedABCD(h, order=1, **info)
-    hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **info)
-    hD_sig = sel.signalHistWmass(h, thresholdMT=threshold, integrateHighMT=True)
+    # hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **info)
+    hD_sig = sel.signalHistWmass(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, integrateHighMT=True)
 
 
-    hss = [hD_sig, hD, hD_pol0, hD_pol1, hD_pol2]
-    labels = ["D", "C*B/A", "C*B/A pol0", "C*B/A pol1", "C*B/A pol2"]
+    # hss = [hD_sig, hD, hD_pol0, hD_pol1]#, hD_pol2]
+    hss = [hD_sig, hD_pol0, hD_pol1]#, hD_pol2]
+    # labels = ["D", "C*B/A", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
+    labels = ["D", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
     linestyles = ["-", "-", "--", ":", "dashdot"]
     colors = mpl.colormaps["tab10"]
     
@@ -314,7 +316,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     xlabel = styles.xlabels[axes[0]] if len(axes)==1 and axes in styles.xlabels else f"{'-'.join(axes)} Bin"
     if ratio:
         fig, ax1, ax2 = plot_tools.figureWithRatio(hss[0], xlabel=xlabel, ylabel=ylabel, cms_label=args.cmsDecor,
-                                             rlabel=f"1/{labels[0]}", rrange=(0.25, 1.75), 
+                                             rlabel=f"1/{labels[0]}", rrange=args.rrange, 
                                              automatic_scale=False, width_scale=1.2, ylim=(ymin, ymax))
     else:
         fig, ax1 = plot_tools.figure(hss[0], xlabel=xlabel, ylabel=ylabel, cms_label=args.cmsDecor,
@@ -363,6 +365,7 @@ if __name__ == '__main__':
     parser.add_argument("--rebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
+    parser.add_argument("--rrange", type=float, nargs=2, default=[0.25, 1.75], help="y range for ratio plot")
 
     parser.add_argument("--xAxisName", type=str, help="Name of x-axis for ABCD method", default="mt")
     parser.add_argument("--xBinsLow", type=int, nargs='*', help="Binning of x-axis for ABCD method", default=[0,2,5,9,14,20,27,40])
@@ -398,6 +401,7 @@ if __name__ == '__main__':
 
         if proc != groups.fakeName:
             plot_closure(h, outdir, suffix=proc, proc=proc)
+        continue
 
         hLowMT = hh.rebinHist(h, args.xAxisName, args.xBinsLow)
         params, cov, frf, chi2, ndf = sel.compute_fakerate(hLowMT, axis_name=args.xAxisName, overflow=True, use_weights=True, 
