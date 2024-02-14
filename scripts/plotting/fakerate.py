@@ -69,7 +69,7 @@ def plot_xAxis(hs, params, covs, frfs, colors, labels, outdir, proc="X"):
                 # fakerate factor as function of mt
                 xfit = np.linspace(0,120,1000)
 
-                if args.xAxisName2:
+                if args.xsmoothingAxisName:
                     ps = [p[idx_eta, idx_charge,:] for p in params]
                     cs = [c[idx_eta, idx_charge,:,:] for c in covs]
                     xfits = [xfit, np.diff(pt_bins)/2+pt_bins[0]]
@@ -119,7 +119,7 @@ def plot_xAxis(hs, params, covs, frfs, colors, labels, outdir, proc="X"):
                         verticalalignment='top', horizontalalignment="left")
 
                 for i, (p, c) in enumerate(zip(ps, cs)):
-                    if args.xAxisName2:
+                    if args.xsmoothingAxisName:
                         idx=0
                         chars=["a","b","c","d","e"]
 
@@ -135,7 +135,7 @@ def plot_xAxis(hs, params, covs, frfs, colors, labels, outdir, proc="X"):
                         factor1=1
                         for n in range(args.xOrder+1):
                             factor2=1
-                            for m in range(args.xOrder2[n]+1):
+                            for m in range(args.xsmoothingOrder[n]+1):
                                 factor=factor1*factor2
                                 ax1.text(1.03+0.2*i, 0.84-0.06*idx, f"${chars[n]}_{m}={round(p[idx]*factor,2)}\pm{round(c[idx,idx]**0.5*factor,2)}$", 
                                     transform=ax1.transAxes, fontsize=20,
@@ -276,24 +276,55 @@ def plot_params_2D(h, values, outdir, suffix="", outfile="param", **kwargs):
 ### plot closure
 def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u."):
     fakerate_integration_axes = [a for a in ["eta","pt","charge"] if a not in args.vars]
-    threshold = args.xBinsLow[-1]
-
-    info=dict(fakerate_axis=args.xAxisName, fakerate_bins=args.xBinsLow,
-        fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True, axis_name_2=args.xAxisName2, order_2=args.xOrder2
-    )
+    threshold = args.xBinsSideband[-1]
 
     # hD = sel.fakeHistABCD(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True)
-    hD_pol0 = sel.fakeHistExtendedABCD(h, order=0, **info)
-    hD_pol1 = sel.fakeHistExtendedABCD(h, order=1, **info)
-    # hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **info)
-    hD_sig = sel.signalHistWmass(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, integrateHighMT=True)
+    # interpolate in x and y
 
+    h = h[{"nBHad":slice(None,None,hist.sum), "nCHad":slice(None,None,hist.sum)}]
+
+    idxs = {
+        "mt":[0, 20, 40],
+        "dxy":[0, 0.01, 0.02],
+        "iso":[0, 0.15, 0.3]
+    }
+
+    hD_full = sel.fakeHistFullExtendedABCD(h, order=0, 
+        fakerate_axis_x=args.xAxisName, fakerate_axis_y=args.yAxisName, fakerate_bins_x=idxs[args.xAxisName], fakerate_bins_y=idxs[args.yAxisName])
+
+    # interpolate in x
+    infoX=dict(
+        fakerate_axis=args.xAxisName, fakerate_bins=args.xBinsSideband, fakerate_integration_axes=fakerate_integration_axes, integrate=True, 
+        smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
+        axis_name_y=args.yAxisName, threshold_y=args.yBinsSideband[-1] if args.yBinsSideband[0]==0 else args.yBinsSideband[0],
+    )
+    hD_Xpol0 = sel.fakeHistExtendedABCD(h, order=0, **infoX)
+    hD_Xpol1 = sel.fakeHistExtendedABCD(h, order=1, **infoX)
+    # hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **infoX)
+    # hD_sig = sel.signalHistWmass(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, integrateHighMT=True)
+
+    # interpolate in y
+    infoY=dict(
+        fakerate_axis=args.yAxisName, fakerate_bins=args.yBinsSideband, fakerate_integration_axes=fakerate_integration_axes, integrate=True, 
+        smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
+        axis_name_y=args.xAxisName, threshold_y=args.xBinsSideband[-1] if args.xBinsSideband[0]==0 else args.xBinsSideband[0],
+    )
+    hD_Ypol0 = sel.fakeHistExtendedABCD(h, order=0, **infoY)
+    hD_Ypol1 = sel.fakeHistExtendedABCD(h, order=1, **infoY)
+
+    hD_sig = h[{
+        args.xAxisName: slice(complex(0,args.xBinsSideband[-1]), hist.overflow, hist.sum) if args.xBinsSideband[0]==0 else slice(0, complex(0,args.xBinsSideband[0]), hist.sum), 
+        args.yAxisName: slice(complex(0,args.yBinsSideband[-1]), hist.overflow, hist.sum) if args.yBinsSideband[0]==0 else slice(0, complex(0,args.yBinsSideband[0]), hist.sum)}]
 
     # hss = [hD_sig, hD, hD_pol0, hD_pol1]#, hD_pol2]
-    hss = [hD_sig, hD_pol0, hD_pol1]#, hD_pol2]
+    # hss = [hD_sig, hD_pol0, hD_pol1]#, hD_pol2]
+    hss = [hD_sig, hD_Xpol0, hD_Xpol1, hD_Ypol1, hD_full]
+    # hss = [hD_sig, hD_Xpol0, hD_Xpol1, hD_Ypol0, hD_Ypol1]#, hD_full]
     # labels = ["D", "C*B/A", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
-    labels = ["D", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
-    linestyles = ["-", "-", "--", ":", "dashdot"]
+    # labels = ["D", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
+    labels = ["D", "C*B/A", "C*B/A pol1(x)", "C*B/A pol1(y)", "F(x,y)"]
+    # labels = ["D", "C*B/A(X)", "C*B/A(X) pol1", "C*B/A(Y)", "C*B/A(Y) pol1"]#, "C*B/A full"]
+    linestyles = ["-", "-", "--", "--", ":"]
     colors = mpl.colormaps["tab10"]
     
     if "charge" in hss[0].axes.name and len(hss[0].axes["charge"])==1:
@@ -366,14 +397,19 @@ if __name__ == '__main__':
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
     parser.add_argument("--rrange", type=float, nargs=2, default=[0.25, 1.75], help="y range for ratio plot")
-
+    # x-axis for ABCD method
     parser.add_argument("--xAxisName", type=str, help="Name of x-axis for ABCD method", default="mt")
-    parser.add_argument("--xBinsLow", type=int, nargs='*', help="Binning of x-axis for ABCD method", default=[0,2,5,9,14,20,27,40])
-    parser.add_argument("--xBinsHigh", type=int, nargs='*', help="Binning of x-axis for ABCD method", default=[50,70,120])
+    parser.add_argument("--xBinsSideband", type=float, nargs='*', help="Binning of x-axis for ABCD method in sideband region", default=[0,2,5,9,14,20,27,40])
+    parser.add_argument("--xBinsSignal", type=float, nargs='*', help="Binning of x-axis of ABCD method in signal region", default=[50,70,120])
     parser.add_argument("--xOrder", type=int, default=2, help="Order in x-axis for fakerate parameterization")
-
-    parser.add_argument("--xAxisName2", type=str, help="Name of second axis for ABCD method, 'None' means 1D fakerates", default=None)
-    parser.add_argument("--xOrder2", type=int, nargs='*', default=[2,1,0], help="Order in second axis for fakerate parameterization")
+    # y-axis for ABCD method
+    parser.add_argument("--yAxisName", type=str, help="Name of y-axis for ABCD method", default="iso")
+    parser.add_argument("--yBinsSideband", type=float, nargs='*', help="Binning of y-axis of ABCD method in sideband region", default=[0.15,0.2,0.25,0.3])
+    parser.add_argument("--yBinsSignal", type=float, nargs='*', help="Binning of y-axis of ABCD method in signal region", default=[0,0.15])
+    parser.add_argument("--yOrder", type=int, default=2, help="Order in y-axis for fakerate parameterization")
+    # axis for smoothing
+    parser.add_argument("--smoothingAxisName", type=str, help="Name of second axis for ABCD method, 'None' means 1D fakerates", default=None)
+    parser.add_argument("--smoothingOrder", type=int, nargs='*', default=[2,1,0], help="Order in second axis for fakerate parameterization")
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -405,7 +441,7 @@ if __name__ == '__main__':
 
         hLowMT = hh.rebinHist(h, args.xAxisName, args.xBinsLow)
         params, cov, frf, chi2, ndf = sel.compute_fakerate(hLowMT, axis_name=args.xAxisName, overflow=True, use_weights=True, 
-            order=args.xOrder, axis_name_2=args.xAxisName2, order_2=args.xOrder2, auxiliary_info=True)
+            order=args.xOrder, axis_name_2=args.xsmoothingAxisName, order_2=args.xsmoothingOrder, auxiliary_info=True)
         plot_chi2(chi2.ravel(), ndf, outdir, xlim=(0,10), suffix=proc)
 
         outdir1D = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/plots_1D_{proc}/")
@@ -415,14 +451,14 @@ if __name__ == '__main__':
 
             sign = "" if len(hLowMT.axes["charge"])==1 else "-" if idx_charge==0 else "+" 
             
-            if args.xAxisName2:
+            if args.xsmoothingAxisName:
                 idx_p=0
                 outdir_p = output_tools.make_plot_dir(outdir, f"params")
                 for ip, (pName, pRange) in enumerate([("offset", None), ("slope", (-0.02, 0.02)), ("quad", (-0.0004, 0.0004))]):
                     if ip > args.xOrder:
                         break
                     for ip2, (pName2, pRange2) in enumerate([("offset", None), ("slope", (-0.02, 0.02)), ("quad", (-0.0004, 0.0004))]):
-                        if ip2 > args.xOrder2[ip]:
+                        if ip2 > args.xsmoothingOrder[ip]:
                             break
 
                         xedges = np.squeeze(h.axes.edges[0])

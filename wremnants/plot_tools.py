@@ -160,9 +160,9 @@ def makeStackPlotWithRatio(
             continue
         h = action(histInfo[k].hists[histName])[select]
         
-        # Use this if the hist has been rebinned for combine
-        if xlim:
-            h = h[complex(0, xlim[0]):complex(0, xlim[1])]
+        # # Use this if the hist has been rebinned for combine
+        # if xlim:
+        #     h = h[complex(0, xlim[0]):complex(0, xlim[1])]
 
         # If plotting from combine, apply the action to the underlying hist.
         # Don't do this for the generic case, as it screws up the ability to make multiple plots
@@ -333,7 +333,7 @@ def makeStackPlotWithRatio(
     if cms_decor:
         lumi = float(f"{lumi:.3g}") if not density else None
         scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=None, fontsize=legtext_size*scale, 
+        hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
             label=cms_decor, data="Data" in histInfo)
 
     return fig

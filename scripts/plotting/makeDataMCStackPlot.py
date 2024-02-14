@@ -81,10 +81,9 @@ if addVariation and (args.selectAxis or args.selectEntries):
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
-groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'], 
-    extendedABCD=not args.simpleABCD, integrateHighMT="mt" not in args.hists)
-
-
+groups = Datagroups(args.infile, filterGroups=args.procFilters, 
+    excludeGroups=None if args.procFilters else ['QCD'],
+    extendedABCD=not args.simpleABCD, integrateHigh="mt" not in args.hists)
 
 # There is probably a better way to do this but I don't want to deal with it
 datasets = groups.getNames()
@@ -122,7 +121,7 @@ else:
     applySelection=True
 
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
-groups.setFakerateIntegrationAxes(fake_int_axes)
+groups.setFakerateIntegrationAxes([*fake_int_axes, "nBHad", "nCHad"])
 
 if not args.nominalRef:
     nominalName = args.baseName.rsplit("_", 1)[0]

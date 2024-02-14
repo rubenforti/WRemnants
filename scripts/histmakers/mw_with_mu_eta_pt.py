@@ -102,6 +102,11 @@ axis_mtfull = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 1
 axis_mtfix = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mtfix",underflow=False, overflow=True)
 axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 
+# category axes with only a few bins
+axis_isoCat = hist.axis.Variable([0,0.15,0.3], name = "iso",underflow=False, overflow=True)
+axis_mtCat = hist.axis.Variable([0,20,40], name = "mt",underflow=False, overflow=True)
+
+
 axis_iso = hist.axis.Regular(100, 0,0.5, name = "iso",underflow=False, overflow=True)
 # axis_iso = hist.axis.Regular(10, 0,0.5, name = "iso",underflow=False, overflow=True)
 axis_dxy = hist.axis.Regular(100, 0,0.1, name = "dxy",underflow=False, overflow=True)
@@ -111,8 +116,11 @@ axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 base_axes = [axis_eta, axis_pt, axis_charge]
 base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mt, axis_passIso]
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso"]
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_isoCat]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_pfRelIso04_all0"]
+
+# nominal_axes = [axis_eta, axis_pt, axis_charge, axis_passMT, axis_passIso]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passMT", "passIso"]
 
 # nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtfix, axis_passIso]
 # nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "mtfix", "passIso"]
@@ -363,7 +371,7 @@ def build_graph(df, dataset):
     df = df.Define("goodMuons_dxybs0", "abs(Muon_dxybs[goodMuons][0])")
 
     # use iso for ABCD method (nominal)
-    # df = df.Filter("goodMuons_dxybs0 < 0.01")
+    # df = df.Filter("goodMuons_dxybs0 < 0.01") # maybe useful to reduce fakes
     df = df.Define("passIso", "goodMuons_pfRelIso04_all0 < 0.15")
 
     # # use dxy for ABCD method (alternative)
@@ -472,7 +480,7 @@ def build_graph(df, dataset):
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
     results.append(df.HistoBoost("mt", [axis_mtfull], ["transverseMass", "nominal_weight"], storage=hist.storage.Double()))
-    results.append(df.HistoBoost("mtfix", [axis_mtfixl], ["mtfix", "nominal_weight"], storage=hist.storage.Double()))
+    results.append(df.HistoBoost("mtfix", [axis_mtfix], ["mtfix", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("met", [axis_met], ["MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("dxy", [axis_dxy], ["goodMuons_dxybs0", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("iso", [axis_iso], ["goodMuons_pfRelIso04_all0", "nominal_weight"], storage=hist.storage.Double()))

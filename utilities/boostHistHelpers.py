@@ -306,7 +306,7 @@ def rebinHist(h, axis_name, edges):
     ax_idx = [a.name for a in h.axes].index(axis_name)
 
     if type(edges) == list:
-        if all(x == y for x,y in zip(edges, ax.edges)):
+        if len(edges) == len(ax.edges) and all(x == y for x,y in zip(edges, ax.edges)):
             return h
     elif type(edges) == np.array:
         if edges.shape == ax.edges.shape and np.isclose(edges, ax.edges).all():

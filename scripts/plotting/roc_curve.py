@@ -86,8 +86,8 @@ if __name__ == '__main__':
     wps = {
         "mt": [40,],
         "met": [22.5,],
-        "iso": [0.15,],
-        "dxy": [0.05,]
+        "iso": [0.15, 0.3],
+        "dxy": [0.05, 0.01]
     }
 
     for i, (label, linestyle, hSig, hBkg) in enumerate((
@@ -98,6 +98,8 @@ if __name__ == '__main__':
         ("dxy", "-", hSig_dxy, hBkg_dxy),
         ("iso-dxy", "--", hSig_iso_dxy, hBkg_iso_dxy),
     )):
+        logger.info(f"Now at {label}")
+
         # all upper cuts, so we go from right to left/ or equivalent: switch fpr and tpr 
         ls = label.split("-")
 
@@ -143,6 +145,10 @@ if __name__ == '__main__':
         wpx = [fpr[i] for i in idxs]
         wpy = [tpr[i] for i in idxs]
         ax1.plot(wpx, wpy, linestyle="none", marker="o", color=colors(i))
+
+        for w in wps.get(label,[]):
+            idx = hSig.axes[label].index(w)
+            logger.info(f"Working point {w} at bin {idx} with fpr={fpr[idx]} and tpr={tpr[idx] }")
 
         roc_auc = np.trapz(tpr, fpr)
 

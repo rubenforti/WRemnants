@@ -175,17 +175,18 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHighMT=False, use_container=False):
+    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHigh=False, use_container=False):
         sigOp = None
         fakeOp = None
         fakeOpArgs = None
         if self.mode in ["wmass", "lowpu_w"]:
-            fakeOpArgs = {"fakerate_integration_axes":[], "integrateHighMT":integrateHighMT}
+            fakeOpArgs = {"fakerate_integration_axes":[], "integrateHigh":integrateHigh}
             if applySelection:
                 sigOp = sel.signalHistWmass
                 if extendedABCD:
                     fakeOpArgs["container"] = self.container if use_container else None
-                    fakeOp = sel.fakeHistExtendedABCD
+                    # fakeOp = sel.fakeHistExtendedABCD
+                    fakeOp = sel.fakeHistFullExtendedABCD
                 else:
                     fakeOp = sel.fakeHistABCD
             elif simultaneousABCD:
