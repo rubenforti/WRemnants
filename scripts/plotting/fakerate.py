@@ -15,9 +15,15 @@ from matplotlib import pyplot as plt
 import mplhep as hep
 import uncertainties as unc
 import uncertainties.unumpy as unp
+from scipy.optimize import curve_fit
 
 import pdb
 
+def exp_fall(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
+def exp_fall_unc(x, a, b, c):
+    return a * unp.exp(-b * x) + c
 
 ### plot chi2 of fakerate fits
 def plot_chi2(values, ndf, outdir, suffix="", outfile="chi2", xlim=None):
@@ -273,57 +279,140 @@ def plot_params_2D(h, values, outdir, suffix="", outfile="param", **kwargs):
 #     # plot2D(f"variance_slope_correlation_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_sc[...,idx], plot_title="Rel. var. slope+corr. "+("(-)" if idx==0 else "(+)"), **info)
 #     # plot2D(f"variance_fakerate_{idx}", values=val_d.sum(axis=-1)[...,idx], variances=var_d_soc[...,idx], plot_title="Rel. var. fakerate. "+("(-)" if idx==0 else "(+)"), **info)
 
+# plot fits of QCD shapes in sideband regions for full extended ABCD method
+def plot_abcd_fits(h, outdir):
+    # define sideband ranges
+    nameX, nameY = sel.get_abcd_axes(h)
+    binsX = h.axes[nameX].edges
+    binsY = h.axes[nameY].edges
+
+    dx = slice(complex(0, binsX[1]), complex(0, binsX[2]), hist.sum)
+    dy = slice(complex(0, binsY[1]), complex(0, binsY[2]), hist.sum)
+
+    s = hist.tag.Slicer()
+    if nameX in ["mt"]:
+        x = slice(complex(0, binsX[2]), None, hist.sum)
+        d2x = slice(complex(0, binsX[0]), complex(0, binsX[1]), hist.sum)
+    elif nameX in ["dxy", "iso"]:
+        x = slice(complex(0, binsX[0]), complex(0, binsX[1]), hist.sum)
+        d2x = slice(complex(0, binsX[2]), None, hist.sum)
+
+    if nameY in ["mt"]:
+        y = slice(complex(0, binsY[2]), None, hist.sum)
+        d2y = slice(complex(0, binsY[0]), complex(0, binsY[1]), hist.sum)
+    elif nameY in ["dxy", "iso"]:
+        y = slice(complex(0, binsY[0]), complex(0, binsY[1]), hist.sum)
+        d2y = slice(complex(0, binsY[2]), None, hist.sum)
+
+    flow=True
+    logy=False
+    h_pt = h.project("pt")
+    bincenters = h_pt.axes["pt"].centers
+    binwidths = np.diff(h_pt.axes["pt"].edges)/2.
+    etavar="|\eta|"
+    for idx_charge, charge_bins in enumerate(h.axes["charge"]):
+        for idx_eta, eta_bins in enumerate(h.axes["eta"]):
+            # select sideband regions
+            a = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: dy}].values(flow=flow)
+            b = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: y}].values(flow=flow)
+            c = h[{"charge":idx_charge, "eta":idx_eta, nameX: x, nameY: dy}].values(flow=flow)
+            bx = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: y}].values(flow=flow)
+            cy = h[{"charge":idx_charge, "eta":idx_eta, nameX: x, nameY: d2y}].values(flow=flow)
+            ax = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: dy}].values(flow=flow)
+            ay = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: d2y}].values(flow=flow)
+            axy = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: d2y}].values(flow=flow)
+
+            avar = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: dy}].variances(flow=flow)
+            bvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: y}].variances(flow=flow)
+            cvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: x, nameY: dy}].variances(flow=flow)
+            bxvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: y}].variances(flow=flow)
+            cyvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: x, nameY: d2y}].variances(flow=flow)
+            axvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: dy}].variances(flow=flow)
+            ayvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: dx, nameY: d2y}].variances(flow=flow)
+            axyvar = h[{"charge":idx_charge, "eta":idx_eta, nameX: d2x, nameY: d2y}].variances(flow=flow)
+
+            for n, values, values_var in (
+                ("a", a, avar),
+                ("b", b, bvar),
+                ("c", c, cvar),
+                ("bx", bx, bxvar),
+                ("cy", cy, cyvar),
+                ("ax", ax, axvar),
+                ("ay", ay, ayvar),
+                ("axy", axy, axyvar),
+            ):      
+                values_err = values_var**0.5
+                xlim = [min(bincenters-binwidths), max(bincenters+binwidths)]
+                if logy:
+                    ylim = [0.1, max(values+values_err)*2]
+                else:
+                    ylim = [0, max(values+values_err)*1.1]
+                
+                fig, ax = plot_tools.figure(h_pt, ylabel="Events/bin", xlabel="$p_\mathrm{T}$ (GeV)", cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy)
+
+                binlabel=f"${round(eta_bins[0],1)} < {etavar} < {round(eta_bins[1],1)}$"
+
+                ax.errorbar(bincenters, values, xerr=binwidths, yerr=values_err, marker="", linestyle='none', color="k", label=binlabel)
+
+                params, cov = curve_fit(exp_fall, bincenters, values, p0=[sum(values)/0.18, 0.18, min(values)], sigma=values_err, absolute_sigma=False)
+                params = unc.correlated_values(params, cov)
+                xx = np.arange(*xlim, 0.1)
+                y_fit_u = exp_fall_unc(xx, *params)
+                y_fit_err = np.array([y.s for y in y_fit_u])
+                y_fit = np.array([y.n for y in y_fit_u])
+                paramlabel=r"$\mathrm{f}(x): "+f"{params[0]}"+r"\mathrm{e}^{"+f"{-1*params[1]}"+"x} "+f"{'+' if params[2].n > 0 else '-'}{params[2]}$"
+                paramlabel = paramlabel.replace("+/-", r"\pm")
+                ax.plot(xx, y_fit, linestyle="-", color="red", label=paramlabel)
+                ax.fill_between(xx, y_fit - y_fit_err, y_fit + y_fit_err, alpha=0.3, color="grey")#, step="post")
+
+                plot_tools.addLegend(ax, 1)
+
+                outfile=f"plot_sideband_{n}_charge{idx_charge}_eta{idx_eta}"
+                if args.postfix:
+                    outfile += f"_{args.postfix}"
+                plot_tools.save_pdf_and_png(outdir, outfile)
+
 ### plot closure
 def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u."):
     fakerate_integration_axes = [a for a in ["eta","pt","charge"] if a not in args.vars]
     threshold = args.xBinsSideband[-1]
+    
+    hss=[]
+    labels=[]
 
-    # hD = sel.fakeHistABCD(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, fakerate_integration_axes=fakerate_integration_axes, integrateHighMT=True)
-    # interpolate in x and y
+    # signal selection
+    hD_sig = sel.signalHistABCD(h, integrateHigh=True)
+    hss.append(hD_sig)
+    labels.append("D")
+    
+    # simple ABCD
+    hD_simple = sel.fakeHistABCD(h, fakerate_integration_axes=fakerate_integration_axes, integrateHigh=True)
+    hss.append(hD_simple)
+    labels.append("simple")
 
-    h = h[{"nBHad":slice(None,None,hist.sum), "nCHad":slice(None,None,hist.sum)}]
+    # # extended ABCD
+    # # interpolate in x
+    # infoX=dict(fakerate_integration_axes=fakerate_integration_axes, integrateHigh=True, 
+    #     smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
+    # )
+    # hD_Xpol1 = sel.fakeHistExtendedABCD(h, order=1, **infoX)
+    # hss.append(hD_Xpol1)
+    # labels.append("pol1(x)")
+    # # hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **infoX)
+    # 
+    # # interpolate in y
+    # infoY=dict(fakerate_integration_axes=fakerate_integration_axes, integrateHigh=True, 
+    #     smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
+    # )
+    # hD_Ypol1 = sel.fakeHistExtendedABCD(h, order=1, **infoY)
+    # hss.append(hD_Ypol1)
+    # labels.append("pol1(y)")
 
-    idxs = {
-        "mt":[0, 20, 40],
-        "dxy":[0, 0.01, 0.02],
-        "iso":[0, 0.15, 0.3]
-    }
+    # full extended ABCD
+    hD_full = sel.fakeHistFullABCD(h, order=0)
+    hss.append(hD_full)
+    labels.append("full")
 
-    hD_full = sel.fakeHistFullExtendedABCD(h, order=0, 
-        fakerate_axis_x=args.xAxisName, fakerate_axis_y=args.yAxisName, fakerate_bins_x=idxs[args.xAxisName], fakerate_bins_y=idxs[args.yAxisName])
-
-    # interpolate in x
-    infoX=dict(
-        fakerate_axis=args.xAxisName, fakerate_bins=args.xBinsSideband, fakerate_integration_axes=fakerate_integration_axes, integrate=True, 
-        smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
-        axis_name_y=args.yAxisName, threshold_y=args.yBinsSideband[-1] if args.yBinsSideband[0]==0 else args.yBinsSideband[0],
-    )
-    hD_Xpol0 = sel.fakeHistExtendedABCD(h, order=0, **infoX)
-    hD_Xpol1 = sel.fakeHistExtendedABCD(h, order=1, **infoX)
-    # hD_pol2 = sel.fakeHistExtendedABCD(h, order=2, **infoX)
-    # hD_sig = sel.signalHistWmass(h, axis_name_mt=args.xAxisName, thresholdMT=threshold, integrateHighMT=True)
-
-    # interpolate in y
-    infoY=dict(
-        fakerate_axis=args.yAxisName, fakerate_bins=args.yBinsSideband, fakerate_integration_axes=fakerate_integration_axes, integrate=True, 
-        smoothing_axis_name=args.smoothingAxisName, smoothing_order=args.smoothingOrder,
-        axis_name_y=args.xAxisName, threshold_y=args.xBinsSideband[-1] if args.xBinsSideband[0]==0 else args.xBinsSideband[0],
-    )
-    hD_Ypol0 = sel.fakeHistExtendedABCD(h, order=0, **infoY)
-    hD_Ypol1 = sel.fakeHistExtendedABCD(h, order=1, **infoY)
-
-    hD_sig = h[{
-        args.xAxisName: slice(complex(0,args.xBinsSideband[-1]), hist.overflow, hist.sum) if args.xBinsSideband[0]==0 else slice(0, complex(0,args.xBinsSideband[0]), hist.sum), 
-        args.yAxisName: slice(complex(0,args.yBinsSideband[-1]), hist.overflow, hist.sum) if args.yBinsSideband[0]==0 else slice(0, complex(0,args.yBinsSideband[0]), hist.sum)}]
-
-    # hss = [hD_sig, hD, hD_pol0, hD_pol1]#, hD_pol2]
-    # hss = [hD_sig, hD_pol0, hD_pol1]#, hD_pol2]
-    hss = [hD_sig, hD_Xpol0, hD_Xpol1, hD_Ypol1, hD_full]
-    # hss = [hD_sig, hD_Xpol0, hD_Xpol1, hD_Ypol0, hD_Ypol1]#, hD_full]
-    # labels = ["D", "C*B/A", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
-    # labels = ["D", "C*B/A pol0", "C*B/A pol1"]#, "C*B/A pol2"]
-    labels = ["D", "C*B/A", "C*B/A pol1(x)", "C*B/A pol1(y)", "F(x,y)"]
-    # labels = ["D", "C*B/A(X)", "C*B/A(X) pol1", "C*B/A(Y)", "C*B/A(Y) pol1"]#, "C*B/A full"]
     linestyles = ["-", "-", "--", "--", ":"]
     colors = mpl.colormaps["tab10"]
     
@@ -416,7 +505,7 @@ if __name__ == '__main__':
 
     outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
 
-    groups = Datagroups(args.infile, excludeGroups=None, extendedABCD=True, integrateHighMT=True)
+    groups = Datagroups(args.infile, excludeGroups=None, extendedABCD=True, integrateHigh=True)
 
     if args.axlim or args.rebin or args.absval:
         groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval, rename=False)
@@ -438,6 +527,11 @@ if __name__ == '__main__':
         if proc != groups.fakeName:
             plot_closure(h, outdir, suffix=proc, proc=proc)
         continue
+
+
+        # plot 1D shape in signal and different sideband regions
+        outdirDistributions = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/distributions_sideband/")
+        plot_abcd_fits(h, outdirDistributions)
 
         hLowMT = hh.rebinHist(h, args.xAxisName, args.xBinsLow)
         params, cov, frf, chi2, ndf = sel.compute_fakerate(hLowMT, axis_name=args.xAxisName, overflow=True, use_weights=True, 

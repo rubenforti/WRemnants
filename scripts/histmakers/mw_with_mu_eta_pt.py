@@ -103,6 +103,7 @@ axis_mtfix = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 10
 axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 
 # category axes with only a few bins
+axis_dxyCat = hist.axis.Variable([0,0.01,0.02], name = "dxy",underflow=False, overflow=True)
 axis_isoCat = hist.axis.Variable([0,0.15,0.3], name = "iso",underflow=False, overflow=True)
 axis_mtCat = hist.axis.Variable([0,20,40], name = "mt",underflow=False, overflow=True)
 
@@ -116,8 +117,12 @@ axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 base_axes = [axis_eta, axis_pt, axis_charge]
 base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_isoCat]
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_pfRelIso04_all0"]
+
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_isoCat, axis_dxyCat]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_pfRelIso04_all0", "goodMuons_dxybs0"]
+
+# nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_dxyCat]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_dxybs0"]
 
 # nominal_axes = [axis_eta, axis_pt, axis_charge, axis_passMT, axis_passIso]
 # nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "passMT", "passIso"]

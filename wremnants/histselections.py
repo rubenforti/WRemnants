@@ -1,30 +1,84 @@
 import hist
 import numpy as np
-from utilities.io_tools.input_tools import safeOpenRootFile, safeGetRootObject
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-import narf
-import ROOT
+
+from scipy.optimize import curve_fit
+import uncertainties as unc
+from uncertainties import unumpy as unp
 
 import pdb
 
 logger = logging.child_logger(__name__)
 
-hist_map = {
-    "eta_pt" : "nominal",
-    "eta" : "nominal",
-    "pt" : "nominal",
-    "mll" : "nominal",
-    "ptll" : "nominal",
-    "ptll_mll" : "nominal",
+thresholds={
+    "mt":40,
+    "iso":0.15,
+    "dxy":0.01
 }
 
-def fakeHistABCD(h, fakerate_integration_axes=[], 
-    fakerate_axis_x="mt", threshold_x=40.0, fakerate_axis_y="iso", threshold_y=0.15, integrateLow=True, integrateHigh=False):
+def exp_fall(x, a, b, c):
+    return a * np.exp(-b * x) + c
+def exp_fall_unc(x, a, b, c):
+    return a * unp.exp(-b * x) + c
+
+def get_abcd_axes(h):
+    axis_x=None
+    axis_y=None
+    for a, b in (("mt", "passMT"), ("iso", "passIso"), ("dxy", "passDxy")):
+        if axis_x is None and a in h.axes.name: 
+            axis_x=a
+            continue
+        if axis_x is None and b in h.axes.name: 
+            axis_x=b
+            continue            
+        if axis_y is None and a in h.axes.name: 
+            axis_y=a
+            continue
+        if axis_y is None and b in h.axes.name: 
+            axis_y=b
+            continue
+    if axis_y is None:
+        raise RuntimeError(f"Can not find ABCD axes among histogram axes {h.axes.name}")
+    else:
+        logger.debug(f"Found ABCD axes {axis_x} and {axis_y}")
+    return axis_x, axis_y
+
+def get_abcd_selection(h, axis_name, integrateLow=True, integrateHigh=True):
+    if type(h.axes[axis_name]) == hist.axis.Boolean:
+        return 0, 1
+    if axis_name not in thresholds:
+        raise RuntimeError(f"Can not find threshold for abcd axis {axis_name}")
+    tBin = h.axes[axis_name].index(thresholds[axis_name])
+    s = hist.tag.Slicer()
+    lo = s[:tBin:hist.sum] if integrateLow else s[:tBin:]
+    hi = s[tBin::hist.sum] if integrateHigh else s[tBin::]
+    if axis_name in ["mt",]:
+        return lo, hi
+    else:
+        return hi, lo
+
+def get_abcd_bins(h, axis_name):
+    if axis_name not in thresholds:
+        raise RuntimeError(f"Can not find threshold for abcd axis {axis_name}")
+    f, _ = get_abcd_selection(h, axis_name, integrateLow=False, integrateHigh=False)
+    return h[{axis_name: f}].axes[axis_name].edges
+    
+
+# signal region selection
+def signalHistABCD(h, integrateLow=True, integrateHigh=True):
+    nameX, nameY = get_abcd_axes(h)
+    failX, passX = get_abcd_selection(h, nameX, integrateLow, integrateHigh)
+    failY, passY = get_abcd_selection(h, nameY, integrateLow, integrateHigh)
+    return h[{nameX: passX, nameY: passY}]
+
+# simple ABCD method
+def fakeHistABCD(h, fakerate_integration_axes=[], integrateLow=True, integrateHigh=True):
     # integrateMT=False keeps the mT axis in the returned histogram (can be used to have fakes vs mT)
 
-    nameX, failX, passX = get_axis_fallback_selection(h, threshold_x, fakerate_axis_x, integrateLow, integrateHigh)
-    nameY, failY, passY = get_axis_fallback_selection(h, threshold_y, fakerate_axis_y, integrateLow, integrateHigh)
+    nameX, nameY = get_abcd_axes(h)
+    failX, passX = get_abcd_selection(h, nameX, integrateLow, integrateHigh)
+    failY, passY = get_abcd_selection(h, nameY, integrateLow, integrateHigh)
 
     if any(a in h.axes.name for a in fakerate_integration_axes):
         fakerate_axes = [n for n in h.axes.name if n not in [*fakerate_integration_axes, nameX, nameY]]
@@ -37,6 +91,17 @@ def fakeHistABCD(h, fakerate_integration_axes=[],
     hFRF = hh.divideHists(hA, hB, cutoff=1, createNew=True)   
 
     return hh.multiplyHists(hFRF, h[{nameY: failY, nameX: passX}])
+
+def solve_leastsquare(X, XTY):
+    # compute the transpose of X for the mt and parameter axes 
+    XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
+    XTX = XT @ X
+    # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion), 
+    # this term is also the covariance matrix for the parameters
+    XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
+    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
+    params = np.einsum('...ij,...j->...i', XTXinv, XTY)
+    return params, XTXinv
 
 def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_overflow=True, 
     name_y="passIso", fail_y=0, pass_y=1,
@@ -138,14 +203,7 @@ def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_o
         y = y.reshape(newshape)
         X = X.reshape(*newshape, X.shape[-1])
 
-    # compute the transpose of X for the mt and parameter axes 
-    XT = np.transpose(X, axes=(*range(len(X.shape)-2), len(X.shape)-1, len(X.shape)-2))
-    XTX = XT @ X
-    # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion), 
-    # this term is also the covariance matrix for the parameters
-    XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
-    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
-    params = np.einsum('...ij,...j->...i', XTXinv, XTY)
+    params, cov = solve_leastsquare(X, XTY)    
 
     if auxiliary_info:
         # goodness of fit
@@ -159,76 +217,13 @@ def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_o
 
         logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total}")
 
-        return params, XTXinv, frf, chi2, ndf
+        return params, cov, frf, chi2, ndf
     else:
-        return params, XTXinv, frf
+        return params, cov, frf
 
-
-def fakeHistFullExtendedABCD(h, fakerate_integration_axes=[], 
-    fakerate_axis_x="mt", fakerate_bins_x=[0, 21, 40], 
-    fakerate_axis_y="iso", fakerate_bins_y=[0, 0.15, 0.3], 
-    order=2, integrateLow=True, integrateHigh=True, container=None, 
-    smoothing_axis_name="pt", smoothing_order=[2,1,2]
-):
-    # full extended ABCD method as desribed in https://arxiv.org/abs/1906.10831 equation 15
-    # add additional regions in x and in y
-
-    flow=True
-
-    # define sideband ranges
-    dx = slice(complex(0, fakerate_bins_x[1]), complex(0, fakerate_bins_x[2]), hist.sum)
-    dy = slice(complex(0, fakerate_bins_y[1]), complex(0, fakerate_bins_y[2]), hist.sum)
-
-    s = hist.tag.Slicer()
-    if fakerate_axis_x in ["mt"]:
-        x = slice(complex(0, fakerate_bins_x[2]), None, hist.sum)
-        d2x = slice(complex(0, fakerate_bins_x[0]), complex(0, fakerate_bins_x[1]), hist.sum)
-    elif fakerate_axis_x in ["dxy", "iso"]:
-        x = slice(complex(0, fakerate_bins_x[0]), complex(0, fakerate_bins_x[1]), hist.sum)
-        d2x = slice(complex(0, fakerate_bins_x[2]), None, hist.sum)
-
-    if fakerate_axis_y in ["mt"]:
-        y = slice(complex(0, fakerate_bins_y[2]), None, hist.sum)
-        d2y = slice(complex(0, fakerate_bins_y[0]), complex(0, fakerate_bins_y[1]), hist.sum)
-    elif fakerate_axis_y in ["dxy", "iso"]:
-        y = slice(complex(0, fakerate_bins_y[0]), complex(0, fakerate_bins_y[1]), hist.sum)
-        d2y = slice(complex(0, fakerate_bins_y[2]), None, hist.sum)
-
-    # select sideband regions
-    a = h[{fakerate_axis_x: dx, fakerate_axis_y: dy}].values(flow=flow)
-    b = h[{fakerate_axis_x: dx, fakerate_axis_y: y}].values(flow=flow)
-    c = h[{fakerate_axis_x: x, fakerate_axis_y: dy}].values(flow=flow)
-    bx = h[{fakerate_axis_x: d2x, fakerate_axis_y: y}].values(flow=flow)
-    cy = h[{fakerate_axis_x: x, fakerate_axis_y: d2y}].values(flow=flow)
-    ax = h[{fakerate_axis_x: d2x, fakerate_axis_y: dy}].values(flow=flow)
-    ay = h[{fakerate_axis_x: dx, fakerate_axis_y: d2y}].values(flow=flow)
-    axy = h[{fakerate_axis_x: d2x, fakerate_axis_y: d2y}].values(flow=flow)
-
-    d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
-
-    # set histogram in signal region
-    hSignal = hist.Hist(*[a for a in h.axes if a.name not in [fakerate_axis_x, fakerate_axis_y] ], storage=h.storage_type())
-    hSignal.values(flow=flow)[...] = d
-
-    if h.storage_type == hist.storage.Weight:
-        avar = h[{fakerate_axis_x: dx, fakerate_axis_y: dy}].variances(flow=flow)
-        bvar = h[{fakerate_axis_x: dx, fakerate_axis_y: y}].variances(flow=flow)
-        cvar = h[{fakerate_axis_x: x, fakerate_axis_y: dy}].variances(flow=flow)
-        bxvar = h[{fakerate_axis_x: d2x, fakerate_axis_y: y}].variances(flow=flow)
-        cyvar = h[{fakerate_axis_x: x, fakerate_axis_y: d2y}].variances(flow=flow)
-        axvar = h[{fakerate_axis_x: d2x, fakerate_axis_y: dy}].variances(flow=flow)
-        ayvar = h[{fakerate_axis_x: dx, fakerate_axis_y: d2y}].variances(flow=flow)
-        axyvar = h[{fakerate_axis_x: d2x, fakerate_axis_y: d2y}].variances(flow=flow)
-
-        dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
-
-        hSignal.variances(flow=flow)[...] = dvar
-
-    return hSignal
-
+# extended ABCD with extra regions in the ABCD x-axis
 def fakeHistExtendedABCD(h, 
-    fakerate_integration_axes=[], fakerate_axis_x="mt", fakerate_bins_x=[0,4,11,21,40], order=2, integrateLow=True, integrateHigh=True, 
-    fakerate_axis_y="passIso", threshold_y=None, 
+    fakerate_integration_axes=[], order=2, integrateLow=True, integrateHigh=True, 
     container=None, 
     smoothing_axis_name="pt", smoothing_order=[2,1,2]
 ):
@@ -245,15 +240,19 @@ def fakeHistExtendedABCD(h,
     # 2) obtain parameters from fakerate bins using weighted least square https://en.wikipedia.org/wiki/Weighted_least_squares
     # 3) apply the FRF(x) in high bins of fakertae axis
 
-    if h.axes[fakerate_axis_x].traits.underflow:
-        raise NotImplementedError(f"Underflow bins for axis {fakerate_axis_x} is not supported")
+    nameX, nameY = get_abcd_axes(h)
+    binsX = get_abcd_bins(h, nameX)
+    failY, passY = get_abcd_selection(h, nameY)
+
+    if h.axes[nameX].traits.underflow:
+        raise NotImplementedError(f"Underflow bins for axis {nameX} is not supported")
 
     if any(a in h.axes.name for a in fakerate_integration_axes):
         fakerate_axes = [n for n in h.axes.name if n not in fakerate_integration_axes]
         logger.info(f"Project {fakerate_axes}")
         h = h.project(*fakerate_axes)
 
-    hSideband = hh.rebinHist(h, fakerate_axis_x, fakerate_bins_x)
+    hSideband = hh.rebinHist(h, nameX, binsX)
 
     if container is not None:
         if "h_fakerate" in container:
@@ -273,31 +272,28 @@ def fakeHistExtendedABCD(h,
             # store histogram for later
             container["h_fakerate"] = hSideband
 
-    if fakerate_axis_y in ["mt",] or fakerate_axis_y.startswith("pass"):
-        fail_y, pass_y = get_axis_selection(h, threshold_y, fakerate_axis_y)
-    elif fakerate_axis_y in ["dxy","iso"]:
-        pass_y, fail_y = get_axis_selection(h, threshold_y, fakerate_axis_y)
-
-    params, cov, frf = compute_fakerate(hSideband, fakerate_axis_x, name_y=fakerate_axis_y, pass_y=pass_y, fail_y=fail_y, 
-        smoothing_axis_name=smoothing_axis_name, smoothing_order=smoothing_order, use_weights=False, order=order)
+    params, cov, frf = compute_fakerate(hSideband, nameX, name_y=nameY, pass_y=passY, fail_y=failY, 
+        smoothing_axis_name=smoothing_axis_name, smoothing_order=smoothing_order, use_weights=True, order=order)
 
     # construct histogram in application region
-    if fakerate_bins_x[0] == 0:
-        hApplication = h[{fakerate_axis_y: fail_y, fakerate_axis_x: slice(complex(0,fakerate_bins_x[-1]),None)}]
-        flow = h.axes[fakerate_axis_x].traits.overflow
+    if binsX[0] == 0:
+        hApplication = h[{nameY: failY, nameX: slice(complex(0,binsX[-1]),None)}]
+        flow = h.axes[nameX].traits.overflow
     else:
-        hApplication = h[{fakerate_axis_y: fail_y, fakerate_axis_x: slice(None, complex(0, fakerate_bins_x[0]))}]
+        hApplication = h[{nameY: failY, nameX: slice(None, complex(0, binsX[0]))}]
         flow = False
 
     val_c = hApplication.values(flow=flow)
-    idx_ax = hApplication.axes.name.index(fakerate_axis_x)
+    idx_ax = hApplication.axes.name.index(nameX)
     if idx_ax != len(hApplication.axes)-1:
         val_c = np.moveaxis(val_c, idx_ax, -1)
 
-    x_c = hApplication.axes[fakerate_axis_x].centers
+    x_c = hApplication.axes[nameX].centers
+
     if flow:
         # need an x point for the overflow bin, mirror distance between two last bins 
-        x_c = np.append(x_c, x_c[-1]+np.diff(x_c[-2:]))
+        x_all = h.axes[nameX].centers # use full range in case only overflow bin in application region
+        x_c = np.append(x_c, x_all[-1]+np.diff(x_all[-2:]))
 
     if smoothing_axis_name:
         x_smoothing = hApplication.axes[smoothing_axis_name].centers
@@ -325,8 +321,8 @@ def fakeHistExtendedABCD(h,
         var_d = (FRF**2 * var_c).sum(axis=-1)
 
     # set the histogram in the signal region
-    if integrate:
-        hSignal = hist.Hist(*[a for a in hApplication.axes if a.name != fakerate_axis_x], storage=h.storage_type())
+    if integrateLow and integrateHigh:
+        hSignal = hist.Hist(*[a for a in hApplication.axes if a.name != nameX], storage=h.storage_type())
         val_d = val_d.sum(axis=-1)
         if h.storage_type == hist.storage.Weight:
             if smoothing_axis_name:
@@ -344,7 +340,7 @@ def fakeHistExtendedABCD(h,
         if idx_ax != len(hApplication.axes)-1:
             val_d = np.moveaxis(val_d, -1, idx_ax) # move the axis back
         if h.storage_type == hist.storage.Weight:
-            logger.warning(f"Using extendedABCD as function of {fakerate_axis_x} without integration of mt will give fakes with incorrect bin by bin uncertainties!")
+            logger.warning(f"Using extendedABCD as function of {nameX} without integration of mt will give fakes with incorrect bin by bin uncertainties!")
             # TODO: implement proper uncertainties for fakerate parameters
             # Wrong but easy solution for the moment, just omit the sums
             # variance from error propagation formula from parameters
@@ -361,6 +357,122 @@ def fakeHistExtendedABCD(h,
 
     return hSignal
 
+# full ABCD method as desribed in https://arxiv.org/abs/1906.10831 equation 15
+def fakeHistFullABCD(h, fakerate_integration_axes=[], 
+    order=2, integrateLow=True, integrateHigh=True, container=None, 
+    smoothing_axis_name="pt", smoothing_order=[2,1,2]
+):
+    # add additional regions in x and in y
+    nameX, nameY = get_abcd_axes(h)
+    binsX = h.axes[nameX].edges
+    binsY = h.axes[nameY].edges
+
+    flow=True
+
+    # define sideband ranges
+    dx = slice(complex(0, binsX[1]), complex(0, binsX[2]), hist.sum)
+    dy = slice(complex(0, binsY[1]), complex(0, binsY[2]), hist.sum)
+
+    s = hist.tag.Slicer()
+    if nameX in ["mt"]:
+        x = slice(complex(0, binsX[2]), None, hist.sum)
+        d2x = slice(complex(0, binsX[0]), complex(0, binsX[1]), hist.sum)
+    elif nameX in ["dxy", "iso"]:
+        x = slice(complex(0, binsX[0]), complex(0, binsX[1]), hist.sum)
+        d2x = slice(complex(0, binsX[2]), None, hist.sum)
+
+    if nameY in ["mt"]:
+        y = slice(complex(0, binsY[2]), None, hist.sum)
+        d2y = slice(complex(0, binsY[0]), complex(0, binsY[1]), hist.sum)
+    elif nameY in ["dxy", "iso"]:
+        y = slice(complex(0, binsY[0]), complex(0, binsY[1]), hist.sum)
+        d2y = slice(complex(0, binsY[2]), None, hist.sum)
+
+    hSignal = hist.Hist(*[a for a in h.axes if a.name not in [nameX, nameY] ], storage=h.storage_type())
+
+    if smoothing_axis_name:
+        logger.info("Make smooth Fakes")
+        smoothing_axis_idx = h.axes.name.index(smoothing_axis_name)
+        # if smoothing_axis_idx != len(h.axes):
+        #     a = np.moveaxis(a, smoothing_axis_idx, -1)
+
+        x_smooth = h.axes[smoothing_axis_name].centers
+        # x_smooth = np.broadcast_to(x_smooth, a.shape)
+
+        ds = []
+        ds_var = []
+        for iCharge, bCharge in enumerate(h.axes["charge"]):
+            for iEta, bEta in enumerate(h.axes["eta"]):
+
+                ibin = {"charge":iCharge, "eta":iEta}
+
+                def fit(bin):
+                    val = h[{**ibin, **bin}].values(flow=flow)
+                    var = h[{**ibin, **bin}].variances(flow=flow)
+                    # setting small numbers
+                    val[val < 0] = 0
+                    var[var < 1] = 1
+
+                    params, cov = curve_fit(exp_fall, x_smooth, val, p0=[sum(val)/0.18, 0.18, min(val)], sigma=var**0.5, absolute_sigma=False)
+                    params = unc.correlated_values(params, cov)
+                    y_fit_u = exp_fall_unc(x_smooth, *params)
+                    yy = np.array([y.n for y in y_fit_u])
+                    yy_var = np.array([y.s**2 for y in y_fit_u])
+
+                    return yy, yy_var
+
+                # select sideband regions
+                a, avar = fit({nameX: dx, nameY: dy})
+                b, bvar = fit({nameX: dx, nameY: y})
+                c, cvar = fit({nameX: x, nameY: dy})
+                bx, bxvar = fit({nameX: d2x, nameY: y})
+                cy, cyvar = fit({nameX: x, nameY: d2y})
+                ax, axvar = fit({nameX: d2x, nameY: dy})
+                ay, ayvar = fit({nameX: dx, nameY: d2y})
+                axy, axyvar = fit({nameX: d2x, nameY: d2y})
+
+                d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
+                dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
+
+                slices = [slice(None)] * hSignal.ndim
+                idx_eta = hSignal.axes.name.index("eta")
+                idx_charge = hSignal.axes.name.index("charge")
+                slices[idx_eta] = iEta
+                slices[idx_charge] = iCharge
+
+                hSignal.values(flow=True)[*slices] = d
+                hSignal.variances(flow=True)[*slices] = dvar
+    else:
+        # select sideband regions
+        a = h[{nameX: dx, nameY: dy}].values(flow=flow)
+        b = h[{nameX: dx, nameY: y}].values(flow=flow)
+        c = h[{nameX: x, nameY: dy}].values(flow=flow)
+        bx = h[{nameX: d2x, nameY: y}].values(flow=flow)
+        cy = h[{nameX: x, nameY: d2y}].values(flow=flow)
+        ax = h[{nameX: d2x, nameY: dy}].values(flow=flow)
+        ay = h[{nameX: dx, nameY: d2y}].values(flow=flow)
+        axy = h[{nameX: d2x, nameY: d2y}].values(flow=flow)
+
+        d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
+
+        # set histogram in signal region
+        hSignal.values(flow=flow)[...] = d
+
+        if h.storage_type == hist.storage.Weight:
+            avar = h[{nameX: dx, nameY: dy}].variances(flow=flow)
+            bvar = h[{nameX: dx, nameY: y}].variances(flow=flow)
+            cvar = h[{nameX: x, nameY: dy}].variances(flow=flow)
+            bxvar = h[{nameX: d2x, nameY: y}].variances(flow=flow)
+            cyvar = h[{nameX: x, nameY: d2y}].variances(flow=flow)
+            axvar = h[{nameX: d2x, nameY: dy}].variances(flow=flow)
+            ayvar = h[{nameX: dx, nameY: d2y}].variances(flow=flow)
+            axyvar = h[{nameX: d2x, nameY: d2y}].variances(flow=flow)
+
+            dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
+            hSignal.variances(flow=flow)[...] = dvar
+
+
+    return hSignal
 
 def fakeHistSimultaneousABCD(h, threshold_x=40.0, fakerate_integration_axes=[], axis_name_x="mt", integrateLow=True, integrateHigh=False
 ):
@@ -387,38 +499,6 @@ def fakeHistSimultaneousABCD(h, threshold_x=40.0, fakerate_integration_axes=[], 
 
     return h
 
-def signalHistWmass(h, axis_name_x="mt", threshold_x=40.0, axis_name_y="iso", threshold_y=0.15, integrateLow=True, integrateHigh=True):
-    nameX, failX, passX = get_axis_fallback_selection(h, threshold_x, axis_name_x, integrateLow, integrateHigh)
-    nameY, failY, passY = get_axis_fallback_selection(h, threshold_y, axis_name_y, integrateLow, integrateHigh)
-    return h[{nameX: passX, nameY: passY}]
-
-def get_axis_fallback_selection(h, threshold=40.0, axis_name="mt", integrateLow=True, integrateHigh=False):
-    if axis_name in h.axes.name:
-        name = axis_name
-    elif axis_name=="mt":
-        name = common.passMTName  
-    elif axis_name=="iso":
-        name = common.passIsoName  
-    else:
-        raise NotImplementedError(f"No fallback selection for {axis_name} implemented")
-    lo, hi = get_axis_selection(h, threshold, name, integrateLow, integrateHigh)
-
-    # return values in correct order: name, fail, pass
-    if axis_name=="mt" or name.startswith("pass"):
-        return name, lo, hi
-    else:
-        return name, hi, lo
-
-def get_axis_selection(h, threshold=0.15, axis_name="iso", integrateLow=True, integrateHigh=True):
-    if type(h.axes[axis_name]) == hist.axis.Boolean:
-        lo = 0
-        hi = 1
-    else:
-        s = hist.tag.Slicer()
-        high = h.axes[axis_name].index(threshold)
-        lo = s[:high:hist.sum] if integrateLow else s[:high:]
-        hi = s[high::hist.sum] if integrateHigh else s[high::]
-    return lo, hi
 
 def unrolledHist(h, obs=["pt", "eta"], binwnorm=None):
     if obs is not None:

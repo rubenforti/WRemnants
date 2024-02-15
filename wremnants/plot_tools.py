@@ -442,13 +442,6 @@ def makePlotWithRatioToRef(
     if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     return fig
 
-def project(flow=False):
-    # average over bins
-    if flow:
-        return lambda h, axes: h.project(*axes)/np.prod([a.extent for a in h.axes if a.name not in axes])
-    else:
-        return lambda h, axes: hh.projectNoFlow(h, axes)/np.prod([a.size for a in h.axes if a.name not in axes])
-
 def makeHistPlot2D(h2d, flow=False, **kwargs):
     if flow:
         xedges, yedges = extendEdgesByFlow(h2d)

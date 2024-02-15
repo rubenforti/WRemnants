@@ -122,7 +122,7 @@ else:
     applySelection=True
 
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
-groups.setFakerateIntegrationAxes([*fake_int_axes, "nBHad", "nCHad"])
+groups.setFakerateIntegrationAxes(fake_int_axes)
 
 if not args.nominalRef:
     nominalName = args.baseName.rsplit("_", 1)[0]
@@ -204,7 +204,7 @@ def collapseSyst(h):
             return h[{ax : 0}].copy()
     return h
 
-overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "nBHad", "nCHad", "iso", "dxy", "met","mt"]
+overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
     if len(h.split("-")) > 1:
         action = lambda x: sel.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=h.split("-"))

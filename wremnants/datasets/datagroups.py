@@ -182,11 +182,11 @@ class Datagroups(object):
         if self.mode in ["wmass", "lowpu_w"]:
             fakeOpArgs = {"fakerate_integration_axes":[], "integrateHigh":integrateHigh}
             if applySelection:
-                sigOp = sel.signalHistWmass
+                sigOp = sel.signalHistABCD
                 if extendedABCD:
                     fakeOpArgs["container"] = self.container if use_container else None
                     # fakeOp = sel.fakeHistExtendedABCD
-                    fakeOp = sel.fakeHistFullExtendedABCD
+                    fakeOp = sel.fakeHistFullABCD
                 else:
                     fakeOp = sel.fakeHistABCD
             elif simultaneousABCD:
