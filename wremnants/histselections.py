@@ -92,6 +92,19 @@ def fakeHistABCD(h, fakerate_integration_axes=[], integrateLow=True, integrateHi
 
     return hh.multiplyHists(hFRF, h[{nameY: failY, nameX: passX}])
 
+def get_parameter_matrices(x, y, w, order, mask=None):
+    if x.shape != y.shape:
+        x = np.broadcast_to(x, y.shape)
+    stackX=[] # parameter matrix X 
+    stackXTY=[] # and X.T @ Y
+    for n in range(order+1):
+        stackX.append(w*x**n)
+        stackXTY.append((w**2 * x**n * y).sum(axis=(-1)))
+    f = lambda x, ps, o=order: sum([ps[...,n,np.newaxis] * x**n for n in range(o+1)])
+    X = np.stack(stackX, axis=-1)
+    XTY = np.stack(stackXTY, axis=-1)
+    return X, XTY, f
+
 def solve_leastsquare(X, XTY):
     # compute the transpose of X for the mt and parameter axes 
     XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
@@ -145,8 +158,7 @@ def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_o
         w = np.ones_like(y)
 
     do1D=smoothing_axis_name is None
-    stackX=[]   # parameter matrix X 
-    stackXTY=[] # and X.T @ Y
+
 
     x = hFRF.axes[axis_name].centers
     if hFRF.axes[axis_name].traits.underflow and not remove_underflow:
@@ -156,12 +168,7 @@ def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_o
 
     if do1D:
         logger.debug(f"Do the fakerate in 1D: {axis_name}")
-        x = np.broadcast_to(x, y.shape)
-        for n in range(order+1):
-            stackX.append(w*x**n)
-            stackXTY.append((w**2 * x**n * y).sum(axis=(-1)))
-
-        frf = lambda x, ps, o=order: sum([ps[...,n,np.newaxis] * x**n for n in range(o+1)])
+        X, XTY, frf = get_parameter_matrices(x, y, w, order)
     else:
         logger.debug(f"Do the fakerate in 2D: {axis_name},{smoothing_axis_name}")
 
@@ -180,22 +187,23 @@ def compute_fakerate(hSideband, axis_name="mt", remove_underflow=False, remove_o
         if smoothing_order is None:
             smoothing_order = [0,]*(order+1)
 
+        stackX=[]   # parameter matrix X 
+        stackXTY=[] # and X.T @ Y
         for n in range(order+1):
             for m in range(smoothing_order[n]+1):
                 stackX.append(w * x**n * x_2**m)
                 stackXTY.append((w**2 * x**n * x_2**m * y).sum(axis=(-2, -1)))
+        X = np.stack(stackX, axis=-1)
+        XTY = np.stack(stackXTY, axis=-1)
 
         def frf(x1, x2, ps, o1=order, o2=smoothing_order):
             idx=0
-            FRF = 0
+            f = 0
             for n in range(o1+1):
                 for m in range(o2[n]+1):
-                    FRF += ps[...,idx,np.newaxis,np.newaxis] * x1**n * x2**m
+                    f += ps[...,idx,np.newaxis,np.newaxis] * x1**n * x2**m
                     idx += 1
-            return FRF
-
-    X = np.stack(stackX, axis=-1)
-    XTY = np.stack(stackXTY, axis=-1)
+            return f
     
     if not do1D:
         # flatten the 2D array into 1D
@@ -360,7 +368,8 @@ def fakeHistExtendedABCD(h,
 # full ABCD method as desribed in https://arxiv.org/abs/1906.10831 equation 15
 def fakeHistFullABCD(h, fakerate_integration_axes=[], 
     order=2, integrateLow=True, integrateHigh=True, container=None, 
-    smoothing_axis_name="pt", smoothing_order=[2,1,2]
+    # smoothing_axis_name="pt", smoothing_order=1
+    smoothing_axis_name="", smoothing_order=1
 ):
     # add additional regions in x and in y
     nameX, nameY = get_abcd_axes(h)
@@ -390,87 +399,163 @@ def fakeHistFullABCD(h, fakerate_integration_axes=[],
 
     hSignal = hist.Hist(*[a for a in h.axes if a.name not in [nameX, nameY] ], storage=h.storage_type())
 
+    # if smoothing_axis_name:
+    #     logger.info("Make smooth Fakes")
+    #     smoothing_axis_idx = h.axes.name.index(smoothing_axis_name)
+    #     # if smoothing_axis_idx != len(h.axes):
+    #     #     a = np.moveaxis(a, smoothing_axis_idx, -1)
+
+    #     x_smooth = h.axes[smoothing_axis_name].centers
+    #     # x_smooth = np.broadcast_to(x_smooth, a.shape)
+
+    #     ds = []
+    #     ds_var = []
+    #     for iCharge, bCharge in enumerate(h.axes["charge"]):
+    #         for iEta, bEta in enumerate(h.axes["eta"]):
+
+    #             ibin = {"charge":iCharge, "eta":iEta}
+
+    #             def fit(bin):
+    #                 val = h[{**ibin, **bin}].values(flow=flow)
+    #                 var = h[{**ibin, **bin}].variances(flow=flow)
+    #                 # setting small numbers
+    #                 val[val < 0] = 0
+    #                 var[var < 1] = 1
+
+    #                 params, cov = curve_fit(exp_fall, x_smooth, val, p0=[sum(val)/0.18, 0.18, min(val)], sigma=var**0.5, absolute_sigma=False)
+    #                 params = unc.correlated_values(params, cov)
+    #                 y_fit_u = exp_fall_unc(x_smooth, *params)
+    #                 yy = np.array([y.n for y in y_fit_u])
+    #                 yy_var = np.array([y.s**2 for y in y_fit_u])
+
+    #                 return yy, yy_var
+
+    #             # select sideband regions
+    #             a, avar = fit({nameX: dx, nameY: dy})
+    #             b, bvar = fit({nameX: dx, nameY: y})
+    #             c, cvar = fit({nameX: x, nameY: dy})
+    #             bx, bxvar = fit({nameX: d2x, nameY: y})
+    #             cy, cyvar = fit({nameX: x, nameY: d2y})
+    #             ax, axvar = fit({nameX: d2x, nameY: dy})
+    #             ay, ayvar = fit({nameX: dx, nameY: d2y})
+    #             axy, axyvar = fit({nameX: d2x, nameY: d2y})
+
+    #             d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
+    #             dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
+
+    #             slices = [slice(None)] * hSignal.ndim
+    #             idx_eta = hSignal.axes.name.index("eta")
+    #             idx_charge = hSignal.axes.name.index("charge")
+    #             slices[idx_eta] = iEta
+    #             slices[idx_charge] = iCharge
+
+    #             hSignal.values(flow=True)[*slices] = d
+    #             hSignal.variances(flow=True)[*slices] = dvar
+    # else:
+    
+    # select sideband regions
+    a = h[{nameX: dx, nameY: dy}].values(flow=flow)
+    ax = h[{nameX: d2x, nameY: dy}].values(flow=flow)
+    ay = h[{nameX: dx, nameY: d2y}].values(flow=flow)
+    axy = h[{nameX: d2x, nameY: d2y}].values(flow=flow)
+    b = h[{nameX: dx, nameY: y}].values(flow=flow)
+    bx = h[{nameX: d2x, nameY: y}].values(flow=flow)
+
+    c = h[{nameX: x, nameY: dy}].values(flow=flow)
+    cy = h[{nameX: x, nameY: d2y}].values(flow=flow)
+
+    if h.storage_type == hist.storage.Weight:
+        avar = h[{nameX: dx, nameY: dy}].variances(flow=flow)
+        axvar = h[{nameX: d2x, nameY: dy}].variances(flow=flow)
+        ayvar = h[{nameX: dx, nameY: d2y}].variances(flow=flow)
+        axyvar = h[{nameX: d2x, nameY: d2y}].variances(flow=flow)
+        bvar = h[{nameX: dx, nameY: y}].variances(flow=flow)
+        bxvar = h[{nameX: d2x, nameY: y}].variances(flow=flow)
+
+        cvar = h[{nameX: x, nameY: dy}].variances(flow=flow)
+        cyvar = h[{nameX: x, nameY: d2y}].variances(flow=flow)
+
     if smoothing_axis_name:
-        logger.info("Make smooth Fakes")
-        smoothing_axis_idx = h.axes.name.index(smoothing_axis_name)
-        # if smoothing_axis_idx != len(h.axes):
-        #     a = np.moveaxis(a, smoothing_axis_idx, -1)
-
-        x_smooth = h.axes[smoothing_axis_name].centers
-        # x_smooth = np.broadcast_to(x_smooth, a.shape)
-
-        ds = []
-        ds_var = []
-        for iCharge, bCharge in enumerate(h.axes["charge"]):
-            for iEta, bEta in enumerate(h.axes["eta"]):
-
-                ibin = {"charge":iCharge, "eta":iEta}
-
-                def fit(bin):
-                    val = h[{**ibin, **bin}].values(flow=flow)
-                    var = h[{**ibin, **bin}].variances(flow=flow)
-                    # setting small numbers
-                    val[val < 0] = 0
-                    var[var < 1] = 1
-
-                    params, cov = curve_fit(exp_fall, x_smooth, val, p0=[sum(val)/0.18, 0.18, min(val)], sigma=var**0.5, absolute_sigma=False)
-                    params = unc.correlated_values(params, cov)
-                    y_fit_u = exp_fall_unc(x_smooth, *params)
-                    yy = np.array([y.n for y in y_fit_u])
-                    yy_var = np.array([y.s**2 for y in y_fit_u])
-
-                    return yy, yy_var
-
-                # select sideband regions
-                a, avar = fit({nameX: dx, nameY: dy})
-                b, bvar = fit({nameX: dx, nameY: y})
-                c, cvar = fit({nameX: x, nameY: dy})
-                bx, bxvar = fit({nameX: d2x, nameY: y})
-                cy, cyvar = fit({nameX: x, nameY: d2y})
-                ax, axvar = fit({nameX: d2x, nameY: dy})
-                ay, ayvar = fit({nameX: dx, nameY: d2y})
-                axy, axyvar = fit({nameX: d2x, nameY: d2y})
-
-                d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
-                dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
-
-                slices = [slice(None)] * hSignal.ndim
-                idx_eta = hSignal.axes.name.index("eta")
-                idx_charge = hSignal.axes.name.index("charge")
-                slices[idx_eta] = iEta
-                slices[idx_charge] = iCharge
-
-                hSignal.values(flow=True)[*slices] = d
-                hSignal.variances(flow=True)[*slices] = dvar
-    else:
-        # select sideband regions
-        a = h[{nameX: dx, nameY: dy}].values(flow=flow)
-        b = h[{nameX: dx, nameY: y}].values(flow=flow)
-        c = h[{nameX: x, nameY: dy}].values(flow=flow)
-        bx = h[{nameX: d2x, nameY: y}].values(flow=flow)
-        cy = h[{nameX: x, nameY: d2y}].values(flow=flow)
-        ax = h[{nameX: d2x, nameY: dy}].values(flow=flow)
-        ay = h[{nameX: dx, nameY: d2y}].values(flow=flow)
-        axy = h[{nameX: d2x, nameY: d2y}].values(flow=flow)
-
-        d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
-
-        # set histogram in signal region
-        hSignal.values(flow=flow)[...] = d
-
+        # fakerate factor
+        y_frf_num = (ax*ay*b)**2
+        y_frf_den = a**4 * axy * bx
+        y_frf = y_frf_num/y_frf_den
+        mask_frf = (y_frf_den <= 0) # masking bins with negative entries
+        if mask_frf.sum() > 0:
+            logger.warning(f"{mask_frf.sum()} bins with negative or empty content found for denominator in the fakerate factor, these will be masked from the smoothing.")
+        # transfer factor
+        y_tf = c/cy
+        mask_tf = (cy <= 0) # masking bins with negative entries
+        if mask_tf.sum() > 0:
+            logger.warning(f"{mask_tf.sum()} bins with negative or empty content found  for denominator in the transfer factor, these will be masked from the smoothing.")
+        
         if h.storage_type == hist.storage.Weight:
-            avar = h[{nameX: dx, nameY: dy}].variances(flow=flow)
-            bvar = h[{nameX: dx, nameY: y}].variances(flow=flow)
-            cvar = h[{nameX: x, nameY: dy}].variances(flow=flow)
-            bxvar = h[{nameX: d2x, nameY: y}].variances(flow=flow)
-            cyvar = h[{nameX: x, nameY: d2y}].variances(flow=flow)
-            axvar = h[{nameX: d2x, nameY: dy}].variances(flow=flow)
-            ayvar = h[{nameX: dx, nameY: d2y}].variances(flow=flow)
-            axyvar = h[{nameX: d2x, nameY: d2y}].variances(flow=flow)
+            # masking bins with large statistical uncertainty (relative uncertainty > 100%)
+            cut_rel_unc = 1
+            y_frf_den_var = y_frf_den**2 * (16*avar/a**2 + axyvar/axy**2 + bxvar/bx**2)
+            mask_frf_den = (y_frf_den_var**0.5/y_frf_den > cut_rel_unc)
+            if mask_frf_den.sum() > 0:
+                logger.warning(f"{mask_frf_den.sum()} bins with a relative uncertainty larger than {cut_rel_unc*100}% for denominator in the fakerate factor, these will be masked from the smoothing.")
+            mask_frf = mask_frf | mask_frf_den
 
-            dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
-            hSignal.variances(flow=flow)[...] = dvar
+            mask_tf_den = (cyvar**0.5/cy > cut_rel_unc)
+            if mask_tf_den.sum() > 0:
+                logger.warning(f"{mask_tf_den.sum()} bins with a relative uncertainty larger than {cut_rel_unc*100}% for denominator in the transfer factor, these will be masked from the smoothing.")
+            mask_tf = mask_frf | mask_tf_den
 
+            # full variances
+            y_frf_var = y_frf**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 16*avar/a**2 + bxvar/bx**2)
+            y_tf_var = y_tf**2 * (cvar/c**2 + cyvar/cy**2 )
+
+            # transform with weights
+            w_frf = 1/np.sqrt(y_frf_var)
+            w_tf = 1/np.sqrt(y_tf_var)
+        else:
+            logger.warning("Smoothing extended ABCD on histogram without uncertainties, make an unweighted linear squared solution.")
+            w_frf = np.ones_like(y_frf)
+            w_tf = np.ones_like(y_tf)
+
+        # smooth frf in pT
+        x_smoothing = hSignal.axes[smoothing_axis_name].centers
+        # move smoothing axis to last
+        idx_ax_smoothing = hSignal.axes.name.index(smoothing_axis_name)
+        if idx_ax_smoothing != len(hSignal.axes)-1:
+            y_frf = np.moveaxis(y_frf, idx_ax_smoothing, -1)
+            w_frf = np.moveaxis(w_frf, idx_ax_smoothing, -1)
+            mask_frf = np.moveaxis(mask_frf, idx_ax_smoothing, -1)
+            y_tf = np.moveaxis(y_tf, idx_ax_smoothing, -1)
+            w_tf = np.moveaxis(w_tf, idx_ax_smoothing, -1)
+
+            c = np.moveaxis(c, idx_ax_smoothing, -1)
+            cy = np.moveaxis(cy, idx_ax_smoothing, -1)
+            cvar = np.moveaxis(cvar, idx_ax_smoothing, -1)
+            cyvar = np.moveaxis(cyvar, idx_ax_smoothing, -1)
+
+        X_frf, XTY_frf, f_frf = get_parameter_matrices(x_smoothing, y_frf, w_frf, smoothing_order, mask_frf)
+        X_tf, XTY_tf, f_tf = get_parameter_matrices(x_smoothing, y_tf, w_tf, smoothing_order, mask_tf)
+
+        params_frf, cov_frf = solve_leastsquare(X_frf, XTY_frf)    
+        params_tf, cov_tf = solve_leastsquare(X_tf, XTY_tf)    
+
+        x_smooth = hSignal.axes[smoothing_axis_name].centers
+        y_frf_smooth = f_frf(x_smooth, params_frf)
+        y_tf_smooth = f_tf(x_smooth, params_tf)
+
+        d = c * y_tf * y_frf_smooth
+        dvar = d**2 * (4*cvar/c**2 + cyvar/cy**2) # stat uncertainty from application region
+
+        # move smoothing axis to original positon again
+        if idx_ax_smoothing != len(hSignal.axes)-1:
+            d = np.moveaxis(d, -1, idx_ax_smoothing)
+            dvar = np.moveaxis(dvar, -1, idx_ax_smoothing)
+    else:
+        # no smoothing
+        d = (ax*ay)**2/axy * (b*c)**2/a**4 * 1/(bx*cy)
+        dvar = d**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 4*cvar/c**2 + 16*avar/a**2 + bxvar/bx**2 + cyvar/cy**2 )
+
+    # set histogram in signal region
+    hSignal.values(flow=flow)[...] = d
+    hSignal.variances(flow=flow)[...] = dvar
 
     return hSignal
 
