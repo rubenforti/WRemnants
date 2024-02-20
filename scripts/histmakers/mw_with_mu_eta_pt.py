@@ -411,8 +411,8 @@ def build_graph(df, dataset):
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="goodMuons")
         if not args.smooth3dsf:
             columnsForSF.remove("goodMuons_uT0")
-            
-        if not args.noScaleFactors and not isQCDMC:
+
+        if not (isQCDMC or args.noScaleFactors):
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
@@ -460,10 +460,9 @@ def build_graph(df, dataset):
         results.append(mTStudyForFakes)
 
     # add filter of deltaPhi(muon,met) before other histograms (but after histogram mTStudyForFakes)
-    if not args.makeMCefficiency and args.dphiMuonMetCut>0:
+    if not args.makeMCefficiency and args.dphiMuonMetCut > 0:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
-
     df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
     if auxiliary_histograms:
