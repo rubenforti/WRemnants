@@ -413,9 +413,6 @@ def build_graph(df, dataset):
     if not args.makeMCefficiency and args.dphiMuonMetCut > 0:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
-
-    # df = df.Filter(f"transverseMass < 40")#{mtw_min}")
-
     df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
     if auxiliary_histograms:
@@ -448,7 +445,6 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("nominal", axes, cols))
     else:  
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
-        results.append(df.HistoBoost("nominal_unweighted", axes, cols))
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
 
         if args.makeMCefficiency:

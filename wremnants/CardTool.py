@@ -115,18 +115,6 @@ class CardTool(object):
     def setFitAxes(self, axes):
         self.fit_axes = axes[:]
 
-    def setFakerateAxes(self, fakerate_axes=["eta", "pt", "charge"], datagroups=None, histogram_name=None):
-        if datagroups is None:
-            datagroups = self.datagroups
-        if histogram_name is None:
-            histogram_name = self.nominalName
-        datagroups.fakerate_axes = fakerate_axes
-        # get nominal histogram
-        proc = next(iter(datagroups.groups.values())).members[0].name
-        histo = datagroups.results[proc]["output"][histogram_name].get()
-        axes = histo.axes.name
-        datagroups.setFakerateIntegrationAxes([x for x in axes if x not in datagroups.fakerate_axes])
-
     def getFakerateAxes(self):
         return self.datagroups.fakerate_axes
        
@@ -883,7 +871,6 @@ class CardTool(object):
                 raise RuntimeError(f"Pseudodata axis {self.pseudoDataAxes[idx]} not found in {hdata.axes.name}.")
             hdatas.append(hdata)
         return hdatas
-
 
     def addPseudodata(self):
         if len(self.pseudoData) > 1 or len(self.pseudoDataIdxs) > 1:
