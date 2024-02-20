@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from wremnants import CardTool,combine_helpers,combine_theory_helper, HDF5Writer, syst_tools
-from wremnants import histselections as sel
+from wremnants import CardTool,combine_helpers,combine_theory_helper, HDF5Writer, syst_tools, theory_corrections
 from wremnants.syst_tools import massWeightNames
 from wremnants.datasets.datagroups import Datagroups
+
 from utilities import common, logging, boostHistHelpers as hh
 from utilities.io_tools import input_tools
 import argparse
@@ -35,6 +35,7 @@ def make_parser(parser=None):
     parser.add_argument("--rebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
+    parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
     parser.add_argument("--lumiScale", type=float, default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
@@ -55,9 +56,12 @@ def make_parser(parser=None):
     parser.add_argument("--scalePdf", default=1, type=float, help="Scale the PDF hessian uncertainties by this factor")
     parser.add_argument("--pdfUncFromCorr", action='store_true', help="Take PDF uncertainty from correction hist (Requires having run that correction)")
     parser.add_argument("--massVariation", type=float, default=100, help="Variation of boson mass")
-    parser.add_argument("--ewUnc", type=str, nargs="*", default=["default"], help="Include EW uncertainty", 
-        choices=["default","horacenloew", "horaceqedew", "winhacnloew", "virtual_ew", "virtual_ew_wlike", "winhacloew_FSR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR"])
-    parser.add_argument("--widthUnc", action='store_true', help="Include uncertainty on W and Z width")
+    parser.add_argument("--ewUnc", type=str, nargs="*", default=["default"], help="Include EW uncertainty (other than pure ISR or FSR)", 
+        choices=[x for x in theory_corrections.valid_theory_corrections() if "ew" in x and "ISR" not in x and "FSR" not in x])
+    parser.add_argument("--isrUnc", type=str, nargs="*", default=[], help="Include ISR uncertainty", 
+        choices=[x for x in theory_corrections.valid_theory_corrections() if "ew" in x and "ISR" in x])
+    parser.add_argument("--fsrUnc", type=str, nargs="*", default=["horaceqedew_FSR", "horacelophotosmecoffew_FSR"], help="Include FSR uncertainty", 
+        choices=[x for x in theory_corrections.valid_theory_corrections() if "ew" in x and "FSR" in x])
     parser.add_argument("--skipSignalSystOnFakes" , action="store_true", help="Do not propagate signal uncertainties on fakes, mainly for checks.")
     parser.add_argument("--noQCDscaleFakes", action="store_true",   help="Do not apply QCd scale uncertainties on fakes, mainly for debugging")
     parser.add_argument("--addQCDMC", action="store_true", help="Include QCD MC when making datacards (otherwise by default it will always be excluded)")
@@ -68,6 +72,7 @@ def make_parser(parser=None):
     parser.add_argument("--effStatLumiScale", type=float, default=None, help="Rescale equivalent luminosity for efficiency stat uncertainty by this value (e.g. 10 means ten times more data from tag and probe)")
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
+    parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
     # pseudodata
     parser.add_argument("--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata")
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
@@ -117,7 +122,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     datagroups = Datagroups(inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.ABCD, simultaneousABCD=args.ABCD)
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
-        datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
+        datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection)
 
     wmass = datagroups.mode in ["wmass", "lowpu_w"]
     wlike = datagroups.mode == "wlike"
@@ -126,8 +131,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)
 
     simultaneousABCD = wmass and args.ABCD and not xnorm
-    constrainMass = (dilepton and not "mll" in fitvar) or args.fitXsec 
-    
+    constrainMass = (dilepton and not "mll" in fitvar) or args.fitXsec
+
     if wmass:
         base_group = "Wenu" if datagroups.flavor == "e" else "Wmunu"
     else:
@@ -254,6 +259,13 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if args.noHist:
         cardTool.skipHistograms()
     cardTool.setSpacing(28)
+    label = 'W' if wmass else 'Z'
+    cardTool.setCustomSystGroupMapping({
+        "theoryTNP" : f".*resum.*|.*TNP.*|mass.*{label}.*",
+        "resumTheory" : f".*resum.*|.*TNP.*|mass.*{label}.*",
+        "allTheory" : f"pdf.*|.*QCD.*|.*resum.*|.*TNP.*|mass.*{label}.*",
+        "ptTheory" : f".*QCD.*|.*resum.*|.*TNP.*|mass.*{label}.*",
+    })
     cardTool.setCustomSystForCard(args.excludeNuisances, args.keepNuisances)
     if args.pseudoData:
         cardTool.setPseudodata(args.pseudoData, args.pseudoDataAxes, args.pseudoDataIdxs, args.pseudoDataProcsRegexp)
@@ -292,6 +304,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     cardTool.addProcessGroup("single_v_samples", lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=dibosonMatch))
     if wmass:
         cardTool.addProcessGroup("w_samples", lambda x: assertSample(x, startsWith=WMatch, excludeMatch=dibosonMatch))
+        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
         cardTool.addProcessGroup("wtau_samples", lambda x: assertSample(x, startsWith=["Wtaunu"]))
         if not xnorm:
             cardTool.addProcessGroup("single_v_nonsig_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
@@ -350,7 +363,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale2=0.1)
         )
 
-    label = 'W' if wmass else 'Z'
     if not (args.doStatOnly and constrainMass):
         if args.massVariation != 0:
             cardTool.addSystematic(f"massWeight{label}",
@@ -566,60 +578,23 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 passToFakes=passSystToFakes,
         )
 
-    if args.widthUnc:
-        widthSkipZ = [("widthZ2p49333GeV",), ("widthZ2p49493GeV",), ("widthZ2p4952GeV",)] 
-        widthSkipW = [("widthW2p09053GeV",), ("widthW2p09173GeV",), ("widthW2p085GeV",)]
-        if wmass and not xnorm:
-            cardTool.addSystematic(f"widthWeightZ",
-                                    processes=["single_v_nonsig_samples"],
-                                    group=f"widthZ",
-                                    skipEntries=widthSkipZ[:],
-                                    mirror=False,
-                                    systAxes=["width"],
-                                    passToFakes=passSystToFakes,
-            )
-        cardTool.addSystematic(f"widthWeight{label}",
-                                processes=["signal_samples_inctau"],
-                                skipEntries=widthSkipZ[:] if label=="Z" else widthSkipW[:],
-                                group=f"width{label}",
-                                mirror=False,
-                                #TODO: Name this
-                                systAxes=["width"],
-                                passToFakes=passSystToFakes,
-        )
+    # Experimental range
+    #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
+    # Variation from EW fit (mostly driven by alphas unc.)
+    widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
+    cardTool.addSystematic(f"widthWeight{label}",
+                            processes=["signal_samples_inctau"],
+                            action=lambda h: h[{"width" : widthVars}],
+                            group=f"width{label}",
+                            mirror=False,
+                            systAxes=["width"],
+                            outNames=[f"width{label}Down", f"width{label}Up"],
+                            passToFakes=passSystToFakes,
+    )
 
 
-    ewUncs = args.ewUnc
-    if "default" in ewUncs:
-        # set default EW uncertainty depending on the analysis type
-        if wlike:
-            ewUnc = ["virtual_ew_wlike", "horaceqedew_FSR"]
-        elif dilepton:
-            ewUnc = ["virtual_ew", "horaceqedew_FSR"]
-        else:
-            ewUnc = ["horacenloew", ]
-        ewUncs = [*[u for u in ewUncs if u!="default"], *ewUnc]
-        
-    for ewUnc in ewUncs:
-        if datagroups.flavor == "e":
-            logger.warning("EW uncertainties are not implemented for electrons, proceed w/o EW uncertainty")
-            continue
-        if "winhac" in ewUnc and not wmass:
-            logger.warning("Winhac is not implemented for any other process than W, proceed w/o winhac EW uncertainty")
-            continue
-        if ewUnc.startswith("virtual_ew") and wmass:
-            logger.warning("Virtual EW corrections are not implemented for any other process than Z, uncertainty only applied to this background")
-
-        cardTool.addSystematic(f"{ewUnc}Corr", 
-            processes=['w_samples'] if ewUnc.startswith("winhac") else ['single_v_samples'],
-            mirror=True,
-            group="theory_ew",
-            systAxes=["systIdx"],
-            labelsByAxis=[f"{ewUnc}Corr"],
-            scale=2,
-            skipEntries=[(1, -1), (2, -1)] if ewUnc.startswith("virtual_ew") else [(0, -1), (2, -1)],
-            passToFakes=passSystToFakes,
-        )
+    combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
+        samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
 
     to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
     
@@ -648,7 +623,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         return cardTool
 
     # Below: experimental uncertainties
-
+    cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
         # cardTool.addLnNSystematic("CMS_Fakes", processes=[args.qcdProcessName], size=1.20, group="CMS_background")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
@@ -660,6 +635,38 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],
                                 passToFakes=passSystToFakes)
+        ## TODO: implement second lepton veto for low PU (both electrons and muons)
+        if not lowPU:
+            # eta decorrelated nuisances
+            cardTool.addSystematic("ZmuonVeto",
+                                   processes=['Zveto_samples'],
+                                   group="ZmuonVeto",
+                                   mirror=True,
+                                   passToFakes=passSystToFakes,
+                                   scale=args.scaleZmuonVeto,
+                                   baseName="ZmuonVeto_",
+                                   systAxes=["decorrEta"],
+                                   labelsByAxis=["decorrEta"],
+                                   actionRequiresNomi=True,
+                                   action=syst_tools.decorrelateByAxis,
+                                   actionArgs=dict(axisToDecorrName="eta",
+                                                   # empty array automatically uses all edges of the axis named "axisToDecorrName"
+                                                   # decorrEdges=[round(-2.4+i*0.1,1) for i in range(49)],
+                                                   decorrEdges=[], 
+                                                   newDecorrAxisName="decorrEta"
+                                                   )
+                                   )
+            # add also the fully inclusive systematic uncertainty, which is not kept in the previous step
+            cardTool.addSystematic("ZmuonVeto",
+                                   processes=['Zveto_samples'],
+                                   group="ZmuonVeto",
+                                   rename=f"ZmuonVeto_inclusive",
+                                   baseName="ZmuonVeto_inclusive",
+                                   mirror=True,
+                                   passToFakes=passSystToFakes,
+                                   scale=args.scaleZmuonVeto,
+                                   )
+
     else:
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("luminosity", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
@@ -686,13 +693,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     mirrorDownVarEqualToNomi=False
                     groupName = "muon_eff_syst"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effSyst.*{x}" for x in list(effTypesNoIso + ["iso"])}
-                    # decorrDictEff = {                        
-                    #     "x" : {
-                    #         "label" : "eta",
-                    #         "edges": [round(-2.4+i*0.1,1) for i in range(49)]
-                    #     }
-                    # }
-
                 else:
                     nameReplace = [] if any(x in name for x in chargeDependentSteps) else [("q0", "qall")] # for iso change the tag id with another sensible label
                     mirror = True
@@ -722,26 +722,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     systNameReplace=nameReplace,
                     scale=scale,
                     splitGroup=splitGroupDict,
-                    decorrelateByBin = {}
                 )
-                # if "Syst" in name and decorrDictEff != {}:
-                #     # add fully correlated version again
-                #     cardTool.addSystematic(
-                #         name,
-                #         rename=f"{name}_EtaDecorr",
-                #         mirror=mirror,
-                #         mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
-                #         group=groupName,
-                #         systAxes=axes,
-                #         labelsByAxis=axlabels,
-                #         baseName=name+"_",
-                #         processes=['MCnoQCD'],
-                #         passToFakes=passSystToFakes,
-                #         systNameReplace=nameReplace,
-                #         scale=scale,
-                #         splitGroup=splitGroupDict,
-                #         decorrelateByBin = decorrDictEff
-                #     )
         else:
             if datagroups.flavor in ["mu", "mumu"]:
                 lepEffs = ["muSF_HLT_DATA_stat", "muSF_HLT_DATA_syst", "muSF_HLT_MC_stat", "muSF_HLT_MC_syst", "muSF_ISO_stat", "muSF_ISO_DATA_syst", "muSF_ISO_MC_syst", "muSF_IDIP_stat", "muSF_IDIP_DATA_syst", "muSF_IDIP_MC_syst"]

@@ -8,17 +8,17 @@ def apply_met_filters(df):
 
     return df
 
-def select_veto_muons(df, nMuons=1):
+def select_veto_muons(df, nMuons=1, condition="==", ptCut=10.0, etaCut=2.4):
 
     # n.b. charge = -99 is a placeholder for invalid track refit/corrections (mostly just from tracks below
     # the pt threshold of 8 GeV in the nano production)
     df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
-    df = df.Define("vetoMuons", "vetoMuonsPre && Muon_correctedPt > 10. && abs(Muon_correctedEta) < 2.4")
-    df = df.Filter(f"Sum(vetoMuons) == {nMuons}")
+    df = df.Define("vetoMuons", f"vetoMuonsPre && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
+    df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
 
     return df
 
-def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15, condition="=="):
 
     if use_trackerMuons:
         df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
@@ -37,7 +37,7 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
         goodMuonsSelection += f" && {isoBranch} < {isoThreshold}"
 
     df = df.Define("goodMuons", goodMuonsSelection) 
-    df = df.Filter(f"Sum(goodMuons) == {nMuons}")
+    df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
 
     return df
 
@@ -97,13 +97,8 @@ def select_z_candidate(df, mass_min=60, mass_max=120):
 
     return df
 
-def apply_triggermatching_muon(df, dataset, muon_eta, muon_phi, otherMuon_eta=None, otherMuon_phi=None):
-
-    if "muEnrichPt5" in dataset.name:
-        df = df.Define("goodTrigObjs", "wrem::goodMuonTriggerCandidate(TrigObj_id,TrigObj_pt,TrigObj_l1pt,TrigObj_l2pt,TrigObj_filterBits)")
-    else:
-        df = df.Define("goodTrigObjs", "wrem::goodMuonTriggerCandidate(TrigObj_id,TrigObj_filterBits)")
-
+def apply_triggermatching_muon(df, dataset, muon_eta, muon_phi, otherMuon_eta=None, otherMuon_phi=None, era = "2016PostVFP"):
+    df = df.Define("goodTrigObjs", f"wrem::goodMuonTriggerCandidate<wrem::Era::Era_{era}>(TrigObj_id,TrigObj_filterBits)")
     if otherMuon_eta is not None:
         # implement OR of trigger matching condition (for dilepton), also create corresponding flags
         # FIXME: should find a better way to pass the variables' name prefix
@@ -126,12 +121,7 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
 
     from utilities.common import muonEfficiency_standaloneNumberOfValidHits as nHitsSA
 
-    #standalone quantities, only available in custom NanoAOD
-    if "muEnrichPt5" in dataset.name:
-        df = df.Alias(f"{muons}_SApt{idx}",  f"{muons}_pt{idx}")
-        df = df.Alias(f"{muons}_SAeta{idx}", f"{muons}_eta{idx}")
-        df = df.Alias(f"{muons}_SAphi{idx}", f"{muons}_phi{idx}")
-    elif use_trackerMuons:
+    if use_trackerMuons:
         # try to use standalone variables when possible
         df = df.Define(f"{muons}_SApt{idx}",  f"Muon_isStandalone[{muons}][{idx}] ? Muon_standalonePt[{muons}][{idx}] : {muons}_pt{idx}")
         df = df.Define(f"{muons}_SAeta{idx}", f"Muon_isStandalone[{muons}][{idx}] ? Muon_standaloneEta[{muons}][{idx}] : {muons}_eta{idx}")
@@ -147,7 +137,12 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
     # if nHitsSA > 0 and not use_trackerMuons:
     #     df = df.Filter(f"Muon_standaloneNumberOfValidHits[{muons}][{idx}] >= {nHitsSA}")
 
-    if nHitsSA > 0 and not use_trackerMuons and not ("muEnrichPt5" in dataset.name):
+    if nHitsSA > 0 and not use_trackerMuons:
         df = df.Filter(f"Muon_standaloneNumberOfValidHits[{muons}][{idx}] >= {nHitsSA}")
 
     return df
+
+def hlt_string(era = "2016PostVFP"):
+    hltString = ("HLT_IsoTkMu24 || HLT_IsoMu24" if era == "2016PostVFP" else "HLT_IsoMu24")
+    return hltString
+    
