@@ -194,7 +194,7 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def set_histselectors(self, group_names, histToReadAxes="nominal", extendedABCD=True, simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs):
+    def set_histselectors(self, group_names, histToReadAxes="nominal", fake_processes=None, extendedABCD=True, simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
             return # histselectors only implemented for single lepton (with fakes)
@@ -206,11 +206,11 @@ class Datagroups(object):
                 fakeselector = Histselector.FakeSelectorSimultaneousABCD
             else:
                 fakeselector = Histselector.FakeSelectorSimpleABCD
-
+        fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
             base_member = self.groups[g].members[:][0].name
             h = self.results[base_member]["output"][histToReadAxes].get()
-            if g == self.fakeName:
+            if g in fake_processes:
                 self.groups[g].histselector = fakeselector(h, fakerate_axes, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h, **kwargs)
