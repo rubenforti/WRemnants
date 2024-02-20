@@ -44,7 +44,7 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--simpleABCD", action='store_true', help="Do the simple ABCD method, default is extendedABCD")
-    parser.add_argument("--simultanoeusABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
+    parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
     parser.add_argument("--minnloScaleUnc", choices=["byHelicityPt", "byHelicityPtCharge", "byHelicityCharge", "byPtCharge", "byPt", "byCharge", "integrated", "none"], default="byHelicityPt",
@@ -119,8 +119,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     logger.debug(f"Filtering these groups of processes: {args.filterProcGroups}")
     logger.debug(f"Excluding these groups of processes: {args.excludeProcGroups}")
 
-    datagroups = Datagroups(inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultanoeusABCD, 
-        simultaneousABCD=args.simultanoeusABCD, extendedABCD=not args.simpleABCD, use_container=not args.simpleABCD, integrateHigh="mt" not in fitvar)
+    datagroups = Datagroups(inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD)
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection)
@@ -131,7 +130,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Detect lowpu dilepton
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)
 
-    simultaneousABCD = wmass and args.simultanoeusABCD and not xnorm
+    simultaneousABCD = wmass and args.simultaneousABCD and not xnorm
     constrainMass = (dilepton and not "mll" in fitvar) or args.fitXsec 
     
     if wmass:
@@ -206,8 +205,12 @@ def setup(args, inputFile, fitvar, xnorm=False):
         else:
             datagroups.groups[base_group].deleteMembers(to_del)    
 
+    if wmass:
+        datagroups.set_histselectors(datagroups.getNames(), args.baseName, extendedABCD=not args.simpleABCD, fakerate_axes=args.fakerateAxes,
+            simultaneousABCD=simultaneousABCD, integrate_pass_x="mt" not in fitvar)
+
     # Start to create the CardTool object, customizing everything
-    cardTool = CardTool.CardTool(xnorm=xnorm, ABCD=simultaneousABCD, real_data=args.realData)
+    cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
     cardTool.setDatagroups(datagroups)
     if args.qcdProcessName:
         cardTool.setFakeName(args.qcdProcessName)
@@ -228,7 +231,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
             fitvar = [*fitvar, mtName]
 
     cardTool.setFitAxes(fitvar)
-    cardTool.setFakerateAxes(args.fakerateAxes)
 
     if args.sumChannels or xnorm or dilepton or simultaneousABCD or "charge" not in fitvar:
         cardTool.setWriteByCharge(False)
@@ -272,7 +274,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         cardTool.setPseudodata(args.pseudoData, args.pseudoDataAxes, args.pseudoDataIdxs, args.pseudoDataProcsRegexp)
         if args.pseudoDataFile:
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
-            pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultanoeusABCD, simultaneousABCD=args.simultanoeusABCD)
+            pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD, simultaneousABCD=args.simultaneousABCD)
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     cardTool.setLumiScale(args.lumiScale)
 
@@ -315,6 +317,29 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if args.theoryAgnostic and not args.poiAsNoi:
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
+
+    if wmass and not args.simpleABCD:
+        info=dict(
+            name=args.baseName, 
+            group=cardTool.getFakeName(), 
+            processes=cardTool.getFakeName(), 
+            noConstraint=False, 
+            mirror=True, 
+            systAxes=["_eta", "_charge", "_param"])
+        subgroup = f"{cardTool.getFakeName()}Rate"
+        cardTool.addSystematic(**info,
+            rename=subgroup,
+            splitGroup = {subgroup: f".*"},
+            systNamePrepend=subgroup,
+            selectionArgs=dict(variations_frf=True),
+        )
+        subgroup = f"{cardTool.getFakeName()}Shape"
+        cardTool.addSystematic(**info,
+            rename=subgroup,
+            splitGroup = {subgroup: f".*"},
+            systNamePrepend=subgroup,
+            selectionArgs=dict(variations_scf=True),
+        )
 
     if simultaneousABCD:
         # Fakerate A/B = C/D

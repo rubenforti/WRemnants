@@ -348,7 +348,7 @@ def rebinHistMultiAx(h, axis_map):
 
     return h
 
-def rebinHist(h, axis_name, edges):
+def rebinHist(h, axis_name, edges, flow=True):
     if type(edges) == int:
         return h[{axis_name : hist.rebin(edges)}]
 
@@ -369,7 +369,6 @@ def rebinHist(h, axis_name, edges):
     # If you rebin to a subset of initial range, keep the overflow and underflow
     overflow = ax.traits.overflow or (edges[-1] < ax.edges[-1] and not np.isclose(edges[-1], ax.edges[-1]))
     underflow = ax.traits.underflow or (edges[0] > ax.edges[0] and not np.isclose(edges[0], ax.edges[0]))
-    flow = overflow or underflow
     new_ax = hist.axis.Variable(edges, name=ax.name, overflow=overflow, underflow=underflow)
     axes = list(h.axes)
     axes[ax_idx] = new_ax
@@ -496,6 +495,33 @@ def projectNoFlow(h, proj_ax, exclude=[]):
         proj_ax = [proj_ax]
     hnoflow = h[{ax : s[0:hist.overflow:hist.sum] for ax in h.axes.name if ax not in exclude+list(proj_ax)}]
     return hnoflow.project(*proj_ax) 
+
+def unrolledHist(h, obs=["pt", "eta"], binwnorm=None):
+    if obs is not None:
+        hproj = h.project(*obs)
+    else:
+        hproj = h
+    if binwnorm:        
+        binwidths = np.outer(*[np.diff(e.squeeze()) for e in hproj.axes.edges]).flatten()
+        scale = binwnorm/binwidths
+    else:
+        scale = 1
+    bins = np.product(hproj.axes.size)
+    newh = hist.Hist(hist.axis.Integer(0, bins), storage=hproj._storage_type())
+    newh[...] = np.ravel(hproj)*scale
+    return newh
+
+def transfer_variances(h1, h2, flow=True):
+    # take variances from h2 to set variances in h1 by scaling with the relative yields
+    val2 = h2.values(flow=flow)
+    var2 = h2.variances(flow=flow)
+    val1 = h1.values(flow=flow)
+    # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same
+    extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val1.ndim - val2.ndim)
+    var1 = var2[extra_dimensions] * (val1 / val2[extra_dimensions])**2
+    hNew = hist.Hist(*h1.axes, storage=hist.storage.Weight())
+    hNew.view(flow=flow)[...] = np.stack((val1, var1), axis=-1)
+    return hNew
 
 def syst_min_and_max_env_hist(h, proj_ax, syst_ax, indices, no_flow=[]):
     logger.debug(f"Taking the envelope of variation axis {syst_ax}, indices {indices}")

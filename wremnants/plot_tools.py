@@ -7,7 +7,6 @@ from matplotlib import patches
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools
-from wremnants import histselections as sel
 import hist
 import math
 import numpy as np

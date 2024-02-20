@@ -10,7 +10,7 @@ import pandas as pd
 
 from utilities import common, logging, differential, boostHistHelpers as hh
 from utilities.styles import styles
-from wremnants import plot_tools, histselections as sel
+from wremnants import plot_tools
 from utilities.io_tools import output_tools, combinetf_input, combinetf2_input
 
 import pdb
@@ -64,9 +64,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         # make unrolled 1D histograms
         if "eta" in axes_names: # convention is to plot eta-pt 
             axes_names = axes_names[::-1]
-        h_data = sel.unrolledHist(h_data, binwnorm=1, obs=axes_names)
-        h_inclusive = sel.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
-        h_stack = [sel.unrolledHist(h, binwnorm=1, obs=axes_names) for h in h_stack]
+        h_data = hh.unrolledHist(h_data, binwnorm=1, obs=axes_names)
+        h_inclusive = hh.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
+        h_stack = [hh.unrolledHist(h, binwnorm=1, obs=axes_names) for h in h_stack]
 
     if ratio:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, styles.xlabels.get(axis_name, "Bin number"), "Entries/bin", args.ylim, "Data/Pred.", args.rrange)

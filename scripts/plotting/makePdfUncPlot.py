@@ -1,4 +1,4 @@
-from wremnants import plot_tools,theory_tools,histselections as sel
+from wremnants import plot_tools,theory_tools
 from utilities import boostHistHelpers as hh
 from utilities.io_tools import input_tools, output_tools
 import hist
@@ -159,7 +159,7 @@ for dataset in args.datasets:
                     hists1D = [action(x) for x in hists]
                 else:
                     obs2unroll = ["ptVgen","absYVgen"] if "unrolled_gen" in obs else ["pt","eta"]
-                    action = sel.unrolledHist
+                    action = hh.unrolledHist
                     if not "hel" in obs:
                         hists1D = [action(x,obs2unroll,binwnorm=True) for x in hists]
                     else:

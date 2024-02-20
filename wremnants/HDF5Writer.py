@@ -127,7 +127,7 @@ class HDF5Writer(object):
         if return_variances and (h.storage_type != hist.storage.Weight):
             raise RuntimeError(f"Sumw2 not filled for {h} but needed for binByBin uncertainties")
 
-        if chanInfo.ABCD and set(chanInfo.getFakerateAxes()) != set(chanInfo.fit_axes[:len(chanInfo.getFakerateAxes())]):
+        if chanInfo.simultaneousABCD and set(chanInfo.getFakerateAxes()) != set(chanInfo.fit_axes[:len(chanInfo.getFakerateAxes())]):
             h = projectABCD(chanInfo, h, return_variances=return_variances)
         elif h.axes.name != axes:
             h = h.project(*axes)
@@ -181,7 +181,7 @@ class HDF5Writer(object):
                 label=chanInfo.nominalName, 
                 scaleToNewLumi=chanInfo.lumiScale, 
                 forceNonzero=forceNonzero,
-                sumFakesPartial=not chanInfo.ABCD
+                sumFakesPartial=not chanInfo.simultaneousABCD
             )
 
             procs_chan = chanInfo.predictedProcesses()
@@ -212,7 +212,12 @@ class HDF5Writer(object):
                     norm_proc = np.maximum(norm_proc, 0.)
 
                 if not masked:                
+                    if not np.all(np.isfinite(sumw2_proc)):
+                        raise RuntimeError(f"{len(sumw2_proc)-sum(np.isfinite(sumw2_proc))} NaN or Inf values encountered in variances for {proc}!")
                     self.dict_sumw2[chan][proc] = sumw2_proc
+                
+                if not np.all(np.isfinite(norm_proc)):
+                    raise RuntimeError(f"{len(norm_proc)-sum(np.isfinite(norm_proc))} NaN or Inf values encountered in nominal histogram for {proc}!")
 
                 self.dict_norm[chan][proc] = norm_proc               
 
@@ -360,12 +365,12 @@ class HDF5Writer(object):
                     chanInfo.nominalName, systName, label="syst",
                     procsToRead=procs_syst, 
                     forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
-                    preOpMap=syst["preOpMap"], preOpArgs=syst["preOpArgs"], 
+                    preOpMap=syst["preOpMap"], preOpArgs=syst["preOpArgs"], selectionArgs=syst["selectionArgs"],
                     # Needed to avoid always reading the variation for the fakes, even for procs not specified
                     forceToNominal=forceToNominal,
                     scaleToNewLumi=chanInfo.lumiScale,
                     nominalIfMissing=not chanInfo.xnorm, # for masked channels not all systematics exist (we can skip loading nominal since Fake does not exist)
-                    sumFakesPartial=not chanInfo.ABCD
+                    sumFakesPartial=not chanInfo.simultaneousABCD
                 )
 
                 for proc in procs_syst:

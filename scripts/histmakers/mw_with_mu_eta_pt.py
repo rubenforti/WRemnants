@@ -97,10 +97,10 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable([0,4,11,21,mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120, 150, 200], name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120], name = "mt", underflow=False, overflow=True)
 axis_mtfull = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
 axis_mtfix = hist.axis.Variable(list(range(0, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mtfix",underflow=False, overflow=True)
-axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
+axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
 # category axes with only a few bins
 axis_dxyCat = hist.axis.Variable([0,0.01,0.02], name = "dxy",underflow=False, overflow=True)
@@ -117,8 +117,11 @@ axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 base_axes = [axis_eta, axis_pt, axis_charge]
 base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_isoCat]
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_pfRelIso04_all0"]
+# nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_isoCat]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_pfRelIso04_all0"]
+
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_dxyCat]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_dxybs0"]
 
 # nominal_axes = [axis_eta, axis_pt, axis_charge, axis_isoCat, axis_dxyCat]
 # nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_pfRelIso04_all0", "goodMuons_dxybs0"]
@@ -483,12 +486,19 @@ def build_graph(df, dataset):
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
-    results.append(df.HistoBoost("mt", [axis_mtfull], ["transverseMass", "nominal_weight"], storage=hist.storage.Double()))
+    # results.append(df.HistoBoost("mt", [axis_mtfull], ["transverseMass", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("mtfix", [axis_mtfix], ["mtfix", "nominal_weight"], storage=hist.storage.Double()))
-    results.append(df.HistoBoost("met", [axis_met], ["MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
+    # results.append(df.HistoBoost("met", [axis_met], ["MET_corr_rec_pt", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("dxy", [axis_dxy], ["goodMuons_dxybs0", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("iso", [axis_iso], ["goodMuons_pfRelIso04_all0", "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("oldiso", [axis_iso], ["goodMuons_oldIso0", "nominal_weight"], storage=hist.storage.Double()))
+
+    results.append(df.HistoBoost("met_dxy", [*base_axes, axis_met, axis_mtCat, axis_dxyCat], [*base_cols, "MET_corr_rec_pt", "transverseMass", "goodMuons_dxybs0", "nominal_weight"]))
+    results.append(df.HistoBoost("mt_dxy", [*base_axes, axis_mt, axis_dxyCat], [*base_cols, "transverseMass", "goodMuons_dxybs0", "nominal_weight"]))
+
+    results.append(df.HistoBoost("met_iso", [*base_axes, axis_met, axis_mtCat, axis_isoCat], [*base_cols, "MET_corr_rec_pt", "transverseMass", "goodMuons_pfRelIso04_all0", "nominal_weight"]))
+    results.append(df.HistoBoost("mt_iso", [*base_axes, axis_mt, axis_isoCat], [*base_cols, "transverseMass", "goodMuons_pfRelIso04_all0", "nominal_weight"]))
+    
 
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)

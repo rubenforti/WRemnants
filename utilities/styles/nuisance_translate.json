@@ -40,6 +40,11 @@
     "ecalPrefire": "L1 ecal prefire",
     "stat": "Data stat.",
     "luminosity": "Luminosity",
-    "theory_ew": "EW"
+    "theory_ew": "EW",
+    "FakeRate": "Fake rate factors",
+    "FakeShape": "Fake shape corrections",
+    "Fake": "Fakes",
+    "widthW": "W width", 
+    "widthZ": "Z width"
 }
 

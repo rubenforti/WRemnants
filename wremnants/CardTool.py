@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from wremnants import histselections as sel
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import output_tools
 import narf
@@ -32,7 +31,7 @@ def checkFiniteBinValues(h, hname, flow=True, throw=True):
         return 1
 
 class CardTool(object):
-    def __init__(self, outpath="./", xnorm=False, ABCD=False, real_data=False):
+    def __init__(self, outpath="./", xnorm=False, simultaneousABCD=False, real_data=False):
     
         self.skipHist = False # don't produce/write histograms, file with them already exists
         self.outfile = None
@@ -68,7 +67,7 @@ class CardTool(object):
         self.lumiScale = 1.
         self.fit_axes = None
         self.xnorm = xnorm
-        self.ABCD = ABCD
+        self.simultaneousABCD = simultaneousABCD
         self.real_data = real_data
         self.absolutePathShapeFileInCard = False
         self.excludeProcessForChannel = {} # can be used to exclue some POI when runnig a specific name (use case, force gen and reco charges to match)
@@ -113,20 +112,6 @@ class CardTool(object):
             
     def setFitAxes(self, axes):
         self.fit_axes = axes[:]
-        self._setFakerateIntegrationAxes()
-
-    def setFakerateAxes(self, fakerate_axes=["eta", "pt", "charge"]):
-        self.datagroups.fakerate_axes = fakerate_axes
-        self._setFakerateIntegrationAxes()
-
-    def getFakerateAxes(self):
-        return self.datagroups.fakerate_axes
-
-    def _setFakerateIntegrationAxes(self):
-        self.datagroups.setFakerateIntegrationAxes([x for x in self.fit_axes if x not in self.datagroups.fakerate_axes])
-        
-    def getFakerateIntegrationAxes(self):
-        return self.datagroups.fakerate_integration_axes
 
     def setProcsNoStatUnc(self, procs, resetList=True):
         if self.skipHist:
@@ -304,7 +289,7 @@ class CardTool(object):
     def addSystematic(self, name, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None, 
                       baseName="", mirror=False, mirrorDownVarEqualToUp=False, mirrorDownVarEqualToNomi=False, symmetrize = "average",
                       scale=1, processes=None, group=None, noi=False, noConstraint=False, noProfile=False,
-                      preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, 
+                      preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, selectionArgs={},
                       systNameReplace=[], systNamePrepend=None, groupFilter=None, passToFakes=False,
                       rename=None, splitGroup={}, decorrelateByBin={}, formatWithValue=None,
                       customizeNuisanceAttributes={},
@@ -336,7 +321,7 @@ class CardTool(object):
         if preOp:
             preOpMap = {name : preOp for name in set([m.name for g in procs_to_add for m in self.datagroups.groups[g].members])}
 
-        if passToFakes and self.getFakeName() not in procs_to_add and not self.ABCD:
+        if passToFakes and self.getFakeName() not in procs_to_add and not self.simultaneousABCD:
             procs_to_add.append(self.getFakeName())
 
         # protection when the input list is empty because of filters but the systematic is built reading the nominal
@@ -371,6 +356,7 @@ class CardTool(object):
                 "preOpArgs" : preOpArgs,
                 "action" : action,
                 "actionArgs" : actionArgs,
+                "selectionArgs" : selectionArgs,
                 "systNameReplace" : systNameReplace,
                 "noConstraint" : noConstraint,
                 "noProfile" : noProfile,
@@ -848,7 +834,7 @@ class CardTool(object):
                 procsToRead=processes,
                 scaleToNewLumi=self.lumiScale, 
                 forceNonzero=forceNonzero,
-                sumFakesPartial=not self.ABCD)
+                sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
             # now add possible processes from nominal
@@ -862,7 +848,7 @@ class CardTool(object):
                     label=pseudoData,
                     scaleToNewLumi=self.lumiScale,
                     forceNonzero=forceNonzero,
-                    sumFakesPartial=not self.ABCD)
+                    sumFakesPartial=not self.simultaneousABCD)
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
                 hists.extend([procDictFromNomi[proc].hists[pseudoData] for proc in processesFromNomi])
             # done, now sum all histograms
@@ -934,7 +920,7 @@ class CardTool(object):
             label=self.nominalName, 
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
-            sumFakesPartial=not self.ABCD)
+            sumFakesPartial=not self.simultaneousABCD)
         
         self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
@@ -958,10 +944,10 @@ class CardTool(object):
                 self.nominalName, systName, label="syst",
                 procsToRead=processes, 
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
-                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], 
+                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], selectionArgs=systMap["selectionArgs"],
                 scaleToNewLumi=self.lumiScale,
                 forceToNominal=forceToNominal,
-                sumFakesPartial=not self.ABCD
+                sumFakesPartial=not self.simultaneousABCD
             )
             self.writeForProcesses(syst, label="syst", processes=processes, check_systs=check_systs)
 
@@ -1181,7 +1167,7 @@ class CardTool(object):
             return
         if self.fit_axes:
             axes = self.fit_axes[:]
-            if self.ABCD and not self.xnorm:
+            if self.simultaneousABCD and not self.xnorm:
                 if common.passIsoName not in axes:
                     axes.append(common.passIsoName)
                 if self.nameMT not in axes:
@@ -1196,7 +1182,7 @@ class CardTool(object):
 
         if self.unroll:
             logger.debug(f"Unrolling histogram")
-            h = sel.unrolledHist(h, axes)
+            h = hh.unrolledHist(h, axes)
 
         if not self.nominalDim:
             self.nominalDim = h.ndim

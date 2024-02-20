@@ -108,7 +108,8 @@ common_groups = [
     "CMS_recoil",
     "CMS_background",
     "theory_ew",
-    "normXsecW"
+    "normXsecW",
+    "width"
 ]
 nuisance_groupings = {
     "max": common_groups + [
@@ -120,6 +121,7 @@ nuisance_groupings = {
         "muon_eff_stat",
         "prefire",
         "muonCalibration",
+        "Fake"
     ],
     "min": common_groups + [
         "massShiftW", "massShiftZ",
@@ -130,6 +132,7 @@ nuisance_groupings = {
         "muon_eff_syst_reco", "muon_eff_syst_trigger", "muon_eff_syst_iso", "muon_eff_syst_idip",
         "muonPrefire", "ecalPrefire",
         "nonClosure", "resolutionCrctn",
+        "FakeRate", "FakeShape"
     ],
     "unfolding_max": [
         "Total",
@@ -147,7 +150,6 @@ nuisance_groupings = {
         "theory_ew",
     ]
 }
-
 
 text_dict = {
     "Zmumu": r"$\mathrm{Z}\rightarrow\mu\mu$",

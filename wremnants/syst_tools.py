@@ -2,7 +2,7 @@ import ROOT
 import hist
 import numpy as np
 from utilities import boostHistHelpers as hh, common, logging
-from wremnants import theory_tools, histselections as sel
+from wremnants import theory_tools
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.helicity_utils import *
 import re
@@ -229,6 +229,7 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", g
 
 def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_fakerate=0.5, flow=False):
     # 1) calculate fakerate in bins of fakerate axes
+    # TODO: update
     nameMT, failMT, passMT = sel.get_mt_selection(href)
     hist_failMT_failIso = href[{**common.failIso, nameMT: failMT}].project(*fakerate_axes)
     hist_failMT_passIso = href[{**common.passIso, nameMT: failMT}].project(*fakerate_axes)

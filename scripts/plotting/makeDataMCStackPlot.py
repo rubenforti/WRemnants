@@ -1,5 +1,4 @@
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
 from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh,common
 from utilities.styles import styles
@@ -85,8 +84,7 @@ if addVariation and (args.selectAxis or args.selectEntries):
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
 groups = Datagroups(args.infile, filterGroups=args.procFilters, 
-    excludeGroups=None if args.procFilters else ['QCD'],
-    extendedABCD=not args.simpleABCD, integrateHigh="mt" not in args.hists)
+    excludeGroups=None if args.procFilters else ['QCD'])
 
 if not args.fineGroups:
     if groups.mode in styles.process_supergroups:
@@ -131,15 +129,15 @@ else:
     applySelection=True
 
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
-groups.setFakerateIntegrationAxes(fake_int_axes)
+
+
+nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
+groups.setNominalName(nominalName)
+groups.set_histselectors(datasets, nominalName, extendedABCD=not args.simpleABCD, fakerate_axes=["pt", "eta", "charge"])
 
 if not args.nominalRef:
-    nominalName = args.baseName.rsplit("_", 1)[0]
-    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
-    nominalName = args.nominalRef
-    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
 exclude = ["Data"] 
@@ -217,7 +215,7 @@ overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen",
 for h in args.hists:
     if len(h.split("-")) > 1:
         sp = h.split("-")
-        action = lambda x: sel.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=sp)
+        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=sp)
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])} bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)

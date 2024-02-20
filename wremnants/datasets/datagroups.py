@@ -17,13 +17,13 @@ import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants import histselections as sel
+from wremnants import Histselector
 
 logger = logging.child_logger(__name__)
 
 class Datagroups(object):
 
-    def __init__(self, infile, mode=None, **kwargs):
+    def __init__(self, infile, mode=None, extendedABCD=False, **kwargs):
         self.h5file = None
         self.rtfile = None
         if infile.endswith(".pkl.lz4"):
@@ -72,7 +72,6 @@ class Datagroups(object):
         self.dataName = "Data"
         self.setGenAxes()
         self.fakerate_axes = ["pt", "eta", "charge"]
-        self.fakerate_integration_axes = []
         self.container = {}
 
         if "lowpu" in self.mode:
@@ -195,30 +194,26 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def get_selectOps(self, applySelection=True, simultaneousABCD=False, extendedABCD=False, integrateHigh=False, use_container=False):
-        sigOp = None
-        fakeOp = None
-        fakeOpArgs = None
-        if self.mode in ["wmass", "lowpu_w"]:
-            fakeOpArgs = {"fakerate_integration_axes":[], "integrateHigh":integrateHigh}
-            if applySelection:
-                sigOp = sel.signalHistABCD
-                if extendedABCD:
-                    fakeOpArgs["container"] = self.container if use_container else None
-                    # fakeOp = sel.fakeHistExtendedABCD
-                    fakeOp = sel.fakeHistFullABCD
-                else:
-                    fakeOp = sel.fakeHistABCD
-            elif simultaneousABCD:
-                fakeOp = sel.fakeHistSimultaneousABCD
+    def set_histselectors(self, group_names, histToReadAxes="nominal", extendedABCD=True, simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs):
+        logger.info(f"Set histselector")
+        if self.mode not in ["wmass", "lowpu_w"]:
+            return # histselectors only implemented for single lepton (with fakes)
+        signalselector = Histselector.SignalSelectorABCD
+        if extendedABCD:
+            fakeselector = Histselector.FakeSelectorExtendedABCD
+        else:
+            if simultaneousABCD:
+                fakeselector = Histselector.FakeSelectorSimultaneousABCD
+            else:
+                fakeselector = Histselector.FakeSelectorSimpleABCD
 
-        return sigOp, fakeOp, fakeOpArgs
-
-    def setFakerateIntegrationAxes(self, axes=[]):
-        for group in self.groups.values():
-            if group.selectOpArgs is not None and "fakerate_integration_axes" in group.selectOpArgs:
-                logger.info(f"Set fakerate_integration_axes={axes} for {group.name}")
-                group.selectOpArgs["fakerate_integration_axes"] = axes
+        for i, g in enumerate(group_names):
+            base_member = self.groups[g].members[:][0].name
+            h = self.results[base_member]["output"][histToReadAxes].get()
+            if g == self.fakeName:
+                self.groups[g].histselector = fakeselector(h, fakerate_axes, **kwargs)
+            else:
+                self.groups[g].histselector = signalselector(h, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.
@@ -272,7 +267,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
+        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, selectionArgs={},
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -417,12 +412,12 @@ class Datagroups(object):
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
 
-            if group.selectOp:
+            if group.histselector is not None:
                 if not applySelection:
                     logger.warning(f"Selection requested for process {procName} but applySelection=False, thus it will be ignored")
                 elif label in group.hists.keys() and group.hists[label] is not None:
-                    logger.debug(f"Apply selection for process {procName}")
-                    group.hists[label] = group.selectOp(group.hists[label], **group.selectOpArgs)
+                    logger.debug(f"Apply selection for process {procName} with selection arguments {selectionArgs}")
+                    group.hists[label] = group.histselector.get_hist(group.hists[label], **selectionArgs)
 
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
