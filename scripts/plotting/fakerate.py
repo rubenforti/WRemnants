@@ -5,6 +5,7 @@ from utilities import boostHistHelpers as hh
 
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
+from wremnants import Histselector
 
 import hist
 import numpy as np
@@ -15,6 +16,8 @@ import mplhep as hep
 import uncertainties as unc
 import uncertainties.unumpy as unp
 from scipy.optimize import curve_fit
+
+import itertools
 
 import pdb
 
@@ -381,12 +384,14 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     labels=[]
 
     # signal selection
-    hD_sig = sel.signalHistABCD(h, integrateHigh=True)
+    hSel_sig = Histselector.SignalSelectorABCD(h)
+    hD_sig = hSel_sig.get_hist(h)
     hss.append(hD_sig)
     labels.append("D")
     
     # simple ABCD
-    hD_simple = sel.fakeHistABCD(h, fakerate_integration_axes=fakerate_integration_axes, integrateHigh=True)
+    hSel_simple = Histselector.FakeSelectorSimpleABCD(h)
+    hD_simple = hSel_simple.get_hist(h)
     hss.append(hD_simple)
     labels.append("simple")
 
@@ -409,9 +414,20 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     # labels.append("pol1(y)")
 
     # full extended ABCD
-    hD_full = sel.fakeHistFullABCD(h, smoothing_order=2)
+    hSel_full = Histselector.FakeSelectorExtendedABCD(h)
+    hD_full = hSel_full.get_hist(h)
     hss.append(hD_full)
-    labels.append("full")
+    labels.append("full smoothed")
+
+    hSel_full = Histselector.FakeSelectorExtendedABCD(h, integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+    hD_full = hSel_full.get_hist(h)
+    hss.append(hD_full)
+    labels.append("full binned")
+
+    hSel_full = Histselector.FakeSelectorExtendedABCD(h, integrate_shapecorrection_x=True, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+    hD_full = hSel_full.get_hist(h)
+    hss.append(hD_full)
+    labels.append("full binned (mT integrated)")
 
     linestyles = ["-", "-", "--", "--", ":"]
     colors = mpl.colormaps["tab10"]
@@ -530,69 +546,56 @@ if __name__ == '__main__':
 
         # continue
 
+        polynomial="bernstein"
+        # polynomial="power"
+
         # plot fakerate factors for full extended ABCD method
         outdirFRF = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/fakerate_factor/")
         outdirSCF = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/shapecorrection_factor/")
 
-        # y_frf, y_frf_var, x_edges = sel.compute_fakerate_fullABCD(h, smoothing_axis_name="")
-        # params_frf0, cov_frf0, f_frf0, chi20, ndf0 = sel.compute_fakerate_fullABCD(h, smoothing_axis_name="pt", smoothing_order=0, return_function=True)
-        # params_frf1, cov_frf1, f_frf1, chi21, ndf1 = sel.compute_fakerate_fullABCD(h, smoothing_axis_name="pt", smoothing_order=1, return_function=True)
-        # params_frf2, cov_frf2, f_frf2, chi22, ndf2 = sel.compute_fakerate_fullABCD(h, smoothing_axis_name="pt", smoothing_order=2, return_function=True)
-        # params_frf3, cov_frf3, f_frf3, chi23, ndf3 = sel.compute_fakerate_fullABCD(h, smoothing_axis_name="pt", smoothing_order=3, return_function=True)
+        # smoothing 1D
+        info=dict(interpolate_x=False, integrate_shapecorrection_x=True, smooth_shapecorrection=True, smooth_fakerate=True, polynomial=polynomial)
+        hSel_pol0 = Histselector.FakeSelectorExtendedABCD(h, **info, smoothing_order_fakerate=0, smoothing_order_shapecorrection=0)
+        hSel_pol1 = Histselector.FakeSelectorExtendedABCD(h, **info, smoothing_order_fakerate=1, smoothing_order_shapecorrection=1)
+        hSel_pol2 = Histselector.FakeSelectorExtendedABCD(h, **info, smoothing_order_fakerate=2, smoothing_order_shapecorrection=2)
+        hSel_pol3 = Histselector.FakeSelectorExtendedABCD(h, **info, smoothing_order_fakerate=3, smoothing_order_shapecorrection=3)
 
-        # plot_chi2(chi20.ravel(), ndf0, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol0")
-        # plot_chi2(chi21.ravel(), ndf1, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol1")
-        # plot_chi2(chi22.ravel(), ndf2, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
-        # plot_chi2(chi23.ravel(), ndf3, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
+        info=dict(syst_variations=True, auxiliary_info=True)
+        y_frf0, y_frf0_var, params_frf0, cov_frf0, chi2_frf0, ndf_frf0 = hSel_pol0.compute_fakeratefactor(h, **info)
+        y_frf1, y_frf1_var, params_frf1, cov_frf1, chi2_frf1, ndf_frf1 = hSel_pol1.compute_fakeratefactor(h, **info)
+        y_frf2, y_frf2_var, params_frf2, cov_frf2, chi2_frf2, ndf_frf2 = hSel_pol2.compute_fakeratefactor(h, **info)
+        y_frf3, y_frf3_var, params_frf3, cov_frf3, chi2_frf3, ndf_frf3 = hSel_pol3.compute_fakeratefactor(h, **info)
 
-        # # 1D
-        # y_scf, y_scf_var, x_edges = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="")
-        # params_scf0, cov_scf0, f_scf0, chi20, ndf0 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=0, return_function=True)
-        # params_scf1, cov_scf1, f_scf1, chi21, ndf1 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=1, return_function=True)
-        # params_scf2, cov_scf2, f_scf2, chi22, ndf2 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=2, return_function=True)
-        # params_scf3, cov_scf3, f_scf3, chi23, ndf3 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=3, return_function=True)
+        plot_chi2(chi2_frf0.ravel(), ndf_frf0, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol0")
+        plot_chi2(chi2_frf1.ravel(), ndf_frf1, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol1")
+        plot_chi2(chi2_frf2.ravel(), ndf_frf2, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
+        plot_chi2(chi2_frf3.ravel(), ndf_frf3, outdirFRF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
 
-        # plot_chi2(chi20.ravel(), ndf0, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol0")
-        # plot_chi2(chi21.ravel(), ndf1, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol1")
-        # plot_chi2(chi22.ravel(), ndf2, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
-        # plot_chi2(chi23.ravel(), ndf3, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
+        y_scf0, y_scf0_var, params_scf0, cov_scf0, chi2_scf0, ndf_scf0 = hSel_pol0.compute_shapecorrection(h, **info)
+        y_scf1, y_scf1_var, params_scf1, cov_scf1, chi2_scf1, ndf_scf1 = hSel_pol1.compute_shapecorrection(h, **info)
+        y_scf2, y_scf2_var, params_scf2, cov_scf2, chi2_scf2, ndf_scf2 = hSel_pol2.compute_shapecorrection(h, **info)
+        y_scf3, y_scf3_var, params_scf3, cov_scf3, chi2_scf3, ndf_scf3 = hSel_pol3.compute_shapecorrection(h, **info)        
 
-        # 2D
-        y_scf, y_scf_var = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="", smoothing_axis_name="", rebin_pt=None)
+        plot_chi2(chi2_scf0.ravel(), ndf_scf0, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol0")
+        plot_chi2(chi2_scf1.ravel(), ndf_scf1, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol1")
+        plot_chi2(chi2_scf2.ravel(), ndf_scf2, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
+        plot_chi2(chi2_scf3.ravel(), ndf_scf3, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
 
-        # params_scf0, cov_scf0, f_scf0, chi201, ndf01 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=0, smoothing_axis_name="pt", smoothing_order=1, return_function=True)
-        # params_scf0, cov_scf0, f_scf0, chi202, ndf02 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=0, smoothing_axis_name="pt", smoothing_order=2, return_function=True)
-        
-        # plot_chi2(chi21.ravel(), ndf1, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol0_1")
-        # plot_chi2(chi22.ravel(), ndf2, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol0_2")
+        # binned fakerate / shape correction
+        hSel_binned = Histselector.FakeSelectorExtendedABCD(h, 
+            interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False, polynomial=polynomial)#, rebin_smoothing_axis=None)
+        y_frf_binned, y_frf_binned_var = hSel_binned.compute_fakeratefactor(h)
+        y_scf_binned, y_scf_binned_var = hSel_binned.compute_shapecorrection(h)
 
-
-        # params_scf1, cov_scf1, f_scf1, chi21, ndf1 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=1, smoothing_axis_name="pt", smoothing_order=1, return_function=True)
-        # params_scf2, cov_scf2, f_scf2, chi22, ndf2 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=2, smoothing_axis_name="pt", smoothing_order=1, return_function=True)
-        # params_scf3, cov_scf3, f_scf3, chi23, ndf3 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=3, smoothing_axis_name="pt", smoothing_order=1, return_function=True)
-
-
-        # plot_chi2(chi23.ravel(), ndf3, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol3_1")
-        rebin_pt = [26,27,28,29,30,31,33,36,40,46,56]
-        # params_scf0, cov_scf0, f_scf0, chi20, ndf0 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=0, smoothing_axis_name="pt", smoothing_order=2, return_function=True, rebin_pt=rebin_pt)
-        # params_scf1, cov_scf1, f_scf1, chi21, ndf1 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=1, smoothing_axis_name="pt", smoothing_order=2, return_function=True, rebin_pt=rebin_pt)
-        # params_scf2, cov_scf2, f_scf2, chi22, ndf2 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=2, smoothing_axis_name="pt", smoothing_order=2, return_function=True, rebin_pt=rebin_pt)
-        # params_scf3, cov_scf3, f_scf3, chi23, ndf3 = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=3, smoothing_axis_name="pt", smoothing_order=2, return_function=True, rebin_pt=rebin_pt)
-
-        # plot_chi2(chi20.ravel(), ndf0, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol0_2")
-        # plot_chi2(chi21.ravel(), ndf1, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol1_2")
-        # plot_chi2(chi22.ravel(), ndf2, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol2_2")
-        # plot_chi2(chi23.ravel(), ndf3, outdirSCF, xlim=(0,150), suffix=proc, outfile="chi2_pol3_2")
-
-
+        # some settings
         idx_ax_charge = h.axes.name.index("charge")
         idx_ax_eta = h.axes.name.index("eta")
         idx_ax_pt = h.axes.name.index("pt")
-        x_edges = h.axes["pt"].edges
+        x_edges = hSel_binned.h_shapecorrection.axes["pt"].edges
         x_widths = np.diff(x_edges)/2
         x_centers = x_edges[:-1]+x_widths
 
-        mt_edges = h[{"mt":slice(40j,None)}].axes["mt"].edges
+        mt_edges = hSel_binned.h_shapecorrection.axes["mt"].edges
         mt_widths = np.diff(mt_edges)/2
         mt_centers = mt_edges[:-1]+mt_widths
         if h.axes["mt"].traits.overflow:
@@ -600,126 +603,135 @@ if __name__ == '__main__':
             mt_widths = np.append(mt_widths, np.diff(mt_centers[-2:])/2)
             mt_edges = np.append(mt_edges, mt_edges[-1]+np.diff(mt_edges[-2:]))
 
-        mtlim = [min(mt_centers-mt_widths), max(mt_centers+mt_widths)]
-        mt = np.arange(*mtlim, 0.1)
+        if polynomial=="power":
+            mtlim = [min(mt_centers-mt_widths), max(mt_centers+mt_widths)]
+            xlim = [min(x_centers-x_widths), max(x_centers+x_widths)]
+        elif polynomial=="bernstein":
+            x_widths = x_widths/(x_edges[-1]-x_edges[0])
+            x_centers = (x_centers-x_edges[0])/(x_edges[-1]-x_edges[0])
+            mtlim = [0, 1]
+            xlim = [0, 1]
 
-        xlim = [min(x_centers-x_widths), max(x_centers+x_widths)]
-        xx = np.arange(*xlim, 0.1)
+        mt = np.linspace(*mtlim, 101)
+        xx = np.linspace(*xlim, 101)
 
         h_pt = h.project("pt")
         logy=False
         etavar="|\eta|"
+
+        # smoothed shapecorrection in 2D, try all possible combinations
+        if False:
+            info=dict(interpolate_x=True, integrate_shapecorrection_x=False, smooth_shapecorrection=True, smooth_fakerate=True, polynomial=polynomial)
+            ylabel = styles.xlabels["mt"]
+            xlabel = styles.xlabels["pt"]
+            for i in range(3):
+                print(f"i = {i}")
+                for j in itertools.product([0,1,2], repeat=i+1):
+                    print(f"j = {j}")
+
+                    hSel_pol = Histselector.FakeSelectorExtendedABCD(h, **info, smoothing_order_fakerate=0, interpolation_order=i, smoothing_order_shapecorrection=list(j))
+                    y_scf, y_scf_var, ps, cs, chi2s, ndf = hSel_pol.compute_shapecorrection(h, syst_variations=False, auxiliary_info=True)
+                    plot_chi2(chi2_scf.ravel(), ndf_scf, outdirSCF, xlim=(0,150), suffix=proc, outfile=f"chi2_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}")
+
+                    for idx_charge, charge_bins in enumerate(h.axes["charge"]):
+                        for idx_eta, eta_bins in enumerate(h.axes["eta"]):
+                            outdirSCFBin = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/shapecorrection_factor//charge{idx_charge}_eta{idx_eta}")
+
+                            if i==0 and all(j==0):
+                                # plot the binned once
+                                slices=[slice(None),]*len(y_scf_binned.shape)
+                                slices[idx_ax_charge] = idx_charge
+                                slices[idx_ax_eta] = idx_eta
+                                y = y_scf_binned[*slices]
+                                fig = plot_tools.makePlot2D(values=y, xlabel=xlabel, ylabel=ylabel, xedges=x_edges, yedges=mt_edges, cms_label=args.cmsDecor, zlim=[0.5,1.5])
+                                outfile = f"scf2D_binned"
+                                if args.postfix:
+                                    outfile += f"_{args.postfix}"
+                                plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
+
+
+                            chi2 = chi2s[idx_eta,idx_charge]
+
+                            p = ps[idx_eta,idx_charge,:]
+                            c = cs[idx_eta,idx_charge,:,:]
+                            
+                            y_fit = hSel_pol.f_scf(mt, xx, p)
+
+                            fig = plot_tools.makePlot2D(values=y_fit, xlabel=xlabel, ylabel=ylabel, xedges=xx, yedges=mt, cms_label=args.cmsDecor, zlim=[0.5,1.5], 
+                                plot_title="$\chi2/"+f"{ndf} = "+str(round(chi2))+"$")
+
+                            outfile=f"scf2D_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}"
+                            if args.postfix:
+                                outfile += f"_{args.postfix}"
+                            plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
+
+                            continue # just do first bin
+                        continue # just do first bin
+
+        # smoothed fakerate factors in 1D
         for idx_charge, charge_bins in enumerate(h.axes["charge"]):
             for idx_eta, eta_bins in enumerate(h.axes["eta"]):
-                # slices=[slice(None),]*len(y_frf_var.shape)
-                # slices[idx_ax_charge] = idx_charge
-                # slices[idx_ax_eta] = idx_eta
-
-                # linestyles = ["-", "-", "--", "--", ":"]
-                # colors = mpl.colormaps["tab10"]
-                # outfile = f"charge{idx_charge}_eta{idx_eta}"
-                # binlabel=f"${round(eta_bins[0],1)} < {etavar} < {round(eta_bins[1],1)}$"
-
-                # # fakerate factors
-                # y = y_frf[*slices]
-                # yerr = y_frf_var[*slices]**0.5
-
-                # if logy:
-                #     ylim = [max(0.1, min(y-yerr)*0.5), min(5,max(y+yerr))*2]
-                # else:
-                #     ylim = [max(0, min(y-yerr)*0.9), min(5,max(y+yerr))*1.1]
-                
-                # fig, ax1 = plot_tools.figure(h_pt, ylabel="Fakerate factor", xlabel="$p_\mathrm{T}$ (GeV)", cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy)
-
-                # ax1.errorbar(x_centers, y, xerr=x_widths, yerr=yerr, marker="", linestyle='none', color="k", label=binlabel)
-
-                # for i, (ps, cs, f, chi2, ndf) in enumerate((
-                #     (params_frf0, cov_frf0, f_frf0, chi20, ndf0),
-                #     (params_frf1, cov_frf1, f_frf1, chi21, ndf1),
-                #     (params_frf2, cov_frf2, f_frf2, chi22, ndf2),
-                #     (params_frf3, cov_frf3, f_frf3, chi23, ndf3),
-                # )):
-                #     chi2 = chi2[idx_eta,idx_charge]
-
-                #     p = ps[idx_eta,idx_charge,:]
-                #     c = cs[idx_eta,idx_charge,:,:]
-                #     p = unc.correlated_values(p, c)
-                #     y_fit_u = f(xx, p)
-                #     y_fit_err = np.array([y.s for y in y_fit_u])
-                #     y_fit = np.array([y.n for y in y_fit_u])
-                #     # paramlabel = r"$\mathrm{f}(x)= "+f"{p[0]}"
-                #     # if len(p)>1:
-                #     #     paramlabel += f"{'+' if p[1].n > 0 else ''}{p[1]}x"
-                #     # if len(p)>2:
-                #     #     paramlabel += f"{'+' if p[2].n > 0 else ''}{p[2]}x^2"
-                #     # if len(p)>3:
-                #     #     paramlabel += f"{'+' if p[3].n > 0 else ''}{p[3]}x^3"
-                #     paramlabel = r"$\chi^2/\mathrm{ndf} = "+f"{round(chi2,1)}/{ndf} $"
-                #     paramlabel = paramlabel.replace("+/-", r"\pm")
-
-                #     ax1.plot(xx, y_fit, linestyle="-", color=colors(i), label=paramlabel)
-                #     ax1.fill_between(xx, y_fit - y_fit_err, y_fit + y_fit_err, alpha=0.3, color=colors(i))
-
-                # ax1.text(1.0, 1.003, styles.process_labels[proc], transform=ax1.transAxes, fontsize=30,
-                #         verticalalignment='bottom', horizontalalignment="right")
-                # plot_tools.addLegend(ax1, ncols=1, text_size=20, loc="upper left")
-                # plot_tools.fix_axes(ax1, ax2=None)
-
-                # if args.postfix:
-                #     outfile += f"_{args.postfix}"
-
-                # plot_tools.save_pdf_and_png(outdirFRF, outfile)
-
-                # plots for shapecorrection factors
-                # 2D plots in mt pt
-
-                outdirSCFBin = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/shapecorrection_factor//charge{idx_charge}_eta{idx_eta}")
-
-                ylabel = styles.xlabels["mt"]
-                xlabel = styles.xlabels["pt"]
-
-                slices=[slice(None),]*len(y_scf_var.shape)
+                slices=[slice(None),]*len(y_frf_binned.shape)
                 slices[idx_ax_charge] = idx_charge
                 slices[idx_ax_eta] = idx_eta
-                y = y_scf[*slices]
 
-                fig = plot_tools.makePlot2D(values=y, xlabel=xlabel, ylabel=ylabel, xedges=x_edges, yedges=mt_edges, cms_label=args.cmsDecor, zlim=[0.5,1.5])
-                outfile = f"plot2D_charge{idx_charge}_eta{idx_eta}_unsmoothed"
+                linestyles = ["-", "-", "--", "--", ":"]
+                colors = mpl.colormaps["tab10"]
+                outfile = f"charge{idx_charge}_eta{idx_eta}"
+                binlabel=f"${round(eta_bins[0],1)} < {etavar} < {round(eta_bins[1],1)}$"
+
+                # fakerate factors
+                y = y_frf_binned[*slices]
+                yerr = y_frf_binned_var[*slices]**0.5
+
+                if logy:
+                    ylim = [max(0.1, min(y-yerr)*0.5), min(5,max(y+yerr))*2]
+                else:
+                    ylim = [max(0, min(y-yerr)*0.9), min(5,max(y+yerr))*1.1]
+                
+                fig, ax1 = plot_tools.figure(h_pt, ylabel="Fakerate factor", xlabel="$p_\mathrm{T}$ (GeV)", cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy)
+
+                ax1.errorbar(x_centers, y, xerr=x_widths, yerr=yerr, marker="", linestyle='none', color="k", label=binlabel)
+
+                for i, (ps, cs, f, chi2, ndf) in enumerate((
+                    (params_frf0, cov_frf0, hSel_pol0.f_frf, chi2_frf0, ndf_frf0),
+                    (params_frf1, cov_frf1, hSel_pol1.f_frf, chi2_frf1, ndf_frf1),
+                    (params_frf2, cov_frf2, hSel_pol2.f_frf, chi2_frf2, ndf_frf2),
+                    (params_frf3, cov_frf3, hSel_pol3.f_frf, chi2_frf3, ndf_frf3),
+                )):
+                    chi2 = chi2[idx_eta,idx_charge]
+
+                    p = ps[idx_eta,idx_charge,:]
+                    c = cs[idx_eta,idx_charge,:,:]
+                    p = unc.correlated_values(p, c)
+                    y_fit_u = f(xx, p)
+                    y_fit_err = np.array([y.s for y in y_fit_u])
+                    y_fit = np.array([y.n for y in y_fit_u])
+                    # paramlabel = r"$\mathrm{f}(x)= "+f"{p[0]}"
+                    # if len(p)>1:
+                    #     paramlabel += f"{'+' if p[1].n > 0 else ''}{p[1]}x"
+                    # if len(p)>2:
+                    #     paramlabel += f"{'+' if p[2].n > 0 else ''}{p[2]}x^2"
+                    # if len(p)>3:
+                    #     paramlabel += f"{'+' if p[3].n > 0 else ''}{p[3]}x^3"
+                    paramlabel = r"$\chi^2/\mathrm{ndf} = "+f"{round(chi2,1)}/{ndf} $"
+                    paramlabel = paramlabel.replace("+/-", r"\pm")
+
+                    ax1.plot(xx, y_fit, linestyle="-", color=colors(i), label=paramlabel)
+                    ax1.fill_between(xx, y_fit - y_fit_err, y_fit + y_fit_err, alpha=0.3, color=colors(i))
+
+                ax1.text(1.0, 1.003, styles.process_labels[proc], transform=ax1.transAxes, fontsize=30,
+                        verticalalignment='bottom', horizontalalignment="right")
+                plot_tools.addLegend(ax1, ncols=1, text_size=20, loc="upper left")
+                plot_tools.fix_axes(ax1, ax2=None)
+
                 if args.postfix:
                     outfile += f"_{args.postfix}"
-                plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
 
-                import itertools
-                for i in range(3):
-                    print(f"i = {i}")
-                    for j in itertools.product([0,1,2], repeat=i+1):
-                        print(f"j = {j}")
-                        ps, cs, f, chi2, ndf = sel.compute_shapecorrection_fullABCD(h, interpolation_axis_name="mt", order=i, smoothing_axis_name="pt", smoothing_order=list(j), return_function=True)
-                        plot_chi2(chi2.ravel(), ndf, outdirSCF, xlim=(0,150), suffix=proc, outfile=f"chi2_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}")
+                plot_tools.save_pdf_and_png(outdirFRF, outfile)
 
-                        outfile=f"scf2D_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}"
-
-                        # for i, (ps, cs, f, chi2, ndf, suffix) in enumerate((
-                        #     (params_scf0, cov_scf0, f_scf0, chi20, ndf0, "Pol0"),
-                        #     (params_scf1, cov_scf1, f_scf1, chi21, ndf1, "Pol1"),
-                        #     (params_scf2, cov_scf2, f_scf2, chi22, ndf2, "Pol2"),
-                        #     (params_scf3, cov_scf3, f_scf3, chi23, ndf3, "Pol3"),
-                        # )):
-
-                        chi2 = chi2[idx_eta,idx_charge]
-
-                        p = ps[idx_eta,idx_charge,:]
-                        c = cs[idx_eta,idx_charge,:,:]
-                        y_fit = f(mt, xx, p)
-
-                        fig = plot_tools.makePlot2D(values=y_fit, xlabel=xlabel, ylabel=ylabel, xedges=xx, yedges=mt, cms_label=args.cmsDecor, zlim=[0.5,1.5], plot_title="$\chi2/"+f"{ndf} = "+str(round(chi2))+"$")
-
-                        # outfile = f"plot2D_charge{idx_charge}_eta{idx_eta}_mt{suffix}_ptPol2"
-                        if args.postfix:
-                            outfile += f"_{args.postfix}"
-                        plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
-
-                exit()
+                # plots for shapecorrection factors
+                # exit()
 
                 # # 1D plots in mt
                 # for idx_pt, pt_bins in enumerate(h.axes["pt"]):

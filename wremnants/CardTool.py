@@ -749,18 +749,18 @@ class CardTool(object):
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc, hnomi=hnom)
 
     def loadPseudodataFakes(self, forceNonzero=True):
+        pdb.set_trace()
+
         # get the nonclosure for fakes/multijet background from QCD MC
         self.qcd_datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
-            procsToRead=['QCD'], 
+            procsToRead=qcd_datagroups.getProcNames(), 
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
-            applySelection=False # don't apply selection to fit A,B,C,D regions separately with falling exponentials
+            applySelection=True 
             )
         procDict = self.qcd_datagroups.getDatagroups()
-
-        fake_axes = self.qcd_datagroups.fakerate_axes
 
         hists = procDict["QCD"].hists["syst"]
         axes = hists.axes
@@ -769,6 +769,7 @@ class CardTool(object):
         histCorr = hists.copy()
         histCorr = histCorr.project(*fake_axes)
         if "pt" in fake_axes:
+            # smooth
             # perform exp. fit in pt
             ax_others = [ax for ax in histCorr.axes if ax.name != "pt"]
             if len(ax_others) > 0:
