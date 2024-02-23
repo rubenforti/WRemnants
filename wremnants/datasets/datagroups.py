@@ -17,7 +17,7 @@ import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants import Histselector
+from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
 
@@ -194,22 +194,28 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def set_histselectors(self, group_names, histToReadAxes="nominal", fake_processes=None, extendedABCD=True, simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs):
+    def set_histselectors(self, 
+        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs
+    ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
             return # histselectors only implemented for single lepton (with fakes)
-        signalselector = Histselector.SignalSelectorABCD
-        if extendedABCD:
-            fakeselector = Histselector.FakeSelectorExtendedABCD
-        else:
+        signalselector = sel.SignalSelectorABCD
+        if mode == "extended1D":
+            fakeselector = sel.FakeSelector1DExtendedABCD
+        elif mode == "extended2D":
+            fakeselector = sel.FakeSelector2DExtendedABCD
+        elif mode == "simple":
             if simultaneousABCD:
-                fakeselector = Histselector.FakeSelectorSimultaneousABCD
+                fakeselector = sel.FakeSelectorSimultaneousABCD
             else:
-                fakeselector = Histselector.FakeSelectorSimpleABCD
+                fakeselector = sel.FakeSelectorSimpleABCD
+        else:
+            raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
             base_member = self.groups[g].members[:][0].name
-            h = self.results[base_member]["output"][histToReadAxes].get()
+            h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
                 self.groups[g].histselector = fakeselector(h, fakerate_axes, **kwargs)
             else:

@@ -43,7 +43,7 @@ def make_parser(parser=None):
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
-    parser.add_argument("--simpleABCD", action='store_true', help="Do the simple ABCD method, default is extendedABCD")
+    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended2D", choices=["simple", "extended1D", "extended2D"])
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -207,7 +207,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             datagroups.groups[base_group].deleteMembers(to_del)    
 
     if wmass:
-        datagroups.set_histselectors(datagroups.getNames(), args.baseName, extendedABCD=not args.simpleABCD, fakerate_axes=args.fakerateAxes,
+        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation, fakerate_axes=args.fakerateAxes,
             simultaneousABCD=simultaneousABCD, integrate_pass_x="mt" not in fitvar)
 
     # Start to create the CardTool object, customizing everything
@@ -288,7 +288,9 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 datagroups_QCD.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
             # fake_axes: QCD MC has low stat, compute the multijet closure on a subset of axes (including pt to perform exp. fit)
             datagroups_QCD.set_histselectors(datagroups_QCD.getNames(), args.baseName, extendedABCD=not args.simpleABCD, fakerate_axes=args.fakerateAxes,
-                simultaneousABCD=simultaneousABCD, integrate_pass_x="mt" not in fitvar, fake_processes=["QCD",])
+                simultaneousABCD=simultaneousABCD, integrate_pass_x="mt" not in fitvar, fake_processes=["QCD",], 
+                smooth_spectrum=True, smoothing_axis_name="pt", # due to small MC stat, smooth by exponential fit
+            )
             cardTool.setQCDDatagroups(datagroups_QCD)
 
 
@@ -335,14 +337,14 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
-    if wmass and not args.simpleABCD:
+    if wmass and args.fakeEstimation in ["extended1D", "extended2D"]:
         info=dict(
             name=args.baseName, 
             group=cardTool.getFakeName(), 
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
-            mirror=True, 
-            systAxes=["_eta", "_charge", "_param"])
+            mirror=False, 
+            systAxes=["_eta", "_charge", "_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
             rename=subgroup,
@@ -368,7 +370,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             group=cardTool.getFakeName(),
             systNamePrepend=f"{cardTool.getFakeName()}Rate",
             noConstraint=True,
-            mirror=True,
+            mirror=False,
             systAxes=fakerate_axes_syst,
             action=syst_tools.make_fakerate_variation,
             actionArgs=dict(

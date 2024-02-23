@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from wremnants import histselections as sel
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import output_tools
 import narf
@@ -749,45 +750,35 @@ class CardTool(object):
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc, hnomi=hnom)
 
     def loadPseudodataFakes(self, forceNonzero=True):
-        pdb.set_trace()
-
         # get the nonclosure for fakes/multijet background from QCD MC
         self.qcd_datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
-            procsToRead=qcd_datagroups.getProcNames(), 
+            # procsToRead=self.qcd_datagroups.getProcNames(), 
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
-            applySelection=True 
+            applySelection=False 
             )
         procDict = self.qcd_datagroups.getDatagroups()
+        gTruth = procDict["QCDTruth"]
+        gPred = procDict["QCD"]
 
-        hists = procDict["QCD"].hists["syst"]
-        axes = hists.axes
+        hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
 
-        # compute the nonclosure
-        histCorr = hists.copy()
-        histCorr = histCorr.project(*fake_axes)
-        if "pt" in fake_axes:
-            # smooth
-            # perform exp. fit in pt
-            ax_others = [ax for ax in histCorr.axes if ax.name != "pt"]
-            if len(ax_others) > 0:
-                idx_pt = histCorr.axes.name.index("pt")
-                for indices in itertools.product(*[range(a.size) for a in ax_others]):
-                    logger.info(f"Set closure for slices {[a.name for a in ax_others]} {indices}")
+        selPred = gPred.histselector
+        if type(selPred) == sel.FakeSelector2DExtendedABCD:
+            selPred.interpolate_x = False
+            selPred.smooth_shapecorrection = False
+            selPred.smooth_fakerate = False
 
-                    slices = list(indices)
-                    slices.insert(idx_pt, slice(None))
+        hPred = selPred.get_hist(gPred.hists["syst"])
 
-                    histCorr.view()[*slices] = sel.get_multijet_bkg_closure(hists, fake_axes, slices)
-                    print(histCorr.view()[*slices])
-            else:
-                histCorr.view()[...] = sel.get_multijet_bkg_closure(hists, fake_axes)
-        else:
-            # just take the ratio as nonclosure
-            logger.warning(f"pt axis not found in QCD MC histograms but I trust what you do and compute nonclosure for {fake_axes} from simple ratio")
-            # histCorr = hh.divideHists(hists)
+        logger.info(f"Have MC QCD truth {hTruth.sum()} and predicted {hPred.sum()}")
+
+        # compute the nonclosure correction
+        histCorr = hh.divideHists(hTruth, hPred)
+
+        histCorr.variances(flow=True)[...] = np.zeros(histCorr.shape)
 
         # now load the nominal histograms
         self.datagroups.loadHistsForDatagroups(
@@ -796,7 +787,7 @@ class CardTool(object):
             label=self.nominalName, 
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
-            sumFakesPartial=not self.ABCD)
+            sumFakesPartial=not self.simultaneousABCD)
         procDictFromNomi = self.datagroups.getDatagroups()
 
         # apply the nonclosure to fakes derived from data
@@ -805,7 +796,7 @@ class CardTool(object):
             # TODO: Make if work for arbitrary axes (maybe as an action when loading nominal histogram, before fakerate axes are integrated e.g. in mt fit)
             raise NotImplementedError(f"The multijet closure test is not implemented for arbitrary axes, the required axes are {histCorr.axes.name}")
 
-        if self.ABCD:
+        if self.simultaneousABCD:
             # TODO: Make if work for simultaneous ABCD fit, apply the correction in the signal region (D) only
             raise NotImplementedError("The multijet closure test is not implemented for simultaneous ABCD fit")
         else:

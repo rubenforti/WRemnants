@@ -18,7 +18,7 @@ parser = common.plot_parser()
 parser.add_argument("infile", help="Output file of the analysis stage, containing ND boost histograms")
 parser.add_argument("--ratioToData", action='store_true', help="Use data as denominator in ratio")
 parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
-parser.add_argument("--nominalRef", type=str, help="Specify the nominal his if baseName is a variation hist (for plotting alt hists)")
+parser.add_argument("--nominalRef", type=str, help="Specify the nominal hist if baseName is a variation hist (for plotting alt hists)")
 parser.add_argument("--hists", type=str, nargs='+', required=True, help="List of histograms to plot")
 parser.add_argument("-c", "--channel", type=str, choices=["plus", "minus", "all"], default="all", help="Select channel to plot")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
@@ -43,7 +43,7 @@ parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", hel
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=1' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
-parser.add_argument("--simpleABCD", action='store_true', help="Do the simple ABCD method, default is extendedABCD")
+parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended2D", choices=["simple", "extended1D", "extended2D"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
 subparsers = parser.add_subparsers(dest="variation")
@@ -130,11 +130,10 @@ else:
 
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
 
+groups.setNominalName(args.baseName)
+groups.set_histselectors(datasets, args.baseName, integrate_pass_x=False, mode=args.fakeEstimation, fakerate_axes=["pt", "eta", "charge"])
 
 nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
-groups.setNominalName(nominalName)
-groups.set_histselectors(datasets, nominalName, extendedABCD=not args.simpleABCD, fakerate_axes=["pt", "eta", "charge"])
-
 if not args.nominalRef:
     groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
