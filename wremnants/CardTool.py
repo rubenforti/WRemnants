@@ -298,7 +298,7 @@ class CardTool(object):
                       preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, actionRequiresNomi=False, selectionArgs={},
                       systNameReplace=[], systNamePrepend=None, groupFilter=None, passToFakes=False,
                       rename=None, splitGroup={}, formatWithValue=None,
-                      customizeNuisanceAttributes={},
+                      customizeNuisanceAttributes={}, applySelection=True,
                       ):
         logger.debug(f"Add systematic {name}")
         # note: setting Up=Down seems to be pathological for the moment, it might be due to the interpolation in the fit
@@ -363,7 +363,7 @@ class CardTool(object):
                 "action" : action,
                 "actionArgs" : actionArgs,
                 "actionRequiresNomi" : actionRequiresNomi,
-                "selectionArgs" : selectionArgs,
+                "applySelection" : applySelection,
                 "systNameReplace" : systNameReplace,
                 "noConstraint" : noConstraint,
                 "noProfile" : noProfile,
@@ -937,7 +937,7 @@ class CardTool(object):
                 self.nominalName, systName, label="syst",
                 procsToRead=processes, 
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
-                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], selectionArgs=systMap["selectionArgs"],
+                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
                 scaleToNewLumi=self.lumiScale,
                 forceToNominal=forceToNominal,
                 sumFakesPartial=not self.simultaneousABCD

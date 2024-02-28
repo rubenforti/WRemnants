@@ -43,7 +43,7 @@ def make_parser(parser=None):
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
-    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended2D", choices=["simple", "extended1D", "extended2D"])
+    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["simple", "extended1D", "extended2D"])
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -287,7 +287,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             if not xnorm and (args.axlim or args.rebin or args.absval):
                 datagroups_QCD.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
             # fake_axes: QCD MC has low stat, compute the multijet closure on a subset of axes (including pt to perform exp. fit)
-            datagroups_QCD.set_histselectors(datagroups_QCD.getNames(), args.baseName, extendedABCD=not args.simpleABCD, fakerate_axes=args.fakerateAxes,
+            datagroups_QCD.set_histselectors(datagroups_QCD.getNames(), args.baseName, mode=args.fakeEstimation, fakerate_axes=args.fakerateAxes,
                 simultaneousABCD=simultaneousABCD, integrate_pass_x="mt" not in fitvar, fake_processes=["QCD",], 
                 smooth_spectrum=True, smoothing_axis_name="pt", # due to small MC stat, smooth by exponential fit
             )
@@ -344,21 +344,27 @@ def setup(args, inputFile, fitvar, xnorm=False):
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
             mirror=False, 
+            applySelection=False, # don't apply selection, all regions will be needed for the action
+            actionRequiresNomi=True,
+            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
+            #lambda h, h_nominal, f, variations_frf=False, variations_scf=False: f(h, h_nominal, variations_frf, variations_scf) 
+            # {g: v.histselector.get_hist for g, v in cardTool.datagroups.groups.items()},
             systAxes=["_eta", "_charge", "_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
             rename=subgroup,
             splitGroup = {subgroup: f".*"},
             systNamePrepend=subgroup,
-            selectionArgs=dict(variations_frf=True),
+            actionArgs=dict(variations_frf=True),
         )
-        subgroup = f"{cardTool.getFakeName()}Shape"
-        cardTool.addSystematic(**info,
-            rename=subgroup,
-            splitGroup = {subgroup: f".*"},
-            systNamePrepend=subgroup,
-            selectionArgs=dict(variations_scf=True),
-        )
+        if args.fakeEstimation in ["extended2D",]:
+            subgroup = f"{cardTool.getFakeName()}Shape"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_scf=True),
+            )
 
     if simultaneousABCD:
         # Fakerate A/B = C/D
@@ -610,19 +616,19 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 passToFakes=passSystToFakes,
         )
 
-    # Experimental range
-    #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
-    # Variation from EW fit (mostly driven by alphas unc.)
-    widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
-    cardTool.addSystematic(f"widthWeight{label}",
-                            processes=["signal_samples_inctau"],
-                            action=lambda h: h[{"width" : widthVars}],
-                            group=f"width{label}",
-                            mirror=False,
-                            systAxes=["width"],
-                            outNames=[f"width{label}Down", f"width{label}Up"],
-                            passToFakes=passSystToFakes,
-    )
+    # # Experimental range
+    # #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
+    # # Variation from EW fit (mostly driven by alphas unc.)
+    # widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
+    # cardTool.addSystematic(f"widthWeight{label}",
+    #                         processes=["signal_samples_inctau"],
+    #                         action=lambda h: h[{"width" : widthVars}],
+    #                         group=f"width{label}",
+    #                         mirror=False,
+    #                         systAxes=["width"],
+    #                         outNames=[f"width{label}Down", f"width{label}Up"],
+    #                         passToFakes=passSystToFakes,
+    # )
 
 
     combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 

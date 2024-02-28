@@ -273,7 +273,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, selectionArgs={},
+        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -422,8 +422,10 @@ class Datagroups(object):
                 if not applySelection:
                     logger.warning(f"Selection requested for process {procName} but applySelection=False, thus it will be ignored")
                 elif label in group.hists.keys() and group.hists[label] is not None:
-                    logger.debug(f"Apply selection for process {procName} with selection arguments {selectionArgs}")
-                    group.hists[label] = group.histselector.get_hist(group.hists[label], **selectionArgs)
+                    if isinstance(group.histselector, sel.FakeSelector1DExtendedABCD) and label != baseName:
+                        group.hists[label] = group.histselector.get_hist(group.hists[label], group.hists[baseName]) # extended ABCD requires nominal histogram to take variances from
+                    else:
+                        group.hists[label] = group.histselector.get_hist(group.hists[label])
 
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")

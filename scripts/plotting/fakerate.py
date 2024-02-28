@@ -701,10 +701,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext5)
         labels.append("ext(5) smoothed")
     else:
-        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False)
+        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
         hD_ext5 = hSel_ext5.get_hist(h)
         hss.append(hD_ext5)
         labels.append("ext(5) binned")
+
+        # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False upper_bound_y=hist.overflow)
+        # hD_ext5 = hSel_ext5.get_hist(h)
+        # hss.append(hD_ext5)
+        # labels.append("ext(5) binned (iso<0.45)")
 
     # extended ABCD in 8 control regions
     if smoothed:
@@ -713,10 +718,17 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext8)
         labels.append("ext(8) smoothed")
     else:
-        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+            integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
         hD_ext8 = hSel_ext8.get_hist(h)
         hss.append(hD_ext8)
         labels.append("ext(8) binned")
+
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=hist.overflow,
+        #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) binned (iso<0.45)")
 
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, integrate_shapecorrection_x=True, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
         # hD_ext8 = hSel_ext8.get_hist(h)
