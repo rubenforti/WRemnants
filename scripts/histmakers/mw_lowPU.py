@@ -264,9 +264,7 @@ def build_graph(df, dataset):
     df = df.Alias("transverseMass", "mT_corr_rec")
     df = df.Define("passMT", f"transverseMass > {mtw_min}")
 
-    results.append(df.HistoBoost("lep_pt", [axis_pt, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_eta", [axis_eta, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_eta", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_phi", [axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
+    results.append(df.HistoBoost("lep_pt_eta_phi", [axis_pt, axis_eta, axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_eta", "lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
     results.append(df.HistoBoost("lep_iso", [axis_iso], ["lep_iso", "nominal_weight"]))
    
     # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, common.axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))  

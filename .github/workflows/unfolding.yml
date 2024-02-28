@@ -99,145 +99,145 @@ jobs:
           echo "WREMNANTS_OUTDIR=$WREMNANTS_OUTDIR" >> $GITHUB_OUTPUT
           echo "WEB_DIR=$WEB_DIR" >> $GITHUB_OUTPUT
 
-  w-analysis:
-    # The type of runner that the job will run on
-    runs-on: [self-hosted, linux, x64]
-    needs: setenv
+  # w-analysis:
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted, linux, x64]
+  #   needs: setenv
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      - env:
-          WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
-          NTHREADS: ${{ needs.setenv.outputs.NTHREADS }}
-          MAX_FILES: ${{ needs.setenv.outputs.MAX_FILES }}*10
-          LUMI_SCALE: ${{ needs.setenv.outputs.LUMI_SCALE }}
-        run: |
-          echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
-          echo "NTHREADS=${NTHREADS}" >> $GITHUB_ENV
-          echo "MAX_FILES=${MAX_FILES}" >> $GITHUB_ENV
-          echo "LUMI_SCALE=${LUMI_SCALE}" >> $GITHUB_ENV
-          echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     - env:
+  #         WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
+  #         NTHREADS: ${{ needs.setenv.outputs.NTHREADS }}
+  #         MAX_FILES: ${{ needs.setenv.outputs.MAX_FILES }}*10
+  #         LUMI_SCALE: ${{ needs.setenv.outputs.LUMI_SCALE }}
+  #       run: |
+  #         echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
+  #         echo "NTHREADS=${NTHREADS}" >> $GITHUB_ENV
+  #         echo "MAX_FILES=${MAX_FILES}" >> $GITHUB_ENV
+  #         echo "LUMI_SCALE=${LUMI_SCALE}" >> $GITHUB_ENV
+  #         echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          lfs: 'true'
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: 'recursive'
+  #         lfs: 'true'
 
-      - name: wmass setup lumi scale
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
-        run: | 
-          echo "LUMI_SCALE=120" >> $GITHUB_ENV
-          echo "NTRHEADS=${NTHREADS}*2" >> $GITHUB_ENV
+  #     - name: wmass setup lumi scale
+  #       if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
+  #       run: | 
+  #         echo "LUMI_SCALE=120" >> $GITHUB_ENV
+  #         echo "NTRHEADS=${NTHREADS}*2" >> $GITHUB_ENV
 
-      - name: wmass analysis
-        # run with a reduced binning
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
-          --pt 6 26 58 --eta 6 -2.4 2.4 --genBins 4 3
+  #     - name: wmass analysis
+  #       # run with a reduced binning
+  #       if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
+  #         -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
+  #         --pt 6 26 58 --eta 6 -2.4 2.4 --genBins 4 3
 
-      - name: wmass analysis
-        # run with full binning
-        if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
+  #     - name: wmass analysis
+  #       # run with full binning
+  #       if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
+  #         -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
 
-  w-unfolding:
-    # The type of runner that the job will run on
-    runs-on: [self-hosted, linux, x64]
-    needs: [setenv, w-analysis]
+  # w-unfolding:
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted, linux, x64]
+  #   needs: [setenv, w-analysis]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      - env:
-          WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
-          WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
-          PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
-          LUMI_SCALE: ${{ needs.setenv.outputs.LUMI_SCALE }}
-        run: |
-          echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
-          echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
-          echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
-          echo "LUMI_SCALE=${LUMI_SCALE}" >> $GITHUB_ENV
-          echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          lfs: 'true'
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     - env:
+  #         WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
+  #         WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
+  #         PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
+  #         LUMI_SCALE: ${{ needs.setenv.outputs.LUMI_SCALE }}
+  #       run: |
+  #         echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
+  #         echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
+  #         echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
+  #         echo "LUMI_SCALE=${LUMI_SCALE}" >> $GITHUB_ENV
+  #         echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: 'recursive'
+  #         lfs: 'true'
 
-      - name: wmass plot response matrix
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
-          --axes "pt-ptGen" "abs(eta)-absEtaGen" --procFilters Wmunu -p mw -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+  #     - name: wmass plot response matrix
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
+  #         --axes "pt-ptGen" "abs(eta)-absEtaGen" --procFilters Wmunu -p mw -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
-      - name: wmass combine setup
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --simpleABCD 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE --unfold --ABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+  #     - name: wmass combine setup
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
+  #         -i $HIST_FILE --lumiScale $LUMI_SCALE --unfold --simultaneousABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
-      - name: wmass combine fit 
-        run: >-
-          cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
-          unfolding ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_passIso_passMT_unfolding/ WMass.hdf5
+  #     - name: wmass combine fit 
+  #       run: >-
+  #         cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
+  #         unfolding ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_passIso_passMT_unfolding/ WMass.hdf5
 
-      - name: wmass combine unfolding plot pulls 
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py 
-          -f $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -m ungrouped --sortDescending -s constraint 
-          --debug --grouping max -t utilities/styles/nuisance_translate.json 
-          output --outFolder $WEB_DIR/$PLOT_DIR -o pulls_unfolding_mw.html -n 50 --otherExtensions png pdf
+  #     - name: wmass combine unfolding plot pulls 
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py 
+  #         -f $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -m ungrouped --sortDescending -s constraint 
+  #         --debug --grouping max -t utilities/styles/nuisance_translate.json 
+  #         output --outFolder $WEB_DIR/$PLOT_DIR -o pulls_unfolding_mw.html -n 50 --otherExtensions png pdf
 
-      - name: wmass combine unfolding plot xsec 
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
-          --fitresult $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
-          -t 'utilities/styles/nuisance_translate.json' --grouping max
+  #     - name: wmass combine unfolding plot xsec 
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
+  #         --fitresult $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
+  #         -t 'utilities/styles/nuisance_translate.json' --grouping max
 
-  w-theoryfit:
-    # The type of runner that the job will run on
-    runs-on: [self-hosted, linux, x64]
-    needs: [setenv, w-unfolding]
+  # w-theoryfit:
+  #   # The type of runner that the job will run on
+  #   runs-on: [self-hosted, linux, x64]
+  #   needs: [setenv, w-unfolding]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      - env:
-          WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
-          WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
-          PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
-        run: |
-          echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
-          echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
-          echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
-          echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-          lfs: 'true'
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     - env:
+  #         WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
+  #         WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
+  #         PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
+  #       run: |
+  #         echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
+  #         echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
+  #         echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
+  #         echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: 'recursive'
+  #         lfs: 'true'
 
-      - name: wmass theoryfit combine setup
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE 
-          --fitresult ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 --fitvar qGen-ptGen-absEtaGen 
-          --hdf5 -o $WREMNANTS_OUTDIR --postfix theoryfit
+  #     - name: wmass theoryfit combine setup
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE 
+  #         --fitresult ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 --fitvar qGen-ptGen-absEtaGen 
+  #         --hdf5 -o $WREMNANTS_OUTDIR --postfix theoryfit
 
-      - name: wmass theoryfit combine fit 
-        run: >-
-          cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
-          theoryfit ${WREMNANTS_OUTDIR}/WMass_qGen_ptGen_absEtaGen_theoryfit WMass.hdf5 
+  #     - name: wmass theoryfit combine fit 
+  #       run: >-
+  #         cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
+  #         theoryfit ${WREMNANTS_OUTDIR}/WMass_qGen_ptGen_absEtaGen_theoryfit WMass.hdf5 
 
-      - name: wmass theoryfit combine impacts
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh 
-          $WREMNANTS_OUTDIR/WMass_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.hdf5 $WEB_DIR/$PLOT_DIR impactsW.html
+  #     - name: wmass theoryfit combine impacts
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh 
+  #         $WREMNANTS_OUTDIR/WMass_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.hdf5 $WEB_DIR/$PLOT_DIR impactsW.html
 
-      - name: wmass theoryfit plot prepostfit
-        run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_plots.py 
-          $HIST_FILE --fitresult $WREMNANTS_OUTDIR/WMass_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR 
-          -n xnorm --plots prefit postfit -v 4 --rrange 0.9 1.1 --lumi=$LUMI_SCALE
+  #     - name: wmass theoryfit plot prepostfit
+  #       run: >-
+  #         scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_plots.py 
+  #         $HIST_FILE --fitresult $WREMNANTS_OUTDIR/WMass_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR 
+  #         -n xnorm --plots prefit postfit -v 4 --rrange 0.9 1.1 --lumi=$LUMI_SCALE
 
 
   wlike-analysis:
@@ -489,7 +489,7 @@ jobs:
 
   copy-clean:
     runs-on: [self-hosted, linux, x64]
-    needs: [setenv, w-analysis, w-unfolding, w-theoryfit, 
+    needs: [setenv, # w-analysis, w-unfolding, w-theoryfit, 
       wlike-analysis, wlike-unfolding, wlike-theoryfit, 
       dilepton, dilepton-unfolding]
     if: always() 

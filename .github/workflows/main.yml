@@ -274,11 +274,8 @@ jobs:
       - name: lowpu w mu plot ptW
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
-      - name: lowpu w mu plot pt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
-
-      - name: lowpu w mu plot eta
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.5 --baseName lep_eta --hists eta -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+      - name: lowpu w mu plot lepton
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt_eta_phi --hists pt eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot mt
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
@@ -295,11 +292,8 @@ jobs:
       - name: lowpu w e plot ptW
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
-      - name: lowpu w e plot pt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
-
-      - name: lowpu w e plot eta
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.5 --baseName lep_eta --hists eta -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+      - name: lowpu w e plot lepton
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt_eta_phi --hists pt eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot mt
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
