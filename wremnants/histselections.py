@@ -408,7 +408,7 @@ class SignalSelectorABCD(HistselectorABCD):
         return hSel
 
 class FakeSelectorABCD(HistselectorABCD):
-    # simple ABCD method
+    # abstract base class for ABCD method for fakes
     def __init__(self, h, fakerate_axes=["eta","pt","charge"], *args, **kwargs):
         super().__init__(h, *args, **kwargs)
         self.fakerate_axes = fakerate_axes
@@ -416,6 +416,7 @@ class FakeSelectorABCD(HistselectorABCD):
         logger.info(f"Setting fakerate integration axes to {self.fakerate_integration_axes}")
 
 class FakeSelectorSimpleABCD(FakeSelectorABCD):
+    # simple ABCD method
     def __init__(self, h, *args, **kwargs):
         super().__init__(h, *args, **kwargs)
 

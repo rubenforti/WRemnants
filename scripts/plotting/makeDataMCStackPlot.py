@@ -83,8 +83,7 @@ if addVariation and (args.selectAxis or args.selectEntries):
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
-groups = Datagroups(args.infile, filterGroups=args.procFilters, 
-    excludeGroups=None if args.procFilters else ['QCD'])
+groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'])
 
 if not args.fineGroups:
     if groups.mode in styles.process_supergroups:

@@ -148,6 +148,7 @@ mTStudyForFakes_axes = [axis_eta, axis_pt, axis_charge, axis_mt_fakes, axis_pass
 axis_eta_utilityHist = hist.axis.Regular(24, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
 axis_pt_utilityHist = hist.axis.Regular(6, 26, 56, name = "pt", overflow=False, underflow=False)
 
+axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 axis_recoWpt = hist.axis.Regular(40, 0., 80., name = "recoWpt", underflow=False, overflow=True)
 
 # define helpers
@@ -346,7 +347,6 @@ def build_graph(df, dataset):
         df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_all[goodMuons][0]")
     elif args.isolationDefinition == "iso04vtxAgn":
         df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
-        df = df.Define("goodMuons_oldIso0", "Muon_pfRelIso04_all[goodMuons][0]")
     elif args.isolationDefinition == "iso04chg":
         df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_chg[goodMuons][0]")
     elif args.isolationDefinition == "iso04chgvtxAgn":
@@ -356,7 +356,6 @@ def build_graph(df, dataset):
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
-
     df = df.Define("passIso", "goodMuons_iso0 < 0.15")
 
     ########################################################################
@@ -429,6 +428,7 @@ def build_graph(df, dataset):
     if not args.makeMCefficiency and args.dphiMuonMetCut > 0:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
+
     df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
     if auxiliary_histograms:

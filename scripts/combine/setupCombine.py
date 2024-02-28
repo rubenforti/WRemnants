@@ -376,7 +376,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             group=cardTool.getFakeName(),
             systNamePrepend=f"{cardTool.getFakeName()}Rate",
             noConstraint=True,
-            mirror=False,
+            mirror=True,
             systAxes=fakerate_axes_syst,
             action=syst_tools.make_fakerate_variation,
             actionArgs=dict(
@@ -616,19 +616,19 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 passToFakes=passSystToFakes,
         )
 
-    # # Experimental range
-    # #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
-    # # Variation from EW fit (mostly driven by alphas unc.)
-    # widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
-    # cardTool.addSystematic(f"widthWeight{label}",
-    #                         processes=["signal_samples_inctau"],
-    #                         action=lambda h: h[{"width" : widthVars}],
-    #                         group=f"width{label}",
-    #                         mirror=False,
-    #                         systAxes=["width"],
-    #                         outNames=[f"width{label}Down", f"width{label}Up"],
-    #                         passToFakes=passSystToFakes,
-    # )
+    # Experimental range
+    #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
+    # Variation from EW fit (mostly driven by alphas unc.)
+    widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
+    cardTool.addSystematic(f"widthWeight{label}",
+                            processes=["signal_samples_inctau"],
+                            action=lambda h: h[{"width" : widthVars}],
+                            group=f"width{label}",
+                            mirror=False,
+                            systAxes=["width"],
+                            outNames=[f"width{label}Down", f"width{label}Up"],
+                            passToFakes=passSystToFakes,
+    )
 
 
     combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
