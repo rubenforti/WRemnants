@@ -14,6 +14,7 @@ from wremnants.datasets.datasetDict_lowPU import dataDictLowPU
 import ROOT
 import XRootD.client
 from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
+from wremnants.datasets.datasetDict2017_v9 import dataDictV9_2017
 
 logger = logging.child_logger(__name__)
 
@@ -229,6 +230,9 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
             if extended:
                 dataDict = dataDictV9extended
             logger.info('Using NanoAOD V9 for 2016PostVFP')
+        elif era == "2017":
+            dataDict = dataDictV9_2017
+            logger.info('Using NanoAOD V9 for 2017')
         elif era == "2018":
             dataDict = dataDictV9_2018
             logger.info('Using NanoAOD V9 for 2018')
