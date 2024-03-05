@@ -41,7 +41,7 @@
     "muonPrefire": "L1 muon prefire",
     "ecalPrefire": "L1 ecal prefire",
     "stat": "Data stat.",
-    "luminosity": "Luminosity",
+    "lumi": "Luminosity",
     "theory_ew": "EW",
     "FakeRate": "Fake rate factors",
     "FakeShape": "Fake shape corrections",
@@ -49,4 +49,5 @@
     "widthW": "W width", 
     "widthZ": "Z width"
 }
+
 
