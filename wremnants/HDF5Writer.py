@@ -143,7 +143,7 @@ class HDF5Writer(object):
         args,
         outfolder,
         outfilename,
-        forceNonzero=True, 
+        forceNonzero=False, 
         check_systs=False, 
         allowNegativeExpectation=False,
     ):
@@ -190,39 +190,6 @@ class HDF5Writer(object):
             hist_nominal = dg.groups[procs_chan[0]].hists[chanInfo.nominalName] 
             hist_axes[chan] = [hist_nominal.axes[a] for a in axes]
 
-            # nominal predictions
-            for proc in procs_chan:
-                logger.debug(f"Now  in channel {chan} at process {proc}")
-
-                # nominal histograms of prediction
-                norm_proc_hist = dg.groups[proc].hists[chanInfo.nominalName]
-
-                if not masked:                
-                    norm_proc, sumw2_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes)
-                else:
-                    norm_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes, return_variances=False)
-
-                if nbinschan is None:
-                    nbinschan = norm_proc.shape[0]
-                    nbins += nbinschan
-                elif nbinschan != norm_proc.shape[0]:
-                    raise Exception(f"Mismatch between number of bins in channel {chan} and process {proc} for expected ({nbinschan}) and ({norm_proc.shape[0]})")
-             
-                if not allowNegativeExpectation:
-                    norm_proc = np.maximum(norm_proc, 0.)
-
-                if not masked:                
-                    if not np.all(np.isfinite(sumw2_proc)):
-                        raise RuntimeError(f"{len(sumw2_proc)-sum(np.isfinite(sumw2_proc))} NaN or Inf values encountered in variances for {proc}!")
-                    self.dict_sumw2[chan][proc] = sumw2_proc
-                
-                if not np.all(np.isfinite(norm_proc)):
-                    raise RuntimeError(f"{len(norm_proc)-sum(np.isfinite(norm_proc))} NaN or Inf values encountered in nominal histogram for {proc}!")
-
-                self.dict_norm[chan][proc] = norm_proc               
-
-            ibins.append(nbinschan)
-
             if not masked:                
                 # pseudodata
                 if chanInfo.pseudoData:
@@ -268,6 +235,41 @@ class HDF5Writer(object):
                             if pseudo in dg.groups[proc].hists:
                                 logger.debug(f"Delete pseudodata histogram {pseudo}")
                                 del dg.groups[proc].hists[pseudo]
+
+            # nominal predictions (after pseudodata because some pseudodata changes the nominal model)
+            for proc in procs_chan:
+                logger.debug(f"Now  in channel {chan} at process {proc}")
+
+                # nominal histograms of prediction
+                norm_proc_hist = dg.groups[proc].hists[chanInfo.nominalName]
+
+                if not masked:                
+                    norm_proc, sumw2_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes)
+                else:
+                    norm_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes, return_variances=False)
+
+                if nbinschan is None:
+                    nbinschan = norm_proc.shape[0]
+                    nbins += nbinschan
+                elif nbinschan != norm_proc.shape[0]:
+                    raise Exception(f"Mismatch between number of bins in channel {chan} and process {proc} for expected ({nbinschan}) and ({norm_proc.shape[0]})")
+             
+                if not allowNegativeExpectation:
+                    norm_proc = np.maximum(norm_proc, 0.)
+
+                if not masked:                
+                    if not np.all(np.isfinite(sumw2_proc)):
+                        raise RuntimeError(f"{len(sumw2_proc)-sum(np.isfinite(sumw2_proc))} NaN or Inf values encountered in variances for {proc}!")
+                    self.dict_sumw2[chan][proc] = sumw2_proc
+                
+                if not np.all(np.isfinite(norm_proc)):
+                    raise RuntimeError(f"{len(norm_proc)-sum(np.isfinite(norm_proc))} NaN or Inf values encountered in nominal histogram for {proc}!")
+
+                self.dict_norm[chan][proc] = norm_proc               
+
+            ibins.append(nbinschan)
+
+            if not masked:                
                 # data
                 if self.theoryFit:
                     if self.theoryFitData is None or self.theoryFitDataCov is None:

@@ -13,6 +13,7 @@ data_dir =  f"{pathlib.Path(__file__).parent}/../wremnants-data/data/"
 
 BR_TAUToMU = 0.1739
 BR_TAUToE = 0.1782
+# cross sections in pb
 xsec_ZmmPostVFP = 2001.9
 xsec_WpmunuPostVFP = 11765.9
 xsec_WmmunuPostVFP = 8703.87

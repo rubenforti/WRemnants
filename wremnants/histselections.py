@@ -15,6 +15,7 @@ from uncertainties import unumpy as unp
 logger = logging.child_logger(__name__)
 
 abcd_thresholds={
+    "pt":[26,28,30],
     "mt":[0,20,40],
     "iso":[0,0.15,0.3,0.45],
     "dxy":[0,0.01,0.02,0.03]
@@ -215,7 +216,7 @@ def get_abcd_selection(h, axis_name, integrate_fail_x=True, integrate_pass_x=Tru
         else:
             hi = s[complex(0,ts[1]):upper_bound:hist.sum] if integrate_fail_x else s[complex(0,ts[1]):upper_bound:] # upper bound
         return hi, lo
-    elif axis_name in ["mt"]:
+    elif axis_name in ["mt", "pt"]:
         # low is sideband and high is signal region
         lo = s[:complex(0,ts[-1]):hist.sum] if integrate_fail_x else s[:complex(0,ts[-1]):]
         hi = s[complex(0,ts[-1])::hist.sum] if integrate_pass_x else s[complex(0,ts[-1])::] # count overflow
@@ -255,14 +256,15 @@ def fit_multijet_bkg(x, y, y_err, x_eval=None, do_chi2=False):
     return y_fit, y_fit_err
 
 class HistselectorABCD(object):
-    def __init__(self, h,
+    def __init__(self, h, name_x=None, name_y=None,
         integrate_fail_x=True, integrate_pass_x=True, integrate_fail_y=True, integrate_pass_y=True, 
-        smooth_spectrum=False, 
+        fakerate_axes=["eta","pt","charge"], 
+        smooth_spectrum=False,  smooth_spectrum_fit=False,
         smoothing_axis_name="pt", 
         rebin_smoothing_axis="automatic", # can be a list of bin edges, "automatic", or None
         # rebin_smoothing_axis=[26,27,28,29,30,31,33,36,40,46,56], 
         upper_bound_y=None # using an upper bound on the abcd y-axis (e.g. isolation)
-    ):
+    ):           
         self.integrate_fail_x = integrate_fail_x
         self.integrate_pass_x = integrate_pass_x
         self.integrate_fail_y = integrate_fail_y
@@ -270,11 +272,13 @@ class HistselectorABCD(object):
 
         self.upper_bound_y=upper_bound_y
 
-        self.name_x = None
-        self.name_y = None
-        self.axis_x = None
-        self.axis_y = None
-        self.set_abcd_axes(h)
+        self.name_x = name_x
+        self.name_y = name_y
+        if name_x is None or name_y is None:
+            self.set_abcd_axes(h)
+
+        self.axis_x = h.axes[self.name_x]
+        self.axis_y = h.axes[self.name_y]
 
         self.fail_x=None
         self.pass_x=None
@@ -282,8 +286,15 @@ class HistselectorABCD(object):
         self.pass_y=None
         self.set_abcd_selections(h)
 
+        if fakerate_axes is not None:
+            self.fakerate_axes = fakerate_axes
+            self.fakerate_integration_axes = [n for n in h.axes.name if n not in [self.name_x, self.name_y, *fakerate_axes]]
+            logger.debug(f"Setting fakerate integration axes to {self.fakerate_integration_axes}")
+
         # perform a smoothing of the distribution before the abcd selection
         self.smooth_spectrum = smooth_spectrum
+        self.smoothen_spectrum_args = dict(perform_fit=smooth_spectrum_fit, integration_axes=["charge"], absval_axes=["eta"], rebin_axes={"eta": 2})
+
         self.smoothing_axis_name = smoothing_axis_name
         if rebin_smoothing_axis == "automatic":
             if smoothing_axis_name not in ["pt"]:
@@ -293,7 +304,7 @@ class HistselectorABCD(object):
             target_edges = [26,27,28,29,30,31,33,36,40,46,56]
             # self.rebin_smoothing_axis = [x for x in sorted(set(edges).intersection(set(target_edges)))]
             self.rebin_smoothing_axis = [x for x in target_edges if x in edges]
-            logger.info(f"For smoothing, axis {smoothing_axis_name} will be rebinned to {self.rebin_smoothing_axis}")
+            logger.debug(f"For smoothing, axis {smoothing_axis_name} will be rebinned to {self.rebin_smoothing_axis}")
         else:
             self.rebin_smoothing_axis = rebin_smoothing_axis
 
@@ -314,19 +325,17 @@ class HistselectorABCD(object):
             if self.name_y is None and b in h.axes.name: 
                 self.name_y = b
                 continue
-        if self.name_y is None:
+        if self.name_x is None or self.name_y is None:
             raise RuntimeError(f"Can not find ABCD axes among histogram axes {h.axes.name}")
-
-        self.axis_x = h.axes[self.name_x]
-        self.axis_y = h.axes[self.name_y]
-        logger.info(f"Found ABCD axes {self.name_x} and {self.name_y}")
+        logger.debug(f"Found ABCD axes {self.name_x} and {self.name_y}")
 
     def set_abcd_selections(self, h):
         self.fail_x, self.pass_x = get_abcd_selection(h, self.name_x, self.integrate_fail_x, self.integrate_pass_x)
         self.fail_y, self.pass_y = get_abcd_selection(h, self.name_y, self.integrate_fail_y, self.integrate_pass_y, upper_bound=self.upper_bound_y)
 
-    def smoothen_spectrum(self, h, integration_axes=[], absval_axes=[], rebin_axes={}, flow=True):
-
+    def smoothen_spectrum(self, h, perform_fit=False, integration_axes=[], absval_axes=[], rebin_axes={}, flow=True):
+        # smoothen by merging axes and then duplicating the mean to broadcast to the original shape
+        # optional, do a fit to further smooth
         hNew = h.copy()
         if len(integration_axes) > 0:
             hNew = hNew[{n: slice(None,None,hist.sum) for n in integration_axes}]
@@ -337,90 +346,94 @@ class HistselectorABCD(object):
         if len(rebin_axes) > 0:
             hNew = hNew[{k:slice(None,None,hist.rebin(v)) for k,v in rebin_axes.items()}]
 
-        oldshape = hNew.shape
-        x_eval=None
-        if self.rebin_smoothing_axis is not None:
-            x_eval = h.axes[self.smoothing_axis_name].centers
-            hNew = hh.rebinHist(hNew, self.smoothing_axis_name, self.rebin_smoothing_axis)
+        if perform_fit:
+            oldshape = hNew.shape
+            x_eval=None
+            if self.rebin_smoothing_axis is not None:
+                x_eval = h.axes[self.smoothing_axis_name].centers
+                hNew = hh.rebinHist(hNew, self.smoothing_axis_name, self.rebin_smoothing_axis)
 
-        axes = hNew.axes
-        ax_idx = axes.name.index(self.smoothing_axis_name)
-        values = hNew.values(flow=flow)
-        variances = hNew.values(flow=flow)
+            axes = hNew.axes
+            ax_idx = axes.name.index(self.smoothing_axis_name)
+            values = hNew.values(flow=flow)
+            variances = hNew.values(flow=flow)
 
-        # put smoothing axis last
-        if ax_idx != len(axes)-1:
-            values = np.moveaxis(values, ax_idx, -1)
-            variances = np.moveaxis(variances, ax_idx, -1)
-        
-        newshape = (np.product(values.shape[:-1]), values.shape[-1])
-        values = np.reshape(values, newshape)
-        variances = np.reshape(variances, newshape)
+            # put smoothing axis last
+            if ax_idx != len(axes)-1:
+                values = np.moveaxis(values, ax_idx, -1)
+                variances = np.moveaxis(variances, ax_idx, -1)
+            
+            newshape = (np.product(values.shape[:-1]), values.shape[-1])
+            values = np.reshape(values, newshape)
+            variances = np.reshape(variances, newshape)
 
-        # perform a fit in each bin
-        x_widths = np.diff(axes[self.smoothing_axis_name].edges)
-        x = axes[self.smoothing_axis_name].centers
-        new_values = []
-        new_variances = []
-        for i in range(newshape[0]):
-            logger.info(f"Now at {i}/{newshape[0]}")
-            val, err = fit_multijet_bkg(x, values[i,:]/x_widths, np.sqrt(variances[i,:])/x_widths, x_eval=x_eval)
-            # set the bin where the fit was performed 
-            new_values.append(val)
-            new_variances.append((err)**2)
+            # perform a fit in each bin
+            x_widths = np.diff(axes[self.smoothing_axis_name].edges)
+            x = axes[self.smoothing_axis_name].centers
+            new_values = []
+            new_variances = []
+            for i in range(newshape[0]):
+                logger.info(f"Now at {i}/{newshape[0]}")
+                val, err = fit_multijet_bkg(x, values[i,:]/x_widths, np.sqrt(variances[i,:])/x_widths, x_eval=x_eval)
+                # set the bin where the fit was performed 
+                new_values.append(val)
+                new_variances.append((err)**2)
 
-        new_values = np.reshape(new_values, oldshape)
-        new_variances = np.reshape(new_variances, oldshape)
-        new_tensor = np.stack((new_values, new_variances), axis=-1)
+            new_values = np.reshape(new_values, oldshape)
+            new_variances = np.reshape(new_variances, oldshape)
+        else:
+            new_values = hNew.values(flow=flow)
+            new_variances = hNew.variances(flow=flow)
 
         # bring back to original shape
         for k, v in rebin_axes.items():
             ax_idx = hNew.axes.name.index(k)
-            new_tensor = np.repeat(new_tensor/v, repeats=v, axis=ax_idx)
+            new_values = np.repeat(new_values/v, repeats=v, axis=ax_idx)
+            new_variances = np.repeat(new_variances/v**2, repeats=v, axis=ax_idx)
 
         for ax in absval_axes:
             ax_idx = hNew.axes.name.index(ax)
-            new_tensor = np.repeat(new_tensor/2., repeats=2, axis=ax_idx)
+            new_values = np.concatenate((np.flip(new_values, axis=ax_idx), new_values), axis=ax_idx)/2
+            new_variances = np.concatenate((np.flip(new_variances, axis=ax_idx), new_variances), axis=ax_idx)/2
 
         for ax in integration_axes:
             ax_idx = h.axes.name.index(ax)
             ax_size = h.axes[ax].size
             # make new axis that was integrated out and broadcast to original shape 
-            new_tensor = np.broadcast_to(new_tensor[...,np.newaxis], [*new_tensor.shape, h.axes[ax].size] )
+            new_values = np.broadcast_to(new_values[...,np.newaxis], [*new_values.shape, h.axes[ax].size] )
+            new_variances = np.broadcast_to(new_variances[...,np.newaxis], [*new_variances.shape, h.axes[ax].size] )
             # move new axis to previous position
-            new_tensor = np.moveaxis(new_tensor/ax_size, -1, ax_idx)
+            new_values = np.moveaxis(new_values/ax_size, -1, ax_idx)
+            new_variances = np.moveaxis(new_variances/ax_size, -1, ax_idx)
 
-        newaxes = [np.newaxis if ax in integration_axes else None for ax in h.axes]
-        h.view(flow=flow)[...] = new_tensor
+        new_tensor = np.stack((new_values, new_variances), axis=-1)
 
-        return h
+        hNew = h.copy()
+        hNew.view(flow=flow)[...] = new_tensor
+
+        return hNew
 
 class SignalSelectorABCD(HistselectorABCD):
     # simple ABCD method
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, h, *args, **kwargs):
+        super().__init__(h, *args, **kwargs)
 
     # signal region selection
     def get_hist(self, h):
         hSel = h[{self.name_x: self.pass_x, self.name_y: self.pass_y}]
         if self.smooth_spectrum:
-            return self.smoothen_spectrum(hSel, integration_axes=["charge"], absval_axes=["eta"], rebin_axes={"eta": 2})
+            return self.smoothen_spectrum(hSel, **self.smoothen_spectrum_args)
         return hSel
 
-class FakeSelectorABCD(HistselectorABCD):
-    # abstract base class for ABCD method for fakes
-    def __init__(self, h, fakerate_axes=["eta","pt","charge"], *args, **kwargs):
-        super().__init__(h, *args, **kwargs)
-        self.fakerate_axes = fakerate_axes
-        self.fakerate_integration_axes = [n for n in h.axes.name if n not in [self.name_x, self.name_y, *fakerate_axes]]
-        logger.info(f"Setting fakerate integration axes to {self.fakerate_integration_axes}")
-
-class FakeSelectorSimpleABCD(FakeSelectorABCD):
+class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, **kwargs):
         super().__init__(h, *args, **kwargs)
 
     def get_hist(self, h):
+        if self.smooth_spectrum:
+            h = self.smoothen_spectrum(h, **self.smoothen_spectrum_args)
+
         if any(a in h.axes.name for a in self.fakerate_integration_axes):
             fakerate_axes = [n for n in h.axes.name if n not in [*self.fakerate_integration_axes, self.name_x, self.name_y]]
             hA = h[{self.name_y: self.pass_y, self.name_x: self.fail_x}].project(*fakerate_axes)
@@ -429,10 +442,11 @@ class FakeSelectorSimpleABCD(FakeSelectorABCD):
             hA = h[{self.name_y: self.pass_y, self.name_x: self.fail_x}]
             hB = h[{self.name_y: self.fail_y, self.name_x: self.fail_x}]
 
+        hC = h[{self.name_y: self.fail_y, self.name_x: self.pass_x}]
         hFRF = hh.divideHists(hA, hB, cutoff=1, createNew=True)
-        return hh.multiplyHists(hFRF, h[{self.name_y: self.fail_y, self.name_x: self.pass_x}])
+        return hh.multiplyHists(hFRF, hC)
 
-class FakeSelectorSimultaneousABCD(FakeSelectorABCD):
+class FakeSelectorSimultaneousABCD(HistselectorABCD):
     # simple ABCD method simultaneous fitting all regions
     def __init__(self, h, *args, **kwargs):
         super().__init__(h, *args, **kwargs)
@@ -458,7 +472,7 @@ class FakeSelectorSimultaneousABCD(FakeSelectorABCD):
         h.values(flow=True)[*slices] = self.fakeHist(h).values(flow=True)
         return h
 
-class FakeSelector1DExtendedABCD(FakeSelectorABCD):
+class FakeSelector1DExtendedABCD(HistselectorABCD):
     # extended ABCD method with 5 control regions as desribed in https://arxiv.org/abs/1906.10831 equation 16
     def __init__(self, h, *args, 
         smooth_fakerate=True, smoothing_order_fakerate=1, 
@@ -481,6 +495,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         self.sel_dy = None
         self.set_sidebands_selections_x()
         self.set_sidebands_selections_y()
+
+        # nominal histogram to be used to transfer variances for systematic variations
+        self.h_nominal = None
 
         ### interpolate/smooth in x-axis in application region
         self.polynomial = polynomial 
@@ -507,7 +524,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         ts = abcd_thresholds[self.name_x]
         s = hist.tag.Slicer()
         self.sel_dx = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
-        if self.name_x in ["mt"]:
+        if self.name_x in ["mt", "pt"]:
             self.sel_x = s[complex(0,ts[2])::]
             self.sel_d2x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
         elif self.name_x in ["dxy", "iso"]:
@@ -521,7 +538,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
             raise RuntimeError(f"Can not find threshold for abcd axis {self.name_y}")
         ts = abcd_thresholds[self.name_y]
         s = hist.tag.Slicer()
-        if self.name_y in ["mt"]:
+        if self.name_y in ["mt", "pt"]:
             self.sel_y = s[complex(0,ts[2])::hist.sum]
             self.sel_dy = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
         elif self.name_y in ["dxy", "iso"]:
@@ -533,17 +550,22 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         else:
             raise RuntimeError(f"Unknown thresholds for axis name {self.name_y}")
 
-    def get_hist(self, h, h_nominal=None, variations_frf=False, flow=True):
-        # TODO: take properly into account fakerate_integration_axes
+    def get_hist(self, h, variations_frf=False, flow=True):
         if variations_frf:
             storage = hist.storage.Double()
         else:
             storage = h.storage_type()
         idx_x = h.axes.name.index(self.name_x)
+
+        if self.smooth_spectrum:
+            h = self.smoothen_spectrum(h, **self.smoothen_spectrum_args)
+
         if self.smooth_fakerate:
 
-            if h_nominal is not None and id(h) != id(h_nominal):
-                h = hh.transfer_variances(h, h_nominal)
+            if self.h_nominal is None:
+                self.h_nominal = h.copy()
+            elif self.h_nominal.sum(flow=True) != h.sum(flow=True):
+                h = hh.transfer_variances(h, self.h_nominal)
 
             if len(self.fakerate_integration_axes) > 0:
                 logger.info(f"Sum fakerate integration axes {self.fakerate_integration_axes}")
@@ -565,7 +587,6 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
 
             if variations_frf:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
-                dvar = dvar - d[...,np.newaxis,np.newaxis]
             else:
                 # only take bin by bin uncertainty from c region
                 dvar = y_frf**2 * cvar
@@ -594,7 +615,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
 
     def get_syst_variations_hist(self, hNominal, values, variations, flow=True):
         # set systematic histogram with differences between variation and syst
-        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, variations.shape[-2], name="_param", overflow=True, underflow=True), common.down_up_axis, storage=hist.storage.Double())
+        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, variations.shape[-2], name="_param", overflow=False, underflow=False), common.down_up_axis, storage=hist.storage.Double())
 
         # check variations lower than 0
         vcheck = variations < (-1*values[...,np.newaxis,np.newaxis])
@@ -616,11 +637,11 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         if len(self.fakerate_integration_axes) > 0:
             raise NotImplementedError(f"Using fakerate integration axes is not supported in the binned extended ABCD method")
 
-        ha = self.select_hist(h, selection={self.name_x: self.sel_dx, self.name_y: self.sel_dy})
-        hax = self.select_hist(h, selection={self.name_x: self.sel_d2x, self.name_y: self.sel_dy})
-        hb = self.select_hist(h, selection={self.name_x: self.sel_dx, self.name_y: self.sel_y})
-        hbx = self.select_hist(h, selection={self.name_x: self.sel_d2x, self.name_y: self.sel_y})
-        hc = self.select_hist(h, selection={self.name_x: self.sel_x, self.name_y: self.sel_dy})
+        ha = h[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
+        hax = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}]
+        hb = h[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
+        hbx = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}]
+        hc = h[{self.name_x: self.sel_x, self.name_y: self.sel_dy}]
 
         # calculate extended ABCD method without smoothing and in a single bin in x
         a = ha.values(flow=flow)
@@ -644,12 +665,6 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         
         return d, dvar
 
-    def select_hist(self, h, selection={}):
-        hSel = h[selection]
-        if self.smooth_spectrum:
-            hSel = self.smoothen_spectrum(hSel, integration_axes=["charge"], absval_axes=["eta"], rebin_axes={"eta": 2})
-        return hSel
-
     def get_yields_applicationregion(self, h, flow=True):
         hC = h[{self.name_x: self.sel_x}]
         c = hC[{self.name_y: self.sel_dy}].values(flow=flow)
@@ -659,7 +674,6 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
         return c, None
 
     def compute_fakeratefactor(self, h, syst_variations=False, flow=True, auxiliary_info=False):
-
         # rebin in smoothing axis to have stable ratios
         hNew = hh.rebinHist(h, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
 
@@ -777,10 +791,10 @@ class FakeSelector1DExtendedABCD(FakeSelectorABCD):
 class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
     # extended ABCD method with 8 control regions as desribed in https://arxiv.org/abs/1906.10831 equation 15
     def __init__(self, h, *args, 
-        interpolate_x=True, interpolation_order=2, #rebin_x=[0,20,40,45,50,60],
+        interpolate_x=True, interpolation_order=2,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
-        #rebin_x=[0, 20, 40, 44, 49, 55, 62],
         integrate_shapecorrection_x=False, smooth_shapecorrection=True, smoothing_order_shapecorrection=[2,2,2],
+        full_corrfactor=False,
         **kwargs
     ):
         super().__init__(h, *args, **kwargs)
@@ -788,16 +802,21 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.sel_d2y = None
         self.set_sidebands_selections_y()
 
+        self.full_corrfactor=full_corrfactor # if the shapecorrection and fakeratefactor are smoothed together
+
         self.interpolate_x = interpolate_x
         self.interpolation_order = interpolation_order
 
         # rebin x for interpolation but evaluate at original binning
         if rebin_x == "automatic":
-            if self.name_x not in ["mt"]:
+            if self.name_x == "mt":
+                target_edges = [0, 20, 40, 44, 49, 55, 62] 
+            elif self.name_x == "pt":
+                target_edges = [26, 28, 30, 31, 33, 36, 40, 46, 56]
+            else:
                 raise RuntimeError(f"No automatic rebinning known for axis {self.name_x}")
             # try to find suitible binning
             edges = h.axes[self.name_x].edges.astype(int)
-            target_edges = [0, 20, 40, 44, 49, 55, 62]
             self.rebin_x = [x for x in target_edges if x in edges]
             logger.info(f"For interpolation, axis {self.name_x} will be rebinned to {self.rebin_x}")
         else:
@@ -805,12 +824,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         # min and max (in application region) for transformation of bernstain polynomials into interval [0,1]
         self.axis_x_min = h[{self.name_x: self.sel_x}].axes[self.name_x].edges[0]
-        if self.name_x =="mt":
+        if self.name_x == "mt":
             # mt does not have an upper bound, cap at 80
             self.axis_x_max = 80
         elif self.name_x in ["iso", "dxy"]:
             # iso and dxy have a finite lower and upper bound in the application region
             self.axis_x_max = abcd_thresholds[self.name_x][1]
+        else:
+            self.axis_x_max = self.axis_x.edges[-1]
 
         # shape correction, can be interpolated in the abcd x-axis in 1D, in the x-axis and smoothing axis in 2D, or in the smoothing axis integrating out the abcd x-axis in 1D
         self.integrate_shapecorrection_x = integrate_shapecorrection_x # if the shape correction factor for the abcd x-axis should be inclusive or differential
@@ -835,7 +856,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         ts = abcd_thresholds[self.name_y]
         s = hist.tag.Slicer()
         self.sel_dy = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
-        if self.name_y in ["mt"]:
+        if self.name_y in ["mt","pt"]:
             self.sel_y = s[complex(0,ts[2])::hist.sum]
             self.sel_d2y = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
         elif self.name_y in ["dxy", "iso"]:
@@ -845,7 +866,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             else:
                 self.sel_d2y = s[complex(0,ts[2]):hist.overflow:hist.sum] # upper bound, no overflow
 
-    def get_hist(self, h, h_nominal=None, variations_scf=False, variations_frf=False, flow=True):
+    def get_hist(self, h, variations_scf=False, variations_frf=False, variations_full=False, flow=True):
         if variations_scf and variations_frf:
             raise RuntimeError(f"Can only calculate vairances for fakerate factor or shape correction factor but not both")
         elif variations_scf or variations_frf:
@@ -853,11 +874,16 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         else:
             storage = h.storage_type()
 
+        if self.smooth_spectrum:
+            h = self.smoothen_spectrum(h, **self.smoothen_spectrum_args)
+
         idx_x = h.axes.name.index(self.name_x) # indices for broadcasting of x-axes used in ABCD
         if self.smooth_fakerate or self.interpolate_x or self.smooth_shapecorrection:
-            if h_nominal is not None and id(h) != id(h_nominal):
-                h = hh.transfer_variances(h, h_nominal)
-            
+            if self.h_nominal is None:
+                self.h_nominal = h.copy()
+            elif self.h_nominal.sum(flow=True) != h.sum(flow=True):
+                h = hh.transfer_variances(h, self.h_nominal)
+
             if len(self.fakerate_integration_axes) > 0:
                 logger.info(f"Sum fakerate integration axes {self.fakerate_integration_axes}")
                 idxs_i = [h.axes.name.index(n) for n in self.fakerate_integration_axes] # indices for broadcasting of axes that were integrated out
@@ -865,37 +891,47 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             else:
                 idxs_i=[]
                 hF = h
-                
-            y_frf, y_frf_var = self.compute_fakeratefactor(hF, syst_variations=variations_frf)
-            y_scf, y_scf_var = self.compute_shapecorrection(hF, syst_variations=variations_scf)
+
+            if self.full_corrfactor:
+                y_frf, y_frf_var = self.compute_fullcorrection(hF, syst_variations=variations_full)
+            else:
+                y_frf, y_frf_var = self.compute_fakeratefactor(hF, syst_variations=variations_frf)
+                y_scf, y_scf_var = self.compute_shapecorrection(hF, syst_variations=variations_scf)
             c, cy, cvar, cyvar = self.get_yields_applicationregion(h)
 
-            # broadcast abcd-x axis
-            new_axis = [np.newaxis if i in [idx_x,*idxs_i] else slice(None) for i in range(c.ndim)]
-            y_frf = y_frf[*new_axis] 
-            y_frf_var = y_frf_var[*new_axis] if y_frf_var is not None else None
-            if self.integrate_shapecorrection_x:
-                y_scf = y_scf[*new_axis]
-                y_scf_var = y_scf_var[*new_axis] if y_scf_var is not None else None
+            if self.full_corrfactor:
+                d = c * y_frf
+                if variations_full and (self.interpolate_x or self.smooth_shapecorrection):
+                    dvar = c[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
+                else:
+                    # only take bin by bin uncertainty from c region
+                    dvar = y_frf**2 * cvar
             else:
-                new_axis = [np.newaxis if i in idxs_i else slice(None) for i in range(c.ndim)]
-                y_scf = y_scf[*new_axis]
-                y_scf_var = y_scf_var[*new_axis] if y_scf_var is not None else None
+                # broadcast abcd-x axis
+                new_axis = [np.newaxis if i in [idx_x,*idxs_i] else slice(None) for i in range(c.ndim)]
+                y_frf = y_frf[*new_axis] 
+                y_frf_var = y_frf_var[*new_axis] if y_frf_var is not None else None
 
-            d = c * y_scf * y_frf
+                if self.integrate_shapecorrection_x:
+                    y_scf = y_scf[*new_axis]
+                    y_scf_var = y_scf_var[*new_axis] if y_scf_var is not None else None
+                else:
+                    new_axis = [np.newaxis if i in idxs_i else slice(None) for i in range(c.ndim)]
+                    y_scf = y_scf[*new_axis]
+                    y_scf_var = y_scf_var[*new_axis] if y_scf_var is not None else None
 
-            if variations_scf and (self.interpolate_x or self.smooth_shapecorrection):
-                dvar = c[..., np.newaxis,np.newaxis] * y_frf[...,np.newaxis,np.newaxis] * y_scf_var[...,:,:]
-                dvar = dvar - d[...,np.newaxis,np.newaxis]
-            elif variations_frf and self.smooth_fakerate:
-                dvar = c[..., np.newaxis,np.newaxis] * y_scf[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
-                dvar = dvar - d[...,np.newaxis,np.newaxis]
-            elif self.smooth_shapecorrection or self.interpolate_x:
-                # only take bin by bin uncertainty from c region
-                dvar = (y_scf * y_frf)**2 * cvar
-            else:
-                # # take bin by bin uncertainty from c * c/cy 
-                dvar = y_frf**2 *( 4*(c/cy)**2 * cvar + (c/cy**2)**2 * cyvar )
+                d = c * y_scf * y_frf
+
+                if variations_scf and (self.interpolate_x or self.smooth_shapecorrection):
+                    dvar = c[..., np.newaxis,np.newaxis] * y_frf[...,np.newaxis,np.newaxis] * y_scf_var[...,:,:]
+                elif variations_frf and self.smooth_fakerate:
+                    dvar = c[..., np.newaxis,np.newaxis] * y_scf[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
+                elif self.smooth_shapecorrection or self.interpolate_x:
+                    # only take bin by bin uncertainty from c region
+                    dvar = (y_scf * y_frf)**2 * cvar
+                else:
+                    # # take bin by bin uncertainty from c * c/cy 
+                    dvar = y_frf**2 *( 4*(c/cy)**2 * cvar + (c/cy**2)**2 * cyvar )
         else:
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h)
@@ -910,7 +946,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         else:
             hSignal = h[{self.name_x: self.sel_x, self.name_y: self.sel_y}] 
 
-        if (variations_scf and (self.interpolate_x or self.smooth_shapecorrection)) or (variations_frf and self.smooth_fakerate):
+        if variations_scf or variations_frf or variations_full:
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
         else:
             hSignal.values(flow=flow)[...] = d
@@ -918,6 +954,182 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 hSignal.variances(flow=flow)[...] = dvar
 
         return hSignal
+
+    def compute_fullcorrection(self, h, syst_variations=False, flow=True, auxiliary_info=False):
+        # rebin in smoothing axis to have stable ratios
+        hNew = hh.rebinHist(h, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
+        hNew = hh.rebinHist(hNew, self.name_x, self.rebin_x) if self.rebin_x is not None else hNew 
+
+        # select sideband regions
+        a = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}].values(flow=flow)
+        ax = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}].values(flow=flow)
+        ay = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_d2y}].values(flow=flow)
+        axy = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_d2y}].values(flow=flow)
+        b = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}].values(flow=flow)
+        bx = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}].values(flow=flow)
+        c = hNew[{self.name_x: self.sel_x, self.name_y: self.sel_dy}].values(flow=flow)
+        cy = hNew[{self.name_x: self.sel_x, self.name_y: self.sel_d2y}].values(flow=flow)
+        if h.storage_type == hist.storage.Weight:
+            avar = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}].variances(flow=flow)
+            axvar = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}].variances(flow=flow)
+            ayvar = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_d2y}].variances(flow=flow)
+            axyvar = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_d2y}].variances(flow=flow)
+            bvar = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}].variances(flow=flow)
+            bxvar = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}].variances(flow=flow)
+            cvar = hNew[{self.name_x: self.sel_x, self.name_y: self.sel_dy}].variances(flow=flow)
+            cyvar = hNew[{self.name_x: self.sel_x, self.name_y: self.sel_d2y}].variances(flow=flow)
+
+        if self.integrate_shapecorrection_x:
+            idx_x = hNew.axes.name.index(self.name_x)
+            c = c.sum(axis=idx_x)
+            cy = cy.sum(axis=idx_x)
+            cvar = cvar.sum(axis=idx_x)
+            cyvar = cyvar.sum(axis=idx_x)
+
+        # full correction factor
+        y_num = c * ((ax*ay*b)**2)[...,np.newaxis]
+        y_den = cy * (a**4 * axy * bx)[...,np.newaxis]
+        y = y_num/y_den
+
+        if (y_den <= 0).sum() > 0:
+            logger.warning(f"{(y_den < 0).sum()} bins with negative and {(y_den == 0).sum()} bins with empty content found for denominator in the full correction factor.")
+        
+        if h.storage_type == hist.storage.Weight:
+            y_var = y**2 * (cvar/c**2 + cyvar/cy**2 + (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 16*avar/a**2 + bxvar/bx**2)[...,np.newaxis])
+
+        if self.interpolate_x or self.smooth_shapecorrection:
+            if h.storage_type == hist.storage.Weight:
+                w = 1/np.sqrt(y_var)
+            else:
+                logger.warning("Smoothing extended ABCD on histogram without uncertainties, make an unweighted linear squared solution.")
+                w = np.ones_like(y)
+
+        if self.interpolate_x:
+            axes = [n for n in h.axes.name if n not in [self.name_y] ]
+
+            idx_ax_interpol = axes.index(self.name_x)
+
+            # constract x points in application region
+            x_interpol = self.get_bin_centers_interpolation(hNew[{self.name_x: self.sel_x}], flow=flow)
+            # x axis in original binning in passing region
+            x_interpol_orig = self.get_bin_centers_interpolation(h[{self.name_x: self.sel_x}], flow=flow, cap=True)
+
+            if self.smooth_shapecorrection:
+                # interpolate scf in mT and smooth in pT (i.e. 2D)
+
+                idx_ax_smoothing = hNew.axes.name.index(self.smoothing_axis_name)
+                if idx_ax_smoothing != len(axes)-2 or idx_ax_interpol != len(axes)-1:
+                    y = np.moveaxis(y, (idx_ax_smoothing, idx_ax_interpol), (-2, -1))
+                    w = np.moveaxis(w, (idx_ax_smoothing, idx_ax_interpol), (-2, -1))
+
+                x_smoothing = self.get_bin_centers_smoothing(hNew, flow=False)
+
+                X, y, XTY = get_parameter_matrices_from2D(x_interpol, x_smoothing, y, w, 
+                    self.interpolation_order, self.smoothing_order_shapecorrection, pol=self.polynomial, flatten=True)
+
+                params, cov = self.solve(X, XTY)
+
+                x_smooth_orig = self.get_bin_centers_smoothing(h, flow=False)
+                y_smooth_orig = self.f_scf(x_interpol_orig, x_smooth_orig, params)
+
+                if syst_variations:
+                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig, x_smooth_orig)
+                else: 
+                    y_smooth_var_orig = None
+
+                # move interpolation axis to original positon again
+                if idx_ax_smoothing != len(axes)-2 or idx_ax_interpol != len(axes)-1:
+                    y_smooth_orig = np.moveaxis(y_smooth_orig, (-2, -1), (idx_ax_smoothing, idx_ax_interpol))
+                    y_smooth_var_orig = np.moveaxis(y_smooth_var_orig, (-4, -3), (idx_ax_smoothing, idx_ax_interpol)) if syst_variations else None
+
+                if auxiliary_info:
+                    y_pred = self.f_scf(x_interpol, x_smoothing, params)
+            else:
+                # interpolate scf in mT in 1D
+                if idx_ax_interpol != len(axes)-1:
+                    y = np.moveaxis(y, idx_ax_interpol, -1)
+                    w = np.moveaxis(w, idx_ax_interpol, -1)
+
+                X, XTY = get_parameter_matrices(x_interpol, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
+                params, cov = self.solve(X, XTY)
+
+                y_smooth_orig = self.f_scf(x_interpol_orig, params)
+
+                if syst_variations:
+                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig)
+                else: 
+                    y_smooth_var_orig = None
+
+                if auxiliary_info:
+                    y_pred = self.f_scf(x_interpol, params)
+
+                # move interpolation axis to original positon again
+                if idx_ax_interpol != len(axes)-1:
+                    y_smooth_orig = np.moveaxis(y_smooth_orig, -1, idx_ax_interpol)
+                    y_smooth_var_orig = np.moveaxis(y_smooth_var_orig, -3, idx_ax_smoothing) if syst_variations else None
+        
+            # check for negative rates
+            if np.sum(y_smooth_orig<0) > 0:
+                logger.warning(f"Found {np.sum(y_smooth_orig<0)} bins with negative shape correction factors")
+            if y_smooth_var_orig is not None and np.sum(y_smooth_var_orig<0) > 0:
+                logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative shape correction factor variations")
+
+            if auxiliary_info:
+                # flatten
+                y_pred = y_pred.reshape(y.shape) 
+                w = w.reshape(y.shape)
+                chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
+                return y_smooth_orig, y_smooth_var_orig, params, cov, chi2, ndf
+            else:
+                return y_smooth_orig, y_smooth_var_orig
+
+        elif self.smooth_shapecorrection:
+            # don't interpolate in mT, but smooth in pT in 1D
+
+            # move smoothing axis to last
+            axes = [n for n in h.axes.name if n not in [self.name_x, self.name_y] ]
+            idx_ax_smoothing = axes.index(self.smoothing_axis_name)
+            if idx_ax_smoothing != len(axes)-1:
+                y = np.moveaxis(y, idx_ax_smoothing, -1)
+                w = np.moveaxis(w, idx_ax_smoothing, -1)
+
+            # smooth scf (e.g. in pT)
+            x_smoothing = self.get_bin_centers_smoothing(hNew, flow=False)
+            X, XTY = get_parameter_matrices(x_smoothing, y, w, self.smoothing_order_shapecorrection, pol=self.polynomial)
+            params, cov = self.solve(X, XTY)
+
+            # evaluate in range of original histogram
+            x_smooth_orig = self.get_bin_centers_smoothing(h, flow=False)
+            y_smooth_orig = self.f_scf(x_smooth_orig, params)
+
+            if syst_variations:
+                y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_smooth_orig)
+            else: 
+                y_smooth_var_orig = None
+
+            # move smoothing axis to original positon again
+            if idx_ax_smoothing != len(axes)-1:
+                y_smooth_orig = np.moveaxis(y_smooth_orig, -1, idx_ax_smoothing)
+                y_smooth_var_orig = np.moveaxis(y_smooth_var_orig, -3, idx_ax_smoothing) if syst_variations else None
+
+            # check for negative rates
+            if np.sum(y_smooth_orig<0) > 0:
+                logger.warning(f"Found {np.sum(y_smooth_orig<0)} bins with negative shape correction factors")
+            if y_smooth_var_orig is not None and np.sum(y_smooth_var_orig<0) > 0:
+                logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative shape correction factor variations")
+
+            if auxiliary_info:
+                y_pred = self.f_scf(x_smoothing, params)
+                # flatten
+                y_pred = y_pred.reshape(y.shape) 
+                w = w.reshape(y.shape)
+                chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
+                return y_smooth_orig, y_smooth_var_orig, params, cov, chi2, ndf
+            else:
+                return y_smooth_orig, y_smooth_var_orig
+        else:
+            return y, y_var
+
 
     def compute_shapecorrection(self, h, syst_variations=False, flow=True, auxiliary_info=False):
         # rebin in smoothing axis to have stable ratios
@@ -1171,14 +1383,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         if len(self.fakerate_integration_axes) > 0:
             raise NotImplementedError(f"Using fakerate integration axes is not supported in the binned extended ABCD method")
 
-        ha = self.select_hist(h, selection={self.name_x: self.sel_dx, self.name_y: self.sel_dy})
-        hax = self.select_hist(h, selection={self.name_x: self.sel_d2x, self.name_y: self.sel_dy})
-        hay = self.select_hist(h, selection={self.name_x: self.sel_dx, self.name_y: self.sel_d2y})
-        haxy = self.select_hist(h, selection={self.name_x: self.sel_d2x, self.name_y: self.sel_d2y})
-        hb = self.select_hist(h, selection={self.name_x: self.sel_dx, self.name_y: self.sel_y})
-        hbx = self.select_hist(h, selection={self.name_x: self.sel_d2x, self.name_y: self.sel_y})
-        hc = self.select_hist(h, selection={self.name_x: self.sel_x, self.name_y: self.sel_dy})
-        hcy = self.select_hist(h, selection={self.name_x: self.sel_x, self.name_y: self.sel_d2y})
+        ha = h[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
+        hax = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}]
+        hay = h[{self.name_x: self.sel_dx, self.name_y: self.sel_d2y}]
+        haxy = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_d2y}]
+        hb = h[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
+        hbx = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}]
+        hc = h[{self.name_x: self.sel_x, self.name_y: self.sel_dy}]
+        hcy = h[{self.name_x: self.sel_x, self.name_y: self.sel_d2y}]
 
         # calculate extended ABCD method without smoothing and in a single bin in x
         a = ha.values(flow=flow)
@@ -1190,7 +1402,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         c = hc.values(flow=flow)
         cy = hcy.values(flow=flow)
 
-        d = c * (c*(ax*ay*b)[...,np.newaxis])**2 / ((a**4 * axy*bx)[...,np.newaxis]*cy)
+        d = c**2/cy * ((ax*ay*b)**2 / (a**4 * axy*bx))[...,np.newaxis]
 
         dvar=None
         if h.storage_type == hist.storage.Weight:

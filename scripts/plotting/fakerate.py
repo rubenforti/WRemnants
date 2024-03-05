@@ -416,9 +416,12 @@ def plot_chi2_extnededABCD_scf(syst_variations=False, auxiliary_info=True,  poly
 def plot_diagnostics_extnededABCD(syst_variations=False, auxiliary_info=True,  polynomial="bernstein"):
     # binned fakerate / shape correction
     hSel_binned = sel.FakeSelector2DExtendedABCD(h, 
-        interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False, polynomial=polynomial)#, rebin_smoothing_axis=None)
+        rebin_smoothing_axis=None, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False, polynomial=polynomial)#, rebin_smoothing_axis=None)
     y_frf_binned, y_frf_binned_var = hSel_binned.compute_fakeratefactor(h)
     y_scf_binned, y_scf_binned_var = hSel_binned.compute_shapecorrection(h)
+    y_full_binned, y_full_binned_var = hSel_binned.compute_fullcorrection(h)
+
+    info=dict(interpolate_x=False, integrate_shapecorrection_x=True, smooth_shapecorrection=True, smooth_fakerate=True, polynomial=polynomial)
 
     hSel_pol0 = sel.FakeSelector2DExtendedABCD(h, **info, smoothing_order_fakerate=0, smoothing_order_shapecorrection=0)
     hSel_pol1 = sel.FakeSelector2DExtendedABCD(h, **info, smoothing_order_fakerate=1, smoothing_order_shapecorrection=1)
@@ -439,11 +442,11 @@ def plot_diagnostics_extnededABCD(syst_variations=False, auxiliary_info=True,  p
     idx_ax_charge = h.axes.name.index("charge")
     idx_ax_eta = h.axes.name.index("eta")
     idx_ax_pt = h.axes.name.index("pt")
-    x_edges = hSel_binned.h_shapecorrection.axes["pt"].edges
+    x_edges = h.axes["pt"].edges
     x_widths = np.diff(x_edges)/2
     x_centers = x_edges[:-1]+x_widths
 
-    mt_edges = hSel_binned.h_shapecorrection.axes["mt"].edges
+    mt_edges = h.axes["mt"].edges[2:]
     mt_widths = np.diff(mt_edges)/2
     mt_centers = mt_edges[:-1]+mt_widths
     if h.axes["mt"].traits.overflow:
@@ -477,25 +480,29 @@ def plot_diagnostics_extnededABCD(syst_variations=False, auxiliary_info=True,  p
             print(f"j = {j}")
 
             hSel_pol = sel.FakeSelector2DExtendedABCD(h, **info, smoothing_order_fakerate=0, interpolation_order=i, smoothing_order_shapecorrection=list(j))
-            y_scf, y_scf_var, ps, cs, chi2s, ndf = hSel_pol.compute_shapecorrection(h, syst_variations=False, auxiliary_info=True)
-            plot_chi2(chi2_scf.ravel(), ndf_scf, outdirSCF, xlim=(0,150), suffix=proc, outfile=f"chi2_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}")
+            # y_scf, y_scf_var, ps, cs, chi2s, ndf = hSel_pol.compute_shapecorrection(h, syst_variations=False, auxiliary_info=True)
+            y_scf, y_scf_var, ps, cs, chi2s, ndf = hSel_pol.compute_fullcorrection(h, syst_variations=False, auxiliary_info=True)
+            plot_chi2(chi2s.ravel(), ndf, outdirSCF, xlim=(0,150), suffix=proc, outfile=f"chi2_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}")
 
             for idx_charge, charge_bins in enumerate(h.axes["charge"]):
                 for idx_eta, eta_bins in enumerate(h.axes["eta"]):
                     outdirSCFBin = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/shapecorrection_factor//charge{idx_charge}_eta{idx_eta}")
 
-                    if i==0 and all(j==0):
+                    if idx_charge==0 and idx_eta==0:
+                        continue
+
+                    if i==0 and all([xj==0 for xj in j]):
                         # plot the binned once
-                        slices=[slice(None),]*len(y_scf_binned.shape)
+                        slices=[slice(None),]*len(y_full_binned.shape)
                         slices[idx_ax_charge] = idx_charge
                         slices[idx_ax_eta] = idx_eta
-                        y = y_scf_binned[*slices]
-                        fig = plot_tools.makePlot2D(values=y, xlabel=xlabel, ylabel=ylabel, xedges=x_edges, yedges=mt_edges, cms_label=args.cmsDecor, zlim=[0.5,1.5])
+                        y = y_full_binned[*slices]
+                        # pdb.set_trace()
+                        fig = plot_tools.makePlot2D(values=y, xlabel=xlabel, ylabel=ylabel, xedges=x_edges, yedges=mt_edges, cms_label=args.cmsDecor, zlim=[0,5])# zlim=[0.5,1.5])
                         outfile = f"scf2D_binned"
                         if args.postfix:
                             outfile += f"_{args.postfix}"
                         plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
-
 
                     chi2 = chi2s[idx_eta,idx_charge]
 
@@ -504,7 +511,7 @@ def plot_diagnostics_extnededABCD(syst_variations=False, auxiliary_info=True,  p
                     
                     y_fit = hSel_pol.f_scf(mt, xx, p)
 
-                    fig = plot_tools.makePlot2D(values=y_fit, xlabel=xlabel, ylabel=ylabel, xedges=xx, yedges=mt, cms_label=args.cmsDecor, zlim=[0.5,1.5], 
+                    fig = plot_tools.makePlot2D(values=y_fit, xlabel=xlabel, ylabel=ylabel, xedges=xx, yedges=mt, cms_label=args.cmsDecor, zlim=[0,5],# zlim=[0.5,1.5], 
                         plot_title="$\chi2/"+f"{ndf} = "+str(round(chi2))+"$")
 
                     outfile=f"scf2D_mtPol{i}_ptPol{'_'.join([str(ij) for ij in j])}"
@@ -512,8 +519,8 @@ def plot_diagnostics_extnededABCD(syst_variations=False, auxiliary_info=True,  p
                         outfile += f"_{args.postfix}"
                     plot_tools.save_pdf_and_png(outdirSCFBin, outfile)
 
-                    continue # just do first bin
-                continue # just do first bin
+                    break # just do first bin
+                break # just do first bin
 
     # smoothed fakerate factors in 1D
     for idx_charge, charge_bins in enumerate(h.axes["charge"]):
@@ -657,12 +664,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     fakerate_integration_axes = [a for a in ["eta","pt","charge"] if a not in args.vars]
     threshold = args.xBinsSideband[-1]
     
-    h = hh.rebinHist(h, "pt", [26, 31, 40, 56])
+    # h = hh.rebinHist(h, "pt", [26, 31, 40, 56])
+    h = hh.rebinHist(h, "pt", [26, 28, 30, 31, 33, 36, 40, 46, 56])
+    h = h[{"iso": hist.sum}]
+    # h = h[{"iso": 0}]
 
     hss=[]
     labels=[]
 
-    info=dict(rebin_smoothing_axis=None)
+    info=dict(rebin_smoothing_axis=None, name_x="pt", name_y="mt", integrate_pass_x=False)
 
     # signal selection
     hSel_sig = sel.SignalSelectorABCD(h, **info)
@@ -671,10 +681,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     labels.append("D")
     
     # simple ABCD
-    hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
+    # hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
+    # hD_simple = hSel_simple.get_hist(h)
+    # hss.append(hD_simple)
+    # labels.append("simple")
+
+    hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, upper_bound_y=None)
     hD_simple = hSel_simple.get_hist(h)
     hss.append(hD_simple)
-    labels.append("simple")
+    labels.append("simple (pT vs. mT)")
 
     # # interpolated ABCD
     # # interpolate in x
@@ -701,10 +716,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext5)
         labels.append("ext(5) smoothed")
     else:
+        # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
+        # hD_ext5 = hSel_ext5.get_hist(h)
+        # hss.append(hD_ext5)
+        # labels.append("ext(5) binned")
+
         hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
         hD_ext5 = hSel_ext5.get_hist(h)
         hss.append(hD_ext5)
-        labels.append("ext(5) binned")
+        labels.append("ext(5) binned (pT vs. mT)")
 
         # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False upper_bound_y=hist.overflow)
         # hD_ext5 = hSel_ext5.get_hist(h)
@@ -717,12 +737,30 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hD_ext8 = hSel_ext8.get_hist(h)
         hss.append(hD_ext8)
         labels.append("ext(8) smoothed")
+
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
+        hD_ext8 = hSel_ext8.get_hist(h)
+        hss.append(hD_ext8)
+        labels.append("ext(8) smoothed (full)")
     else:
-        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+        #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) binned")
+
+        # using fullcorrection
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
+        #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) binned (full)")
+
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
             integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
         hD_ext8 = hSel_ext8.get_hist(h)
         hss.append(hD_ext8)
-        labels.append("ext(8) binned")
+        labels.append("ext(8) binned (pT vs. mT)")
 
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=hist.overflow,
         #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)

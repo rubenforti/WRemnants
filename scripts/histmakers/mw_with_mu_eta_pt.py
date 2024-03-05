@@ -102,7 +102,7 @@ axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5,
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
 # axes with only a few bins for the ABCD method
-axis_isoCat = hist.axis.Variable([0,0.15,0.3,0.45], name = "iso",underflow=False, overflow=True)
+axis_isoCat = hist.axis.Variable([0,0.15,0.3], name = "iso",underflow=False, overflow=True)
 axis_mtCat = hist.axis.Variable([0,20,40,44,49,55,62], name = "mt",underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")

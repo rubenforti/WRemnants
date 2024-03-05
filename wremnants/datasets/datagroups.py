@@ -195,7 +195,7 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", simultaneousABCD=False, fakerate_axes=["pt", "eta", "charge"], **kwargs
+        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", simultaneousABCD=False, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
@@ -217,7 +217,7 @@ class Datagroups(object):
             base_member = self.groups[g].members[:][0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h, fakerate_axes, **kwargs)
+                self.groups[g].histselector = fakeselector(h, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h, **kwargs)
 
@@ -273,7 +273,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
+        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -393,7 +393,7 @@ class Datagroups(object):
                         logger.debug(f"Summing hist {read_syst} for {member.name} to {self.fakeName} with scale = {scaleProcForFake}")
                         hProcForFake = scaleProcForFake * h
                         histForFake = hh.addHists(histForFake, hProcForFake, createNew=False) if histForFake else hProcForFake
-                                
+
                 # The following must be done when the group is not Fake, or when the previous part for fakes was not done
                 # For fake this essentially happens when the process doesn't have the syst, so that the nominal is used
                 if procName != self.fakeName or (procName == self.fakeName and not hasPartialSumForFake):
@@ -422,10 +422,7 @@ class Datagroups(object):
                 if not applySelection:
                     logger.warning(f"Selection requested for process {procName} but applySelection=False, thus it will be ignored")
                 elif label in group.hists.keys() and group.hists[label] is not None:
-                    if isinstance(group.histselector, sel.FakeSelector1DExtendedABCD) and label != baseName:
-                        group.hists[label] = group.histselector.get_hist(group.hists[label], group.hists[baseName]) # extended ABCD requires nominal histogram to take variances from
-                    else:
-                        group.hists[label] = group.histselector.get_hist(group.hists[label])
+                    group.hists[label] = group.histselector.get_hist(group.hists[label])
 
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")

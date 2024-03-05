@@ -51,7 +51,6 @@ class CardTool(object):
         self.nominalName = "nominal"
         self.datagroups = None
         self.pseudodata_datagroups = None
-        self.qcd_datagroups = None
         self.unconstrainedProcesses = None
         self.noStatUncProcesses = []
         self.buildHistNameFunc = None
@@ -218,11 +217,6 @@ class CardTool(object):
         self.pseudodata_datagroups = datagroups 
         if self.nominalName:
             self.pseudodata_datagroups.setNominalName(self.nominalName)
-
-    def setQCDDatagroups(self, datagroups):
-        self.qcd_datagroups = datagroups 
-        if self.nominalName:
-            self.qcd_datagroups.setNominalName(self.nominalName)
 
     def setChannels(self, channels):
         self.channels = channels
@@ -749,36 +743,27 @@ class CardTool(object):
             if name != "":
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc, hnomi=hnom)
 
-    def loadPseudodataFakes(self, forceNonzero=True):
+    def loadPseudodataFakes(self, datagroups, forceNonzero=False):
         # get the nonclosure for fakes/multijet background from QCD MC
-        self.qcd_datagroups.loadHistsForDatagroups(
+        datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
-            # procsToRead=self.qcd_datagroups.getProcNames(), 
+            procsToRead=datagroups.groups.keys(),
             scaleToNewLumi=self.lumiScale, 
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
             applySelection=False 
             )
-        procDict = self.qcd_datagroups.getDatagroups()
+        procDict = datagroups.getDatagroups()
         gTruth = procDict["QCDTruth"]
         gPred = procDict["QCD"]
 
         hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
-
-        selPred = gPred.histselector
-        if type(selPred) == sel.FakeSelector2DExtendedABCD:
-            selPred.interpolate_x = False
-            selPred.smooth_shapecorrection = False
-            selPred.smooth_fakerate = False
-
-        hPred = selPred.get_hist(gPred.hists["syst"])
+        hPred = gPred.histselector.get_hist(gPred.hists["syst"])
 
         logger.info(f"Have MC QCD truth {hTruth.sum()} and predicted {hPred.sum()}")
 
         # compute the nonclosure correction
         histCorr = hh.divideHists(hTruth, hPred)
-
-        histCorr.variances(flow=True)[...] = np.zeros(histCorr.shape)
 
         # now load the nominal histograms
         self.datagroups.loadHistsForDatagroups(
@@ -801,15 +786,19 @@ class CardTool(object):
             raise NotImplementedError("The multijet closure test is not implemented for simultaneous ABCD fit")
         else:
             hFake = hh.multiplyHists(hFake, histCorr)
-        procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName] = hFake
 
         # done, now sum all histograms
-        hists = [procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses()]
-        hdata = hh.sumHists(hists)
+        hdata = hh.sumHists([procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses() if x != self.getFakeName()])
+        hdata = hh.sumHists([hdata, hFake])
+
+        # apply variances from hCorr to fakes to account for stat uncertainty
+        hFakeNominal = procDictFromNomi[self.getFakeName()].hists[self.nominalName]
+        hFakeNominal.variances(flow=True)[...] = hFake.variances(flow=True)
+        procDictFromNomi[self.getFakeName()].hists[self.nominalName] = hFakeNominal
 
         return hdata
 
-    def loadPseudodata(self, forceNonzero=True):
+    def loadPseudodata(self, forceNonzero=False):
         datagroups = self.pseudodata_datagroups
         processes = [x for x in datagroups.groups.keys() if x != self.getDataName() and self.pseudoDataProcsRegexp.match(x)]
         processes = self.expandProcesses(processes)
@@ -817,19 +806,31 @@ class CardTool(object):
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
-            
-            if pseudoData == "MultijetClosure":
-                hdatas.append(self.loadPseudodataFakes(forceNonzero=forceNonzero))
+            if pseudoData == "closure":
+                # pseudodata for fakes using closure from QCD MC as correction
+                hdatas.append(self.loadPseudodataFakes(datagroups, forceNonzero=forceNonzero))
                 continue
-
+            
+            if pseudoData in ["simple", "extended1D", "extended2D"]:
+                # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
+                datagroups.set_histselectors(datagroups.getNames(), self.nominalName, 
+                    integrate_pass_x=True, #"mt" not in fitvar, 
+                    mode=pseudoData,
+                    simultaneousABCD=self.simultaneousABCD,
+                )
+                syst=self.nominalName
+            else:
+                syst=pseudoData
+ 
             datagroups.loadHistsForDatagroups(
-                baseName=self.nominalName, syst=pseudoData, label=pseudoData,
+                baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
                 scaleToNewLumi=self.lumiScale, 
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
+
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
             if len(processesFromNomi):
@@ -857,6 +858,7 @@ class CardTool(object):
             if self.pseudoDataAxes[idx] is not None and self.pseudoDataAxes[idx] not in hdata.axes.name:
                 raise RuntimeError(f"Pseudodata axis {self.pseudoDataAxes[idx]} not found in {hdata.axes.name}.")
             hdatas.append(hdata)
+
         return hdatas
 
     def addPseudodata(self):
@@ -906,7 +908,7 @@ class CardTool(object):
         self.cardName = (f"{self.outfolder}/{basename}_{{chan}}{suffix}.txt")
         self.setOutfile(os.path.abspath(f"{self.outfolder}/{basename}CombineInput{suffix}.root"))
             
-    def writeOutput(self, args=None, forceNonzero=True, check_systs=True):
+    def writeOutput(self, args=None, forceNonzero=False, check_systs=True):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),

@@ -517,9 +517,13 @@ def transfer_variances(h1, h2, flow=True):
     val2 = h2.values(flow=flow)
     var2 = h2.variances(flow=flow)
     val1 = h1.values(flow=flow)
-    # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same
+    # extra dimensions for systematic axes
     extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val1.ndim - val2.ndim)
-    var1 = var2[extra_dimensions] * (val1 / val2[extra_dimensions])**2
+    var1 = np.ones_like(val1)*var2[extra_dimensions] # use var2 directly in cases of not finite values
+    mask = np.isfinite(var2) & (var2!=0)
+    # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same,
+    factors = (val1[mask] / val2[mask][extra_dimensions])
+    var1[mask] = var2[mask][extra_dimensions] * factors**2
     hNew = hist.Hist(*h1.axes, storage=hist.storage.Weight())
     hNew.view(flow=flow)[...] = np.stack((val1, var1), axis=-1)
     return hNew
