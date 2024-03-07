@@ -21,8 +21,8 @@
     "FakemuLowMT": "FakeLowMT",
     "FakeeHighMT": "FakeHighMT",
     "FakeeLowMT": "FakeLowMT",
-    "massShiftZ": "Z mass",
-    "massShiftW": "W mass",
+    "massShiftZ": "Z boson mass",
+    "massShiftW": "W boson mass",
     "pdfMSHT20": "PDF",
     "pdfCT18Z": "PDF",
     "pdfMSHT20NoAlphaS": "PDF",
@@ -47,7 +47,8 @@
     "FakeShape": "Fake shape corrections",
     "Fake": "Fakes",
     "widthW": "W width", 
-    "widthZ": "Z width"
+    "widthZ": "Z width",
+    "bcQuarkMass" : "b,c quark masses"
 }
 
 
