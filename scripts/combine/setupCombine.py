@@ -247,7 +247,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     if args.sumChannels or xnorm or dilepton or simultaneousABCD or "charge" not in fitvar:
         cardTool.setWriteByCharge(False)
-    else:
+    elif isUnfolding or isTheoryAgnostic:
         cardTool.setChannels(args.recoCharge)
         if args.forceRecoChargeAsGen:
             cardTool.setExcludeProcessForChannel("plus", ".*qGen0")

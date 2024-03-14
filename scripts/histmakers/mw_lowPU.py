@@ -13,6 +13,8 @@ if tmpKnownArgs.differentialAnalysisMode == "unfolding":
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 args = parser.parse_args()
 
+isUnfolding = args.differentialAnalysisMode == "unfolding"
+
 import narf
 import wremnants
 from wremnants import theory_tools, syst_tools, theory_corrections, muon_selections, unfolding_tools
