@@ -1130,13 +1130,8 @@ class CardTool(object):
 
         name = self.variationName(proc, syst)
 
-        hists = {name: h} # always keep original variation in output file for checks
-
-        s = hist.tag.Slicer()
-        for hname, histo in hists.items():
-
-            if self.writeByCharge:
-                self.writeHistByCharge(histo, hname)
-            else:
-                self.writeHistWithCharges(histo, hname)
+        if self.writeByCharge:
+            self.writeHistByCharge(h, name)
+        else:
+            self.writeHistWithCharges(h, name)
         self.outfile.cd()

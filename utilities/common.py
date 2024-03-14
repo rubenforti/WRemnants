@@ -118,7 +118,7 @@ def set_parser_default(parser, argument, newDefault):
 
 def common_parser(for_reco_highPU=False):
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
@@ -184,12 +184,6 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--dummyNonClosureMMag", default=0., type=float, help="magnitude of the dummy value for the alignment part of the Z non-closure")
     parser.add_argument("--noScaleToData", action="store_true", help="Do not scale the MC histograms with xsec*lumi/sum(gen weights) in the postprocessing step")
     parser.add_argument("--aggregateGroups", type=str, nargs="*", default=["Diboson", "Top"], help="Sum up histograms from members of given groups in the postprocessing step")
-    # options for unfolding/differential
-    parser.add_argument("--unfolding", action='store_true', help="Add information needed for unfolding")
-    parser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"], help="Generator level definition for unfolding")
-    parser.add_argument("--genVars", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"], help="Generator level variable")
-    parser.add_argument("--genBins", type=int, nargs="+", default=[16, 0], help="Number of generator level bins")
-    parser.add_argument("--poiAsNoi", action='store_true', help="Experimental option only with --theoryAgnostic or --unfolding, it will make the histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)
@@ -238,6 +232,34 @@ def common_parser(for_reco_highPU=False):
         
     return parser,initargs
 
+def common_histmaker_subparsers(parser):
+    # options in common for unfolding/theoryAgnostic but not known to the main parser
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
+    # specific for unfolding
+    parent_parser_unfolding = argparse.ArgumentParser(add_help=False)
+    parent_parser_unfolding.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"], help="Generator level variable")
+    # specific for theory agnostic
+    parent_parser_theoryAgnostic = argparse.ArgumentParser(add_help=False)
+    parent_parser_theoryAgnostic.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")
+    parent_parser_theoryAgnostic.add_argument("--genPtVbinEdges", type=float, nargs="*", default=[], help="Bin edges of gen ptV axis for theory agnostic")
+    parent_parser_theoryAgnostic.add_argument("--genAbsYVbinEdges", type=float, nargs="*", default=[], help="Bin edges of gen |yV| axis for theory agnostic")
+    #
+    # now the actual subparsers
+    subparsers = parser.add_subparsers(dest='differentialAnalysisMode', help="Subparser for differential analysis (unfolding/theoryAgnostic, default is the traditional analysis)")
+    unfoldingParser = subparsers.add_parser("unfolding", help="Run unfolding analysis", parents=[parser, parent_parser, parent_parser_unfolding])
+    unfoldingParser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"], help="Generator level definition for unfolding")
+    unfoldingParser.add_argument("--genBins", type=int, nargs="+", default=[16, 0], help="Number of generator level bins")
+    # options for theory agnostic
+    # further split the theory agnostic setup (there might also be the original one, but for now it is not used)
+    theoryAgnosticNormVar = subparsers.add_parser('theoryAgnosticNormVar', help="Theory agnostic analysis with binned norm variations", parents=[parser, parent_parser, parent_parser_theoryAgnostic])
+    #
+    theoryAgnosticPolVar = subparsers.add_parser('theoryAgnosticPolVar', help="Theory agnostic analysis with continuous polynomial variations", parents=[parser, parent_parser, parent_parser_theoryAgnostic])
+    theoryAgnosticPolVar.add_argument("--theoryAgnosticFilePath", type=str, default=".", help="Path where input files are stored")
+    theoryAgnosticPolVar.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"], help="Tag for input files")
+    theoryAgnosticPolVar.add_argument("--theoryAgnosticSplitOOA", action='store_true', help="Define out-of-acceptance signal template as an independent process")
+    return parser
+    
 def plot_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],

@@ -15,7 +15,7 @@ justPrint = 1
 foldEtaIntoAbsEta = True
 
 ## histmaker
-# /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p40_y3p50_V4/ -v 4  --dataPath root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/ --theoryAgnostic --poiAsNoi --theoryAgnosticPolVar --theoryAgnosticFilePath /path/to/files/  --theoryAgnosticFileTag x0p40_y3p50_V4 --filterProcs Data Wmunu --maxFiles -1 --theoryAgnosticSplitOOA  [ -p splitOOA|splitOOA_oneMCfileEvery2 ] [ --oneMCfileEveryN 2 ]
+# /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p40_y3p50_V4/ -v 4  --dataPath root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/ --filterProcs Data Wmunu --maxFiles -1  [ -p splitOOA|splitOOA_oneMCfileEvery2 ] [ --oneMCfileEveryN 2 ] theoryAgnosticPolVar --theoryAgnosticFilePath /path/to/files/  --theoryAgnosticFileTag x0p40_y3p50_V4  --theoryAgnosticSplitOOA 
 # --theoryAgnosticSplitOOA should be used by default
 
 splitOOA = True # use out-of-acceptance as a different process (it assumes the histograms were created accordingly)
@@ -60,20 +60,23 @@ if onlySignal and onlySignalAndOOA:
     
 outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
 
-setuCombineOptions = " --theoryAgnostic --poiAsNoi --theoryAgnosticPolVar"
+theoryAgnosticOptions = " theoryAgnosticPolVar --poiAsNoi"
 
+setupCombineOptions = ""
 if doStatOnly:
-    setuCombineOptions += " --doStatOnly"
+    setupCombineOptions += " --doStatOnly"
 elif noPDFandQCDtheorySystOnSignal:
-    setuCombineOptions += " --noPDFandQCDtheorySystOnSignal"
+    setupCombineOptions += " --noPDFandQCDtheorySystOnSignal"
 
 if onlySignal:
-    setuCombineOptions += " --filterProcGroups Data Wmunu"
+    setupCombineOptions += " --filterProcGroups Data Wmunu"
     if not onlySignalAndOOA:
-        setuCombineOptions += " --excludeProcGroups WmunuOOA"
+        setupCombineOptions += " --excludeProcGroups WmunuOOA"
 elif noFake:
-    setuCombineOptions += " --excludeProcGroups Fake"
+    setupCombineOptions += " --excludeProcGroups Fake"
 
+setupCombineOptions += f" {theoryAgnosticOptions}"
+    
 baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]
 #coeffs = [x for x in baseCoeffs]
 #coeffs = ["UL"]
@@ -136,7 +139,7 @@ for c in coeffs:
         
     mainOutputFolder = f"{outdir}/{subFolder}"
 
-    cmdCard = f"/usr/bin/time -v python scripts/combine/setupCombine.py -i {inputFileHDF5} -o {mainOutputFolder}/ --absolutePathInCard {setuCombineOptions} {customOpt}"
+    cmdCard = f"/usr/bin/time -v python scripts/combine/setupCombine.py -i {inputFileHDF5} -o {mainOutputFolder}/ --absolutePathInCard {setupCombineOptions} {customOpt}"
 
     etaVar = "abseta" if foldEtaIntoAbsEta else "eta"
     analysisFolderBase = f"WMass_{etaVar}_pt_charge" 

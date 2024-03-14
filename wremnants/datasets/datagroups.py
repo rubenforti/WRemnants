@@ -516,7 +516,7 @@ class Datagroups(object):
             logger.warning("No meta data found so no gen axes could be auto set")
             return
 
-        self.all_gen_axes = args.get("genVars", [])
+        self.all_gen_axes = args.get("genAxes", [])
 
         if self.mode in ["wmass", "lowpu_w"]:
             self.all_gen_axes = ["qGen", *self.all_gen_axes]
@@ -524,7 +524,7 @@ class Datagroups(object):
         self.gen_axes = list(gen_axes) if gen_axes != None else self.all_gen_axes
         self.sum_gen_axes = list(sum_gen_axes) if sum_gen_axes != None else self.all_gen_axes
 
-        logger.debug(f"Gen axes are now {self.gen_axes}")
+        logger.warning(f"Gen axes are now {self.gen_axes}")
 
     def getGenBinIndices(self, h, axesToRead=None):
         gen_bins = []

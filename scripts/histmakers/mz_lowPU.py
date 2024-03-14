@@ -5,12 +5,18 @@ from utilities.io_tools import output_tools
 parser,initargs = common.common_parser()
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen"])
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
 
+parser = common.common_histmaker_subparsers(parser)
+tmpKnownArgs,_ = parser.parse_known_args()
+if tmpKnownArgs.differentialAnalysisMode == "unfolding":
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
+
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+isUnfolding = args.differentialAnalysisMode == "unfolding"
 
 import narf
 import wremnants
@@ -67,8 +73,8 @@ gen_axes = {
     "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),  
 }
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
     
 # axes for final cards/fitting
@@ -109,7 +115,7 @@ def build_graph(df, dataset):
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name in sigProcs:
+    if isUnfolding and dataset.name in sigProcs:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
 
         if hasattr(dataset, "out_of_acceptance"):
