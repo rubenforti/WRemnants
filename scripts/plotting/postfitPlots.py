@@ -230,13 +230,13 @@ if combinetf2:
     if f"chi2_{fittype}" in fitresult:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf"]
 
-    for channel, axes in meta["channel_axes"].items():
+    for channel, info in meta["channel_info"].items():
         hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=meta["channel_lumi"][channel])
+        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
     import ROOT
@@ -248,32 +248,32 @@ else:
         # the fit was probably done on a file generated via the hdf5 writer and we can use the axes information
         meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
         ch_start=0
-        for channel, axes in meta["channel_axes"].items():
-            shape = [len(a) for a in axes]
+        for channel, info in meta["channel_info"].items():
+            shape = [len(a) for a in info["axes"]]
 
             ch_end = ch_start+np.product(shape) # in combinetf1 the channels are concatenated and we need to index one after the other
 
             hist_data = fitresult["obs;1"].to_hist()
             values = np.reshape(hist_data.values()[ch_start:ch_end], shape)
-            hist_data = hist.Hist(*axes, storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
+            hist_data = hist.Hist(*info["axes"], storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
 
             # last bin can be masked channel; slice with [:nBins]
             hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()
-            hist_inclusive = hist.Hist(*axes, storage=hist.storage.Weight(), 
+            hist_inclusive = hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
                 data=np.stack((np.reshape(hist_inclusive.values()[ch_start:ch_end], shape), np.reshape(hist_inclusive.variances()[ch_start:ch_end], shape)), axis=-1))  
             hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist() for p in procs]
-            hist_stack = [hist.Hist(*axes, storage=hist.storage.Weight(), 
+            hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
                 data=np.stack((np.reshape(h.values()[ch_start:ch_end], shape), np.reshape(h.variances()[ch_start:ch_end], shape)), axis=-1)) for h in hist_stack]
 
             if not args.prefit:
                 rfile = ROOT.TFile.Open(args.infile.replace(".hdf5",".root"))
                 ttree = rfile.Get("fitresults")
                 ttree.GetEntry(0)
-                chi2 = [2*(ttree.nllvalfull - ttree.satnllvalfull), np.product([len(a) for a in axes]) - ttree.ndofpartial]
+                chi2 = [2*(ttree.nllvalfull - ttree.satnllvalfull), np.product([len(a) for a in info["axes"]]) - ttree.ndofpartial]
             else:
                 chi2 = None
 
-            make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True, lumi=meta["channel_lumi"][channel])
+            make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True, lumi=info["lumi"])
             ch_start = ch_end
     else:
         # the fit was probably done on a file generated via the root writer and we can't use the axes information

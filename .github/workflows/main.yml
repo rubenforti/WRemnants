@@ -414,10 +414,14 @@ jobs:
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ unfolding $COMBINED_DIR/Combination_LowPU_ptll Combination.hdf5
 
       - name: lowpu combine unfolding plot xsec 
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE_MU --fitresult $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR/lowPU -v 4 --rrange 0.0 2.0 --lumi=0.200181002 --scaleXsec 2
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py
+          $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR/lowPU -v 4 --rrange 0.0 2.0
 
-      - name: lowpu combine unfolding plot xsec 
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE_MUMU --fitresult $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR/lowPU -v 4 --rrange 0.0 2.0 --lumi=0.200181002 --scaleXsec 2
+      - name: lowpu combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR/lowPU
 
   wlike:
     # The type of runner that the job will run on

@@ -77,8 +77,10 @@ class Datagroups(object):
 
         if "lowpu" in self.mode:
             from wremnants.datasets.datagroupsLowPU import make_datagroups_lowPU as make_datagroups
+            self.era = "2017H"
         else:
             from wremnants.datasets.datagroups2016 import make_datagroups_2016 as make_datagroups
+            self.era = "2016postVFP"
 
         make_datagroups(self, **kwargs)
 

@@ -41,13 +41,14 @@ parser.add_argument("--grouping", type=str, default=None, help="Select nuisances
 parser.add_argument("--ratioToPred", action='store_true', help="Use prediction as denominator in ratio")
 parser.add_argument("-t","--translate", type=str, default=None, help="Specify .json file to translate labels")
 
-# alternaitve predictions
-# parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'xnorm', 'nominal', ...)", default="xnorm")
-# parser.add_argument("--varName", default=[], type=str, nargs='+', help="Name of variation hist")
-# parser.add_argument("--varLabel", default=[], type=str, nargs='+', help="Label(s) of variation hist for plotting")
-# parser.add_argument("--selectAxis", default=[], type=str, nargs='+', help="If you need to select a variation axis")
-# parser.add_argument("--selectEntries", default=[], type=str, nargs='+', help="entries to read from the selected axis")
-# parser.add_argument("--colors", default=[], type=str, nargs='+', help="Variation colors")
+# alternaitve predictions from histmaker output
+parser.add_argument("--histfile", type=str, help="Histogramer output file for comparisons")
+parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'xnorm', 'nominal', ...)", default="xnorm")
+parser.add_argument("--varNames", default=['uncorr'], type=str, nargs='+', help="Name of variation hist")
+parser.add_argument("--varLabels", default=['MiNNLO'], type=str, nargs='+', help="Label(s) of variation hist for plotting")
+parser.add_argument("--selectAxis", default=[None,], type=str, nargs='+', help="If you need to select a variation axis")
+parser.add_argument("--selectEntries", default=[None,], type=str, nargs='+', help="entries to read from the selected axis")
+parser.add_argument("--colors", default=['red',], type=str, nargs='+', help="Variation colors")
 
 args = parser.parse_args()
 
@@ -71,14 +72,23 @@ if args.translate:
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
 
+if args.histfile:
+    groups = Datagroups(args.histfile)
+    groups.setNominalName(args.baseName)
+    groups.setGenAxes([],[])
+    groups.lumi=0.001
+    groups.copyGroup("Wmunu", "Wminus", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"))
+    groups.copyGroup("Wmunu", "Wplus", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"))
 
+
+proc_dict = {"W_qGen0": "W^{-}", "W_qGen1": "W^{+}"}
 def get_xlabel(names, proc=""):
     if len(names) > 1:
         label = f"{'-'.join([styles.xlabels.get(n,n).replace('(GeV)','') for n in names])} bin"
     else:
         label = styles.xlabels.get(names[0], names[0])
     if proc:
-        label = label.replace("\mathrm{V}", "\mathrm{"+proc[0]+"}")
+        label = label.replace("\mathrm{V}", "\mathrm{"+proc_dict.get(proc, proc[0])+"}")
     return label
 
 def make_yields_df(hists, procs, signal=None, per_bin=False, yield_only=False, percentage=True):
@@ -119,11 +129,12 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     binwnorm = 1 if poi_type not in ["noi", "mu",] else None
     axes_names = hist_xsec.axes.name
     if len(axes_names) > 1:
-        hist_xsec = sel.unrolledHist(hist_xsec, binwnorm=binwnorm, obs=None)
+        hist_xsec = sel.unrolledHist(hist_xsec, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+        hist_others = [sel.unrolledHist(h, binwnorm=binwnorm, add_flow_bins=args.genFlow) for h in hist_others]
         if hist_ref is not None:
-            hist_ref = sel.unrolledHist(hist_ref, binwnorm=binwnorm, obs=None)
+            hist_ref = sel.unrolledHist(hist_ref, binwnorm=binwnorm, add_flow_bins=args.genFlow)
         if hist_xsec_stat is not None:
-            hist_xsec_stat = sel.unrolledHist(hist_xsec_stat, binwnorm=binwnorm, obs=None)
+            hist_xsec_stat = sel.unrolledHist(hist_xsec_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
 
     xlabel = get_xlabel(axes_names, proc)
 
@@ -178,12 +189,12 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
         hden=hist_xsec
 
     for i, (h, l, c) in enumerate(zip(hist_others, label_others, color_others)):
-        h_flat = hist.Hist(
-            hist.axis.Variable(edges, underflow=False, overflow=False), storage=hist.storage.Weight())
-        h_flat.view(flow=False)[...] = np.stack([h.values(flow=args.genFlow).flatten()/bin_widths, h.variances(flow=args.genFlow).flatten()/bin_widths**2], axis=-1)
+        # h_flat = hist.Hist(
+        #     hist.axis.Variable(edges, underflow=False, overflow=False), storage=hist.storage.Weight())
+        # h_flat.view(flow=False)[...] = np.stack([h.values(flow=args.genFlow).flatten()/bin_widths, h.variances(flow=args.genFlow).flatten()/bin_widths**2], axis=-1)
 
         hep.histplot(
-            h_flat,
+            h,
             yerr=False,
             histtype="step",
             color=c,
@@ -195,9 +206,9 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
         )            
 
         if i==0 and not ratioToData:
-            hden=h_flat
+            hden=h
             hep.histplot(
-                hh.divideHists(hist_xsec, hden, cutoff=0, rel_unc=True),
+                hh.divideHists(h, hden, cutoff=0, rel_unc=True),
                 yerr=True,
                 histtype="errorbar",
                 color="black",
@@ -208,7 +219,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
             continue
 
         hep.histplot(
-            hh.divideHists(h_flat, hden, cutoff=0, rel_unc=True),
+            hh.divideHists(h, hden, cutoff=0, rel_unc=True),
             yerr=False,
             histtype="step",
             color=c,
@@ -291,23 +302,23 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     if relative_uncertainty:
         scale = scale / hist_xsec.values()#/binwidths
 
-    err = np.sqrt(hist_xsec.variances()) * scale
-    err_stat = np.sqrt(hist_stat.variances()) * scale
-    err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1).values() * (scale[...,np.newaxis] if relative_uncertainty else scale)
+    err = np.sqrt(hist_xsec.variances(flow=True)) * scale
+    err_stat = np.sqrt(hist_stat.variances(flow=True)) * scale
+    err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1).values(flow=True) * (scale[...,np.newaxis] if relative_uncertainty else scale)
 
     hist_err = hist.Hist(*hist_xsec.axes, storage=hist.storage.Double())
     hist_err_stat = hist.Hist(*hist_stat.axes, storage=hist.storage.Double())
     hist_err_syst = hist.Hist(*hist_syst.axes, storage=hist.storage.Double())
 
-    hist_err.view(flow=False)[...] = err
-    hist_err_stat.view(flow=False)[...] = err_stat
-    hist_err_syst.view(flow=False)[...] = err_syst
+    hist_err.view(flow=True)[...] = err
+    hist_err_stat.view(flow=True)[...] = err_stat
+    hist_err_syst.view(flow=True)[...] = err_syst
 
     # unroll histograms
     binwnorm = 1 if poi_type not in ["noi", "mu",] else None
     if len(axes_names) > 1:
-        hist_err = sel.unrolledHist(hist_err, binwnorm=binwnorm, obs=None)
-        hist_err_stat = sel.unrolledHist(hist_err_stat, binwnorm=binwnorm, obs=None)
+        hist_err = sel.unrolledHist(hist_err, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+        hist_err_stat = sel.unrolledHist(hist_err_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
 
     if args.ylim is None:
         if logy:
@@ -348,9 +359,8 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     # add each systematic uncertainty
     i=0
     for syst in syst_labels[::-1]:
-        # pdb.set_trace()
         if len(axes_names) > 1:
-            hist_err_syst_i = sel.unrolledHist(hist_err_syst[{"syst": syst}], binwnorm=binwnorm, obs=None)
+            hist_err_syst_i = sel.unrolledHist(hist_err_syst[{"syst": syst}], binwnorm=binwnorm, add_flow_bins=args.genFlow)
         else:
             hist_err_syst_i = hist_err_syst[{"syst": syst}]
 
@@ -411,7 +421,7 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     outfile += f"_{proc}"
     outfile += "_"+"_".join(axes_names)
     outfile += (f"_{channel}" if channel else "")
-    outfile += (f"_log" if logy else "")
+    outfile += (f"_logy" if logy else "")
     outfile += (f"_{args.postfix}" if args.postfix else "")
     plot_tools.save_pdf_and_png(outdir, outfile)
 
@@ -470,7 +480,7 @@ def plot_uncertainties_ratio(df, df_ref, poi_type, poi_type_ref, channel=None, e
 
     xlabel = "-".join([get_xlabel(a, process_label) for a in axes])
     if len(axes) >= 2:
-        xlabel = xlabel.replace("[GeV]","")
+        xlabel = xlabel.replace("(GeV)","")
         xlabel += "Bin"
 
     fig, ax1 = plot_tools.figure(hist_ratio, xlabel, yLabel, ylim, logy=logy, width_scale=2)
@@ -579,7 +589,7 @@ def plot_uncertainties_ratio(df, df_ref, poi_type, poi_type_ref, channel=None, e
     if normalize:
         outfile += "_normalized"
     if logy:
-        outfile += "_log"
+        outfile += "_logy"
     outfile += f"_{base_process}"
     outfile += "_"+"_".join(axes)
     outfile += (f"_{channel}" if channel else "")
@@ -599,9 +609,17 @@ def plot_uncertainties_ratio(df, df_ref, poi_type, poi_type_ref, channel=None, e
 for poi_type, poi_result in result.items():
 
     for channel, channel_result in poi_result.items():
-        lumi = meta["channel_lumi"][channel]/1000.
+        lumi = None#meta["channel_info"][channel]/1000.
 
         for proc, proc_result in channel_result.items():
+            
+            histo_others=[]
+            if args.histfile:
+                groups_dict = {"W_qGen0": "Wminus", "W_qGen1": "Wplus", "Z": "Zmumu"}
+                group_name = groups_dict[proc]
+                for syst in args.varNames:
+                    groups.loadHistsForDatagroups(args.baseName, syst=syst, procsToRead=[group_name], nominalIfMissing=False)
+                    histo_others.append(groups.groups[group_name].hists[syst])
 
             for hist_name in filter(lambda x: not any([x.endswith(y) for y in ["_stat","_syst"]]), proc_result.keys()):
                 hist_nominal = result[poi_type][channel][proc][hist_name]
@@ -609,12 +627,15 @@ for poi_type, poi_result in result.items():
 
                 hist_ref = result_ref[poi_type][channel][proc][hist_name] if args.reference else None
 
+                if args.selectAxis and args.selectEntries:
+                    histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]
+                h_others = [h.project(*hist_nominal.axes.name) for h in histo_others]
+
                 if "xsec" in args.plots:
                     plot_xsec_unfolded(hist_nominal, hist_stat, hist_ref, poi_type=poi_type, channel=channel, proc=proc, lumi=lumi,
-                        # process_label=process_label, 
-                        # hist_others=histo_others, 
-                        # label_others=args.varLabel, 
-                        # color_others=args.colors
+                        hist_others=h_others, 
+                        label_others=args.varLabels, 
+                        color_others=args.colors
                     )
 
                 if "uncertainties" in args.plots:
