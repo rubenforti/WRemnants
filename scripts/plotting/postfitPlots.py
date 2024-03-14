@@ -71,7 +71,7 @@ translate_selection = {
     }
 }
 
-def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False):
+def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
     axes_names = [a.name for a in axes]
     axis_name = "_".join([a for a in axes_names])
     if len(h_data.axes) > 1:
@@ -174,7 +174,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
         label=args.cmsDecor, data=data)
 
     plot_tools.addLegend(ax1, ncols=2, text_size=20*args.scaleleg)
@@ -236,7 +236,7 @@ if combinetf2:
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta)
+        make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=meta["channel_lumi"][channel])
 else:
     # combinetf1
     import ROOT
@@ -273,7 +273,7 @@ else:
             else:
                 chi2 = None
 
-            make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True)
+            make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True, lumi=meta["channel_lumi"][channel])
             ch_start = ch_end
     else:
         # the fit was probably done on a file generated via the root writer and we can't use the axes information
@@ -340,7 +340,7 @@ else:
         else:
             chi2 = None
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
+        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True, lumi=args.lumi)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(args.outpath, args.outfolder)

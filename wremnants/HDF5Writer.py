@@ -152,6 +152,8 @@ class HDF5Writer(object):
 
         # store list of axes for each channel
         hist_axes = {}
+        gen_axes = {}
+        lumis = {}
 
         #keep track of bins per channel
         ibins = []
@@ -189,6 +191,10 @@ class HDF5Writer(object):
             # get nominal histograms of any of the processes to keep track of the list of axes
             hist_nominal = dg.groups[procs_chan[0]].hists[chanInfo.nominalName] 
             hist_axes[chan] = [hist_nominal.axes[a] for a in axes]
+            lumis[chan] = dg.lumi*1000
+
+            if len(dg.gen_axes) and not masked:
+                gen_axes[chan] = dg.gen_axes
 
             # nominal predictions
             for proc in procs_chan:
@@ -690,8 +696,11 @@ class HDF5Writer(object):
         # propagate meta info into result file
         meta = {
             "meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir),
+            "channel_lumi": lumis,
             "channel_axes": hist_axes
         }
+        if len(gen_axes):
+            meta["channel_gen_axes"] = gen_axes
 
         narf.ioutils.pickle_dump_h5py("meta", meta, f)
 
