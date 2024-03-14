@@ -188,9 +188,10 @@ smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing e
 
 bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibration else None
 
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
 if len(procsWithTheoryCorr):
-    corr_helpers = theory_corrections.load_corr_helpers(procsWithTheoryCorr, args.theoryCorr)
+    corr_helpers = theory_corrections.load_corr_helpers(procsWithTheoryCorr, theory_corrs)
 else:
     corr_helpers = {}
     
@@ -249,7 +250,7 @@ def build_graph(df, dataset):
     if args.noAuxiliaryHistograms or isUnfolding or isFloatingPOIsTheoryAgnostic:
         auxiliary_histograms = False
 
-    apply_theory_corr = args.theoryCorr and dataset.name in corr_helpers
+    apply_theory_corr = theory_corrs and dataset.name in corr_helpers
 
     cvh_helper = data_calibration_helper if dataset.is_data else mc_calibration_helper
     jpsi_helper = data_jpsi_crctn_helper if dataset.is_data else mc_jpsi_crctn_helper
@@ -498,7 +499,7 @@ def build_graph(df, dataset):
             df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal")
         if apply_theory_corr:
             results.extend(theory_tools.make_theory_corr_hists(df, "nominal", axes, cols, 
-                corr_helpers[dataset.name], args.theoryCorr, modify_central_weight=not args.theoryCorrAltOnly, isW = isW)
+                corr_helpers[dataset.name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = isW)
             )
         if isWorZ:
             cols_gen, cols_gen_smeared = muon_calibration.make_alt_reco_and_gen_hists(df, results, axes, cols, reco_sel_GF)

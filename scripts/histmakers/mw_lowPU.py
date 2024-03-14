@@ -101,7 +101,8 @@ cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
 # extra axes which can be used to label tensor_axes
 axis_cutFlow = hist.axis.Regular(1, 0, 1, name = "cutFlow")
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], theory_corrs)
 
 # recoil initialization
 args.noRecoil = True

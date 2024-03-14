@@ -90,7 +90,8 @@ axis_mt = hist.axis.Regular(200, 0., 200., name = "mt", underflow=False)
 axes_mT = [axis_mt]
 cols_mT = ["transverseMass"]
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], theory_corrs)
 
 # recoil initialization
 args.noRecoil = True
