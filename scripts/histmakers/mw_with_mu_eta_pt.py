@@ -293,11 +293,11 @@ def build_graph(df, dataset):
             df = theoryAgnostic_tools.select_fiducial_space(df, ptVthresholdOOA, absyVthresholdOOA, accept=False, select=True, usePtOverM=usePtOverM)
         else:
             # the in-acceptance selection must usually not be used to filter signal events when doing POIs as NOIs
-            if not isPoiAsNoi or (isTheoryAgnosticPolVar and args.theoryAgnosticSplitOOA):
+            if isFloatingPOIsTheoryAgnostic or (isTheoryAgnosticPolVar and args.theoryAgnosticSplitOOA):
                 logger.debug("Select events in fiducial phase space for theory agnostic analysis")
                 df = theoryAgnostic_tools.select_fiducial_space(df, ptVthresholdOOA, absyVthresholdOOA, accept=True, select=True, usePtOverM=usePtOverM)
                 # helicity axis is special, defined through a tensor later, theoryAgnostic_ only includes W pt and rapidity for now
-                if not isPoiAsNoi:
+                if isFloatingPOIsTheoryAgnostic:
                     axes = [*nominal_axes, *theoryAgnostic_axes]
                     cols = [*nominal_cols, *theoryAgnostic_cols]
                     theoryAgnostic_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, theoryAgnostic_axes, theoryAgnostic_cols)
@@ -312,7 +312,7 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=1)
-    df = muon_selections.select_good_muons(df, 0, 100, dataset.group, nMuons=1, use_trackerMuons=args.trackerMuons, use_isolation=False)
+    df = muon_selections.select_good_muons(df, 24, 100, dataset.group, nMuons=1, use_trackerMuons=args.trackerMuons, use_isolation=False)
 
     # the corrected RECO muon kinematics, which is intended to be used as the nominal
     df = muon_calibration.define_corrected_reco_muon_kinematics(df)

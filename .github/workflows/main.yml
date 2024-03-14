@@ -269,7 +269,7 @@ jobs:
           lfs: 'true'
 
       - name: lowpu w mu analysis
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil unfolding
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
 
       - name: lowpu w mu plot ptW
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -354,7 +354,7 @@ jobs:
           lfs: 'true'
 
       - name: lowpu z mumu analysis
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil unfolding
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
 
       - name: lowpu z mumu plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p mumu $HIST_FILE_MUMU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -366,7 +366,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --baseName transverseMass --hists mt -p mumu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MUMU
 
       - name: lowpu z ee analysis
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee unfolding
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee
 
       - name: lowpu z ee plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p ee $HIST_FILE_EE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -408,7 +408,7 @@ jobs:
           lfs: 'true'
 
       - name: lowpu combine unfolding setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix LowPU_ptll --hdf5 --sparse --ewUnc unfolding
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py unfolding -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix LowPU_ptll --hdf5 --sparse --ewUnc
 
       - name: lowpu combine unfolding fit 
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ unfolding $COMBINED_DIR/Combination_LowPU_ptll Combination.hdf5
