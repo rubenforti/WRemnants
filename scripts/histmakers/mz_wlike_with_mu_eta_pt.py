@@ -22,9 +22,9 @@ parser = common.set_parser_default(parser, "genVars", ["qGen", "ptGen", "absEtaG
 parser = common.set_parser_default(parser, "genBins", [18, 0])
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
-parser = common.set_parser_default(parser, "addTheoryCorr", ["virtual_ew_wlike", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
+parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 
-args = common.parse_histmaker_args(parser)
+args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 if args.unfolding:
@@ -108,7 +108,8 @@ smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing e
 
 bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibration else None
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
 # recoil initialization
 if not args.noRecoil:
@@ -122,7 +123,7 @@ def build_graph(df, dataset):
     isW = dataset.name in common.wprocs
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
-    apply_theory_corr = args.theoryCorr and dataset.name in corr_helpers
+    apply_theory_corr = theory_corrs and dataset.name in corr_helpers
 
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
@@ -234,7 +235,21 @@ def build_graph(df, dataset):
     df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
     df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
     df = df.Filter(f"transverseMass >= {mtw_min}")
-    
+
+    if not args.onlyMainHistograms:
+        # plot reco vertex distribution before and after PU reweigthing
+        # also remove vertex weights since they depend on PU
+        if dataset.is_data:
+            df = df.DefinePerSample("nominal_weight_noPUandVtx", "1.0")
+        else:
+            df = df.Define("nominal_weight_noPUandVtx", "nominal_weight/(weight_pu*weight_vtx)")
+        axis_nRecoVtx = hist.axis.Regular(50, 0.5, 50.5, name="PV_npvsGood")
+        axis_fixedGridRhoFastjetAll = hist.axis.Regular(50, 0, 50, name="fixedGridRhoFastjetAll")
+        results.append(df.HistoBoost("PV_npvsGood_uncorr", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("PV_npvsGood", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight"]))
+        results.append(df.HistoBoost("fixedGridRhoFastjetAll_uncorr", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("fixedGridRhoFastjetAll", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight"]))
+
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
