@@ -280,7 +280,7 @@ else:
         if nv % 2:
             raise ValueError("if --axlim is specified it must have two values per axis!")
         axlim = np.array(args.axlim).reshape((int(nv/2), 2))
-        axes = [ax if lim is not None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])]) 
+        axes = [ax if lim is None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])], flow=False) 
                     for ax,lim in itertools.zip_longest(axes, axlim)]
     shape = [len(a) for a in axes]
 

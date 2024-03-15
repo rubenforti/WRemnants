@@ -176,13 +176,20 @@ only_central_pdf_datasets = [
 
 extended_pdf_datasets = [x for x in common.vprocs_all if not any(y in x for y in ["NNLOPS", "MiNLO"])]
 
-def expand_pdf_entries(pdf, renorm=False):
+def expand_pdf_entries(pdf, alphas=False, renorm=False):
     info = pdfMap[pdf]
-    first_entry = info.get("first_entry", 0)
-    last_entry = first_entry+info["entries"]
-    vals = [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
+    if alphas:
+        vals = info["alphas"]
+    else:
+        first_entry = info.get("first_entry", 0)
+        last_entry = first_entry+info["entries"]
+        vals = [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
+
     if renorm:
         vals = [f"std::clamp({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
+    else:
+        vals = [f"std::clamp({x}, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
+
     return vals
 
 def define_scale_tensor(df):
@@ -196,11 +203,11 @@ def define_scale_tensor(df):
     return df
 
 theory_corr_weight_map = {
-        "scetlib_dyturboMSHT20_pdfas" : pdfMap["msht20"]["alphas"],
+        "scetlib_dyturboMSHT20_pdfas" : expand_pdf_entries("msht20", alphas=True),
         "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
         "scetlib_dyturboCT18ZVars" : expand_pdf_entries("ct18z"),
-        "scetlib_dyturboCT18Z_pdfas" : pdfMap["ct18z"]["alphas"],
-        "scetlib_dyturboMSHT20an3lo_pdfas" : pdfMap["msht20an3lo"]["alphas"],
+        "scetlib_dyturboCT18Z_pdfas" : expand_pdf_entries("ct18z", alphas=True),
+        "scetlib_dyturboMSHT20an3lo_pdfas" : expand_pdf_entries("msht20an3lo", alphas=True),
         "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
         # Tested this, better not to treat this way unless using MSHT20nnlo as central set
         #"scetlib_dyturboMSHT20mbrange" : expand_pdf_entries("msht20mbrange", renorm=True),
@@ -637,8 +644,12 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
 
             hist_name_PtDepScales = f"{name}_{generator}PtDepScales"
             axis_ptVgen = hist.axis.Variable(common.ptV_binning, name = "ptVgen", underflow=False)
-            axes_PtDepScales = axes + [axis_ptVgen]
-            cols_PtDepScales = cols + ["ptVgen", f"{generator}PtDepScales"]
+
+            axes_PtDepScales = axes[:]
+            cols_PtDepScales = cols[:]
+            if "ptVgen" not in cols:
+                axes_PtDepScales += [axis_ptVgen]
+                cols_PtDepScales += ["ptVgen", f"{generator}PtDepScales"]
             unc_PtDepScales = df.HistoBoost(hist_name_PtDepScales, axes_PtDepScales, cols_PtDepScales, tensor_axes = [axis_PtDepScales])
             res.append(unc_PtDepScales)
 

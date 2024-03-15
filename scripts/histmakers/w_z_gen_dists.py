@@ -27,8 +27,9 @@ parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q var
 
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = common.set_parser_default(parser, "theoryCorr", [])
+parser = common.set_parser_default(parser, "addTheoryCorrs", [])
 
-args = parser.parse_args()
+args = common.parse_histmaker_args(parser)
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -247,29 +248,10 @@ def build_graph(df, dataset):
     nominal_gen = df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Weight())
     results.append(nominal_gen)
 
-    if not 'horace' in dataset.name and not 'winhac' in dataset.name:
-        if "LHEScaleWeight" in df.GetColumnNames():
-            df = theory_tools.define_scale_tensor(df)
-            syst_tools.add_qcdScale_hist(results, df, nominal_axes, nominal_cols, "nominal_gen")
-            df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhi, scaleWeights_tensor, nominal_weight)")
-            helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", nominal_axes, [*nominal_cols, "helicity_moments_scale_tensor"], tensor_axes = [wremnants.axis_helicity, *wremnants.scale_tensor_axes], storage=hist.storage.Double())
-            results.append(helicity_moments_scale)
+    if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
+            "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames():
 
-        if "LHEPdfWeight" in df.GetColumnNames():
-            syst_tools.add_pdf_hists(results, df, dataset.name, nominal_axes, nominal_cols, args.pdfs, "nominal_gen", propagateToHelicity=args.propagatePDFstoHelicity)
-
-    if args.theoryCorr and dataset.name in corr_helpers:
-        results.extend(theory_tools.make_theory_corr_hists(df, "nominal_gen", nominal_axes, nominal_cols,
-            corr_helpers[dataset.name], args.theoryCorr, modify_central_weight=not args.theoryCorrAltOnly, isW=isW)
-        )
-        if args.singleLeptonHists:
-            results.extend(theory_tools.make_theory_corr_hists(df, "nominal_genlep", lep_axes, lep_cols, 
-                corr_helpers[dataset.name], args.theoryCorr, modify_central_weight=not args.theoryCorrAltOnly, isW=isW)
-            )
-
-    if "MEParamWeight" in df.GetColumnNames():
-        df = syst_tools.define_mass_weights(df, proc=dataset.name)
-        syst_tools.add_massweights_hist(results, df, nominal_axes, nominal_cols, "nominal_gen", proc=dataset.name)
+        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, None, nominal_axes, nominal_cols, base_name="nominal_gen")
 
     return results, weightsum
 
