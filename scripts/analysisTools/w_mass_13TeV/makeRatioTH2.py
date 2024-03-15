@@ -325,8 +325,13 @@ if __name__ == "__main__":
 
         unrollBinRanges = []
         if nBinsUnrollVar > 15:
-            for ibin in range(nBinsUnrollVar):
-                unrollBinRanges.append("") # keep dummy otherwise there's too much text most of the time
+            for ibin in range(0,nBinsUnrollVar):
+                if not (ibin % 5): # only print 5 labels
+                    unrollBinRanges.append("#splitline{{{v} in}}{{[{vmin},{vmax}]}}".format(v="x" if args.unrolly else "y",
+                                                                                            vmin=int(unrollAxis.GetBinLowEdge(ibin+1)),
+                                                                                            vmax=int(unrollAxis.GetBinLowEdge(ibin+2))))
+                else:
+                    unrollBinRanges.append("")
         else:
             for ibin in range(nBinsUnrollVar):
                 unrollBinRanges.append("#splitline{{{v} in}}{{[{vmin},{vmax}]}}".format(v="x" if args.unrolly else "y",

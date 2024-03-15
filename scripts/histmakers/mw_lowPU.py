@@ -8,8 +8,20 @@ parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen m
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
 parser = common.common_histmaker_subparsers(parser)
-tmpKnownArgs,_ = parser.parse_known_args()
-if tmpKnownArgs.differentialAnalysisMode == "unfolding":
+args = parser.parse_args()
+print(args.differentialAnalysisMode)
+if args.differentialAnalysisMode == "unfolding":
+    print()
+    print()
+    print()
+    print()
+    print()
+    print("HERE !!!!!")
+    print()
+    print()
+    print()
+    print()
+    print()
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 args = parser.parse_args()
 

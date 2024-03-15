@@ -82,6 +82,7 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
+    parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
     ####
     ####
     return parser
@@ -90,9 +91,8 @@ def make_subparsers(parser):
     # parent parser for unfolding/theoryAgnostic versions, these options will be in common among these but not known to the main parser
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
-    parent_parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
-    parent_parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
     parent_parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
+    parent_parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parent_parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
     parent_parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
     # specific items for any theory agnostic version but not for unfolding (nothing for now but keep for future developments)
@@ -247,9 +247,9 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     if args.sumChannels or xnorm or dilepton or simultaneousABCD or "charge" not in fitvar:
         cardTool.setWriteByCharge(False)
-    elif isUnfolding or isTheoryAgnostic:
+    else:
         cardTool.setChannels(args.recoCharge)
-        if args.forceRecoChargeAsGen:
+        if (isUnfolding or isTheoryAgnostic) and args.forceRecoChargeAsGen:
             cardTool.setExcludeProcessForChannel("plus", ".*qGen0")
             cardTool.setExcludeProcessForChannel("minus", ".*qGen1")
     
@@ -844,7 +844,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
-    logger.error(args.differentialAnalysisMode)
     
     isUnfolding = args.differentialAnalysisMode == "unfolding"
     isTheoryAgnostic = args.differentialAnalysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
