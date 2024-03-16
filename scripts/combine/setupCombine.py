@@ -12,6 +12,33 @@ import h5py
 import narf.ioutils
 import numpy as np
 
+def make_subparsers(parser):
+
+    parser.add_argument("--analysisMode", type=str, default=None,
+                        choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
+                        help="Select analysis mode to run. Default is the traditional analysis")
+
+    tmpKnownArgs,_ = parser.parse_known_args()
+    subparserName = tmpKnownArgs.analysisMode
+    if subparserName is None:
+        return parser
+
+    parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
+    parent_parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
+    parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
+    parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
+    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
+
+    if "theoryAgnostic" in subparserName:
+        if subparserName == "theoryAgnosticNormVar":
+            parser.add_argument("--theoryAgnosticBandSize", type=float, default=1., help="Multiplier for theory-motivated band in theory agnostic analysis with POIs as NOIs.")
+        elif subparserName == "theoryAgnosticPolVar":
+            parser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
+            parser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
+
+    return parser
+
+
 def make_parser(parser=None):
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("-o", "--outfolder", type=str, default=".", help="Output folder with the root file storing all histograms and datacards for single charge (subfolder WMass or ZMassWLike is created automatically inside)")
@@ -85,38 +112,15 @@ def make_parser(parser=None):
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
     ####
     ####
+    parser = make_subparsers(parser)
     return parser
 
-def make_subparsers(parser):
-    # parent parser for unfolding/theoryAgnostic versions, these options will be in common among these but not known to the main parser
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
-    parent_parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
-    parent_parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
-    parent_parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parent_parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
-    # specific items for any theory agnostic version but not for unfolding (nothing for now but keep for future developments)
-    parent_parser_TA = argparse.ArgumentParser(add_help=False)
-    #
-    # options for unfolding/differential, theory agnostic analysis also further split into two modes
-    subparsers = parser.add_subparsers(dest='differentialAnalysisMode', help="Subparser for differential analysis (unfoding/theoryAgnostic, default is the traditional analysis)")
-    #
-    unfoldingParser = subparsers.add_parser("unfolding", help="Run unfolding analysis", parents=[parser, parent_parser])
-    #
-    theoryAgnosticNormVarParser = subparsers.add_parser('theoryAgnosticNormVar', help="Theory agnostic analysis with binned norm variations", parents=[parser, parent_parser, parent_parser_TA])
-    theoryAgnosticNormVarParser.add_argument("--theoryAgnosticBandSize", type=float, default=1., help="Multiplier for theory-motivated band in theory agnostic analysis with POIs as NOIs.")
-    #
-    theoryAgnosticPolVarParser = subparsers.add_parser('theoryAgnosticPolVar', help="Theory agnostic analysis with continuous polynomial variations", parents=[parser, parent_parser, parent_parser_TA])
-    theoryAgnosticPolVarParser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
-    theoryAgnosticPolVarParser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
-
-    return parser
 
 def setup(args, inputFile, fitvar, xnorm=False):
 
-    isUnfolding = args.differentialAnalysisMode == "unfolding"
-    isTheoryAgnostic = args.differentialAnalysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
-    isTheoryAgnosticPolVar = args.differentialAnalysisMode == "theoryAgnosticPolVar"
+    isUnfolding = args.analysisMode == "unfolding"
+    isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
+    isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
@@ -829,7 +833,7 @@ def outputFolderName(outfolder, card_tool, doStatOnly, postfix):
     return f"{outfolder}/{'_'.join(to_join)}/"
 
 def main(args, xnorm=False):
-    forceNonzero = not (args.differentialAnalysisMode != None)
+    forceNonzero = args.analysisMode == None
     checkSysts = forceNonzero
 
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
@@ -840,14 +844,13 @@ def main(args, xnorm=False):
 
 if __name__ == "__main__":
     parser = make_parser()
-    parser = make_subparsers(parser)
     args = parser.parse_args()
     
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
     
-    isUnfolding = args.differentialAnalysisMode == "unfolding"
-    isTheoryAgnostic = args.differentialAnalysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
-    isTheoryAgnosticPolVar = args.differentialAnalysisMode == "theoryAgnosticPolVar"
+    isUnfolding = args.analysisMode == "unfolding"
+    isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
+    isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
