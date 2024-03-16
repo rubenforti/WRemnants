@@ -8,15 +8,13 @@ parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
 
-parser = common.common_histmaker_subparsers(parser)
-tmpKnownArgs,_ = parser.parse_known_args()
-if tmpKnownArgs.differentialAnalysisMode == "unfolding":
+isUnfolding = args.analysisMode == "unfolding"
+
+if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
-
-isUnfolding = args.differentialAnalysisMode == "unfolding"
 
 import narf
 import wremnants

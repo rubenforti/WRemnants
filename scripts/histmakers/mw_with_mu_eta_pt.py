@@ -34,17 +34,16 @@ parser.add_argument("--mtCut", type=int, default=40, help="Value for the transve
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 #
-parser = common.common_histmaker_subparsers(parser)
 
 args = parser.parse_args()
 
-isUnfolding = args.differentialAnalysisMode == "unfolding"
-isTheoryAgnostic = args.differentialAnalysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
-isTheoryAgnosticPolVar = args.differentialAnalysisMode == "theoryAgnosticPolVar"
+logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+isUnfolding = args.analysisMode == "unfolding"
+isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
+isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
 isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
 isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-
-logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 if isUnfolding or isTheoryAgnostic:
     parser = common.set_parser_default(parser, "excludeFlow", True)
@@ -56,7 +55,7 @@ if isUnfolding or isTheoryAgnostic:
         parser = common.set_parser_default(parser, "onlyMainHistograms", True)
     if isUnfolding:
         parser = common.set_parser_default(parser, "pt", [32,26.,58.])
-
+        
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
 axis_pt_eff = hist.axis.Variable(axis_pt_eff_list, name = "pt", overflow=not args.excludeFlow, underflow=not args.excludeFlow)
@@ -66,7 +65,7 @@ if args.makeMCefficiency:
     parser = common.set_parser_default(parser, "pt", [nbinsPtEff, axis_pt_eff_list[0], axis_pt_eff_list[-1]])
 
 args = parser.parse_args()
-    
+
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 
 era = args.era

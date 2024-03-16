@@ -18,24 +18,25 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=45, help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 
-parser = common.set_parser_default(parser, "pt", [34, 26, 60])
-parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
-parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
-
 parser = common.common_histmaker_subparsers(parser)
-tmpKnownArgs,_ = parser.parse_known_args()
-if tmpKnownArgs.differentialAnalysisMode == "unfolding":
-    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"]) # FIXME: this is not used anywhere apparently ???
-    parser = common.set_parser_default(parser, "genBins", [18, 0])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-isUnfolding = args.differentialAnalysisMode == "unfolding"
+isUnfolding = args.analysisMode == "unfolding"
 
+parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
+parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"]) # FIXME: this is not used anywhere apparently ???
+    parser = common.set_parser_default(parser, "genBins", [18, 0])
     parser = common.set_parser_default(parser, "pt", [36,26.,62.])
-    args = parser.parse_args()
+else:
+    parser = common.set_parser_default(parser, "pt", [34, 26, 60])
+
+args = parser.parse_args()
+logger.error(args)
+quit()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 era = args.era

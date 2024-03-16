@@ -117,9 +117,57 @@ def set_parser_default(parser, argument, newDefault):
         logger.warning(f" Parser argument {argument} not found!")
     return parser
 
+def set_subparsers(subparser, name):
+
+    if name is None:
+        return subparser
+
+    # options in common between unfolding/theoryAgnostic but not known to the main parser
+    subparser.add_argument("--poiAsNoi", action='store_true',
+                           help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
+
+    if name == "unfolding":
+        # specific for unfolding
+        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"],
+                               help="Generator level variable")
+        subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
+                               help="Generator level definition for unfolding")
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[16, 0],
+                               help="Number of generator level bins")
+    elif "theoryAgnostic" in name:
+        # specific for theory agnostic
+        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")
+        subparser.add_argument("--genPtVbinEdges", type=float, nargs="*", default=[],
+                               help="Bin edges of gen ptV axis for theory agnostic")
+        subparser.add_argument("--genAbsYVbinEdges", type=float, nargs="*", default=[],
+                               help="Bin edges of gen |yV| axis for theory agnostic")
+        if name == "theoryAgnosticPolVar":
+            subparser.add_argument("--theoryAgnosticFilePath", type=str, default=".",
+                                   help="Path where input files are stored")
+            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"],
+                                   help="Tag for input files")
+            subparser.add_argument("--theoryAgnosticSplitOOA", action='store_true',
+                                   help="Define out-of-acceptance signal template as an independent process")
+
+    else:
+        raise NotImplementedError(f"Subparser {name} is not defined. Please check!")
+
+    return subparser
+
+def common_histmaker_subparsers(parser):
+
+    parser.add_argument("--analysisMode", type=str, default=None,
+                        choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
+                        help="Select analysis mode to run. Default is the traditional analysis")
+    
+    tmpKnownArgs,_ = parser.parse_known_args()
+    parser = set_subparsers(parser, tmpKnownArgs.analysisMode)
+
+    return parser
+
 def common_parser(for_reco_highPU=False):
 
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser()
     parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
@@ -233,36 +281,25 @@ def common_parser(for_reco_highPU=False):
         sfFile = ""
 
     parser.add_argument("--sfFile", type=str, help="File with muon scale factors", default=sfFile)
-        
-    return parser,initargs
+    parser = common_histmaker_subparsers(parser)
 
-def common_histmaker_subparsers(parser):
-    # options in common for unfolding/theoryAgnostic but not known to the main parser
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
-    # specific for unfolding
-    parent_parser_unfolding = argparse.ArgumentParser(add_help=False)
-    parent_parser_unfolding.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"], help="Generator level variable")
-    # specific for theory agnostic
-    parent_parser_theoryAgnostic = argparse.ArgumentParser(add_help=False)
-    parent_parser_theoryAgnostic.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")
-    parent_parser_theoryAgnostic.add_argument("--genPtVbinEdges", type=float, nargs="*", default=[], help="Bin edges of gen ptV axis for theory agnostic")
-    parent_parser_theoryAgnostic.add_argument("--genAbsYVbinEdges", type=float, nargs="*", default=[], help="Bin edges of gen |yV| axis for theory agnostic")
-    #
-    # now the actual subparsers
-    subparsers = parser.add_subparsers(dest='differentialAnalysisMode', help="Subparser for differential analysis (unfolding/theoryAgnostic, default is the traditional analysis)")
-    unfoldingParser = subparsers.add_parser("unfolding", help="Run unfolding analysis", parents=[parser, parent_parser, parent_parser_unfolding])
-    unfoldingParser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"], help="Generator level definition for unfolding")
-    unfoldingParser.add_argument("--genBins", type=int, nargs="+", default=[16, 0], help="Number of generator level bins")
-    # options for theory agnostic
-    # further split the theory agnostic setup (there might also be the original one, but for now it is not used)
-    theoryAgnosticNormVar = subparsers.add_parser('theoryAgnosticNormVar', help="Theory agnostic analysis with binned norm variations", parents=[parser, parent_parser, parent_parser_theoryAgnostic])
-    #
-    theoryAgnosticPolVar = subparsers.add_parser('theoryAgnosticPolVar', help="Theory agnostic analysis with continuous polynomial variations", parents=[parser, parent_parser, parent_parser_theoryAgnostic])
-    theoryAgnosticPolVar.add_argument("--theoryAgnosticFilePath", type=str, default=".", help="Path where input files are stored")
-    theoryAgnosticPolVar.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"], help="Tag for input files")
-    theoryAgnosticPolVar.add_argument("--theoryAgnosticSplitOOA", action='store_true', help="Define out-of-acceptance signal template as an independent process")
-    return parser
+    class PrintParserAction(argparse.Action):                                            
+        def __init__(self, option_strings, dest, nargs=0, **kwargs):
+            if nargs != 0:
+                raise ValueError('nargs for PrintParserAction must be 0 since it does not require any argument')
+            super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+        def __call__(self, parser, namespace, values, option_string=None):
+            # meant to substitute the native help message of the parser printing the whole parser with its arguments
+            # needed because when we call parse_args only the options defined until there will fall in the help message
+            thisLogger = logging.child_logger(__name__)
+            thisLogger.warning("Printing parser with all its arguments")
+            thisLogger.warning("")
+            thisLogger.warning(namespace)
+            thisLogger.warning("")
+
+    parser.add_argument("--printParser", action=PrintParserAction, help="Print the whole parser with its arguments (use it as the last argument or default values might not be displayed correctly)")
+    
+    return parser,initargs
     
 def plot_parser():
     parser = argparse.ArgumentParser()

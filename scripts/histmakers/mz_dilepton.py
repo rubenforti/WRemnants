@@ -27,16 +27,15 @@ parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 
-parser = common.common_histmaker_subparsers(parser)
-tmpKnownArgs,_ = parser.parse_known_args()
-if tmpKnownArgs.differentialAnalysisMode == "unfolding":
+isUnfolding = args.analysisMode == "unfolding"
+isPoiAsNoi = isUnfolding and args.poiAsNoi
+
+if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen", "absYVGen"])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-isUnfolding = args.differentialAnalysisMode == "unfolding"
-isPoiAsNoi = isUnfolding and args.poiAsNoi
 
 thisAnalysis = ROOT.wrem.AnalysisType.Dilepton if args.useDileptonTriggerSelection else ROOT.wrem.AnalysisType.Wlike
 era = args.era

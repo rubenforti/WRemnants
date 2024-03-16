@@ -7,25 +7,11 @@ parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for lumin
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
-parser = common.common_histmaker_subparsers(parser)
-args = parser.parse_args()
-print(args.differentialAnalysisMode)
-if args.differentialAnalysisMode == "unfolding":
-    print()
-    print()
-    print()
-    print()
-    print()
-    print("HERE !!!!!")
-    print()
-    print()
-    print()
-    print()
-    print()
+isUnfolding = args.analysisMode == "unfolding":
+if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
-args = parser.parse_args()
 
-isUnfolding = args.differentialAnalysisMode == "unfolding"
+args = parser.parse_args()
 
 import narf
 import wremnants
