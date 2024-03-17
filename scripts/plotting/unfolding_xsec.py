@@ -646,43 +646,9 @@ for poi_type, poi_result in result.items():
                         # normalize=args.normalize, relative_uncertainty=not args.absolute, 
                         logy=args.logy)
 
-
                     # if "ratio" in args.plots:
                     #     plot_uncertainties_ratio(data_c, data_c_ref, poi_type, poi_type_ref, edges=edges, channel=channel, scale=scale, 
                     #         normalize=args.normalize, relative_uncertainty=not args.absolute, logy=args.logy, process_label = process_label, axes=channel_axes)
-
-# get other histograms
-# groups = Datagroups(args.infile)
-# if groups.mode in ["wmass", "lowpu_w"]:
-#     process = "Wenu" if groups.flavor == "e" else "Wmunu"
-# else:
-#     process = "Zee" if groups.flavor == "ee" else "Zmumu"
-# base_process = process[0]
-# gen_axes = groups.gen_axes if args.genAxes is None else args.genAxes
-# groups.setNominalName(args.baseName)
-# groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=[process], nominalIfMissing=False)
-# # find bin widths
-# def get_histo(name, axis=None, entry=None):
-#     h = sum([groups.results[m.name]["output"][name].get()*groups.processScaleFactor(m) for m in groups.groups[process].members 
-#         if not m.name.endswith("OOA") and (base_process=="Z" or channel=="all" or channel in m.name)])
-#     if axis != None:
-#         h = h[{axis: entry}]
-#     h = h.project(*channel_axes)
-#     # for wlike the sample is randomly split in two based on reco charge
-#     this_scale = 2*scale if groups.mode == "wlike" else scale
-#     if "xnorm" in name:
-#         this_scale /= args.scaleXsec
-#     h = hh.scaleHist(h, 1./this_scale)
-#     return h
-
-# histo = get_histo(args.baseName)
-
-# histo_others = [get_histo(name) if len(args.selectAxis)==0 else get_histo(name, args.selectAxis[i], args.selectEntries[i]) for i, name in enumerate(args.varName)]
-
-
-                
-
-
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(args.outpath, args.outfolder)
