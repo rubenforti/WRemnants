@@ -39,6 +39,7 @@ pdfMap = {
         "entries" : 101,
         "alphas" : ["LHEPdfWeight[0]", "LHEPdfWeight[101]", "LHEPdfWeight[102]"],
         "alphasRange" : "002",
+        "inflationFactor": 2.5,
     },
     "ct18" : {
         "name" : "pdfCT18",
@@ -47,7 +48,8 @@ pdfMap = {
         "entries" : 59,
         "alphas" : ["LHEPdfWeightAltSet11[0]", "LHEPdfWeightAltSet11[59]", "LHEPdfWeightAltSet11[62]"],
         "alphasRange" : "002",
-        "scale" : 1/1.645 # Convert from 90% CL to 68%
+        "scale" : 1/1.645, # Convert from 90% CL to 68%
+        "inflationFactor": 1.0,
     },
     "nnpdf30" : {
         "name" : "pdfNNPDF30",
@@ -56,6 +58,7 @@ pdfMap = {
         "entries" : 101,
         "alphas" : ["LHEPdfWeightAltSet13[0]", "LHEPdfWeightAltSet15[0]", "LHEPdfWeightAltSet16[0]"],
         "alphasRange" : "001",
+        "inflationFactor": 1.0, # not determined
     },
     "nnpdf40" : {
         "name" : "pdfNNPDF40",
@@ -64,6 +67,7 @@ pdfMap = {
         "entries" : 51,
         "alphas" : ["LHEPdfWeightAltSet3[0]", "LHEPdfWeightAltSet3[51]", "LHEPdfWeightAltSet3[52]"],
         "alphasRange" : "001",
+        "inflationFactor": 4.0,
     },
     "pdf4lhc21" : {
         "name" : "pdfPDF4LHC21",
@@ -72,6 +76,7 @@ pdfMap = {
         "entries" : 41,
         "alphas" : ["LHEPdfWeightAltSet10[0]", "LHEPdfWeightAltSet10[41]", "LHEPdfWeightAltSet10[42]"],
         "alphasRange" : "001",
+        "inflationFactor": 1.0,
     },
     "msht20" : {
         "name" : "pdfMSHT20",
@@ -80,6 +85,37 @@ pdfMap = {
         "entries" : 65,
         "alphas" : ["LHEPdfWeightAltSet12[0]", "LHEPdfWeightAltSet12[67]", "LHEPdfWeightAltSet12[70]"],
         "alphasRange" : "002",
+        "inflationFactor": 1.5,
+    },
+    "msht20mcrange" : {
+        "name" : "pdfMSHT20mcrange",
+        "branch" : "LHEPdfWeightAltSet12",
+        "combine" : "asymHessian",
+        "entries" : 9,
+        "first_entry" : 72,
+    },
+    "msht20mbrange" : {
+        "name" : "pdfMSHT20mbrange",
+        "branch" : "LHEPdfWeightAltSet12",
+        "combine" : "asymHessian",
+        "entries" : 7,
+        "first_entry" : 81,
+    },
+    "msht20mcrange_renorm" : {
+        "name" : "pdfMSHT20mcrange",
+        "branch" : "LHEPdfWeightAltSet12",
+        "combine" : "asymHessian",
+        "entries" : 9,
+        "first_entry" : 72,
+        "renorm" : True,
+    },
+    "msht20mbrange_renorm" : {
+        "name" : "pdfMSHT20mbrange",
+        "branch" : "LHEPdfWeightAltSet12",
+        "combine" : "asymHessian",
+        "entries" : 7,
+        "first_entry" : 81,
+        "renorm" : True,
     },
     "msht20an3lo" : {
         "name" : "pdfMSHT20an3lo",
@@ -88,6 +124,7 @@ pdfMap = {
         "entries" : 105,
         "alphas" : ["LHEPdfWeightAltSet24[0]", "LHEPdfWeightAltSet24[108]", "LHEPdfWeightAltSet24[111]"],
         "alphasRange" : "002",
+        "inflationFactor": 1.5,
     },
     "ct18z" : {
         "name" : "pdfCT18Z",
@@ -97,7 +134,8 @@ pdfMap = {
         "first_entry" : 63,
         "alphas" : ["LHEPdfWeightAltSet11[63]", "LHEPdfWeightAltSet11[122]", "LHEPdfWeightAltSet11[125]"],
         "alphasRange" : "002",
-        "scale" : 1/1.645 # Convert from 90% CL to 68%
+        "scale" : 1/1.645, # Convert from 90% CL to 68%
+        "inflationFactor": 1.0,
     },
     "atlasWZj20" : {
         "name" : "pdfATLASWZJ20",
@@ -106,6 +144,7 @@ pdfMap = {
         "entries" : 60,
         "alphas" : ["LHEPdfWeight[0]", "LHEPdfWeight[41]", "LHEPdfWeight[42]"],
         "alphasRange" : "002",
+        "inflationFactor": 1.0,  # not determined
     },
     "herapdf20" : {
         "name" : "pdfHERAPDF20",
@@ -114,6 +153,7 @@ pdfMap = {
         "entries" : 29,
         "alphas" : ["LHEPdfWeightAltSet20[0]", "LHEPdfWeightAltSet22[0]", "LHEPdfWeightAltSet23[0]"], # alphas 116-120
         "alphasRange" : "002",
+        "inflationFactor": 4.0,
     },
     "herapdf20ext" : {
         "name" : "pdfHERAPDF20ext",
@@ -122,6 +162,7 @@ pdfMap = {
         "entries" : 14,
         "alphas" : ["LHEPdfWeightAltSet20[0]", "LHEPdfWeightAltSet22[0]", "LHEPdfWeightAltSet23[0]"], # dummy AS
         "alphasRange" : "002",
+        "inflationFactor": 4.0,
     },
 }
 
@@ -135,11 +176,14 @@ only_central_pdf_datasets = [
 
 extended_pdf_datasets = [x for x in common.vprocs_all if not any(y in x for y in ["NNLOPS", "MiNLO"])]
 
-def expand_pdf_entries(pdf):
+def expand_pdf_entries(pdf, renorm=False):
     info = pdfMap[pdf]
     first_entry = info.get("first_entry", 0)
     last_entry = first_entry+info["entries"]
-    return [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
+    vals = [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
+    if renorm:
+        vals = [f"std::clamp({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
+    return vals
 
 def define_scale_tensor(df):
     if "scaleWeights_tensor" in df.GetColumnNames():
@@ -154,8 +198,13 @@ def define_scale_tensor(df):
 theory_corr_weight_map = {
         "scetlib_dyturboMSHT20_pdfas" : pdfMap["msht20"]["alphas"],
         "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
+        "scetlib_dyturboCT18ZVars" : expand_pdf_entries("ct18z"),
+        "scetlib_dyturboCT18Z_pdfas" : pdfMap["ct18z"]["alphas"],
         "scetlib_dyturboMSHT20an3lo_pdfas" : pdfMap["msht20an3lo"]["alphas"],
         "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
+        # Tested this, better not to treat this way unless using MSHT20nnlo as central set
+        #"scetlib_dyturboMSHT20mbrange" : expand_pdf_entries("msht20mbrange", renorm=True),
+        #"scetlib_dyturboMSHT20mcrange" : expand_pdf_entries("msht20mcrange", renorm=True),
 }
 
 def define_dressed_vars(df, mode, flavor="mu"):
@@ -214,7 +263,7 @@ def define_dressed_vars(df, mode, flavor="mu"):
 
     return df
 
-def define_prefsr_vars(df):
+def define_prefsr_vars(df, mode=None):
     if "prefsrLeps" in df.GetColumnNames():
         logger.debug("PreFSR leptons are already defined, do nothing here.")
         return df
@@ -235,9 +284,9 @@ def define_prefsr_vars(df):
     df = df.Define("csSineCosThetaPhi", "wrem::csSineCosThetaPhi(genlanti, genl)")
 
     # define gen lepton in wlike case for ew corrections
-    df = df.Define("ptgen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
-    df = df.Define("etagen", "event % 2 == 0 ? genlanti.eta() : genl.eta()")
-    df = df.Define("qgen", "event % 2 == 0 ? -1 : 1")
+    df = df.Define("ptgen", "isEvenEvent ? genl.pt() : genlanti.pt()")
+    df = df.Define("etagen", "isEvenEvent ? genl.eta() : genlanti.eta()")
+    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
 
     return df
 
@@ -267,16 +316,16 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrLep_idx",     "ROOT::VecOps::ArgMax(GenPart_pt[postfsrLep])")
             df = df.Define("postfsrAntiLep_idx", "ROOT::VecOps::ArgMax(GenPart_pt[postfsrAntiLep])")
 
-            df = df.Define("postfsrLep_pt",     "event % 2 == 0 ? static_cast<double>(GenPart_pt[postfsrLep][postfsrLep_idx]) : static_cast<double>(GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx])")
-            df = df.Define("postfsrLep_eta",    "event % 2 == 0 ? GenPart_eta[postfsrLep][postfsrLep_idx] : GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx]")
-            df = df.Define("postfsrLep_phi",    "event % 2 == 0 ? GenPart_phi[postfsrLep][postfsrLep_idx] : GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx]")
-            df = df.Define("postfsrLep_mass",   "event % 2 == 0 ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
-            df = df.Define("postfsrLep_charge", "event % 2 == 0 ? -1 : 1")
+            df = df.Define("postfsrLep_pt",     "isEvenEvent ? static_cast<double>(GenPart_pt[postfsrLep][postfsrLep_idx]) : static_cast<double>(GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrLep_eta",    "isEvenEvent ? GenPart_eta[postfsrLep][postfsrLep_idx] : GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx]")
+            df = df.Define("postfsrLep_phi",    "isEvenEvent ? GenPart_phi[postfsrLep][postfsrLep_idx] : GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx]")
+            df = df.Define("postfsrLep_mass",   "isEvenEvent ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrLep_charge", "isEvenEvent ? 1 : -1")
 
-            df = df.Define("postfsrOtherLep_pt",   "event % 2 == 0 ? GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_pt[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_eta",  "event % 2 == 0 ? GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_eta[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_phi",  "event % 2 == 0 ? GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_phi[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_mass", "event % 2 == 0 ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrOtherLep_pt",   "isEvenEvent ? GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_pt[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_eta",  "isEvenEvent ? GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_eta[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_phi",  "isEvenEvent ? GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_phi[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_mass", "isEvenEvent ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
         
             df = df.Define("postfsrOtherLep_absEta", "static_cast<double>(std::fabs(postfsrOtherLep_eta))")
         else:
@@ -366,17 +415,19 @@ def pdf_info_map(dataset, pdfset):
     infoMap = pdfMap 
 
     # Just ignore PDF variations for non W/Z samples
-    if not (dataset[0] in ["W", "Z"] and dataset[1] not in ["W", "Z"]) \
+    if pdfset is None \
+        or not (dataset[0] in ["W", "Z"] and dataset[1] not in ["W", "Z"]) \
         or "horace" in dataset or (pdfset != "nnpdf31" and dataset in only_central_pdf_datasets) \
         or pdfset not in infoMap:
         raise ValueError(f"Skipping PDF {pdfset} for dataset {dataset}")
     return infoMap[pdfset]
 
 def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
-    if dataset_name not in common.vprocs_all or \
-            "horace" in dataset_name or \
-            "winhac" in dataset_name or \
-            "LHEPdfWeight" not in df.GetColumnNames():
+    if len(pdfs) == 0 \
+        or dataset_name not in common.vprocs_all \
+        or "horace" in dataset_name \
+        or "winhac" in dataset_name \
+        or "LHEPdfWeight" not in df.GetColumnNames():
         logger.warning(f"Did not find PDF weights for sample {dataset_name}! Using nominal PDF in sample")
         return df
 
@@ -396,7 +447,11 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         if pdfBranch not in df.GetColumnNames():
             return df
 
-        df = df.Define(tensorName, f"auto res = wrem::clip_tensor(wrem::vec_to_tensor_t<double, {entries}>({pdfBranch}, {start}), theory_weight_truncate); res = nominal_weight/central_pdf_weight*res; return res;")
+        if "renorm" in pdfInfo and pdfInfo["renorm"]:
+            df = df.Define(tensorName, f"auto res = wrem::vec_to_tensor_t<double, {entries}>({pdfBranch}, {start}); res = res/res(0); "
+                           "res = wrem::clip_tensor(res, theory_weight_truncate); res = res*nominal_weight; return res;")
+        else:
+            df = df.Define(tensorName, f"auto res = wrem::clip_tensor(wrem::vec_to_tensor_t<double, {entries}>({pdfBranch}, {start}), theory_weight_truncate); res = nominal_weight/central_pdf_weight*res; return res;")
 
         if i == 0:
             tensorNameNominal = tensorName
@@ -404,9 +459,10 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         if pdfName == "pdfMSHT20":
             df = pdfBugfixMSHT20(df, tensorName)
 
-        df = df.Define(tensorASName, f"Eigen::TensorFixedSize<double, Eigen::Sizes<{len(pdfInfo['alphas'])}>> res; " + \
-                " ".join([f"res({i}) = nominal_weight/central_pdf_weight*{p};" for i,p in enumerate(pdfInfo['alphas'])]) + \
-                "return wrem::clip_tensor(res, theory_weight_truncate)")
+        if "alphas" in pdfInfo:
+            df = df.Define(tensorASName, f"Eigen::TensorFixedSize<double, Eigen::Sizes<{len(pdfInfo['alphas'])}>> res; " + \
+                    " ".join([f"res({i}) = nominal_weight/central_pdf_weight*{p};" for i,p in enumerate(pdfInfo['alphas'])]) + \
+                    "return wrem::clip_tensor(res, theory_weight_truncate)")
 
     return df
 
@@ -433,9 +489,10 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
     df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
-    df = define_central_pdf_weight(df, dataset_name, args.pdfs[0])
+    df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
     df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr, 
-            modify_central_weight=not args.theoryCorrAltOnly)
+        modify_central_weight=not args.theoryCorrAltOnly)
+    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr)
 
     if args.highptscales:
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
@@ -444,10 +501,9 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
         
     return df 
 
-
 def build_weight_expr(df, exclude_weights=[]):
     valid_cols = df.GetColumnNames()
-    weights = ["weight", "central_pdf_weight", "theory_corr_weight", "exp_weight"]
+    weights = ["weight", "central_pdf_weight", "theory_corr_weight", "ew_theory_corr_weight", "exp_weight"]
     if weights[0] not in valid_cols:
         raise ValueError(f"The weight '{weights[0]}' must be defined in the histmaker!")
     found_weights = []
@@ -472,30 +528,46 @@ def define_nominal_weight(df):
     logger.debug("Defining nominal weight")
     return df.Define(f"nominal_weight", build_weight_expr(df))
 
+def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_weight=False):
+    df = df.Define(f"nominal_weight_ew_uncorr", build_weight_expr(df, exclude_weights=["ew_theory_corr_weight"]))
+
+    dataset_helpers = helpers.get(dataset_name, [])
+
+    if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
+        df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
+
+    for i, generator in enumerate(generators):
+        if generator not in dataset_helpers:
+            continue
+
+        logger.debug(f"Now at generator {i}: {generator}")
+        helper = dataset_helpers[generator]
+        df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
+        df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
+
+        if i == 0 and modify_central_weight:
+            df = df.Define("ew_theory_corr_weight", f"nominal_weight_ew_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_ew_uncorr")
+
+    return df
+
 def define_theory_corr(df, dataset_name, helpers, generators, modify_central_weight):
     df = df.Define(f"nominal_weight_uncorr", build_weight_expr(df, exclude_weights=["theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
-
+    
     if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
         df = df.DefinePerSample("theory_corr_weight", "1.0")
 
     for i, generator in enumerate(generators):
         if generator not in dataset_helpers:
             continue
-        
+
         logger.debug(f"Now at generator {i}: {generator}")
 
         helper = dataset_helpers[generator]
 
         if "Helicity" in generator:
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight_uncorr"])
-        elif 'ew' in generator:
-            if i != 0 and modify_central_weight:
-                df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
-            else:
-                df = df.Alias(f"ew_{generator}corr_weight", "nominal_weight_uncorr")
-            df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
         else:
             df = define_theory_corr_weight_column(df, generator)
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", f"{generator}_corr_weight"])

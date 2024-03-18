@@ -21,6 +21,11 @@ def valid_theory_corrections():
     matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
     return [m[1] for m in matches if m]+["none"]
 
+def valid_ew_theory_corrections():
+    corr_files = glob.glob(common.data_dir+"TheoryCorrections/*ew*Corr*.pkl.lz4")
+    matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
+    return [m[1] for m in matches if m]+["none"]
+
 def load_corr_helpers(procs, generators, make_tensor=True, base_dir=f"{common.data_dir}/TheoryCorrections/"):
     corr_helpers = {}
     for proc in procs:
@@ -123,6 +128,8 @@ def postprocess_corr_hist(corrh):
     resum_scale_vars_exclusive = [var for var in corrh.axes["vars"] if any(resum_scale in var for resum_scale in resum_scales)]
     resum_scale_vars = ["pdf0"] + resum_scale_vars_exclusive
 
+    if len(resum_scale_vars) == 1:
+        return corrh
 
     transition_vars_exclusive = ["transition_points0.2_0.35_1.0", "transition_points0.2_0.75_1.0"]
 

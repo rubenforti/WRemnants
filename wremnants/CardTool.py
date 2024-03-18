@@ -498,7 +498,7 @@ class CardTool(object):
             # so detect these and then call the bin lookup on them
             # np.iscomplex returns false for 0.j, but still want to detect that
             to_lookup = np.array([isinstance(x, complex) for x in skipEntry])
-            skip_arr = np.array(skipEntry)
+            skip_arr = np.array(skipEntry, dtype=object)
             if to_lookup.any():
                 nsyst = len(self.systematics[syst]["systAxes"])+self.systematics[syst]["mirror"]
                 bin_lookup = np.array([ax.index(x.imag) for x, ax in 
@@ -1132,7 +1132,9 @@ class CardTool(object):
 
         hists = {name: h} # always keep original variation in output file for checks
 
+        s = hist.tag.Slicer()
         for hname, histo in hists.items():
+
             if self.writeByCharge:
                 self.writeHistByCharge(histo, hname)
             else:
