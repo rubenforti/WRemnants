@@ -46,8 +46,8 @@ parser.add_argument("--histfile", type=str, help="Histogramer output file for co
 parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'xnorm', 'nominal', ...)", default="xnorm")
 parser.add_argument("--varNames", default=['uncorr'], type=str, nargs='+', help="Name of variation hist")
 parser.add_argument("--varLabels", default=['MiNNLO'], type=str, nargs='+', help="Label(s) of variation hist for plotting")
-parser.add_argument("--selectAxis", default=[None,], type=str, nargs='+', help="If you need to select a variation axis")
-parser.add_argument("--selectEntries", default=[None,], type=str, nargs='+', help="entries to read from the selected axis")
+parser.add_argument("--selectAxis", default=[], type=str, nargs='*', help="If you need to select a variation axis")
+parser.add_argument("--selectEntries", default=[], type=str, nargs='*', help="entries to read from the selected axis")
 parser.add_argument("--colors", default=['red',], type=str, nargs='+', help="Variation colors")
 
 args = parser.parse_args()
@@ -63,7 +63,7 @@ result, meta = fitresult_pois_to_hist(args.infile, args.poiTypes, uncertainties=
 if args.reference:
     result_ref, meta_ref = fitresult_pois_to_hist(args.reference, args.poiTypes, uncertainties=None)
 
-grouping = styles.nuisance_groupings[args.grouping] if args.grouping else None
+grouping = styles.nuisance_groupings.get(args.grouping, None)
 
 translate_label = {}
 if args.translate:
@@ -353,7 +353,7 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     uncertainties = make_yields_df([hist_err], ["Total", ], per_bin=True, yield_only=True, percentage=percentage)
     uncertainties["stat"] = make_yields_df([hist_err_stat], ["stat"], per_bin=True, yield_only=True, percentage=percentage)["stat"]
 
-    syst_labels = [x for x in hist_err_syst.axes["syst"] if x in grouping and x not in ["nominal", "stat", "total"]]
+    syst_labels = [x for x in hist_err_syst.axes["syst"] if (grouping is None or x in grouping) and x not in ["nominal", "stat", "total"]]
     NUM_COLORS = len(syst_labels) - 2
     cm = mpl.colormaps["gist_rainbow"]
     # add each systematic uncertainty
@@ -628,7 +628,7 @@ for poi_type, poi_result in result.items():
                 hist_ref = result_ref[poi_type][channel][proc][hist_name] if args.reference else None
 
                 if args.selectAxis and args.selectEntries:
-                    histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]
+                    histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]                
                 h_others = [h.project(*hist_nominal.axes.name) for h in histo_others]
 
                 if "xsec" in args.plots:

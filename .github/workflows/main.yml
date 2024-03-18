@@ -601,7 +601,7 @@ jobs:
   dilepton-plotting:
     # The type of runner that the job will run on
     runs-on: [self-hosted, linux, x64]
-    needs: [setenv, dilepton]
+    needs: [setenv, dilepton, wlike]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -642,6 +642,22 @@ jobs:
       - name: dilepton plotting phiStarll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName nominal_phiStarll --nominalRef nominal_phiStarll --hists phiStarll --fineGroups -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE
 
+      - name: dilepton combine ptll setup
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
+          -i $HIST_FILE --fitvar ptll --hdf5 --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --pseudoData uncorr
+
+      - name: dilepton ptll from wlike setup
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/ZMassDilepton.hdf5 --saveHists --computeHistErrors 
+          --externalPostfit $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.hdf5 
+          -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresult_combinetf2.hdf5
+
+      - name: dilepton ptll from wlike postfit
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py --postfix uncorr_fromWLike 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresult_combinetf2.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --rrange 1.03 0.97
 
   gen:
     # The type of runner that the job will run on
