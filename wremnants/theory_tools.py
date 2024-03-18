@@ -198,6 +198,8 @@ def define_scale_tensor(df):
 theory_corr_weight_map = {
         "scetlib_dyturboMSHT20_pdfas" : pdfMap["msht20"]["alphas"],
         "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
+        "scetlib_dyturboCT18ZVars" : expand_pdf_entries("ct18z"),
+        "scetlib_dyturboCT18Z_pdfas" : pdfMap["ct18z"]["alphas"],
         "scetlib_dyturboMSHT20an3lo_pdfas" : pdfMap["msht20an3lo"]["alphas"],
         "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
         # Tested this, better not to treat this way unless using MSHT20nnlo as central set
@@ -261,7 +263,7 @@ def define_dressed_vars(df, mode, flavor="mu"):
 
     return df
 
-def define_prefsr_vars(df):
+def define_prefsr_vars(df, mode=None):
     if "prefsrLeps" in df.GetColumnNames():
         logger.debug("PreFSR leptons are already defined, do nothing here.")
         return df
@@ -282,9 +284,9 @@ def define_prefsr_vars(df):
     df = df.Define("csSineCosThetaPhi", "wrem::csSineCosThetaPhi(genlanti, genl)")
 
     # define gen lepton in wlike case for ew corrections
-    df = df.Define("ptgen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
-    df = df.Define("etagen", "event % 2 == 0 ? genlanti.eta() : genl.eta()")
-    df = df.Define("qgen", "event % 2 == 0 ? -1 : 1")
+    df = df.Define("ptgen", "isEvenEvent ? genl.pt() : genlanti.pt()")
+    df = df.Define("etagen", "isEvenEvent ? genl.eta() : genlanti.eta()")
+    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
 
     return df
 
@@ -314,16 +316,16 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrLep_idx",     "ROOT::VecOps::ArgMax(GenPart_pt[postfsrLep])")
             df = df.Define("postfsrAntiLep_idx", "ROOT::VecOps::ArgMax(GenPart_pt[postfsrAntiLep])")
 
-            df = df.Define("postfsrLep_pt",     "event % 2 == 0 ? static_cast<double>(GenPart_pt[postfsrLep][postfsrLep_idx]) : static_cast<double>(GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx])")
-            df = df.Define("postfsrLep_eta",    "event % 2 == 0 ? GenPart_eta[postfsrLep][postfsrLep_idx] : GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx]")
-            df = df.Define("postfsrLep_phi",    "event % 2 == 0 ? GenPart_phi[postfsrLep][postfsrLep_idx] : GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx]")
-            df = df.Define("postfsrLep_mass",   "event % 2 == 0 ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
-            df = df.Define("postfsrLep_charge", "event % 2 == 0 ? -1 : 1")
+            df = df.Define("postfsrLep_pt",     "isEvenEvent ? static_cast<double>(GenPart_pt[postfsrLep][postfsrLep_idx]) : static_cast<double>(GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrLep_eta",    "isEvenEvent ? GenPart_eta[postfsrLep][postfsrLep_idx] : GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx]")
+            df = df.Define("postfsrLep_phi",    "isEvenEvent ? GenPart_phi[postfsrLep][postfsrLep_idx] : GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx]")
+            df = df.Define("postfsrLep_mass",   "isEvenEvent ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrLep_charge", "isEvenEvent ? 1 : -1")
 
-            df = df.Define("postfsrOtherLep_pt",   "event % 2 == 0 ? GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_pt[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_eta",  "event % 2 == 0 ? GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_eta[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_phi",  "event % 2 == 0 ? GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_phi[postfsrLep][postfsrLep_idx]")
-            df = df.Define("postfsrOtherLep_mass", "event % 2 == 0 ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
+            df = df.Define("postfsrOtherLep_pt",   "isEvenEvent ? GenPart_pt[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_pt[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_eta",  "isEvenEvent ? GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_eta[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_phi",  "isEvenEvent ? GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_phi[postfsrLep][postfsrLep_idx]")
+            df = df.Define("postfsrOtherLep_mass", "isEvenEvent ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
         
             df = df.Define("postfsrOtherLep_absEta", "static_cast<double>(std::fabs(postfsrOtherLep_eta))")
         else:
@@ -413,17 +415,19 @@ def pdf_info_map(dataset, pdfset):
     infoMap = pdfMap 
 
     # Just ignore PDF variations for non W/Z samples
-    if not (dataset[0] in ["W", "Z"] and dataset[1] not in ["W", "Z"]) \
+    if pdfset is None \
+        or not (dataset[0] in ["W", "Z"] and dataset[1] not in ["W", "Z"]) \
         or "horace" in dataset or (pdfset != "nnpdf31" and dataset in only_central_pdf_datasets) \
         or pdfset not in infoMap:
         raise ValueError(f"Skipping PDF {pdfset} for dataset {dataset}")
     return infoMap[pdfset]
 
 def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
-    if dataset_name not in common.vprocs_all or \
-            "horace" in dataset_name or \
-            "winhac" in dataset_name or \
-            "LHEPdfWeight" not in df.GetColumnNames():
+    if len(pdfs) == 0 \
+        or dataset_name not in common.vprocs_all \
+        or "horace" in dataset_name \
+        or "winhac" in dataset_name \
+        or "LHEPdfWeight" not in df.GetColumnNames():
         logger.warning(f"Did not find PDF weights for sample {dataset_name}! Using nominal PDF in sample")
         return df
 
@@ -485,9 +489,10 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
     df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
-    df = define_central_pdf_weight(df, dataset_name, args.pdfs[0])
+    df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
     df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr, 
-            modify_central_weight=not args.theoryCorrAltOnly)
+        modify_central_weight=not args.theoryCorrAltOnly)
+    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr)
 
     if args.highptscales:
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
@@ -496,10 +501,9 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
         
     return df 
 
-
 def build_weight_expr(df, exclude_weights=[]):
     valid_cols = df.GetColumnNames()
-    weights = ["weight", "central_pdf_weight", "theory_corr_weight", "exp_weight"]
+    weights = ["weight", "central_pdf_weight", "theory_corr_weight", "ew_theory_corr_weight", "exp_weight"]
     if weights[0] not in valid_cols:
         raise ValueError(f"The weight '{weights[0]}' must be defined in the histmaker!")
     found_weights = []
@@ -524,11 +528,33 @@ def define_nominal_weight(df):
     logger.debug("Defining nominal weight")
     return df.Define(f"nominal_weight", build_weight_expr(df))
 
+def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_weight=False):
+    df = df.Define(f"nominal_weight_ew_uncorr", build_weight_expr(df, exclude_weights=["ew_theory_corr_weight"]))
+
+    dataset_helpers = helpers.get(dataset_name, [])
+
+    if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
+        df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
+
+    for i, generator in enumerate(generators):
+        if generator not in dataset_helpers:
+            continue
+
+        logger.debug(f"Now at generator {i}: {generator}")
+        helper = dataset_helpers[generator]
+        df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
+        df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
+
+        if i == 0 and modify_central_weight:
+            df = df.Define("ew_theory_corr_weight", f"nominal_weight_ew_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_ew_uncorr")
+
+    return df
+
 def define_theory_corr(df, dataset_name, helpers, generators, modify_central_weight):
     df = df.Define(f"nominal_weight_uncorr", build_weight_expr(df, exclude_weights=["theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
-
+    
     if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
         df = df.DefinePerSample("theory_corr_weight", "1.0")
 
@@ -542,12 +568,6 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
 
         if "Helicity" in generator:
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight_uncorr"])
-        elif 'ew' in generator:
-            if i != 0 and modify_central_weight:
-                df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
-            else:
-                df = df.Alias(f"ew_{generator}corr_weight", "nominal_weight_uncorr")
-            df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
         else:
             df = define_theory_corr_weight_column(df, generator)
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", f"{generator}_corr_weight"])

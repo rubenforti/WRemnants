@@ -22,9 +22,9 @@ parser = common.set_parser_default(parser, "genVars", ["qGen", "ptGen", "absEtaG
 parser = common.set_parser_default(parser, "genBins", [18, 0])
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
-parser = common.set_parser_default(parser, "addTheoryCorr", ["virtual_ew_wlike", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
+parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 
-args = common.parse_histmaker_args(parser)
+args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 if args.unfolding:
@@ -104,11 +104,16 @@ z_non_closure_parametrized_helper, z_non_closure_binned_helper = muon_calibratio
 
 mc_calibration_helper, data_calibration_helper, calibration_uncertainty_helper = muon_calibration.make_muon_calibration_helpers(args)
 
+closure_unc_helper = wremnants.muon_calibration.make_closure_uncertainty_helper(common.closure_filepaths["parametrized"])
+closure_unc_helper_A = wremnants.muon_calibration.make_uniform_closure_uncertainty_helper(0, common.correlated_variation_base_size["A"])
+closure_unc_helper_M = wremnants.muon_calibration.make_uniform_closure_uncertainty_helper(2, common.correlated_variation_base_size["M"])
+
 smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing else muon_calibration.make_muon_smearing_helpers()
 
 bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibration else None
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
 # recoil initialization
 if not args.noRecoil:
@@ -122,12 +127,14 @@ def build_graph(df, dataset):
     isW = dataset.name in common.wprocs
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
-    apply_theory_corr = args.theoryCorr and dataset.name in corr_helpers
+    apply_theory_corr = theory_corrs and dataset.name in corr_helpers
 
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
+
+    df = df.Define("isEvenEvent", "event % 2 == 0")
 
     weightsum = df.SumAndCount("weight")
 
@@ -163,14 +170,14 @@ def build_graph(df, dataset):
     df = muon_selections.select_veto_muons(df, nMuons=2)
     df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True, isoDefinition=args.isolationDefinition)
 
-    df = muon_selections.define_trigger_muons(df, what_analysis=thisAnalysis)
+    df = muon_selections.define_trigger_muons(df)
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "trigMuons")
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "nonTrigMuons")
 
-    df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons_eta0", "trigMuons_phi0", era=era)
+    df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons", era=era)
 
     if dataset.is_data:
         df = df.DefinePerSample("nominal_weight", "1.0")
@@ -234,7 +241,21 @@ def build_graph(df, dataset):
     df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
     df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
     df = df.Filter(f"transverseMass >= {mtw_min}")
-    
+
+    if not args.onlyMainHistograms:
+        # plot reco vertex distribution before and after PU reweigthing
+        # also remove vertex weights since they depend on PU
+        if dataset.is_data:
+            df = df.DefinePerSample("nominal_weight_noPUandVtx", "1.0")
+        else:
+            df = df.Define("nominal_weight_noPUandVtx", "nominal_weight/(weight_pu*weight_vtx)")
+        axis_nRecoVtx = hist.axis.Regular(50, 0.5, 50.5, name="PV_npvsGood")
+        axis_fixedGridRhoFastjetAll = hist.axis.Regular(50, 0, 50, name="fixedGridRhoFastjetAll")
+        results.append(df.HistoBoost("PV_npvsGood_uncorr", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("PV_npvsGood", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight"]))
+        results.append(df.HistoBoost("fixedGridRhoFastjetAll_uncorr", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("fixedGridRhoFastjetAll", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight"]))
+
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
@@ -317,6 +338,62 @@ def build_graph(df, dataset):
                         storage=hist.storage.Double()
                     )
                     results.append(hist_Z_non_closure_parametrized_M)
+
+                if args.nonClosureScheme == "A-M-combined":
+                    df = df.DefinePerSample("AMFlag", "0x01 | 0x04")
+                    df = df.Define("Z_non_closure_parametrized", z_non_closure_parametrized_helper,
+                        [
+                            *input_kinematics,
+                            "nominal_weight",
+                            "AMFlag"
+                        ]
+                    )
+                    hist_Z_non_closure_parametrized = df.HistoBoost(
+                        "Z_non_closure_parametrized_gaus" if args.muonScaleVariation == 'smearingWeightsGaus' else "nominal_Z_non_closure_parametrized",
+                        axes,
+                        [*cols, "Z_non_closure_parametrized"],
+                        tensor_axes = z_non_closure_parametrized_helper.tensor_axes,
+                        storage=hist.storage.Double()
+                    )
+                    results.append(hist_Z_non_closure_parametrized)
+
+
+                # extra uncertainties from non-closure stats
+                df = df.Define("muonScaleClosSyst_responseWeights_tensor_splines", closure_unc_helper,
+                    [*input_kinematics, "nominal_weight"]
+                )
+                nominal_muonScaleClosSyst_responseWeights = df.HistoBoost(
+                    "nominal_muonScaleClosSyst_responseWeights", axes,
+                    [*cols, "muonScaleClosSyst_responseWeights_tensor_splines"],
+                    tensor_axes = closure_unc_helper.tensor_axes,
+                    storage = hist.storage.Double()
+                )
+                results.append(nominal_muonScaleClosSyst_responseWeights)
+
+                # extra uncertainties for A (fully correlated)
+                df = df.Define("muonScaleClosASyst_responseWeights_tensor_splines", closure_unc_helper_A,
+                    [*input_kinematics, "nominal_weight"]
+                )
+                nominal_muonScaleClosASyst_responseWeights = df.HistoBoost(
+                    "nominal_muonScaleClosASyst_responseWeights", axes,
+                    [*cols, "muonScaleClosASyst_responseWeights_tensor_splines"],
+                    tensor_axes = closure_unc_helper_A.tensor_axes,
+                    storage = hist.storage.Double()
+                )
+                results.append(nominal_muonScaleClosASyst_responseWeights)
+
+                # extra uncertainties for M (fully correlated)
+                df = df.Define("muonScaleClosMSyst_responseWeights_tensor_splines", closure_unc_helper_M,
+                    [*input_kinematics, "nominal_weight"]
+                )
+                nominal_muonScaleClosMSyst_responseWeights = df.HistoBoost(
+                    "nominal_muonScaleClosMSyst_responseWeights", axes,
+                    [*cols, "muonScaleClosMSyst_responseWeights_tensor_splines"],
+                    tensor_axes = closure_unc_helper_M.tensor_axes,
+                    storage = hist.storage.Double()
+                )
+                results.append(nominal_muonScaleClosMSyst_responseWeights)
+
             ####################################################
 
     if hasattr(dataset, "out_of_acceptance"):

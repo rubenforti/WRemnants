@@ -28,6 +28,8 @@ def syst_transform_map(base_hist, hist_name):
     transforms.update({pdf+"Down" : {"action" : lambda h,p=pdf: pdfUnc(h, p)[1] if "pdfVar" in h.axes.name else h} for pdf in pdfNames})
     transforms["scetlib_dyturboMSHT20Up"] = {"action" : lambda h: pdfUnc(h, "pdfMSHT20", "vars")[0], "procs" : common.vprocs_all}
     transforms["scetlib_dyturboMSHT20Down"] = {"action" : lambda h: pdfUnc(h, "pdfMSHT20", "vars")[1], "procs" : common.vprocs_all}
+    transforms["scetlib_dyturboCT18ZUp"] = {"action" : lambda h: pdfUnc(h, "pdfCT18Z", "vars")[0], "procs" : common.vprocs_all}
+    transforms["scetlib_dyturboCT18ZDown"] = {"action" : lambda h: pdfUnc(h, "pdfCT18Z", "vars")[1], "procs" : common.vprocs_all}
     transforms["scetlib_dyturboMSHT20an3loUp"] = {"action" : lambda h: pdfUnc(h, "pdfMSHT20", "vars")[0], "procs" : common.zprocs_all}
     transforms["scetlib_dyturboMSHT20an3loDown"] = {"action" : lambda h: pdfUnc(h, "pdfMSHT20", "vars")[1], "procs" : common.zprocs_all}
     transforms["ewUp"] = {"action" : lambda h,**args: h if "systIdx" not in h.axes.name else h[{"systIdx" : 0}]}
@@ -702,9 +704,10 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
 
     isZ = dataset_name in common.zprocs_all
 
-    if args.theoryCorr and dataset_name in corr_helpers:
+    theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+    if theory_corrs and dataset_name in corr_helpers:
         results.extend(theory_tools.make_theory_corr_hists(df, base_name, axes, cols, 
-            corr_helpers[dataset_name], args.theoryCorr, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, storage_type=storage_type)
+            corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, storage_type=storage_type)
         )
 
     if for_wmass or isZ:
