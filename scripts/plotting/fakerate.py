@@ -664,15 +664,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     fakerate_integration_axes = [a for a in ["eta","pt","charge"] if a not in args.vars]
     threshold = args.xBinsSideband[-1]
     
-    # h = hh.rebinHist(h, "pt", [26, 31, 40, 56])
-    h = hh.rebinHist(h, "pt", [26, 28, 30, 31, 33, 36, 40, 46, 56])
-    h = h[{"iso": hist.sum}]
+    h = hh.rebinHist(h, "pt", [26, 31, 40, 56])
+    # h = hh.rebinHist(h, "pt", [26, 28, 30, 31, 33, 36, 40, 46, 56])
+    # h = h[{"iso": hist.sum}]
     # h = h[{"iso": 0}]
 
     hss=[]
     labels=[]
 
-    info=dict(rebin_smoothing_axis=None, name_x="pt", name_y="mt", integrate_pass_x=False)
+    info=dict(rebin_smoothing_axis=None, integrate_pass_x=True)
 
     # signal selection
     hSel_sig = sel.SignalSelectorABCD(h, **info)
@@ -681,15 +681,10 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     labels.append("D")
     
     # simple ABCD
-    # hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
-    # hD_simple = hSel_simple.get_hist(h)
-    # hss.append(hD_simple)
-    # labels.append("simple")
-
-    hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, upper_bound_y=None)
+    hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
     hD_simple = hSel_simple.get_hist(h)
     hss.append(hD_simple)
-    labels.append("simple (pT vs. mT)")
+    labels.append("simple ABCD")
 
     # # interpolated ABCD
     # # interpolate in x
@@ -716,15 +711,11 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext5)
         labels.append("ext(5) smoothed")
     else:
-        # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
-        # hD_ext5 = hSel_ext5.get_hist(h)
-        # hss.append(hD_ext5)
-        # labels.append("ext(5) binned")
-
         hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
         hD_ext5 = hSel_ext5.get_hist(h)
         hss.append(hD_ext5)
-        labels.append("ext(5) binned (pT vs. mT)")
+        # labels.append("ext(5) binned")
+        labels.append("extende 1D")
 
         # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False upper_bound_y=hist.overflow)
         # hD_ext5 = hSel_ext5.get_hist(h)
@@ -743,11 +734,12 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext8)
         labels.append("ext(8) smoothed (full)")
     else:
-        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
-        #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
-        # hD_ext8 = hSel_ext8.get_hist(h)
-        # hss.append(hD_ext8)
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+            integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        hD_ext8 = hSel_ext8.get_hist(h)
+        hss.append(hD_ext8)
         # labels.append("ext(8) binned")
+        labels.append("extended 2D")
 
         # using fullcorrection
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
@@ -756,11 +748,11 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # hss.append(hD_ext8)
         # labels.append("ext(8) binned (full)")
 
-        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
-            integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
-        hD_ext8 = hSel_ext8.get_hist(h)
-        hss.append(hD_ext8)
-        labels.append("ext(8) binned (pT vs. mT)")
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
+        #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) binned (pT vs. mT)")
 
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=hist.overflow,
         #     integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
@@ -887,7 +879,9 @@ if __name__ == '__main__':
 
         if proc != groups.fakeName:
             plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothed=False)
-            plot_closure(h, outdir, suffix=f"{proc}_smoothed", proc=proc, smoothed=True)
+            # plot_closure(h, outdir, suffix=f"{proc}_smoothed", proc=proc, smoothed=True)
+
+        continue
 
         # plot fakerate factors for full extended ABCD method
         outdirFRF = output_tools.make_plot_dir(args.outpath, f"{args.outfolder}/fakerate_factor/")

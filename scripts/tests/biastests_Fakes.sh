@@ -24,10 +24,6 @@ elif [ "${ANALYSIS}" == "WMass" ]; then
     SETS=("asimov" ${PSEUDODATA[@]})
 fi
 
-TMP_PATH=/tmp/${PROJECT}
-# make temporary folder
-mkdir -p $TMP_PATH 
-
 for FITVAR in "${FITVARS[@]}"; do
     echo Run fits for: ${FITVAR}
 
@@ -36,7 +32,9 @@ for FITVAR in "${FITVARS[@]}"; do
     echo Run over: ${PSEUDODATA[@]}
     for PSEUDO1 in "${PSEUDODATA[@]}"; do
 
-        COMBINE_ANALYSIS_OUTDIR=${COMBINE_OUTDIR}/${PROJECT}/${ANALYSIS}_${FITVARSTING}_${PSEUDO1}/
+        SUBPROJECT=${ANALYSIS}_${FITVARSTING}
+
+        COMBINE_ANALYSIS_OUTDIR=${COMBINE_OUTDIR}/${PROJECT}/${SUBPROJECT}_${PSEUDO1}/
         COMBINE_ANALYSIS_PATH=${COMBINE_ANALYSIS_OUTDIR}/${ANALYSIS}.hdf5
 
         if [ -e $COMBINE_ANALYSIS_PATH ]; then
@@ -71,35 +69,35 @@ for FITVAR in "${FITVARS[@]}"; do
                     ${ANALYSIS}.hdf5 -p $PSEUDO2 --postfix $PSEUDO2 --binByBinStat --doImpacts  --saveHists --computeHistErrors
             fi
 
-            # # 3) plots
-            # # 3.1) prefit and postfit plots
-            # ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py \
-            #     $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.root -o $COMBINE_ANALYSIS_OUTDIR -f $PSEUDO2 --yscale '1.2' --rrange '0.9' '1.1' --prefit
-            # ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py \
-            #     $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.root -o $COMBINE_ANALYSIS_OUTDIR -f $PSEUDO2 --yscale '1.2' --rrange '0.99' '1.01'
+            # 3) plots
+            # 3.1) prefit and postfit plots
+            ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py \
+                $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.root -o $COMBINE_ANALYSIS_OUTDIR -f $PSEUDO2 --yscale '1.2' --rrange '0.9' '1.1' --prefit
+            ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py \
+                $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.root -o $COMBINE_ANALYSIS_OUTDIR -f $PSEUDO2 --yscale '1.2' --rrange '0.99' '1.01'
 
-            # # 3.2) impact plots
-            # if [ "${PSEUDO2}" != "asimov" ]; then
-            #     echo "Make impacts for ${PSEUDO2}"
-            #     if [ "${ANALYSIS}" == "ZMassDilepton" ]; then
-            #         ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py \
-            #             -r $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_asimov.hdf5 -f $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.hdf5 \
-            #             -m ungrouped --sortDescending -s constraint \
-            #             output --outFolder $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 -o impacts${ANALYSIS}_${FITVARSTING}.html --otherExtensions pdf png -n 50 
-            #             # --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json \
-            #     else
-            #         ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py \
-            #             -f $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.hdf5 \
-            #             --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json \
-            #             output --outFolder $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 -o impacts${ANALYSIS}_${FITVARSTING}.html --otherExtensions pdf png -n 50 
-            #             # -r $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_asimov.hdf5 \
-            #     fi
-            # fi
-            # mkdir -p /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${ANALYSIS}_${FITVARSTING}_${PSEUDO1}/
-            # mv $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${ANALYSIS}_${FITVARSTING}_${PSEUDO1}/
+            # 3.2) impact plots
+            if [ "${PSEUDO2}" != "asimov" ]; then
+                echo "Make impacts for ${PSEUDO2}"
+                if [ "${ANALYSIS}" == "ZMassDilepton" ]; then
+                    ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py \
+                        -r $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_asimov.hdf5 -f $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.hdf5 \
+                        -m ungrouped --sortDescending -s constraint \
+                        output --outFolder $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 -o impacts${SUBPROJECT}.html --otherExtensions pdf png -n 50 
+                        # --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json \
+                else
+                    ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py \
+                        -f $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_${PSEUDO2}.hdf5 \
+                        --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json \
+                        output --outFolder $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 -o impacts${SUBPROJECT}.html --otherExtensions pdf png -n 50 
+                        # -r $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_asimov.hdf5 \
+                fi
+            fi
+            mkdir -p /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${SUBPROJECT}_${PSEUDO1}/
+            mv $COMBINE_ANALYSIS_OUTDIR/$PSEUDO2 /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${SUBPROJECT}_${PSEUDO1}/
         done
 
-        COMBINE_ANALYSIS_OUTDIR=${COMBINE_OUTDIR}/${PROJECT}/${ANALYSIS}_${FITVARSTING}_closure_${PSEUDO1}/
+        COMBINE_ANALYSIS_OUTDIR=${COMBINE_OUTDIR}/${PROJECT}/${SUBPROJECT}_closure_${PSEUDO1}/
         COMBINE_ANALYSIS_PATH=${COMBINE_ANALYSIS_OUTDIR}/${ANALYSIS}.hdf5
 
         if [ -e $COMBINE_ANALYSIS_PATH ]; then
@@ -132,16 +130,18 @@ for FITVAR in "${FITVARS[@]}"; do
         ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py \
             -f $COMBINE_ANALYSIS_OUTDIR/fitresults_123456789_closure.hdf5 \
             --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json \
-            output --outFolder $COMBINE_ANALYSIS_OUTDIR/closure -o impacts${ANALYSIS}_${FITVARSTING}.html --otherExtensions pdf png -n 50 
-        mkdir -p /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${ANALYSIS}_${FITVARSTING}_closure/
-        mv $COMBINE_ANALYSIS_OUTDIR/closure /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${ANALYSIS}_${FITVARSTING}_closure/
+            output --outFolder $COMBINE_ANALYSIS_OUTDIR/closure -o impacts${SUBPROJECT}.html --otherExtensions pdf png -n 50 
 
+        mkdir -p /home/d/dwalter/www/WMassAnalysis/${PROJECT}/${SUBPROJECT}_closure/
     done
-    # # 5) make summary table
-    # ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/tests/summarytable_fakes.py \
-    #     ${COMBINE_OUTDIR}/${PROJECT}/${ANALYSIS}_${FITVARSTING}_*/fitresults_123456789_*.root -o $COMBINE_ANALYSIS_OUTDIR
-    # pdflatex -output-directory /home/d/dwalter/www/WMassAnalysis/${PROJECT}/ ${COMBINE_ANALYSIS_OUTDIR}/table_${ANALYSIS}.tex
-    # pdflatex -output-directory /home/d/dwalter/www/WMassAnalysis/${PROJECT}/ ${COMBINE_ANALYSIS_OUTDIR}/table_mass_${ANALYSIS}.tex
+    # 5) make summary table
+    ./scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/tests/summarytable_fakes.py \
+        ${COMBINE_OUTDIR}/${PROJECT}/${SUBPROJECT}_*/fitresults_123456789_*.root -o ${COMBINE_OUTDIR}/${PROJECT}/ -f ./
+        
+    pdflatex -output-directory ${COMBINE_OUTDIR}/${PROJECT}/ ${COMBINE_OUTDIR}/${PROJECT}/table_${ANALYSIS}.tex
+    pdflatex -output-directory ${COMBINE_OUTDIR}/${PROJECT}/ ${COMBINE_OUTDIR}/${PROJECT}/table_mass_${ANALYSIS}.tex
+
+    mv ${COMBINE_OUTDIR}/${PROJECT}/ /home/d/dwalter/www/WMassAnalysis/${PROJECT}/
 done
 
 # # 5) make big summary table

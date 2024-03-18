@@ -670,7 +670,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
     cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
-        # cardTool.addLnNSystematic("CMS_Fakes", processes=[cardTool.getFakeName()], size=1.20, group="CMS_background")
+        cardTool.addLnNSystematic("CMS_Fakes", processes=[cardTool.getFakeName()], size=1.10, group="CMS_background")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")
         cardTool.addSystematic("luminosity",
