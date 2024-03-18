@@ -33,8 +33,6 @@ else:
     parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 
 args = parser.parse_args()
-logger.error(args)
-quit()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 era = args.era
