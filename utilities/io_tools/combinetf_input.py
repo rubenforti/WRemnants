@@ -212,6 +212,8 @@ def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=Fals
     # select rows from base process
     if len(base_processes):
         mask = mask & df["Name"].apply(lambda x, p=base_processes: any([x.startswith(p) for p in base_processes]))
+    # remove rows that have additional axes that are not required (strip off process prefix and poi type postfix and compare length of gen axes assuming they are separated by '_')
+    mask = mask & df["Name"].apply(lambda x, a=gen_axes, b=base_processes: any(len(x.replace(p,"").split("_")[1:-1])==len(a) if x.startswith(p) else False for p in b))    
     # gen bin selections
     for k, v in selections.items():
         mask = mask & (df[k] == v)

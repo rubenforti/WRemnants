@@ -192,7 +192,7 @@ class HDF5Writer(object):
             channel_info[chan] = {
                 "era": dg.era,
                 "flavor": dg.flavor,
-                "lumi": dg.lumi*1000,
+                "lumi": dg.lumi,
                 "axes": [hist_nominal.axes[a] for a in axes]
             }
 

@@ -36,6 +36,33 @@ def fitresult_pois_to_hist(infile, poi_types = ["mu", "pmaskedexp", "pmaskedexpn
     fitresult = combinetf_input.get_fitresult(infile)
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
+
+    if merge_channels:
+        channel_info = {}
+        for chan, info in meta["channel_info"].items():
+            if chan.endswith("masked"):
+                continue
+            channel = f"chan_{channel_energy[info['era']]}"
+            if info['flavor'] in channel_flavor:
+                channel += f"_{channel_flavor[info['flavor']]}"
+
+            logger.debug(f"Merge channel {chan} into {channel}")
+
+            lumi = info["lumi"]    
+            gen_axes = info["gen_axes"]    
+
+            if channel not in channel_info:
+                channel_info[channel] = {
+                    "gen_axes": gen_axes,
+                    "lumi": lumi,
+                }
+            else:
+                if gen_axes != channel_info[channel]["gen_axes"]:
+                    raise RuntimeError(f"The gen axes are different among channels {channel_info}, so they can't be merged")
+                channel_info[channel]["lumi"] += lumi
+    else:
+        channel_info = meta["channel_info"]
+
     result = {}
     for poi_type in poi_types:
         logger.debug(f"Now at POI type {poi_type}")
@@ -43,49 +70,24 @@ def fitresult_pois_to_hist(infile, poi_types = ["mu", "pmaskedexp", "pmaskedexpn
         scale = 1 
         if poi_type in ["nois"]:
             scale = 1./(imeta["args"]["scaleNormXsecHistYields"]*imeta["args"]["priorNormXsec"])
-
         df = combinetf_input.read_impacts_pois(fitresult, poi_type=poi_type, group=grouped, uncertainties=uncertainties)
 
         result[poi_type] = {}
-
-        if merge_channels:
-            channel_info = {}
-            for chan, info in meta["channel_info"].items():
-                if chan.endswith("masked"):
-                    continue
-                channel = f"chan_{channel_energy[info['era']]}"
-                if info['flavor'] in channel_flavor:
-                    channel += f"_{channel_flavor[info['flavor']]}"
-
-                logger.debug(f"Merge channel {chan} into {channel}")
-
-                lumi = info["lumi"]    
-                gen_axes = info["gen_axes"]    
-
-                if channel not in channel_info:
-                    channel_info[channel] = {
-                        "gen_axes": gen_axes,
-                        "lumi": lumi,
-                    }
-                else:
-                    if gen_axes != channel_info[channel]["gen_axes"]:
-                        raise RuntimeError(f"The gen axes are different among channels {channel_info}, so they can't be merged")
-                    channel_info[channel]["lumi"] += lumi
-        else:
-            channel_info = meta["channel_info"]
-
         for channel, info in channel_info.items():
             logger.debug(f"Now at channel {channel}")
 
             channel_scale = scale
             if poi_type in ["pmaskedexp", "sumpois"]:
-                channel_scale = info["lumi"]
+                channel_scale = info["lumi"]*1000
 
             result[poi_type][channel] = {}
             for proc, gen_axes_proc in info["gen_axes"].items():
                 logger.debug(f"Now at proc {proc}")
 
                 if poi_type.startswith("sum"):
+                    if len(gen_axes_proc)==1:
+                        logger.info("Skip POI type {poi_type} since there is only one gen axis")
+                        continue
                     # make all possible lower dimensional gen axes combinations; wmass only combinations including qGen
                     gen_axes_permutations = [list(k) for n in range(1, len(gen_axes_proc)) for k in itertools.combinations(gen_axes_proc, n)]
                 else:

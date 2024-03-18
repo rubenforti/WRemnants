@@ -33,6 +33,8 @@ parser.add_argument("--logy", action='store_true', help="Make the yscale logarit
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
+parser.add_argument("--selectionAxes", type=str, default=["qGen", ], 
+    help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
     choices=["noi", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", ])
@@ -77,9 +79,9 @@ if args.histfile:
     groups.setNominalName(args.baseName)
     groups.setGenAxes([],[])
     groups.lumi=0.001
-    groups.copyGroup("Wmunu", "Wminus", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"))
-    groups.copyGroup("Wmunu", "Wplus", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"))
-
+    if "Wmunu" in groups.groups.keys():
+        groups.copyGroup("Wmunu", "Wminus", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"))
+        groups.copyGroup("Wmunu", "Wplus", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"))
 
 proc_dict = {"W_qGen0": "W^{-}", "W_qGen1": "W^{+}"}
 def get_xlabel(names, proc=""):
@@ -609,7 +611,7 @@ def plot_uncertainties_ratio(df, df_ref, poi_type, poi_type_ref, channel=None, e
 for poi_type, poi_result in result.items():
 
     for channel, channel_result in poi_result.items():
-        lumi = None#meta["channel_info"][channel]/1000.
+        lumi = None
 
         for proc, proc_result in channel_result.items():
             
@@ -624,31 +626,59 @@ for poi_type, poi_result in result.items():
             for hist_name in filter(lambda x: not any([x.endswith(y) for y in ["_stat","_syst"]]), proc_result.keys()):
                 hist_nominal = result[poi_type][channel][proc][hist_name]
                 hist_stat = result[poi_type][channel][proc][f"{hist_name}_stat"]
-
                 hist_ref = result_ref[poi_type][channel][proc][hist_name] if args.reference else None
-
                 if args.selectAxis and args.selectEntries:
                     histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]                
-                h_others = [h.project(*hist_nominal.axes.name) for h in histo_others]
 
-                if "xsec" in args.plots:
-                    plot_xsec_unfolded(hist_nominal, hist_stat, hist_ref, poi_type=poi_type, channel=channel, proc=proc, lumi=lumi,
-                        hist_others=h_others, 
-                        label_others=args.varLabels, 
-                        color_others=args.colors
-                    )
+                axes = hist_nominal.axes
+                hists_others = [h.project(*axes.name) for h in histo_others]
 
-                if "uncertainties" in args.plots:
-                    hist_syst = result[poi_type][channel][proc][f"{hist_name}_syst"]
+                selection_axes = [a for a in axes if a.name in args.selectionAxes]
+                if len(selection_axes) > 0:
+                    selection_bins = [np.arange(a.size) for a in axes if a.name in args.selectionAxes]
+                    other_axes = [a for a in axes if a not in selection_axes]
+                    iterator = itertools.product(*selection_bins)
+                else:
+                    iterator = [None]
 
-                    plot_uncertainties_unfolded(hist_nominal, hist_stat, hist_syst, poi_type=poi_type, channel=channel, proc = proc, lumi=lumi,
-                        relative_uncertainty=False,#True,
-                        # normalize=args.normalize, relative_uncertainty=not args.absolute, 
-                        logy=args.logy)
+                for bins in iterator:
+                    if bins == None:
+                        suffix = channel
+                        h_nominal = hist_nominal
+                        h_stat = hist_stat
+                        h_ref = hist_ref
+                        h_others = hists_others
+                    else: 
+                        idxs = {a.name: i for a, i in zip(selection_axes, bins) } 
+                        if len(other_axes) == 0:
+                            continue
+                        logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
+                        suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs.items()])
+                        h_nominal = hist_nominal[idxs]
+                        h_stat = hist_stat[idxs]
+                        h_ref = h_ref[idxs] if args.reference else None
+                        h_others = [h[idxs] for h in hists_others]
 
-                    # if "ratio" in args.plots:
-                    #     plot_uncertainties_ratio(data_c, data_c_ref, poi_type, poi_type_ref, edges=edges, channel=channel, scale=scale, 
-                    #         normalize=args.normalize, relative_uncertainty=not args.absolute, logy=args.logy, process_label = process_label, axes=channel_axes)
+                    if "xsec" in args.plots:
+                        plot_xsec_unfolded(h_nominal, h_stat, h_ref, poi_type=poi_type, channel=suffix, proc=proc, lumi=lumi,
+                            hist_others=h_others, 
+                            label_others=args.varLabels, 
+                            color_others=args.colors
+                        )
+
+                    if "uncertainties" in args.plots:
+                        h_systs = result[poi_type][channel][proc][f"{hist_name}_syst"]
+                        if bins != None:
+                            h_systs = h_systs[{**idxs, "syst": slice(None)}]
+
+                        plot_uncertainties_unfolded(h_nominal, h_stat, h_systs, poi_type=poi_type, channel=suffix, proc = proc, lumi=lumi,
+                            relative_uncertainty=False,#True,
+                            # normalize=args.normalize, relative_uncertainty=not args.absolute, 
+                            logy=args.logy)
+
+                        # if "ratio" in args.plots:
+                        #     plot_uncertainties_ratio(data_c, data_c_ref, poi_type, poi_type_ref, edges=edges, channel=channel, scale=scale, 
+                        #         normalize=args.normalize, relative_uncertainty=not args.absolute, logy=args.logy, process_label = process_label, axes=channel_axes)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(args.outpath, args.outfolder)

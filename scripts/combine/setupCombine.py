@@ -253,14 +253,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         
     # define sumGroups for integrated cross section
     if args.unfolding and not args.poiAsNoi:
-        # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
-        if wmass and "qGen" in datagroups.gen_axes_names:
-            if "plus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen1")
-            if "minus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen0")
-        else:
-            cardTool.addPOISumGroups()
+        cardTool.addPOISumGroups()
 
     if args.noHist:
         cardTool.skipHistograms()

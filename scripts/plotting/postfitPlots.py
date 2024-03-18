@@ -188,12 +188,13 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     stack_yields = None
     unstacked_yields = None
+    kwargs=dict()
     if meta is not None:
-        kwargs=dict(analysis_meta_info={"AnalysisOutput" : meta["meta_info"],},)
-        if "meta_info_combinetf2" in meta:
-            kwargs["analysis_meta_info"]["Combinetf2Output"] = meta["meta_info_combinetf2"]
-    else:
-        kwargs=dict()
+        if "meta_info_input" in meta:
+            analysis_meta_info={"Combinetf2Output" : meta["meta_info"], "AnalysisOutput": meta["meta_info_input"]["meta_info"]}
+        else:
+            analysis_meta_info={"AnalysisOutput" : meta["meta_info"]}
+        kwargs["analysis_meta_info"] = analysis_meta_info
 
     plot_tools.write_index_and_log(outdir, outfile, 
         yield_tables={
@@ -223,7 +224,8 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
         make_plot(hist_data, hist_inclusive, hist_stack, axes, suffix=channel, *opts, **kwopts)
 
 if combinetf2:
-    meta = fitresult["meta"].get()
+    meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
+    meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
     labels, colors, procs = get_labels_colors_procs_sorted(procs)
 
@@ -231,7 +233,7 @@ if combinetf2:
     if f"chi2_{fittype}" in fitresult:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf"]
 
-    for channel, info in meta["channel_info"].items():
+    for channel, info in meta_input["channel_info"].items():
         hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
@@ -344,7 +346,7 @@ else:
         else:
             chi2 = None
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True, lumi=args.lumi)
+        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(args.outpath, args.outfolder)
