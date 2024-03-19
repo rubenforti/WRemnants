@@ -62,19 +62,20 @@ translate_selection = {
 
 def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False):
     axes_names = [a.name for a in axes]
-    axis_name = "_".join([a for a in axes_names])
     if len(h_data.axes) > 1:
         # make unrolled 1D histograms
-        if "eta" in axes_names: # convention is to plot eta-pt 
+        if "eta" in axes_names or "etaAbsEta" in axes_names: # convention is to plot eta-pt 
             axes_names = axes_names[::-1]
         h_data = sel.unrolledHist(h_data, binwnorm=1, obs=axes_names)
         h_inclusive = sel.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
         h_stack = [sel.unrolledHist(h, binwnorm=1, obs=axes_names) for h in h_stack]
 
+    axis_name = "_".join([a for a in axes_names])
+    xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
     if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, styles.xlabels.get(axis_name, "Bin number"), "Entries/bin", args.ylim, "Data/Pred.", args.rrange)
+        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, "Entries/bin", args.ylim, "Data/Pred.", args.rrange)
     else:
-        fig, ax1 = plot_tools.figure(h_data, styles.xlabels.get(axis_name, "Bin number"), "Entries/bin", args.ylim)
+        fig, ax1 = plot_tools.figure(h_data, xlabel, "Entries/bin", args.ylim)
 
     hep.histplot(
         h_stack,
@@ -166,7 +167,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
         label=args.cmsDecor, data=data)
 
-    plot_tools.addLegend(ax1, ncols=2, text_size=20*args.scaleleg)
+    plot_tools.addLegend(ax1, ncols=2, text_size=20*args.scaleleg*scale)
     plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
