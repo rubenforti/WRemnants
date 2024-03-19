@@ -815,6 +815,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not input_tools.args_from_metadata(cardTool, "noSmearing"):
         cardTool.addSystematic("muonResolutionSyst_responseWeights", 
             mirror = True,
+            # scale=10,
             processes=['single_v_samples'],
             group="resolutionCrctn",
             splitGroup={f"muonCalibration" : f".*"},

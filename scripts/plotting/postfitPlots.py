@@ -64,7 +64,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     axes_names = [a.name for a in axes]
     if len(h_data.axes) > 1:
         # make unrolled 1D histograms
-        if "eta" in axes_names or "etaAbsEta" in axes_names: # convention is to plot eta-pt 
+        if axes_names[-1].startswith("eta"): # convention is to plot eta-pt 
             axes_names = axes_names[::-1]
         h_data = sel.unrolledHist(h_data, binwnorm=1, obs=axes_names)
         h_inclusive = sel.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
@@ -158,8 +158,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             chi2_name = "\chi_{\mathrm{sat.}}^2/ndf"
         else:
             chi2_name = "\chi^2/ndf"
-        plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-            fontsize=20*args.scaleleg*scale)
+        if len(h_data.values())<100:
+            plt.text(0.05, 0.94, f"${chi2_name}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+                fontsize=20*args.scaleleg*scale)  
+            plt.text(0.05, 0.86, f"$= {round(chi2[0],1)}/{chi2[1]}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+                fontsize=20*args.scaleleg*scale)  
+        else:
+            plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+                fontsize=20*args.scaleleg*scale)
 
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")

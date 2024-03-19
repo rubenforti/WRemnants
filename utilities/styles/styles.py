@@ -48,7 +48,7 @@ process_labels = {
     "Wenu": r"W$^{\pm}\to e\nu$",
     "Wtaunu": r"W$^{\pm}\to\tau\nu$",
     "DYlowMass": r"Z$\to\mu\mu$, $10<m<50$ GeV",
-    "PhotonInduced": "Photon-induced EW",
+    "PhotonInduced": r"$\gamma$-induced",
     "Top": "Top",
     "Diboson": "Diboson",
     "QCD": "QCD MC",
