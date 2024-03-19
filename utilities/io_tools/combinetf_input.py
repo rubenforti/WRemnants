@@ -233,7 +233,9 @@ def read_impacts_pois(fileobject, poi_type, scale=1.0, group=True, uncertainties
         res = read_impacts_pois_h5(fileobject, poi_type, group, uncertainties)
     else:
         raise IOError(f"Unknown fitresult format for object {fileobject}")
-
+    if res is None:
+        return None
+        
     df = pd.DataFrame({"Name":res[0], "value":res[1], "err_total":res[2], **res[3]})
 
     if scale != 1:
@@ -245,9 +247,11 @@ def read_impacts_pois(fileobject, poi_type, scale=1.0, group=True, uncertainties
     return df
 
 def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
+    if f"{poi_type}_names" not in h5file.keys():
+        logger.warning(f"{poi_type}_names not found in fitresult file")
+        return None
     names = h5file[f"{poi_type}_names"][...].astype(str)
     centrals = h5file[f"{poi_type}_outvals"][...]
-
     npoi = len(names)
     # make matrix between POIs only; assume POIs come first
     totals = np.sqrt(np.diagonal(h5file[f"{poi_type}_outcov"][:npoi,:npoi]))
@@ -280,7 +284,7 @@ def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
 def read_impacts_pois_root(rtfile, poi_type, group=True, uncertainties=None):   
     histname = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
     if f"{histname};1" not in rtfile.keys():
-        raise RuntimeError(f"Histogram {histname};1 not found in fitresult file")
+        logger.warning(f"Histogram {histname};1 not found in fitresult file")
         return None
     impacts = rtfile[histname].to_hist()
 

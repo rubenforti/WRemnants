@@ -67,10 +67,14 @@ def fitresult_pois_to_hist(infile, poi_types = ["mu", "pmaskedexp", "pmaskedexpn
     for poi_type in poi_types:
         logger.debug(f"Now at POI type {poi_type}")
 
+        df = combinetf_input.read_impacts_pois(fitresult, poi_type=poi_type, group=grouped, uncertainties=uncertainties)
+        if df is None:
+            logger.warning(f"POI type {poi_type} not found in histogram, continue with next one")
+            continue
+
         scale = 1 
         if poi_type in ["nois"]:
             scale = 1./(imeta["args"]["scaleNormXsecHistYields"]*imeta["args"]["priorNormXsec"])
-        df = combinetf_input.read_impacts_pois(fitresult, poi_type=poi_type, group=grouped, uncertainties=uncertainties)
 
         result[poi_type] = {}
         for channel, info in channel_info.items():
