@@ -160,16 +160,16 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 # add gen charge as additional axis
                 datagroups.groups[base_group].memberOp = [ (lambda h, m=member: hh.addGenChargeAxis(h, 
                     idx=0 if "minus" in m.name else 1)) for member in datagroups.groups[base_group].members]
-                xnorm_axes = ["qGen", *datagroups.gen_axes]
+                xnorm_axes = ["qGen", *datagroups.gen_axes_names]
             else:
-                xnorm_axes = datagroups.gen_axes[:]
+                xnorm_axes = datagroups.gen_axes_names[:]
             datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar])
     
     if args.poiAsNoi:
         constrainMass = False if args.theoryAgnostic else True
-        poi_axes = datagroups.gen_axes if args.genAxes is None else args.genAxes
+        poi_axes = datagroups.gen_axes_names if args.genAxes is None else args.genAxes
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
-        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes if a not in poi_axes])
+        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
 
         # FIXME: temporary customization of signal and out-of-acceptance process names for theory agnostic with POI as NOI
         # There might be a better way to do it more homogeneously with the rest.
@@ -195,12 +195,12 @@ def setup(args, inputFile, fitvar, xnorm=False):
     elif args.unfolding or args.theoryAgnostic:
         constrainMass = False if args.theoryAgnostic else True
         datagroups.setGenAxes(args.genAxes)
-        if wmass and "qGen" in datagroups.gen_axes:
+        if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen0", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen0", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
             if "plus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen1", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen1", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
         
@@ -253,14 +253,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         
     # define sumGroups for integrated cross section
     if args.unfolding and not args.poiAsNoi:
-        # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
-        if wmass and "qGen" in datagroups.gen_axes:
-            if "plus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen1")
-            if "minus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen0")
-        else:
-            cardTool.addPOISumGroups()
+        cardTool.addPOISumGroups()
 
     if args.noHist:
         cardTool.skipHistograms()

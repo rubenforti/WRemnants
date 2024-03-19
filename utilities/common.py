@@ -126,13 +126,16 @@ def set_parser_default(parser, argument, newDefault):
         logger.warning(f" Parser argument {argument} not found!")
     return parser
 
-def common_parser(for_reco_highPU=False):
-
+def base_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
     parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
+    return parser
+
+def common_parser(for_reco_highPU=False):
+    parser = base_parser()
+    parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     initargs,_ = parser.parse_known_args()
 
     # initName for this internal logger is needed to avoid conflicts with the main logger named "wremnants" by default,
@@ -255,10 +258,7 @@ def common_parser(for_reco_highPU=False):
     return parser,initargs
 
 def plot_parser():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
-                        help="Set verbosity level with logging, the larger the more verbose")
-    parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
+    parser = base_parser()
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
     parser.add_argument("-f", "--outfolder", type=str, default="./test", help="Subfolder for output")
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")

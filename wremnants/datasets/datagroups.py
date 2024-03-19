@@ -69,14 +69,18 @@ class Datagroups(object):
         self.unconstrainedProcesses = []
         self.fakeName = "Fake"
         self.dataName = "Data"
-        self.setGenAxes()
+        self.gen_axes = {}
         self.fakerate_axes = ["pt", "eta", "charge"]
         self.fakerate_integration_axes = []
 
+        self.setGenAxes()
+
         if "lowpu" in self.mode:
             from wremnants.datasets.datagroupsLowPU import make_datagroups_lowPU as make_datagroups
+            self.era = "2017H"
         else:
             from wremnants.datasets.datagroups2016 import make_datagroups_2016 as make_datagroups
+            self.era = "2016postVFP"
 
         make_datagroups(self, **kwargs)
 
@@ -503,11 +507,11 @@ class Datagroups(object):
                 raise ValueError(f"In setSelectOp(): process {proc} not found")
             self.groups[proc].selectOp = op
 
-    def setGenAxes(self, gen_axes=None, sum_gen_axes=None):
-        # gen_axes are the axes to be recognized as gen axes, e.g. for the unfolding
-        # sum_gen_axes are all gen axes that are potentially in the produced histogram and integrated over if not used
-        if isinstance(gen_axes, str):
-            gen_axes = [gen_axes]
+    def setGenAxes(self, gen_axes_names=None, sum_gen_axes=None):
+        # gen_axes_names are the axes names to be recognized as gen axes, e.g. for the unfolding
+        # sum_gen_axes are all gen axes names that are potentially in the produced histogram and integrated over if not used
+        if isinstance(gen_axes_names, str):
+            gen_axes_names = [gen_axes_names]
         if isinstance(sum_gen_axes, str):
             sum_gen_axes = [sum_gen_axes]
 
@@ -523,14 +527,14 @@ class Datagroups(object):
         if self.mode in ["wmass", "lowpu_w"]:
             self.all_gen_axes = ["qGen", *self.all_gen_axes]
 
-        self.gen_axes = list(gen_axes) if gen_axes != None else self.all_gen_axes
+        self.gen_axes_names = list(gen_axes_names) if gen_axes_names != None else self.all_gen_axes
         self.sum_gen_axes = list(sum_gen_axes) if sum_gen_axes != None else self.all_gen_axes
 
-        logger.debug(f"Gen axes are now {self.gen_axes}")
+        logger.debug(f"Gen axes are now {self.gen_axes_names}")
 
     def getGenBinIndices(self, h, axesToRead=None):
         gen_bins = []
-        for gen_axis in (self.gen_axes if axesToRead is None else axesToRead):
+        for gen_axis in (self.gen_axes_names if axesToRead is None else axesToRead):
             if gen_axis not in h.axes.name:
                 raise RuntimeError(f"Gen axis '{gen_axis}' not found in histogram axes '{h.axes.name}'!")
 
@@ -546,7 +550,7 @@ class Datagroups(object):
         if group_name not in self.groups.keys():
             raise RuntimeError(f"Base group {group_name} not found in groups {self.groups.keys()}!")
         if axesToRead is None:
-            axesToRead = self.gen_axes
+            axesToRead = self.gen_axes_names
         base_members = self.groups[group_name].members[:]
         if member_filter is not None:
             base_members = [m for m in filter(lambda x, f=member_filter: f(x), base_members)]            
@@ -554,6 +558,9 @@ class Datagroups(object):
         if histToReadAxes not in self.results[base_members[0].name]["output"]:
             raise ValueError(f"Results for member {base_members[0].name} does not include xnorm. Found {self.results[base_members[0].name]['output'].keys()}")
         nominal_hist = self.results[base_members[0].name]["output"][histToReadAxes].get()
+
+        self.gen_axes[new_name] = [ax for ax in nominal_hist.axes if ax.name in axesToRead]
+        logger.debug(f"New gen axes are: {self.gen_axes}")
 
         gen_bin_indices = self.getGenBinIndices(nominal_hist, axesToRead=axesToRead)
 
