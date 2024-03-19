@@ -443,7 +443,7 @@ def build_graph(df, dataset):
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
             
-            if isZveto:
+            if isZveto and not args.noGenMatchMC:
                 df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
                 weight_expr += "*weight_vetoSF_nominal"
             
@@ -570,7 +570,7 @@ def build_graph(df, dataset):
             if not isQCDMC and not args.noScaleFactors:
                 df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
                     what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
-                if isZveto:
+                if isZveto and not args.noGenMatchMC:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes

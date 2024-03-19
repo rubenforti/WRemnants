@@ -25,10 +25,10 @@ namespace wrem {
 			double sf = 1.0;
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
-				auto const x = sf_veto_plus_->template axis<0>().index(eta);
-				auto const y = sf_veto_plus_->template axis<1>().index(pt);
-				if (charge>0) sf = sf_veto_plus_->at(x,y,0).value();
-				else sf = sf_veto_minus_->at(x,y,0).value();
+				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
+				auto const iy = sf_veto_plus_->template axis<1>().index(pt);
+				if (charge>0) sf = sf_veto_plus_->at(ix,iy,0).value();
+				else sf = sf_veto_minus_->at(ix,iy,0).value();
 			}
 
 			return sf;
@@ -43,13 +43,13 @@ namespace wrem {
 			res.setConstant(1.0);
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
-				auto const x = sf_veto_plus_->template axis<0>().index(eta);
-				auto const y = sf_veto_plus_->template axis<1>().index(pt);
+				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
+				auto const iy = sf_veto_plus_->template axis<1>().index(pt);
 				for (int step = 0; step < Steps; step++) {
 					for (int ns = 0; ns < NSysts; ns++) {
-						if ((ns == 0) || (ns == (x+1))) {
-							if (charge>0) res(step, ns) = sf_veto_plus_->at(x,y,1+2*NPtEigenBins+step).value()/sf_veto_plus_->at(x,y,0).value();
-							else res(step, ns) = sf_veto_minus_->at(x,y,1+2*NPtEigenBins+step).value()/sf_veto_minus_->at(x,y,0).value();
+						if ((ns == 0) || (ns == (ix+1))) {
+							if (charge>0) res(step, ns) = sf_veto_plus_->at(ix,iy,1+2*NPtEigenBins+step).value()/sf_veto_plus_->at(ix,iy,0).value();
+							else res(step, ns) = sf_veto_minus_->at(ix,iy,1+2*NPtEigenBins+step).value()/sf_veto_minus_->at(ix,iy,0).value();
 						}
 						else res(step, ns) = 1.;
 					}
@@ -66,11 +66,11 @@ namespace wrem {
 			res.setConstant(1.0);
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
-				auto const x = sf_veto_plus_->template axis<0>().index(eta);
-				auto const y = sf_veto_plus_->template axis<1>().index(pt);
+				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
+				auto const iy = sf_veto_plus_->template axis<1>().index(pt);
 				for (int tensor_eigen_idx = 1; tensor_eigen_idx <= NPtEigenBins; tensor_eigen_idx++) {
-					if (charge > 0) res(x, tensor_eigen_idx-1, 1) *= sf_veto_plus_->at(x,y,tensor_eigen_idx).value()/sf_veto_plus_->at(x,y,0).value();
-					else res(x, tensor_eigen_idx-1, 0) *= sf_veto_minus_->at(x,y,tensor_eigen_idx).value()/sf_veto_minus_->at(x,y,0).value();
+					if (charge > 0) res(ix, tensor_eigen_idx-1, 1) *= sf_veto_plus_->at(ix,iy,tensor_eigen_idx).value()/sf_veto_plus_->at(ix,iy,0).value();
+					else res(ix, tensor_eigen_idx-1, 0) *= sf_veto_minus_->at(ix,iy,tensor_eigen_idx).value()/sf_veto_minus_->at(ix,iy,0).value();
 				}
 			}
 				

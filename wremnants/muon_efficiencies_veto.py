@@ -19,8 +19,8 @@ narf.clingutils.Declare('#include "muon_efficiencies_veto.h"')
 
 data_dir = common.data_dir
 
-def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smoothedSFandEffi_newveto_inflated_GtoH_plus.root",
-                                      filename_minus = data_dir + "/muonSF/smoothedSFandEffi_newveto_inflated_GtoH_minus.root",
+def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_plus.root",
+                                      filename_minus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_minus.root",
                                       era = None):
     
     logger.debug(f"Make efficiency helper veto")
