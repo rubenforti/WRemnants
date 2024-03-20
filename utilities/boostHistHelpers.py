@@ -497,19 +497,26 @@ def projectNoFlow(h, proj_ax, exclude=[]):
     hnoflow = h[{ax : s[0:hist.overflow:hist.sum] for ax in h.axes.name if ax not in exclude+list(proj_ax)}]
     return hnoflow.project(*proj_ax) 
 
-def unrolledHist(h, obs=["pt", "eta"], binwnorm=None):
+def unrolledHist(h, obs=None, binwnorm=None, add_flow_bins=False):
+    # add_flow_bins to add the overflow and underflow bins into bins of the unrolled histogram
     if obs is not None:
         hproj = h.project(*obs)
     else:
         hproj = h
-    if binwnorm:        
-        binwidths = np.outer(*[np.diff(e.squeeze()) for e in hproj.axes.edges]).flatten()
+
+    if binwnorm:
+        edges = plot_tools.extendEdgesByFlow(hproj) if add_flow_bins else hproj.axes.edges
+        binwidths = np.outer(*[np.diff(e.squeeze()) for e in edges]).flatten()
         scale = binwnorm/binwidths
     else:
         scale = 1
-    bins = np.product(hproj.axes.size)
-    newh = hist.Hist(hist.axis.Integer(0, bins), storage=hproj._storage_type())
-    newh[...] = np.ravel(hproj)*scale
+
+    bins = np.product(hproj.axes.extent) if add_flow_bins else np.product(hproj.axes.size)
+    newh = hist.Hist(hist.axis.Integer(0, bins, underflow=False, overflow=False), storage=hproj._storage_type())
+    if hproj._storage_type() == hist.storage.Double():
+        newh.view(flow=False)[...] = np.ravel(hproj.values(flow=add_flow_bins))*scale
+    else:
+        newh.view(flow=False)[...] = np.stack([np.ravel(hproj.values(flow=add_flow_bins))*scale, np.ravel(hproj.variances(flow=add_flow_bins))*scale**2], axis=-1)
     return newh
 
 def transfer_variances(h1, h2, flow=True):
