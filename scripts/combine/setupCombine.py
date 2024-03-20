@@ -667,6 +667,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 passToFakes=passSystToFakes)
         ## TODO: implement second lepton veto for low PU (both electrons and muons)
         if not lowPU:
+            pass
             '''
             # eta decorrelated nuisances
             decorrVarAxis = "eta"
@@ -759,47 +760,48 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     splitGroup=splitGroupDict,
                 )
 
-            allEffTnP_veto = ["effStatTnP_newveto_sf", "effSystTnP_newveto"]
-            for name in allEffTnP_veto:
-                if "Syst" in name:
-                    axes = ["newveto_reco-newveto_tracking-newveto_idip", "n_syst_variations"]
-                    axlabels = ["WPSYST", "_etaDecorr"]
-                    nameReplace = [("WPSYST0", "newveto_reco"), ("WPSYST1", "newveto_tracking"), ("WPSYST2", "newveto_idip"), ("effSystTnP_newveto", "effSyst_newveto"), ("etaDecorr0", "fullyCorr") ]
-                    scale = 1.0
-                    mirror = True
-                    mirrorDownVarEqualToNomi=False
-                    groupName = "muon_eff_newveto_syst"
-                    splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_newveto.*{x}" for x in list(["reco","tracking","idip"])}
-                else:
-                    nameReplace = []
-                    mirror = True
-                    mirrorDownVarEqualToNomi=False
-                    if args.binnedScaleFactors:
-                        axes = ["SF eta", "nPtBins", "SF charge"]
+            if wmass:
+                allEffTnP_veto = ["effStatTnP_newveto_sf", "effSystTnP_newveto"]
+                for name in allEffTnP_veto:
+                    if "Syst" in name:
+                        axes = ["newveto_reco-newveto_tracking-newveto_idip", "n_syst_variations"]
+                        axlabels = ["WPSYST", "_etaDecorr"]
+                        nameReplace = [("WPSYST0", "newveto_reco"), ("WPSYST1", "newveto_tracking"), ("WPSYST2", "newveto_idip"), ("effSystTnP_newveto", "effSyst_newveto"), ("etaDecorr0", "fullyCorr") ]
+                        scale = 1.0
+                        mirror = True
+                        mirrorDownVarEqualToNomi=False
+                        groupName = "muon_eff_newveto_syst"
+                        splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_newveto.*{x}" for x in list(["reco","tracking","idip"])}
                     else:
-                        axes = ["SF eta", "nPtEigenBins", "SF charge"]
-                    axlabels = ["eta", "pt", "q"]
-                    nameReplace = nameReplace + [("effStatTnP_newveto_sf_", "effStat_newveto_")]           
-                    scale = 1.0
-                    groupName = "muon_eff_newveto_stat"
-                    splitGroupDict = {}
-                if args.effStatLumiScale and "Syst" not in name:
-                    scale /= math.sqrt(args.effStatLumiScale)
+                        nameReplace = []
+                        mirror = True
+                        mirrorDownVarEqualToNomi=False
+                        if args.binnedScaleFactors:
+                            axes = ["SF eta", "nPtBins", "SF charge"]
+                        else:
+                            axes = ["SF eta", "nPtEigenBins", "SF charge"]
+                        axlabels = ["eta", "pt", "q"]
+                        nameReplace = nameReplace + [("effStatTnP_newveto_sf_", "effStat_newveto_")]           
+                        scale = 1.0
+                        groupName = "muon_eff_newveto_stat"
+                        splitGroupDict = {}
+                    if args.effStatLumiScale and "Syst" not in name:
+                        scale /= math.sqrt(args.effStatLumiScale)
 
-                cardTool.addSystematic(
-                    name, 
-                    mirror=mirror,
-                    mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
-                    group=groupName,
-                    systAxes=axes,
-                    labelsByAxis=axlabels,
-                    baseName=name+"_",
-                    processes=['Zveto_samples'],
-                    passToFakes=passSystToFakes,
-                    systNameReplace=nameReplace,
-                    scale=scale,
-                    splitGroup=splitGroupDict,
-                )
+                    cardTool.addSystematic(
+                        name, 
+                        mirror=mirror,
+                        mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
+                        group=groupName,
+                        systAxes=axes,
+                        labelsByAxis=axlabels,
+                        baseName=name+"_",
+                        processes=['Zveto_samples'],
+                        passToFakes=passSystToFakes,
+                        systNameReplace=nameReplace,
+                        scale=scale,
+                        splitGroup=splitGroupDict,
+                    )
 
         else:
             if datagroups.flavor in ["mu", "mumu"]:
