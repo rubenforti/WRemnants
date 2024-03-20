@@ -40,7 +40,7 @@ def make_subparsers(parser):
 
 
 def make_parser(parser=None):
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--outfolder", type=str, default=".", help="Output folder with the root file storing all histograms and datacards for single charge (subfolder WMass or ZMassWLike is created automatically inside)")
     parser.add_argument("-i", "--inputFile", nargs="+", type=str)
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
@@ -340,7 +340,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.info(f"Signal samples: {cardTool.procGroups['signal_samples']}")
 
     signal_samples_forMass = ["signal_samples_inctau"]
-    if isTheoryAgnostic and not isPoiAsNoi:
+    if isFloatingPOIsTheoryAgnostic:
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
@@ -887,6 +887,13 @@ if __name__ == "__main__":
         raise ValueError("Option --noHist would override --noStatUncFakes. Please select only one of them")
     if isUnfolding and args.fitXsec:
         raise ValueError("Options unfolding and --fitXsec are incompatible. Please choose one or the other")
+
+    if isTheoryAgnostic:
+        if args.genAxes is None:
+            args.genAxes = ["ptVgenSig", "absYVgenSig", "helicitySig"]
+            logger.warning(f"Automatically setting '--genAxes {' '.join(args.genAxes)}' for theory agnostic analysis")
+            if args.poiAsNoi:
+                logger.warning("This is only needed to properly get the systematic axes")
 
     if isFloatingPOIsTheoryAgnostic:
         # The following is temporary, just to avoid passing the option explicitly
