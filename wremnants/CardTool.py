@@ -912,7 +912,7 @@ class CardTool(object):
 
     def addPOISumGroups(self, gen_axes=None, additional_axes=None, genCharge=None):
         if gen_axes is None:
-            gen_axes = self.datagroups.gen_axes.copy()
+            gen_axes = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
             gen_axes += additional_axes
         # if only one or none gen axes, it is already included as main POI and no sumGroups are needed
@@ -921,8 +921,8 @@ class CardTool(object):
         # make a sum group for each gen axis
         axes_combinations = gen_axes
         # also include combinations of axes in case there are more than 2 axes
-        for n in range(2, len(self.datagroups.gen_axes)):
-            axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes, n)]
+        for n in range(2, len(self.datagroups.gen_axes_names)):
+            axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes_names, n)]
         for axes in axes_combinations:
             logger.debug(f"Add sum group for {axes}{' with ' + genCharge if genCharge else ''}")
 

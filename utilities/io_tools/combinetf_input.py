@@ -198,6 +198,7 @@ def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=Fals
     df = pd.DataFrame({"Name":names})
     for axis in gen_axes:
         df[axis] = df["Name"].apply(lambda x, a=axis: decode_poi_bin(x, a))
+        df.dropna(inplace=True)
         if flow:
             # set underflow to -1, overflow to max bin number+1
             max_bin = pd.to_numeric(df[axis],errors='coerce').max()
@@ -211,6 +212,8 @@ def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=Fals
     # select rows from base process
     if len(base_processes):
         mask = mask & df["Name"].apply(lambda x, p=base_processes: any([x.startswith(p) for p in base_processes]))
+    # remove rows that have additional axes that are not required (strip off process prefix and poi type postfix and compare length of gen axes assuming they are separated by '_')
+    mask = mask & df["Name"].apply(lambda x, a=gen_axes, b=base_processes: any(len(x.replace(p,"").split("_")[1:-1])==len(a) if x.startswith(p) else False for p in b))    
     # gen bin selections
     for k, v in selections.items():
         mask = mask & (df[k] == v)
@@ -230,7 +233,9 @@ def read_impacts_pois(fileobject, poi_type, scale=1.0, group=True, uncertainties
         res = read_impacts_pois_h5(fileobject, poi_type, group, uncertainties)
     else:
         raise IOError(f"Unknown fitresult format for object {fileobject}")
-
+    if res is None:
+        return None
+        
     df = pd.DataFrame({"Name":res[0], "value":res[1], "err_total":res[2], **res[3]})
 
     if scale != 1:
@@ -242,12 +247,16 @@ def read_impacts_pois(fileobject, poi_type, scale=1.0, group=True, uncertainties
     return df
 
 def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
+    if f"{poi_type}_names" not in h5file.keys():
+        logger.warning(f"{poi_type}_names not found in fitresult file")
+        return None
     names = h5file[f"{poi_type}_names"][...].astype(str)
     centrals = h5file[f"{poi_type}_outvals"][...]
-
     npoi = len(names)
     # make matrix between POIs only; assume POIs come first
     totals = np.sqrt(np.diagonal(h5file[f"{poi_type}_outcov"][:npoi,:npoi]))
+    if uncertainties is not None and len(uncertainties)==0:
+        return names, centrals, totals, dict()
 
     impact_hist = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
     if impact_hist in h5file.keys():
@@ -263,7 +272,6 @@ def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
             labels = np.append(labels, "binByBinStat")
     else:
         labels = h5file["hsysts"][...].astype(str)
-
     logger.debug(f"Load ucertainties")
     # pick uncertainties
     if uncertainties is None:
@@ -276,19 +284,12 @@ def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
 def read_impacts_pois_root(rtfile, poi_type, group=True, uncertainties=None):   
     histname = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
     if f"{histname};1" not in rtfile.keys():
-        raise RuntimeError(f"Histogram {histname};1 not found in fitresult file")
+        logger.warning(f"Histogram {histname};1 not found in fitresult file")
         return None
     impacts = rtfile[histname].to_hist()
 
     # process names
     names = [k for k in impacts.axes[0]]
-
-    logger.debug(f"Load ucertainties")
-    # pick uncertainties
-    if uncertainties is None:
-        uncertainties = {f"err_{k}": impacts.values()[:,i] for i, k in enumerate(impacts.axes[1])}
-    else:
-        uncertainties = {f"err_{k}": impacts.values()[:,i] for i, k in enumerate(impacts.axes[1]) if k in uncertainties}
 
     # measured central value
     fitresults = rtfile["fitresults;1"]
@@ -296,6 +297,16 @@ def read_impacts_pois_root(rtfile, poi_type, group=True, uncertainties=None):
 
     # total uncertainties
     totals = [fitresults[n+"_err"].array()[0] for n in names]
+
+    if uncertainties is not None and len(uncertainties)==0:
+        return names, centrals, totals, dict()
+
+    logger.debug(f"Load ucertainties")
+    # pick uncertainties
+    if uncertainties is None:
+        uncertainties = {f"err_{k}": impacts.values()[:,i] for i, k in enumerate(impacts.axes[1])}
+    else:
+        uncertainties = {f"err_{k}": impacts.values()[:,i] for i, k in enumerate(impacts.axes[1]) if k in uncertainties}
 
     return names, centrals, totals, uncertainties
 

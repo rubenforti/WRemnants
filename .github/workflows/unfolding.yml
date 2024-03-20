@@ -183,6 +183,11 @@ jobs:
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_passIso_passMT_unfolding/ WMass.hdf5
 
+      - name: wmass combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/ --outputFile results_unfolded
+
       - name: wmass combine unfolding plot pulls 
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py 
@@ -190,11 +195,10 @@ jobs:
           --debug --grouping max -t utilities/styles/nuisance_translate.json 
           output --outFolder $WEB_DIR/$PLOT_DIR -o pulls_unfolding_mw.html -n 50 --otherExtensions png pdf
           
-
       - name: wmass combine unfolding plot xsec 
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
-          --fitresult $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $WREMNANTS_OUTDIR/WMass_eta_pt_charge_passIso_passMT_unfolding/fitresults_123456789.hdf5
+          --histfile $HIST_FILE --varNames uncorr --varLabels MiNNLO -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
           -t 'utilities/styles/nuisance_translate.json' --grouping max
 
   w-theoryfit:
@@ -325,12 +329,16 @@ jobs:
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ ZMassWLike.hdf5
 
+      - name: wlike combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
+
       - name: wlike combine unfolding plot xsec 
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py 
-          $HIST_FILE --fitresult $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 
-          -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1
-          -t 'utilities/styles/nuisance_translate.json' --grouping min
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 
+          --histfile $HIST_FILE --varNames uncorr --varLabels MiNNLO 
+          -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 -t 'utilities/styles/nuisance_translate.json' --grouping min
 
 
   wlike-theoryfit:
@@ -476,6 +484,11 @@ jobs:
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ ZMassDilepton.hdf5
 
+      - name: dilepton combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
+
       - name: dilepton combine unfolding plot pulls 
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py 
@@ -484,9 +497,9 @@ jobs:
 
       - name: dilepton combine unfolding plot xsec 
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
-          --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
-          -t 'utilities/styles/nuisance_translate.json' --grouping max
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 
+          --histfile $HIST_FILE --varNames scetlib_dyturboCorr --varLabels SCETLib $Omega_\nu=0.5$ --selectAxis vars --selectEntries 'omega_nu0.5'
+          -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy -t 'utilities/styles/nuisance_translate.json' --grouping max
 
   copy-clean:
     runs-on: [self-hosted, linux, x64]
