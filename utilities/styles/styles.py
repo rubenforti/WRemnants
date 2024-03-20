@@ -60,10 +60,16 @@ process_labels = {
 
 xlabels = {
     "pt" : r"p$_{T}^{\ell}$ (GeV)",
+    "ptGen" : r"p$_{T}^{\ell}$ (GeV)",
     "ptW" : r"p$_{T}^{\ell+p_{\mathrm{T}}^{miss}}$ (GeV)",
+    "ptVGen" : r"p$_{T}^\mathrm{V}$ (GeV)",
     "eta" : r"$\eta^{\ell}$",
+    "etaGen" : r"$\eta^{\ell}$",
+    "absEta" : r"$|\eta^{\ell}|$",
+    "absEtaGen" : r"$|\eta^{\ell}|$",
     "ptll" : r"p$_{\mathrm{T}}^{\ell\ell}$ (GeV)",
     "yll" : r"y$^{\ell\ell}$",
+    "absYVGen" : r"|Y$^\mathrm{V}$|",
     "mll" : r"m$_{\ell\ell}$ (GeV)",
     "ewMll" : r"m$^{\mathrm{EW}}_{\ell\ell}$ (GeV)",
     "costhetastarll" : r"$\cos{\theta^{\star}_{\ell\ell}}$",
@@ -188,3 +194,12 @@ syst_labels = {
 }
 
 syst_labels["virtual_ew_wlike"] = syst_labels["virtual_ew"]
+
+poi_types = {
+    "mu": "$\mu$",
+    "nois": "$\mathrm{NOI}$",
+    "pmaskedexp": "d$\sigma$ [pb]",
+    "sumpois": "d$\sigma$ [pb]",
+    "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
+    "sumpoisnorm": "1/$\sigma$ d$\sigma$",
+}
