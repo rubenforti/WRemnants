@@ -9,6 +9,8 @@ import argparse
 import pandas as pd
 import itertools
 
+from narf import ioutils
+
 from utilities import common, logging, differential, boostHistHelpers as hh
 from utilities.styles import styles
 from wremnants import plot_tools, histselections as sel
@@ -41,17 +43,27 @@ fittype = "prefit" if args.prefit else "postfit"
 ratio = not args.noRatio
 data = not args.noData
 
-if args.infile.endswith(".hdf5"):
-    fitresult = combinetf2_input.get_fitresult(args.infile)
+
+# load .hdf5 file first, must exist in combinetf and combinetf2
+fitresult_h5py = combinetf_input.get_fitresult(args.infile.replace(".root",".hdf5"))
+if "results" in fitresult_h5py.keys():
+    fitresult = ioutils.pickle_load_h5py(fitresult_h5py["results"])
     combinetf2 = True
-elif args.infile.endswith(".root"):
-    fitresult = combinetf_input.get_fitresult(args.infile)
+elif os.path.isfile(args.infile.replace(".hdf5",".root")):
+    fitresult = combinetf_input.get_fitresult(args.infile.replace(".hdf5",".root"))
     combinetf2 = False
 else:
-    raise IOError("Unknown format of input file")
+    raise IOError("Unknown source, input file must be either from combinetf2 or combinetf1 (in case of combinetf1 both .root and .hdf5 files must exist)")
 
 # order of the processes in the plots
-procs_sort = ["Wmunu", "Fake", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson"][::-1]
+procs_sort = ["Wmunu", "Fake", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced"][::-1]
+
+def get_labels_colors_procs_sorted(procs):
+    procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
+    logger.info(f"Found processes {procs} in fitresult")
+    labels = [styles.process_labels.get(p, p) for p in procs]
+    colors = [styles.process_colors.get(p, "red") for p in procs]
+    return labels, colors, procs
 
 translate_selection = {
     "charge": {
@@ -60,7 +72,7 @@ translate_selection = {
     }
 }
 
-def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False):
+def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
     axes_names = [a.name for a in axes]
     axis_name = "_".join([a for a in axes_names])
     if len(h_data.axes) > 1:
@@ -163,7 +175,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
         label=args.cmsDecor, data=data)
 
     plot_tools.addLegend(ax1, ncols=2, text_size=20*args.scaleleg)
@@ -176,14 +188,13 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     stack_yields = None
     unstacked_yields = None
+    kwargs=dict()
     if meta is not None:
-        kwargs=dict(
-            analysis_meta_info={
-                "AnalysisOutput" : meta["meta_info"],
-                "Combinetf2Output" : meta["meta_info_combinetf2"]},
-            )
-    else:
-        kwargs=dict()
+        if "meta_info_input" in meta:
+            analysis_meta_info={"Combinetf2Output" : meta["meta_info"], "AnalysisOutput": meta["meta_info_input"]["meta_info"]}
+        else:
+            analysis_meta_info={"AnalysisOutput" : meta["meta_info"]}
+        kwargs["analysis_meta_info"] = analysis_meta_info
 
     plot_tools.write_index_and_log(outdir, outfile, 
         yield_tables={
@@ -213,103 +224,129 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
         make_plot(hist_data, hist_inclusive, hist_stack, axes, suffix=channel, *opts, **kwopts)
 
 if combinetf2:
-    meta = fitresult["meta"].get()
+    meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
+    meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
-    procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
-
-    labels = [styles.process_labels.get(p, p) for p in procs]
-    colors = [styles.process_colors.get(p, "grey") for p in procs]
+    labels, colors, procs = get_labels_colors_procs_sorted(procs)
 
     chi2=None
     if f"chi2_{fittype}" in fitresult:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf"]
 
-    for channel, axes in meta["channel_axes"].items():
-
+    for channel, info in meta_input["channel_info"].items():
         hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta)
+        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
     import ROOT
 
     procs = [k.replace("expproc_","").replace(f"_{fittype};1", "") for k in fitresult.keys() if fittype in k and k.startswith("expproc_") and "hybrid" not in k]
-    procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
+    labels, colors, procs = get_labels_colors_procs_sorted(procs)
 
-    labels = [styles.process_labels.get(p, p) for p in procs]
-    colors = [styles.process_colors.get(p, "red") for p in procs]
+    if "meta" in fitresult_h5py:
+        # the fit was probably done on a file generated via the hdf5 writer and we can use the axes information
+        meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
+        ch_start=0
+        for channel, info in meta["channel_info"].items():
+            shape = [len(a) for a in info["axes"]]
 
-    logger.info(f"Found processes {procs} in fitresult")
+            ch_end = ch_start+np.product(shape) # in combinetf1 the channels are concatenated and we need to index one after the other
 
-    # get axes from the directory name
-    filename_parts = [x for x in filter(lambda x: x, args.infile.split("/"))]
-    analysis = filename_parts[-2].split("_")[0]
-    if analysis=="ZMassDilepton":
-        all_axes = {
-            # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=False, underflow=False),
-            "mll": hist.axis.Variable([60,70,75,78,80,82,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,102,105,110,120], name = "mll", overflow=False, underflow=False),
-            "etaAbsEta": hist.axis.Variable([-2.4, -2.0, -1.6, -1.4, -1.2, -1.0, -0.6, 0.0, 0.6, 1.0, 1.2, 1.4, 1.6, 2.0, 2.4], name = "etaAbsEta", overflow=False, underflow=False),
-            "cosThetaStarll": hist.axis.Regular(2, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
-            "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=False, underflow=False),
-            "ptll": hist.axis.Variable([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100], name = "ptll", underflow=False, overflow=False),
-        }
-    elif analysis=="ZMassWLike":
-        all_axes = {
-            "pt": hist.axis.Regular(34, 26, 60, name = "pt", overflow=False, underflow=False),
-            "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
-            "charge": common.axis_charge,
-            "ptGen": hist.axis.Regular(33, 27, 60, name = "ptGen", overflow=False, underflow=False),
-            "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
-            "qGen": common.axis_charge,
-        }
-    elif analysis=="WMass":
-        all_axes = {
-            # "pt": hist.axis.Regular(30, 26, 56, name = "pt", overflow=False, underflow=False),
-            # "pt": hist.axis.Regular(31, 26, 57, name = "pt", overflow=False, underflow=False),
-            "pt": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
-            "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
-            "charge": common.axis_charge,
-            "passIso": common.axis_passIso,
-            "passMT": common.axis_passMT,
-            "ptGen": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
-            "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
-            "qGen": common.axis_charge,
-        }
-    axes = [all_axes[part] for part in filename_parts[-2].split("_") if part in all_axes.keys()]
-    if args.axlim:
-        nv = len(args.axlim)
-        if nv % 2:
-            raise ValueError("if --axlim is specified it must have two values per axis!")
-        axlim = np.array(args.axlim).reshape((int(nv/2), 2))
-        axes = [ax if lim is not None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])]) 
-                    for ax,lim in itertools.zip_longest(axes, axlim)]
-    shape = [len(a) for a in axes]
+            hist_data = fitresult["obs;1"].to_hist()
+            values = np.reshape(hist_data.values()[ch_start:ch_end], shape)
+            hist_data = hist.Hist(*info["axes"], storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
 
-    hist_data = fitresult["obs;1"].to_hist()
-    nBins = hist_data.shape[0]
-    values = np.reshape(hist_data.values(), shape)
-    hist_data = hist.Hist(*axes, storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
+            # last bin can be masked channel; slice with [:nBins]
+            hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()
+            hist_inclusive = hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
+                data=np.stack((np.reshape(hist_inclusive.values()[ch_start:ch_end], shape), np.reshape(hist_inclusive.variances()[ch_start:ch_end], shape)), axis=-1))  
+            hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist() for p in procs]
+            hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
+                data=np.stack((np.reshape(h.values()[ch_start:ch_end], shape), np.reshape(h.variances()[ch_start:ch_end], shape)), axis=-1)) for h in hist_stack]
 
-    # last bin can be masked channel; slice with [:nBins]
-    hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()[:nBins]
-    hist_inclusive = hist.Hist(*axes, storage=hist.storage.Weight(), 
-        data=np.stack((np.reshape(hist_inclusive.values(), shape), np.reshape(hist_inclusive.variances(), shape)), axis=-1))  
-    hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist()[:nBins] for p in procs]
-    hist_stack = [hist.Hist(*axes, storage=hist.storage.Weight(), 
-        data=np.stack((np.reshape(h.values(), shape), np.reshape(h.variances(), shape)), axis=-1)) for h in hist_stack]
+            if not args.prefit:
+                rfile = ROOT.TFile.Open(args.infile.replace(".hdf5",".root"))
+                ttree = rfile.Get("fitresults")
+                ttree.GetEntry(0)
+                chi2 = [2*(ttree.nllvalfull - ttree.satnllvalfull), np.product([len(a) for a in info["axes"]]) - ttree.ndofpartial]
+            else:
+                chi2 = None
 
-    if not args.prefit:
-        rfile = ROOT.TFile.Open(args.infile)
-        ttree = rfile.Get("fitresults")
-        ttree.GetEntry(0)
-        chi2 = [2*(ttree.nllvalfull - ttree.satnllvalfull), np.product([len(a) for a in axes]) - ttree.ndofpartial]
+            make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True, lumi=info["lumi"])
+            ch_start = ch_end
     else:
-        chi2 = None
+        # the fit was probably done on a file generated via the root writer and we can't use the axes information
 
-    make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
+        # get axes from the directory name
+        filename_parts = [x for x in filter(lambda x: x, args.infile.split("/"))]
+        analysis = filename_parts[-2].split("_")[0]
+        if analysis=="ZMassDilepton":
+            all_axes = {
+                # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=False, underflow=False),
+                "mll": hist.axis.Variable([60,70,75,78,80,82,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,102,105,110,120], name = "mll", overflow=False, underflow=False),
+                "etaAbsEta": hist.axis.Variable([-2.4, -2.0, -1.6, -1.4, -1.2, -1.0, -0.6, 0.0, 0.6, 1.0, 1.2, 1.4, 1.6, 2.0, 2.4], name = "etaAbsEta", overflow=False, underflow=False),
+                "cosThetaStarll": hist.axis.Regular(2, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
+                "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=False, underflow=False),
+                "ptll": hist.axis.Variable([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100], name = "ptll", underflow=False, overflow=False),
+            }
+        elif analysis=="ZMassWLike":
+            all_axes = {
+                "pt": hist.axis.Regular(34, 26, 60, name = "pt", overflow=False, underflow=False),
+                "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
+                "charge": common.axis_charge,
+                "ptGen": hist.axis.Regular(33, 27, 60, name = "ptGen", overflow=False, underflow=False),
+                "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
+                "qGen": common.axis_charge,
+            }
+        elif analysis=="WMass":
+            all_axes = {
+                # "pt": hist.axis.Regular(30, 26, 56, name = "pt", overflow=False, underflow=False),
+                # "pt": hist.axis.Regular(31, 26, 57, name = "pt", overflow=False, underflow=False),
+                "pt": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
+                "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
+                "charge": common.axis_charge,
+                "passIso": common.axis_passIso,
+                "passMT": common.axis_passMT,
+                "ptGen": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
+                "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
+                "qGen": common.axis_charge,
+            }
+        axes = [all_axes[part] for part in filename_parts[-2].split("_") if part in all_axes.keys()]
+        if args.axlim:
+            nv = len(args.axlim)
+            if nv % 2:
+                raise ValueError("if --axlim is specified it must have two values per axis!")
+            axlim = np.array(args.axlim).reshape((int(nv/2), 2))
+            axes = [ax if lim is not None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])]) 
+                        for ax,lim in itertools.zip_longest(axes, axlim)]
+        shape = [len(a) for a in axes]
+
+        hist_data = fitresult["obs;1"].to_hist()
+        nBins = hist_data.shape[0]
+        values = np.reshape(hist_data.values(), shape)
+        hist_data = hist.Hist(*axes, storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
+
+        # last bin can be masked channel; slice with [:nBins]
+        hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()[:nBins]
+        hist_inclusive = hist.Hist(*axes, storage=hist.storage.Weight(), 
+            data=np.stack((np.reshape(hist_inclusive.values(), shape), np.reshape(hist_inclusive.variances(), shape)), axis=-1))  
+        hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist()[:nBins] for p in procs]
+        hist_stack = [hist.Hist(*axes, storage=hist.storage.Weight(), 
+            data=np.stack((np.reshape(h.values(), shape), np.reshape(h.variances(), shape)), axis=-1)) for h in hist_stack]
+
+        if not args.prefit:
+            rfile = ROOT.TFile.Open(args.infile.replace(".hdf5",".root"))
+            ttree = rfile.Get("fitresults")
+            ttree.GetEntry(0)
+            chi2 = [2*(ttree.nllvalfull - ttree.satnllvalfull), np.product([len(a) for a in axes]) - ttree.ndofpartial]
+        else:
+            chi2 = None
+
+        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(args.outpath, args.outfolder)

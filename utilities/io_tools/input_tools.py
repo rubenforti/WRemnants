@@ -446,7 +446,7 @@ def get_metadata(infile):
         h5file = h5py.File(infile, "r")
         if "meta_info" in h5file.keys():
             return ioutils.pickle_load_h5py(h5file["meta_info"])
-        meta = h5file.get("results", h5file.get("meta", None))
+        meta = h5file.get("meta", h5file.get("results", None))
         results = ioutils.pickle_load_h5py(meta) if meta else None
 
     if results is None:
