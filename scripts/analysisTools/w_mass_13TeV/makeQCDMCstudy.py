@@ -535,4 +535,3 @@ if __name__ == "__main__":
         runGenMt(args)
     elif args.runStudy == 3:
         runJetMuon(args)
-        
