@@ -572,6 +572,12 @@ def createPlotDirAndCopyPhp(outdir, eoscp=True):
     #logger.warning(f"exiting createPlotDirAndCopyPhp: outdir = {outdir}")
     return outdir
 
+def copyOutputToEos(eosPathToCopy, eoscp=True, deleteFullTmp=True):
+    if output_tools.is_eosuser_path(folderToCopy) and eoscp:
+        output_tools.copy_to_eos(copyOutputToEos, deleteFullTmp=deleteFullTmp)
+    else:
+        pass
+
 #########################################################################
 
 def getAxisRangeFromUser(axisNameTmp="", 
