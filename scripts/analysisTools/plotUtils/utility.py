@@ -573,8 +573,12 @@ def createPlotDirAndCopyPhp(outdir, eoscp=True):
     return outdir
 
 def copyOutputToEos(eosPathToCopy, eoscp=True, deleteFullTmp=True):
-    if output_tools.is_eosuser_path(folderToCopy) and eoscp:
-        output_tools.copy_to_eos(copyOutputToEos, deleteFullTmp=deleteFullTmp)
+    # this part copies the plots to eos in the path specified by eosPathToCopy
+    # and then delete the local folder that was automatially created by output_tools.make_plot_dir in createPlotDirAndCopyPhp
+    # unless deleteFullTmp=False, in which case the local folder is kept
+    # When the output path was a local folder (without exploiting the eos mount), this function does not have to do anything
+    if output_tools.is_eosuser_path(eosPathToCopy) and eoscp:
+        output_tools.copy_to_eos(eosPathToCopy, deleteFullTmp=deleteFullTmp)
     else:
         pass
 
@@ -748,7 +752,7 @@ def drawCorrelationPlot(h2D_tmp,
                         rightMargin=0.20,
                         nContours=51,
                         palette=55,
-                        invertePalette=False,
+                        invertPalette=False,
                         canvasSize="700,625",
                         passCanvas=None,
                         bottomMargin=0.1,
@@ -804,7 +808,7 @@ def drawCorrelationPlot(h2D_tmp,
     if palette > 0:
         ROOT.gStyle.SetPalette(palette)  # 55:raibow palette ; 57: kBird (blue to yellow, default) ; 107 kVisibleSpectrum ; 77 kDarkRainBow 
     ROOT.gStyle.SetNumberContours(nContours) # default is 20 
-    if invertePalette:
+    if invertPalette:
         ROOT.TColor.InvertPalette()
 
     labelX,setXAxisRangeFromUser,xmin,xmax = getAxisRangeFromUser(labelXtmp)
