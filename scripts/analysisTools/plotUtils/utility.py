@@ -4,6 +4,7 @@ import re, sys, os, os.path, subprocess, json, ROOT, copy, math
 import numpy as np
 from utilities import common, logging
 from functools import partial
+from utilities.io_tools import output_tools
 
 from array import array
 import shutil
@@ -48,6 +49,16 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "Fake"       : "Nonprompt", # or "Multijet"
                      "QCD"        : "QCD MC",
                      "Other"      : "Other"}   
+
+#########################################################################
+
+def common_plot_parser():
+    parser = common.base_parser()
+    parser.add_argument('--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
+    parser.add_argument('--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
+    parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
+    parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
+    return parser
 
 #########################################################################
 
@@ -549,12 +560,17 @@ def getTH2morePtBins(h2, newname, nPt):
             
 #########################################################################
 
-def createPlotDirAndCopyPhp(outdir):
+def createPlotDirAndCopyPhp(outdir, eoscp=True):
+    # when passing an eos path it will create a temporary local folder, to avoid exploiting the mount
+    outdir = os.path.realpath(outdir)
+    #logger.warning(f"Real output path is {outdir}")
+    outdir = output_tools.make_plot_dir(outdir, outfolder=None, eoscp=eoscp, allowCreateLocalFolder=True)
     if outdir and not os.path.exists(outdir):
         os.makedirs(outdir)
     htmlpath = f"{os.environ['WREM_BASE']}/scripts/analysisTools/templates/index.php"
     shutil.copy(htmlpath, outdir)
-
+    #logger.warning(f"exiting createPlotDirAndCopyPhp: outdir = {outdir}")
+    return outdir
 
 #########################################################################
 
@@ -618,7 +634,7 @@ def drawTH1(htmp,
 
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     labelX,setXAxisRangeFromUser,xmin,xmax = getAxisRangeFromUser(labelXtmp)
     labelY,setYAxisRangeFromUser,ymin,ymax = getAxisRangeFromUser(labelYtmp)
@@ -800,7 +816,7 @@ def drawCorrelationPlot(h2D_tmp,
     canvas.cd()
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
     # normalize to 1
     if (scaleToUnitArea): h2D.Scale(1./h2D.Integral())
 
@@ -947,7 +963,7 @@ def drawSingleTH1(h1,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.5
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -1264,7 +1280,7 @@ def drawSingleTH1withFit(h1,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -1584,8 +1600,7 @@ def drawNTH1(hists=[],
 
     adjustSettings_CMS_lumi()
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
-    
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -2009,7 +2024,7 @@ def drawDataAndMC(h1, h2,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -2402,7 +2417,7 @@ def drawTH1dataMCstack(h1, thestack,
     canvas.cd()
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     dataNorm = h1.Integral()
     stackNorm = 0.0
@@ -2754,7 +2769,7 @@ def drawCheckTheoryBand(h1, h2, h3,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -3175,7 +3190,7 @@ def drawXsecAndTheoryband(h1, h2,  # h1 is data, h2 is total uncertainty band
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)

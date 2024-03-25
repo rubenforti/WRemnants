@@ -105,9 +105,9 @@ def is_eosuser_path(path):
     path = os.path.realpath(path)
     return path.startswith("/eos/user") or path.startswith("/eos/home-")
 
-def make_plot_dir(outpath, outfolder=None, eoscp=False):
+def make_plot_dir(outpath, outfolder=None, eoscp=False, tmpFolder="temp", allowCreateLocalFolder=False):
     if eoscp and is_eosuser_path(outpath):
-        outpath = os.path.join("temp", split_eos_path(outpath)[1])
+        outpath = os.path.join(tmpFolder, split_eos_path(outpath)[1])
         if not os.path.isdir(outpath):
             logger.info(f"Making temporary directory {outpath}")
             os.makedirs(outpath)
@@ -116,8 +116,14 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False):
     if outfolder:
         full_outpath = os.path.join(outpath, outfolder)
     if outpath and not os.path.isdir(outpath):
-        raise IOError(f"The path {outpath} doesn't not exist. You should create it (and possibly link it to your web area)")
-        
+        # instead of raising, create folder to deal with cases where nested folders are created during code execution
+        # (this would happen when outpath is already a path to a local subfolder not created in the very beginning)
+        if allowCreateLocalFolder:
+            logger.debug(f"Creating new directory {outpath}")
+            os.makedirs(outpath)
+        else:
+            raise IOError(f"The path {outpath} doesn't not exist. You should create it (and possibly link it to your web area)")
+
     if full_outpath and not os.path.isdir(full_outpath):
         try:
             os.makedirs(full_outpath)
@@ -128,25 +134,29 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False):
 
     return full_outpath
 
-def copy_to_eos(outpath, outfolder=None):
+def copy_to_eos(outpath, outfolder=None, tmpFolder="temp", deleteFullTmp=False):
     eospath, outpath = split_eos_path(outpath)
     fullpath = outpath
     if outfolder:
         fullpath = os.path.join(outpath, outfolder)
-        logger.info(f"Copying {outpath} to {eospath}")
+    logger.info(f"Copying {fullpath} to {eospath}")
 
-    tmppath = os.path.join("temp", fullpath)
+    tmppath = os.path.join(tmpFolder, fullpath)
 
+    nCopiedFiles = 0
     for f in glob.glob(tmppath+"/*"):
         if os.path.isfile(f):
-            command = ["xrdcp", "-f", f, "/".join(["root://eosuser.cern.ch", eospath, f.replace("temp/", "")])]
+            command = ["xrdcp", "-f", f, "/".join(["root://eosuser.cern.ch", eospath, f.replace(f"{tmpFolder}/", "")])]
 
             logger.debug(f"Executing {' '.join(command)}")
             if subprocess.call(command):
                 raise IOError("Failed to copy the files to eos! Perhaps you are missing a kerberos ticket and need to run kinit <user>@CERN.CH?"
                     " from lxplus you can run without eoscp and take your luck with the mount.")
+            else:
+                nCopiedFiles += 1
 
-    shutil.rmtree(tmppath) 
+    shutil.rmtree(f"{tmpFolder}/" if deleteFullTmp else tmppath)
+    logger.debug(f"Copied {nCopiedFiles} files to eos")
 
 def write_theory_corr_hist(output_name, process, output_dict, args=None, file_meta_data=None): 
     outname = output_name
