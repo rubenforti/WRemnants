@@ -32,16 +32,12 @@ from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1)
     parser.add_argument("outputfolder",   type=str, nargs=1)
     parser.add_argument("-c", "--charge", default="plus", choices=["plus", "minus", "both"], help="charge")
     parser.add_argument("-x", "--x-axis-name", dest="xAxisName", default="RawPF m_{T} (GeV)", help="x axis name")
     parser.add_argument("-y", "--y-axis-name", dest="yAxisName", default="PFrelIso04", help="y axis name")
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51 (let it be odd, so the central strip is white if not using --abs-value and the range is symmetric)')
-    parser.add_argument(     '--palette'  , dest='palette',      default=55, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette' , default=False , action='store_true',   help='Inverte color ordering in palette')
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     args = parser.parse_args()
     
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -76,9 +72,13 @@ if __name__ == "__main__":
     canvas1D = ROOT.TCanvas("canvas1D","",800,800)
 
     jetLabels = ["jetInclusive", "1orMoreJet"]
+
+    outdir_original = args.outputfolder[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     for charge in charges:
 
-        outfolder = f"{args.outputfolder[0]}/{charge}/"
+        outfolder = f"{outdir}/{charge}/"
         createPlotDirAndCopyPhp(outfolder)
         # bin number from root histogram
         chargeBin = 1 if charge == "minus" else 2
@@ -125,7 +125,7 @@ if __name__ == "__main__":
                                     "Events",
                                     h2mtIso.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                     draw_both0_noLog1_onlyLog2=1, drawProfileX=True,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette,
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette,
                                     passCanvas=canvas, skipLumi=True)
 
         grList = [fakeRateVsMt[jetLabel][d] for d in datasetsNoFake for jetLabel in jetLabels]
@@ -165,3 +165,6 @@ if __name__ == "__main__":
                                datasetsAllNoFake, outfolder, canvas1Dshapes=canvas1D, xAxisName="PF rel. isolation (#DeltaR = 0.4)",
                                plotName=f"isolation_{jetLabel}", draw_both0_noLog1_onlyLog2=0,
                                ratioPadYaxisTitle="Data/pred::0.7,1.1")
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+

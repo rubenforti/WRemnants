@@ -97,10 +97,9 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1)
     parser.add_argument("outputfolder",   type=str, nargs=1)
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     parser.add_argument('--plot', nargs='+', type=str,
@@ -116,8 +115,8 @@ if __name__ == "__main__":
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
     
     fname = args.inputfile[0]
-    outdir = args.outputfolder[0]
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outputfolder[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
         
     ROOT.TH1.SetDefaultSumw2()
 
@@ -163,3 +162,4 @@ if __name__ == "__main__":
         plotDistribution1D(hdata, hmc, datasets, outdir, canvas1Dshapes=canvas1D,
                            xAxisName=args.xAxisName[ip], plotName=p, ratioPadYaxisTitle=ratioPadYaxisTitle)
 
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

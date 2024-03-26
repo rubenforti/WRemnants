@@ -37,9 +37,9 @@ if __name__ == "__main__":
 
     #date = datetime.date.today().isoformat()
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('fitresult', type=str, nargs=1, help="fitresult.root file from combinetf")
-    parser.add_argument('-o','--outdir', default='', type=str, help='outdput directory to save the matrix')
+    parser.add_argument('-o','--outdir', default=None, type=str, help='outdput directory to save the plot')
     parser.add_argument('-p','--param',  default='', type=str, help='parameter for which you want to show the correlation matrix. Must be a single object')
     parser.add_argument('-t','--type',   default='hessian', type=str, choices=['toys', 'hessian'], help='which type of input file: toys or hessian (default)')
     parser.add_argument('-m','--matrix', default='', type=str, help='matrix to be used (name is correlation_matrix_channel<matrix>)')
@@ -68,8 +68,10 @@ if __name__ == "__main__":
         print("Need to specify a parameter with option -p")
         quit()
 
-    if args.outdir:
-        createPlotDirAndCopyPhp(args.outdir)
+    outdir_original = args.outdir:
+    outdir = None
+    if outdir_original:
+        outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     param = args.param
     print(f"Will do parameter with the following name: {param}")
@@ -149,9 +151,10 @@ if __name__ == "__main__":
     c.SetGridy(1)
     c.RedrawAxis("sameaxis")
 
-    if args.outdir:
+    if outdir:
         for i in ['pdf', 'png']:
             suff = '' if not args.postfix else '_'+args.postfix
-            c.SaveAs(args.outdir+'/corrLine{suff}_{pn}_{ch}.{i}'.format(suff=suff,i=i,pn=param, ch=args.matrix.replace("channel","")))
+            c.SaveAs(outdir+'/corrLine{suff}_{pn}_{ch}.{i}'.format(suff=suff,i=i,pn=param, ch=args.matrix.replace("channel","")))
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
 
 
