@@ -73,14 +73,10 @@ def getEtaPtEff(n_pass, n_tot, getRoot=False, rootName="", rootTitle="", integra
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file", default="nominal")
-    parser.add_argument(     '--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('-p','--processes', default=["Wmunu"], nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     parser.add_argument(     '--rebinPt', default=-1, type=int, help='If positive, rebin yields versus pT by this number before deriving efficiencies (it happens after selecting the pt range)')
@@ -89,8 +85,8 @@ if __name__ == "__main__":
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
     fname = args.inputfile[0]
-    outdir = args.outdir[0]
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original)
         
     ROOT.TH1.SetDefaultSumw2()
 
@@ -160,17 +156,17 @@ if __name__ == "__main__":
                             f"{yields_pass_root.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
         drawCorrelationPlot(yields_fail_root, xAxisName, yAxisName, f"Events failing veto",
                             f"{yields_fail_root.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
         drawCorrelationPlot(yields_tot_root, xAxisName, yAxisName, f"Events (denominator)",
                             f"{yields_tot_root.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
         
         # NOTE: to simplify our lives, when computing efficiencies as ratio of yields n/N and root is used
         # then the uncertainty is obtained using option B for TH1::Divide, which uses binomial uncertainties.
@@ -185,21 +181,21 @@ if __name__ == "__main__":
                             f"{eff_veto.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_vetoplus_boost2D,eff_vetoplus = getEtaPtEff(n_vetoplus_pass, n_vetoplus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetoplus", rootTitle="P(vetoplus | gen)")
         drawCorrelationPlot(eff_vetoplus, xAxisName, yAxisName, f"MC veto efficiency (charge plus)",
                             f"{eff_vetoplus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_vetominus_boost2D,eff_vetominus = getEtaPtEff(n_vetominus_pass, n_vetominus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetominus", rootTitle="P(vetominus | gen)")
         drawCorrelationPlot(eff_vetominus, xAxisName, yAxisName, f"MC veto efficiency (charge minus)",
                             f"{eff_vetominus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         effRatio_plusOverMinus = copy.deepcopy(eff_vetoplus.Clone("effRatio_plusOverMinus"))
         effRatio_plusOverMinus.SetTitle("Charge plus / minus")
@@ -208,7 +204,7 @@ if __name__ == "__main__":
                             f"{effRatio_plusOverMinus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_veto_boost1Deta,eff_veto_eta = getEtaPtEff(n_veto_pass, n_veto_tot, getRoot=True, rootName=f"{d}_MC_eff_veto_1Deta", rootTitle="P(veto | gen)", integrateVar=["pt"])
         eff_vetoplus_boost1Deta,eff_vetoplus_eta = getEtaPtEff(n_vetoplus_pass, n_vetoplus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetoplus_1Deta", rootTitle="P(vetoplus | gen)", integrateVar=["pt"])
@@ -265,3 +261,4 @@ if __name__ == "__main__":
     eff_vetoplus.Write()
     eff_vetominus.Write()
     rf.Close()
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

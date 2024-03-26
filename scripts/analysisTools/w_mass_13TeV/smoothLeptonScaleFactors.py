@@ -149,7 +149,7 @@ def make1Dhist(namePrefix, h2D, ptbins, step):
     
 ############
 
-def quickPlotTH1(c, h, outname,channel, postfix=""):
+def quickPlotTH1(c, h, outdir, channel, postfix=""):
     c.cd()
     h.Scale(1./h.Integral())
     h.GetXaxis().SetTitleOffset(1.2)
@@ -162,7 +162,7 @@ def quickPlotTH1(c, h, outname,channel, postfix=""):
     h.GetYaxis().SetLabelSize(0.04)
     h.Draw("HIST")
     for ext in ["png","pdf"]:
-        c.SaveAs(f"{outname}bestFitFunction{postfix}_{channel}.{ext}")
+        c.SaveAs(f"{outdir}bestFitFunction{postfix}_{channel}.{ext}")
 
 #########
 
@@ -174,7 +174,7 @@ def getCoordinateNDC(x, canvas, vert=False):
         return (x - canvas.GetX1()) / (canvas.GetX2() - canvas.GetX1())
 
 
-def fitTurnOnTF(histo, key, outname, mc, channel="el", hist_chosenFunc=0, drawFit=True,
+def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit=True,
                 step=None,
                 fitRange=None,
                 hist_reducedChi2=None,
@@ -197,8 +197,8 @@ def fitTurnOnTF(histo, key, outname, mc, channel="el", hist_chosenFunc=0, drawFi
     
     originalMaxPt = histo.GetXaxis().GetBinLowEdge(1+histo.GetNbinsX())
 
-    outdir = "{out}{mc}/".format(out=outname,mc=mc)
-    createPlotDirAndCopyPhp(outdir)
+    outfolder = "{out}{mc}/".format(out=outdir,mc=mc)
+    createPlotDirAndCopyPhp(outfolder)
     adjustSettings_CMS_lumi()
     
     leftMargin = 0.15
@@ -814,9 +814,9 @@ def fitTurnOnTF(histo, key, outname, mc, channel="el", hist_chosenFunc=0, drawFi
         tmpch = "_" + charge
     for ext in ["pdf","png"]:
         if mc == "SF":
-            canvas.SaveAs("{out}sf_pt_{ch}_eta{b}{charge}.{ext}".format(out=outdir,ch=channel,b=key,charge=tmpch,ext=ext))            
+            canvas.SaveAs("{out}sf_pt_{ch}_eta{b}{charge}.{ext}".format(out=outfolder,ch=channel,b=key,charge=tmpch,ext=ext))            
         else:
-            canvas.SaveAs("{out}eff{mc}_pt_{ch}_eta{b}{charge}.{ext}".format(out=outdir,mc=mc,ch=channel,b=key,charge=tmpch,ext=ext))                            
+            canvas.SaveAs("{out}eff{mc}_pt_{ch}_eta{b}{charge}.{ext}".format(out=outfolder,mc=mc,ch=channel,b=key,charge=tmpch,ext=ext))                            
     return fitFunction[defaultFunc]["func"]
 
 ############################################################################
@@ -924,7 +924,7 @@ def drawReducedChi2(c, hist_reducedChi2_data, hist_reducedChi2_MC, hist_reducedC
     lat.DrawLatex(xmin,yhi-0.15,line3)
     
     for ext in ["png","pdf"]:
-        c.SaveAs("{out}reducedChi2_{ch}.{ext}".format(out=outname,ch=channel,ext=ext))
+        c.SaveAs("{out}reducedChi2_{ch}.{ext}".format(out=outdir,ch=channel,ext=ext))
 
 ############################################################################
 
@@ -957,8 +957,10 @@ def mergeFiles(args):
 
     steps = args.doSteps
     inputDir = args.outdir[0] # outdir is the input directory for the merge command
+    # if inputDir is read using the eos mount it might fail (should copy files with xrdcp first)
+    # for now keep it as it is
     era = args.era
-    outdir = f"{inputDir}/{era}/"
+    outfolder = f"{inputDir}/{era}/"
 
     files = []
     for step in steps:
@@ -970,7 +972,7 @@ def mergeFiles(args):
             charge = "minus"
             step = step.replace(charge, "")
         files.append(f"{inputDir}/{era}/mu_{step}_{charge}/smoothedSFandEffi_{step}_{era}_{charge}.root")
-    outfile = f"{outdir}/allSmooth_{era}.root"
+    outfile = f"{outfolder}/allSmooth_{era}.root"
     mergeCmd = f"hadd -f {outfile} " + " ".join(files)
     print()
     print("Merging file with this command:")
@@ -1010,7 +1012,7 @@ def runFiles(args):
         
 if __name__ == "__main__":
             
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('inputfile',  type=str, nargs=1, help='input root file with TH2')
     parser.add_argument('outdir', type=str, nargs=1, help='output directory to save things')
     parser.add_argument('-c','--charge', default='both', choices=['both', 'plus', 'minus'], type=str, help='Plus or minus if the efficiencies were derived separately for each charge. If both, assumes no charge splitting in the inputs')
@@ -1021,7 +1023,6 @@ if __name__ == "__main__":
     parser.add_argument(     '--set-max-pt-histo',     dest='setMaxPtHisto', default='-1.0', type=float, help='Set upper pt for output histograms. If negative use default max from input histograms')
     parser.add_argument(    '--input-hist-names', dest='inputHistNames', default='EffData2D,EffMC2D,SF2D_nominal', type=str, help='Pass comma separated list of 3  names, for eff(data),eff(MC),SF, to be used instead of the default names')
     parser.add_argument(    '--input-hist-names-alt', dest='inputHistNamesAlt', default='EffDataAltSig2D,SF2D_dataAltSig', type=str, help='Pass comma separated list of 2  names for alternate variations, for eff(data),SF, to be used instead of the default names')
-    parser.add_argument(     '--palette'  , dest='palette',      default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
     parser.add_argument(     '--fit-pol-degree-efficiency'  , dest='fitPolDegreeEfficiency', default=4, type=int, help='Degree for polynomial used in the fits to efficiencies (-1 will use a spline)')
     parser.add_argument(     '--no-skip-eff', dest='skipEff', action="store_false", help='Do not skip efficiency smoothing (default is to do only SF to save time and if one only wants to smooth SF directly)')
     # utility option to print commands to do all files
@@ -1057,11 +1058,11 @@ if __name__ == "__main__":
     charge = "" if args.charge == "both" else "positive" if args.charge == "plus" else "negative"
     lepton = f"{charge} muon"
 
-    outname = args.outdir[0]
-    addStringToEnd(outname,"/",notAddIfEndswithMatch=True)
-    outname += f"{args.era}/{channel}_{args.step}_{args.charge}/"
-    createPlotDirAndCopyPhp(outname)
-    
+    outdir_original = args.outdir[0]
+    addStringToEnd(outdir_original,"/",notAddIfEndswithMatch=True)
+    outdir_original += f"{args.era}/{channel}_{args.step}_{args.charge}/"
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     outfilename = f"smoothedSFandEffi_{args.step}_{args.era}_{args.charge}.root"
 
     #########################################    
@@ -1212,7 +1213,7 @@ if __name__ == "__main__":
     hsfpt = make1Dhist("hsfpt", hsf, ptbins, label)
     hsfptAlt = make1Dhist("hsfptAlt", hsfAlt, ptbins, label)
 
-    outfolder_eigenVars = f"{outname}/eigenDecomposition/" 
+    outfolder_eigenVars = f"{outdir}/eigenDecomposition/" 
 
     zaxisRange = ""
     zaxisRangeSF = "::" + minmaxSF[args.step]
@@ -1223,7 +1224,7 @@ if __name__ == "__main__":
         # first MC
         ###########################
         for key in hmcpt:
-            bestFitFunc = fitTurnOnTF(hmcpt[key], key, outname, "MC",channel=channel,
+            bestFitFunc = fitTurnOnTF(hmcpt[key], key, outdir, "MC",channel=channel,
                                       hist_chosenFunc=hist_chosenFunc, 
                                       step=args.step,
                                       fitRange=args.ptFitRange,
@@ -1248,7 +1249,7 @@ if __name__ == "__main__":
         hdataptAlt = make1Dhist("hdataptAlt", hdataAlt, ptbins, label)
         for key in hdatapt:
 
-            bestFitFunc = fitTurnOnTF(hdatapt[key],key,outname, "Data",channel=channel,hist_chosenFunc=hist_chosenFunc, 
+            bestFitFunc = fitTurnOnTF(hdatapt[key],key,outdir, "Data",channel=channel,hist_chosenFunc=hist_chosenFunc, 
                                       step=args.step,
                                       fitRange=args.ptFitRange,
                                       hist_reducedChi2=hist_reducedChi2_data,
@@ -1282,7 +1283,7 @@ if __name__ == "__main__":
         if not args.skipEff:
             # this is to compare direct SF smoothing with efficiency smoothing
             smoothSFfromEffiTMP = scaleFactor.ProjectionY(f"{args.step}TMP_{key}", key+1, key+1, "e")
-        bestFitFunc = fitTurnOnTF(hsfpt[key],key,outname, "SF",channel=channel,hist_chosenFunc=hist_chosenFunc_SF, 
+        bestFitFunc = fitTurnOnTF(hsfpt[key],key,outdir, "SF",channel=channel,hist_chosenFunc=hist_chosenFunc_SF, 
                                   step=args.step,
                                   fitRange=args.ptFitRange,
                                   hist_reducedChi2=hist_reducedChi2_sf,
@@ -1356,25 +1357,25 @@ if __name__ == "__main__":
 
     # plot original histograms
     drawCorrelationPlot(hmc,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"MC efficiency%s" % zaxisRange,
-                        "inputEfficiency_MC","",outname,palette=args.palette,passCanvas=canvas)
+                        "inputEfficiency_MC","",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(hdata,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data efficiency%s" % zaxisRange,
-                        "inputEfficiency_Data","",outname,palette=args.palette,passCanvas=canvas)
+                        "inputEfficiency_Data","",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(hsf,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data/MC scale factor%s" % zaxisRangeSF,
-                        "inputScaleFactor","",outname,palette=args.palette,passCanvas=canvas)
+                        "inputScaleFactor","",outdir,palette=args.palette,passCanvas=canvas)
 
     # now the smoothed ones
     drawCorrelationPlot(hsfSmoothCheck,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data/MC smoothed scale factor%s" % zaxisRangeSF,
-                        "smoothScaleFactorDirectly","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "smoothScaleFactorDirectly","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
     if not args.skipEff:
         # plot smooth efficiencies and SF made from them
         drawCorrelationPlot(hmcSmoothCheck,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"MC smoothed efficiency%s" % zaxisRange,
-                            "smoothEfficiency_MC","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                            "smoothEfficiency_MC","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
         drawCorrelationPlot(hdataSmoothCheck,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data smoothed efficiency%s" % zaxisRange,
-                            "smoothEfficiency_Data","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                            "smoothEfficiency_Data","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
         drawCorrelationPlot(scaleFactor,
                             "{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),
                             "Data/MC scale factor%s" % zaxisRangeSF,
-                            "smoothScaleFactor","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                            "smoothScaleFactor","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
 
     #################################
     # plot also with original binning
@@ -1385,11 +1386,11 @@ if __name__ == "__main__":
     ratioMC.Divide(hmcSmoothCheck_origBinPt)
     
     drawCorrelationPlot(hmcSmoothCheck_origBinPt,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"MC smoothed efficiency%s" % zaxisRange,
-                        "smoothEfficiency_MC_origBinPt","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "smoothEfficiency_MC_origBinPt","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(hdataSmoothCheck_origBinPt,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data smoothed efficiency%s" % zaxisRange,
-                        "smoothEfficiency_Data_origBinPt","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "smoothEfficiency_Data_origBinPt","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(hsfSmoothCheck_origBinPt,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data/MC smoothed scale factor%s" % zaxisRangeSF,
-                        "smoothScaleFactorDirectly_origBinPt","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "smoothScaleFactorDirectly_origBinPt","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
 
     # scale factor: data/MC
     scaleFactor_origBinPt = ROOT.TH2D("scaleFactor_origBinPt","Scale factor",
@@ -1406,18 +1407,18 @@ if __name__ == "__main__":
 
     #scaleFactor_origBinPt.GetZaxis().SetTitle("Data/MC scale factor")
     drawCorrelationPlot(scaleFactor_origBinPt,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data/MC scale factor%s" % zaxisRangeSF,
-                        "smoothScaleFactor_origBinPt","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "smoothScaleFactor_origBinPt","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
 
 
     ######################
     # finally SF(smooth)/SF(original)
     ######################
     drawCorrelationPlot(ratioData,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data efficiency ratio (original/smooth)::0.99,1.01",
-                        "dataEfficiencyRatio","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "dataEfficiencyRatio","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(ratioMC,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"MC efficiency ratio (original/smooth)::0.99,1.01",
-                        "mcEfficiencyRatio","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "mcEfficiencyRatio","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(ratioSF,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"scale factor ratio (original/smooth)::0.99,1.01",
-                        "scaleFactorRatio","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "scaleFactorRatio","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
 
     if not args.skipEff:
         pullData.Add(hdataSmoothCheck_origBinPt, -1.0)
@@ -1428,11 +1429,11 @@ if __name__ == "__main__":
     pullSF.Divide(errSF)
     
     drawCorrelationPlot(pullData,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"Data eff. pull (original-smooth)/err::-5.0,5.0",
-                        "dataEfficiencyPull","ForceTitle",outname,nContours=10,palette=args.palette,passCanvas=canvas)
+                        "dataEfficiencyPull","ForceTitle",outdir,nContours=10,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(pullMC,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"MC eff. pull (original-smooth)/err::-5.0,5.0",
-                        "mcEfficiencyPull","ForceTitle",outname,nContours=10,palette=args.palette,passCanvas=canvas)
+                        "mcEfficiencyPull","ForceTitle",outdir,nContours=10,palette=args.palette,passCanvas=canvas)
     drawCorrelationPlot(pullSF,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"scale factor pull (original-smoothDirectly)/err::-5.0,5.0",
-                        "scaleFactorPull","ForceTitle",outname,nContours=10,palette=args.palette,passCanvas=canvas)
+                        "scaleFactorPull","ForceTitle",outdir,nContours=10,palette=args.palette,passCanvas=canvas)
     if not args.skipEff:
         # add also ratio of ratioData and ratioMC, because in each there might be trend and we want to see if in the double ratio they would cancel
         doubleRatioDataMC = copy.deepcopy(ratioData.Clone("doubleRatioDataMC"))
@@ -1441,19 +1442,19 @@ if __name__ == "__main__":
         drawCorrelationPlot(doubleRatioDataMC,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),
                             "Double ratio",
                             "doubleRatio_smoothOverBinnedEffi_DataAndMC","ForceTitle",
-                            outname,palette=args.palette,passCanvas=canvas)
+                            outdir,palette=args.palette,passCanvas=canvas)
         # additional pulls
         pullSFfromSmoothEffi.Add(scaleFactor_origBinPt, -1.0)
         pullSFfromSmoothEffi.Divide(errSF)
         drawCorrelationPlot(pullSFfromSmoothEffi,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),"scale factor pull (original-smoothFromEffi)/err::-5.0,5.0",
-                        "scaleFactorPull_SFfromSmoothEffi","ForceTitle",outname,nContours=10,palette=args.palette,passCanvas=canvas)
+                        "scaleFactorPull_SFfromSmoothEffi","ForceTitle",outdir,nContours=10,palette=args.palette,passCanvas=canvas)
 
         SFpullRatio = copy.deepcopy(pullSFfromSmoothEffi.Clone("scaleFactorPullRatio_SFfromSmoothEffiOverDirectSmoothing"))
         SFpullRatio.Divide(pullSF)
         SFpullRatio.SetTitle("")
         drawCorrelationPlot(SFpullRatio, "{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),
                             "SF pull ratio: smoothFromEffi / directSmoothing",
-                            SFpullRatio.GetName(), "ForceTitle",outname,nContours=10,palette=args.palette,passCanvas=canvas)
+                            SFpullRatio.GetName(), "ForceTitle",outdir,nContours=10,palette=args.palette,passCanvas=canvas)
     # ######################
     # # See the difference between smoothing Data and MC efficiency and taking the ratio or smoothing directly the efficiency ratio
     # ######################    
@@ -1466,7 +1467,7 @@ if __name__ == "__main__":
     ratioSF_smoothNumDen_smoothRatio.Divide(hsfSmoothCheck_origBinPt)
     drawCorrelationPlot(ratioSF_smoothNumDen_smoothRatio,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),
                         "SF ratio: smooth eff or ratio directly::0.999,1.001",
-                        "ratioSF_smoothNumDen_smoothRatio","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                        "ratioSF_smoothNumDen_smoothRatio","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
 
     # same as ratioSF_smoothNumDen_smoothRatio but with fine pt binning
     if not args.skipEff:
@@ -1476,7 +1477,7 @@ if __name__ == "__main__":
         ratioSF_smoothEffiOverSmoothDirectly.Divide(hsfSmoothCheck)
         drawCorrelationPlot(ratioSF_smoothEffiOverSmoothDirectly,"{lep} #eta".format(lep=lepton),"{lep} p_{{T}} [GeV]".format(lep=lepton),
                             "SF ratio: smooth eff or ratio directly::0.999,1.001",
-                            "ratioSF_smoothEffiOverSmoothDirectly","ForceTitle",outname,palette=args.palette,passCanvas=canvas)
+                            "ratioSF_smoothEffiOverSmoothDirectly","ForceTitle",outdir,palette=args.palette,passCanvas=canvas)
         
         
     c = ROOT.TCanvas("c","",700,700)
@@ -1487,8 +1488,8 @@ if __name__ == "__main__":
     c.SetRightMargin(0.06)
     c.cd()
     if not args.skipEff:
-        quickPlotTH1(c, hist_chosenFunc, outname, channel)
-    quickPlotTH1(c, hist_chosenFunc_SF, outname, channel, postfix="SF")
+        quickPlotTH1(c, hist_chosenFunc, outdir, channel)
+    quickPlotTH1(c, hist_chosenFunc_SF, outdir, channel, postfix="SF")
 
     # draw the chi2 plots
     drawReducedChi2(c, hist_reducedChi2_data, hist_reducedChi2_MC, hist_reducedChi2_sf)
@@ -1520,14 +1521,14 @@ if __name__ == "__main__":
         ratio_MCtruthEffiOverTnP_etapt_root.Divide(hmc)
         drawCorrelationPlot(ratio_MCtruthEffiOverTnP_etapt_root, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"{stepChargeTitle} MC efficiency ratio",
-                            ratio_MCtruthEffiOverTnP_etapt_root.GetName(), "ForceTitle", outname,
+                            ratio_MCtruthEffiOverTnP_etapt_root.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         productSFandMCtruthEffi = copy.deepcopy(histMCtruthEffi2DorigBin_etapt_root.Clone(f"productSFandMCtruthEffi_{args.step}_etapt"))
         productSFandMCtruthEffi.SetTitle(stepChargeTitle)
         productSFandMCtruthEffi.Multiply(hsf)
         drawCorrelationPlot(productSFandMCtruthEffi, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"Product of SF and W MC truth efficiency",
-                            productSFandMCtruthEffi.GetName(), "ForceTitle", outname,
+                            productSFandMCtruthEffi.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         
         logger.info(f"Preparing W MC smooth eta-pt efficiencies for {stepChargeTitle}")
@@ -1569,7 +1570,7 @@ if __name__ == "__main__":
         # plot W MC efficiencies after spline interpolation as a check
         drawCorrelationPlot(histEffi2D_etapt_root, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             "W MC efficiency (spline interp.)",
-                            histEffi2D_etapt_root.GetName(), "ForceTitle", outname,
+                            histEffi2D_etapt_root.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         
         logger.info("Done with efficiencies")
@@ -1600,15 +1601,15 @@ if __name__ == "__main__":
         hsfptAlt_anti = make1Dhist("hsfptAlt_anti", hanti_SF_originalDataAltSig, ptbins, label_anti)
         drawCorrelationPlot(hanti_SF_original, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"Anti{args.step} scale factors",
-                            hanti_SF_original.GetName(), "ForceTitle", outname,
+                            hanti_SF_original.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         drawCorrelationPlot(hanti_effData_original, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"Anti{args.step} data efficiency",
-                            hanti_effData_original.GetName(), "ForceTitle", outname,
+                            hanti_effData_original.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         drawCorrelationPlot(hanti_effMC_original, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"Anti{args.step} MC efficiency",
-                            hanti_effMC_original.GetName(), "ForceTitle", outname,
+                            hanti_effMC_original.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         
     # now get SF dividing efficiencies, but for the variations use either nominal data or nominal MC, will end up with two SF histograms
@@ -1678,7 +1679,7 @@ if __name__ == "__main__":
         # ###########################
         for key in hsfpt_anti:
             antiisoTMP = nomiAntiisoSFfromSmoothIsoEffi.ProjectionY(f"antiisoTMP_{key}", key+1, key+1, "e")
-            bestFitFunc = fitTurnOnTF(hsfpt_anti[key],key, outname+f"/anti{args.step}_fromSmoothEffi", "SF", 
+            bestFitFunc = fitTurnOnTF(hsfpt_anti[key],key, outdir+f"/anti{args.step}_fromSmoothEffi", "SF", 
                                       step="anti"+args.step,
                                       fitRange=args.ptFitRange,
                                       charge=args.charge,
@@ -1724,7 +1725,7 @@ if __name__ == "__main__":
         #
         drawCorrelationPlot(nomiAntiSFfromSFandEffi, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton),
                             f"Anti{args.step} smooth SF",
-                            nomiAntiSFfromSFandEffi.GetName(), "ForceTitle", outname,
+                            nomiAntiSFfromSFandEffi.GetName(), "ForceTitle", outdir,
                             palette=args.palette, passCanvas=canvas)
         
         # ###########################
@@ -1732,7 +1733,7 @@ if __name__ == "__main__":
         # ###########################
         for key in hsfpt_anti:
             antiisoTMP = nomiAntiSFfromSFandEffi.ProjectionY(f"antiisoTMP2_{key}", key+1, key+1, "e")
-            bestFitFunc = fitTurnOnTF(hsfpt_anti[key],key, outname+f"/anti{args.step}_fromSFandEffi", "SF", 
+            bestFitFunc = fitTurnOnTF(hsfpt_anti[key],key, outdir+f"/anti{args.step}_fromSFandEffi", "SF", 
                                       step="anti"+args.step,
                                       fitRange=args.ptFitRange,
                                       charge=args.charge,
@@ -1746,7 +1747,7 @@ if __name__ == "__main__":
     ###########################
     # Now save things
     ###########################
-    tfile = ROOT.TFile.Open(outname+outfilename,'recreate')
+    tfile = ROOT.TFile.Open(outdir+outfilename,'recreate')
     hsf.Write("SF_original" + hist_postfix)
     hdata.Write("effData_original" + hist_postfix)
     hmc.Write("effMC_original" + hist_postfix)
@@ -1779,10 +1780,10 @@ if __name__ == "__main__":
         hanti_SF_nomiAndAlt_etapt.Write()
     tfile.Close()
     print()
-    print(f"Created file {outname+outfilename}")
+    print(f"Created file {outdir+outfilename}")
     print()
 
-    with open(outname+outfilename.replace(".root", ".txt"), "w+") as outf:
+    with open(outdir+outfilename.replace(".root", ".txt"), "w+") as outf:
         outf.write("="*30 + "\n")
         outf.write("Summary of bad fits (Erf for data/MC and pol3 for SF)\n")
         outf.write("="*30 + "\n")
@@ -1804,4 +1805,5 @@ if __name__ == "__main__":
         outf.seek(0)
         print(outf.read())
         
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
 
