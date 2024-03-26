@@ -130,7 +130,8 @@ else:
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
 
 groups.setNominalName(args.baseName)
-groups.set_histselectors(datasets, args.baseName, integrate_pass_x=not any(["mt" in h for h in args.hists]), mode=args.fakeEstimation, fakerate_axes=["pt", "eta", "charge"])
+if applySelection:
+    groups.set_histselectors(datasets, args.baseName, mode=args.fakeEstimation, fakerate_axes=["pt", "eta", "charge"])
 
 nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
 if not args.nominalRef:

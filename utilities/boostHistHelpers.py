@@ -349,6 +349,20 @@ def rebinHistMultiAx(h, axis_map):
 
     return h
 
+def disableFlow(h, axis_name):
+    # disable the overflow and underflow bins of a single axes, while keeping the flow bins of other axes
+    ax = h.axes[axis_name]
+    ax_idx = [a.name for a in h.axes].index(axis_name)
+    new_ax = type(ax)(ax.edges, name=ax.name, overflow=False, underflow=False)
+    axes = list(h.axes)
+    axes[ax_idx] = new_ax
+    hnew = hist.Hist(*axes, name=h.name, storage=h.storage_type())
+    slices = [slice(None) if i!= ax_idx else slice(0,new_ax.size) for i in range(len(axes))]
+    hnew.values(flow=True)[...] = h.values(flow=True)[*slices]
+    if hnew.storage_type == hist.storage.Weight:
+        hnew.variances(flow=True)[...] = h.variances(flow=True)[*slices]
+    return hnew
+
 def rebinHist(h, axis_name, edges, flow=True):
     if type(edges) == int:
         return h[{axis_name : hist.rebin(edges)}]

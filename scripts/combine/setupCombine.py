@@ -45,7 +45,7 @@ def make_parser(parser=None):
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
-    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["closure", "simple", "extended1D", "extended2D"])
+    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -85,7 +85,7 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
-    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["closure", "simple", "extended1D", "extended2D"],
+    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
     # unfolding/differential/theory agnostic
     parser.add_argument("--unfolding", action='store_true', help="Prepare datacard for unfolding")
@@ -214,7 +214,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(datagroups.getNames(), args.baseName, integrate_pass_x="mt" not in fitvar, mode=args.fakeEstimation,
+        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation, fake_processes=[args.qcdProcessName],
             simultaneousABCD=simultaneousABCD)
 
     # Start to create the CardTool object, customizing everything
@@ -283,17 +283,14 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if args.pseudoDataFakes:
         cardTool.setPseudodata(args.pseudoDataFakes)
         # pseudodata for fakes, either using data or QCD MC
-        if "closure" in args.pseudoDataFakes:
+        if "closure" in args.pseudoDataFakes or "truthMC" in args.pseudoDataFakes:
             filterGroupFakes = ["QCD"]
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes, applySelection=False)
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
-                integrate_pass_x="mt" not in fitvar, mode=args.fakeEstimation, fake_processes=["QCD",],
+                mode=args.fakeEstimation, fake_processes=["QCD",],
                 simultaneousABCD=simultaneousABCD, 
-                smooth_spectrum=True, # symmetrize charge and eta
                 )
-                # fake_axes: QCD MC has low stat, compute the multijet closure on a subset of axes (including pt to perform exp. fit)
-                # smooth_spectrum=True, smoothing_axis_name="pt", # due to small MC stat, smooth by exponential fit
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD)
         if args.axlim or args.rebin or args.absval:
@@ -306,7 +303,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not args.theoryAgnostic:
         logger.info(f"cardTool.allMCProcesses(): {cardTool.allMCProcesses()}")
         
-    passSystToFakes = wmass and not (simultaneousABCD or xnorm or args.skipSignalSystOnFakes) and args.qcdProcessName not in excludeGroup and (filterGroup == None or args.qcdProcessName in filterGroup)
+    passSystToFakes = wmass and not (simultaneousABCD or xnorm or args.skipSignalSystOnFakes) and args.qcdProcessName != "QCD" and args.qcdProcessName not in excludeGroup and (filterGroup == None or args.qcdProcessName in filterGroup)
 
     # TODO: move to a common place if it is  useful
     def assertSample(name, startsWith=["W", "Z"], excludeMatch=[]):
@@ -344,16 +341,17 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
-    if wmass and args.fakeEstimation in ["extended1D", "extended2D"]:
+    if wmass and args.fakeEstimation in ["simple", "extrapolate", "extended1D", "extended2D"]:
         info=dict(
             name=args.baseName, 
             group=cardTool.getFakeName(), 
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
             mirror=False, 
+            scale=2,
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
-            systAxes=["_eta", "_charge", "_param", "downUpVar"])
+            systAxes=[f"_{x}" for x in ["eta", "charge"] if x in fitvar]+["_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
             rename=subgroup,
@@ -601,7 +599,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
     cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
-        cardTool.addLnNSystematic("CMS_Fakes", processes=[cardTool.getFakeName()], size=1.10, group="CMS_background")
+        # cardTool.addLnNSystematic("CMS_Fakes", processes=[cardTool.getFakeName()], size=1.10, group="CMS_background")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")
         cardTool.addSystematic("luminosity",
@@ -862,7 +860,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 def analysis_label(card_tool):
     analysis_name_map = {
         "wmass" : "WMass",
-        "vgen" : "ZGen" if card_tool.getProcesses()[0][0] == "Z" else "WGen",
+        "vgen" : "ZGen" if len(card_tool.getProcesses()) > 0 and card_tool.getProcesses()[0][0] == "Z" else "WGen",
         "wlike" : "ZMassWLike", 
         "dilepton" : "ZMassDilepton",
         "lowpu_w" : "WMass_lowPU",

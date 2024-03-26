@@ -755,15 +755,7 @@ class CardTool(object):
             )
         procDict = datagroups.getDatagroups()
         gTruth = procDict["QCDTruth"]
-        gPred = procDict["QCD"]
-
         hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
-        hPred = gPred.histselector.get_hist(gPred.hists["syst"])
-
-        logger.info(f"Have MC QCD truth {hTruth.sum()} and predicted {hPred.sum()}")
-
-        # compute the nonclosure correction
-        histCorr = hh.divideHists(hTruth, hPred)
 
         # now load the nominal histograms
         self.datagroups.loadHistsForDatagroups(
@@ -775,26 +767,35 @@ class CardTool(object):
             sumFakesPartial=not self.simultaneousABCD)
         procDictFromNomi = self.datagroups.getDatagroups()
 
-        # apply the nonclosure to fakes derived from data
-        hFake = procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName]
-        if any([a not in hFake.axes for a in histCorr.axes]):
-            # TODO: Make if work for arbitrary axes (maybe as an action when loading nominal histogram, before fakerate axes are integrated e.g. in mt fit)
-            raise NotImplementedError(f"The multijet closure test is not implemented for arbitrary axes, the required axes are {histCorr.axes.name}")
-
-        if self.simultaneousABCD:
+        if "QCD" not in procDict:
+            # use truth MC as QCD
+            logger.info(f"Have MC QCD truth {hTruth.sum()}")
+            hFake = hTruth
+        elif self.simultaneousABCD:
             # TODO: Make if work for simultaneous ABCD fit, apply the correction in the signal region (D) only
             raise NotImplementedError("The multijet closure test is not implemented for simultaneous ABCD fit")
         else:
+            # compute the nonclosure correction
+            gPred = procDict["QCD"]
+            hPred = gPred.histselector.get_hist(gPred.hists["syst"])
+            logger.info(f"Have MC QCD truth {hTruth.sum()} and predicted {hPred.sum()}")
+            histCorr = hh.divideHists(hTruth, hPred)
+
+            # apply the nonclosure to fakes derived from data
+            hFake = procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName]
+            if any([a not in hFake.axes for a in histCorr.axes]):
+                # TODO: Make if work for arbitrary axes (maybe as an action when loading nominal histogram, before fakerate axes are integrated e.g. in mt fit)
+                raise NotImplementedError(f"The multijet closure test is not implemented for arbitrary axes, the required axes are {histCorr.axes.name}")
             hFake = hh.multiplyHists(hFake, histCorr)
 
-        # done, now sum all histograms
-        hdata = hh.sumHists([procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses() if x != self.getFakeName()])
-        hdata = hh.sumHists([hdata, hFake])
+            # apply variances from hCorr to fakes to account for stat uncertainty
+            hFakeNominal = procDictFromNomi[self.getFakeName()].hists[self.nominalName]
+            hFakeNominal.variances(flow=True)[...] = hFake.variances(flow=True)
+            procDictFromNomi[self.getFakeName()].hists[self.nominalName] = hFakeNominal
 
-        # apply variances from hCorr to fakes to account for stat uncertainty
-        hFakeNominal = procDictFromNomi[self.getFakeName()].hists[self.nominalName]
-        hFakeNominal.variances(flow=True)[...] = hFake.variances(flow=True)
-        procDictFromNomi[self.getFakeName()].hists[self.nominalName] = hFakeNominal
+        # done, now sum all histograms
+        hists_data = [procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses() if x != self.getFakeName()]
+        hdata = hh.sumHists([*hists_data, hFake]) if len(hists_data)>0 else hFake
 
         return hdata
 
@@ -806,15 +807,16 @@ class CardTool(object):
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
-            if pseudoData == "closure":
-                # pseudodata for fakes using closure from QCD MC as correction
+            if pseudoData in ["closure", "truthMC"]:
+                # pseudodata for fakes [using closure from QCD MC as correction, using QCD MC as prediction]
+                if pseudoData == "truthMC":
+                    datagroups.deleteGroup("QCD")
                 hdatas.append(self.loadPseudodataFakes(datagroups, forceNonzero=forceNonzero))
                 continue
-            
+
             if pseudoData in ["simple", "extended1D", "extended2D"]:
                 # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
                 datagroups.set_histselectors(datagroups.getNames(), self.nominalName, 
-                    integrate_pass_x=True, #"mt" not in fitvar, 
                     mode=pseudoData,
                     simultaneousABCD=self.simultaneousABCD,
                 )

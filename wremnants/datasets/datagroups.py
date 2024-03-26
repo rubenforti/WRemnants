@@ -148,6 +148,7 @@ class Datagroups(object):
                 logger.warning(f"Did not find group {g}. continue without merging it to new group {new_name}.")
         if len(groups_to_merge) < 1:
             logger.warning(f"No groups to be merged. continue without merging.")
+            return
         if new_name != groups_to_merge[0]:
             self.copyGroup(groups_to_merge[0], new_name)
         self.groups[new_name].label = styles.process_labels.get(new_name, new_name)
@@ -209,6 +210,8 @@ class Datagroups(object):
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
+        elif mode == "extrapolate":
+            fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
             if simultaneousABCD:
                 fakeselector = sel.FakeSelectorSimultaneousABCD
@@ -218,6 +221,8 @@ class Datagroups(object):
             raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
+            if len(self.groups[g].members[:]) == 0:
+                raise RuntimeError(f"No member found for group {g}")
             base_member = self.groups[g].members[:][0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:

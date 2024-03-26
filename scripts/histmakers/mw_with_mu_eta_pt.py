@@ -102,6 +102,7 @@ logger.info(f"Pt binning: {template_npt} bins from {template_minpt} to {template
 # standard regular axes
 axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta", overflow=False, underflow=False)
 axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+axis_muonJetPt = hist.axis.Regular(50, 26, 76, name = "muonJetPt", underflow=False, overflow=True)
 
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
@@ -109,8 +110,13 @@ axis_passMT = common.axis_passMT
 axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120], name = "mt", underflow=False, overflow=True)
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
+# auxiliary axes
+axis_iso = hist.axis.Regular(100, 0, 25, name = "iso",underflow=False, overflow=True)
+axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, overflow=True)
+
 # axes with only a few bins for the ABCD method
-axis_isoCat = hist.axis.Variable([0,0.15,0.3], name = "iso",underflow=False, overflow=True)
+axis_isoCat = hist.axis.Variable([0,4,8], name = "iso",underflow=False, overflow=True)
+axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=False, overflow=True)
 axis_mtCat = hist.axis.Variable([0,20,40,44,49,55,62], name = "mt",underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
@@ -118,8 +124,9 @@ axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 base_axes = [axis_eta, axis_pt, axis_charge]
 base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_isoCat]
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0"]
+nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_relIsoCat]
+# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0"]
+nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
 axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
@@ -383,14 +390,20 @@ def build_graph(df, dataset):
             for reco_type in ['crctd', 'cvh', 'uncrct', 'gen_smeared']:
                 df = muon_validation.define_reco_over_gen_cols(df, reco_type)
 
+    df = df.Define("goodMuons_ptJet0", "Jet_pt[Muon_jetIdx[goodMuons][0]]")
+
     if args.isolationDefinition == "iso04":
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_all[goodMuons][0]")
+        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_all[goodMuons][0]")
+        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
     elif args.isolationDefinition == "iso04vtxAgn":
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
+        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
+        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
     elif args.isolationDefinition == "iso04chg":
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_chg[goodMuons][0]")
+        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_chg[goodMuons][0]")
+        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
     elif args.isolationDefinition == "iso04chgvtxAgn":
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]")
+        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]")
+        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
     else:
         raise NotImplementedError(f"Isolation definition {args.isolationDefinition} not implemented")
 
@@ -449,8 +462,9 @@ def build_graph(df, dataset):
         leps_corr = ["goodMuons_pt0", "goodMuons_eta0", "goodMuons_phi0", "goodMuons_charge0"]
         df = recoilHelper.recoil_W(df, results, dataset, common.vprocs, leps_uncorr, leps_corr, cols_fakerate=nominal_cols, axes_fakerate=nominal_axes, mtw_min=mtw_min) # produces corrected MET as MET_corr_rec_pt/phi
     else:
-        df = df.Alias("MET_corr_rec_pt", "MET_pt")
-        df = df.Alias("MET_corr_rec_phi", "MET_phi")
+        met = "DeepMETResolutionTune" if args.met == "DeepMETReso" else args.met
+        df = df.Alias("MET_corr_rec_pt", f"{met}_pt")
+        df = df.Alias("MET_corr_rec_phi", f"{met}_phi")
 
     df = df.Define("ptW", "wrem::pt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
@@ -472,9 +486,11 @@ def build_graph(df, dataset):
 
     if auxiliary_histograms:
         # utility plot, mt and met, to plot them later (need eta-pt to make fakes)
-        results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_isoCat], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
-        results.append(df.HistoBoost("transverseMass", [axis_mt_fakes, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_isoCat], ["transverseMass", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_iso0", "nominal_weight"]))
-        results.append(df.HistoBoost("ptW", [axis_recoWpt, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_isoCat], ["ptW", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
+        results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_relIsoCat], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
+        results.append(df.HistoBoost("transverseMass", [axis_mt_fakes, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_relIsoCat], ["transverseMass", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_iso0", "nominal_weight"]))
+        results.append(df.HistoBoost("ptW", [axis_recoWpt, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_relIsoCat], ["ptW", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
+        results.append(df.HistoBoost("iso", [axis_iso], ["goodMuons_iso0", "nominal_weight"]))
+        results.append(df.HistoBoost("relIso", [axis_relIso], ["goodMuons_relIso0", "nominal_weight"]))
 
     if args.poiAsNoi and isW:
         if args.theoryAgnostic and isWmunu and not hasattr(dataset, "out_of_acceptance"): # TODO: might add Wtaunu at some point, not yet
@@ -507,7 +523,7 @@ def build_graph(df, dataset):
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
-    if dataset.is_data:
+    if dataset.is_data or isQCDMC:
         nominal = df.HistoBoost("nominal", axes, cols)
         results.append(nominal)
     else:  
