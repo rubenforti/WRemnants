@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 workingPoints_ = ['reco', 'tracking', 'idip', 'trigger', 'iso', 'isonotrig', 'veto']
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1)
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder (subfolder 'allSF/' created automatically inside)")
     parser.add_argument("-e", "--era",    type=str, default="BtoF,GtoH,B,C,D,E,F,G,H", help="Comma separated list of eras for SF in histogram name; default: %(default)s")
@@ -42,9 +42,6 @@ if __name__ == "__main__":
                         help='Working points made by charge')
     parser.add_argument("--sf-version", dest="sfversions", type=str, default="nominal,dataAltSig", help="SF versions to plot and to use for the products, usually one would use just nominal and dataAltSig to define the systematic variation; default: %(default)s")
     parser.add_argument("--eff-version", dest="effversions", type=str, default="nominal,altSig", help="Efficiency versions to plot (nominal actually has no keyword); default: %(default)s")
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , dest='palette',      default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument(     '--skip-eff', dest='skipEfficiency', action='store_true',   help='Do not plot efficiencies to save time')
     parser.add_argument(     '--make-prod', dest='makeProduct', action='store_true',   help='Make and plot products of scale factors')
     parser.add_argument(     '--bin-pt-finely', dest='binPtFinely', default=-1, type=int, help='Bin product histograms so to increase number of pt bins')
@@ -78,24 +75,25 @@ if __name__ == "__main__":
     
     eras = args.era.split(',')
     fname = args.rootfile[0]
-    outdirOriginal = args.outdir[0] # to keep it below
-    if not outdirOriginal.endswith('/'):
-        outdirOriginal = outdirOriginal + '/'
-    outdirOriginal += "allSF/"
+    outdir_original = args.outdir[0] # to keep it below
+    if not outdir_original.endswith('/'):
+        outdir_original = outdir_original + '/'
+    outdir_original += "allSF/"
     productSubfolder = "productSF/"
-    
+
+    outdir_local = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     # make folder structure
     foldersToCreate = []
     if args.makeProduct:
-        foldersToCreate.append(outdirOriginal + productSubfolder)
+        foldersToCreate.append(outdir_local + productSubfolder)
     for era in eras:
-        foldersToCreate.append(outdirOriginal + era + "/")
+        foldersToCreate.append(outdir_local + era + "/")
         if args.makeProduct:
-            foldersToCreate.append(outdirOriginal + productSubfolder + era + "/")
+            foldersToCreate.append(outdir_local + productSubfolder + era + "/")
 
     for folder in foldersToCreate:
         createPlotDirAndCopyPhp(folder)
-        
     print()
         
     histsSF = {}
@@ -151,27 +149,27 @@ if __name__ == "__main__":
     # first plot efficiencies
     if not args.skipEfficiency:
         for era in eras:
-            outdir = outdirOriginal + era + "/"
+            outdir = outdir_local + era + "/"
             for dataMC in ["Data", "MC"]:
                 for n in list(histsEff[era][dataMC].keys()):
                     drawCorrelationPlot(histsEff[era][dataMC][n], "muon #eta", "muon p_{T} (GeV)", f"{dataMC} efficiency",
                                         f"muonEff{dataMC}_{n}", plotLabel="ForceTitle", outdir=outdir,
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                     # abs. uncertainty (only on nominal, it should be the same for all histograms, hoping the SF and efficiencies were sane in this configuration)
                     if "nominal" in n:
                         drawCorrelationPlot(histsEff[era][dataMC][n], "muon #eta", "muon p_{T} (GeV)", f"Abs. uncertainty on {dataMC} eff",
                                             f"absUnc_muonEff{dataMC}_{n}", plotLabel="ForceTitle", outdir=outdir+"absoluteStatUncertainty/",
                                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotError=True,
-                                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                         ## rel. uncertainty
                         drawCorrelationPlot(histsEff[era][dataMC][n], "muon #eta", "muon p_{T} (GeV)", f"Rel. uncertainty on {dataMC} eff",
                                             f"relUnc_muonEff{dataMC}_{n}", plotLabel="ForceTitle", outdir=outdir+"relativeStatUncertainty/",
                                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
                         
     prodHistsSF = {}
@@ -222,7 +220,7 @@ if __name__ == "__main__":
                 prodHistsSF[era][prodname].SetTitle(f"{stringProduct}")            
                 print(f"{era}: {sfv} -> {stringProduct}")
                 
-    fullout = outdirOriginal + "scaleFactorProduct.root" 
+    fullout = outdir_local + "scaleFactorProduct.root" 
     f = ROOT.TFile.Open(fullout, "RECREATE")
     # put new ones in this files, without copying original histograms (although some are actually bare copies when the product has a single factor)
     if not f or not f.IsOpen():
@@ -246,7 +244,7 @@ if __name__ == "__main__":
     
     for era in eras:
 
-        outdir = outdirOriginal + era + "/"
+        outdir = outdir_local + era + "/"
 
         for n in list(histsSF[era].keys()):
             version = str(n.split("_")[0])
@@ -261,20 +259,20 @@ if __name__ == "__main__":
                                 f"muonSF_{n}", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             # abs. uncertainty (only on nominal, it should be the same for all histograms, hoping the SF and efficiencies were sane in this configuration)
             if "nominal" in n:
                 drawCorrelationPlot(histsSF[era][n], "muon #eta", "muon p_{T} (GeV)", f"Abs. uncertainty on SF",
                                     f"absUnc_muonSF_{n}", plotLabel="ForceTitle", outdir=outdir+"absoluteStatUncertainty/",
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotError=True,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 ## rel. uncertainty
                 drawCorrelationPlot(histsSF[era][n], "muon #eta", "muon p_{T} (GeV)", f"Rel. uncertainty on SF",
                                     f"relUnc_muonSF_{n}", plotLabel="ForceTitle", outdir=outdir+"relativeStatUncertainty/",
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 # plot systs
                 hnomi = copy.deepcopy(histsSF[era][n].Clone("hnomi"))
                 unrolledSF = [unroll2Dto1D(histsSF[era][n], newname=f"unrolled_{n}", cropNegativeBins=False)]
@@ -294,13 +292,13 @@ if __name__ == "__main__":
                                         f"muonSF_{n2}_syst", plotLabel="ForceTitle", outdir=outdir+"absoluteSystUncertainty/",
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                     hsyst.Divide(hnomi)
                     drawCorrelationPlot(hsyst, "muon #eta", "muon p_{T} (GeV)", f"{v2} relative syst unc. on SF",
                                         f"muonSF_{n2}_systRel", plotLabel="ForceTitle", outdir=outdir+"relativeSystUncertainty/",
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 ptBinRanges = []
                 for ipt in range(hnomi.GetNbinsY()):
                     ptBinRanges.append("#splitline{{[{ptmin},{ptmax}]}}{{GeV}}".format(ptmin=int(hnomi.GetYaxis().GetBinLowEdge(ipt+1)),
@@ -315,23 +313,25 @@ if __name__ == "__main__":
                          lineWidth=1, ytextOffsetFromTop=0.2, useMultiHistRatioOption=True)
 
                 
-        outdir = outdirOriginal + productSubfolder + era + "/"
+        outdir = outdir_local + productSubfolder + era + "/"
 
         for n in list(prodHistsSF[era].keys()):
             drawCorrelationPlot(prodHistsSF[era][n], "muon #eta", "muon p_{T} (GeV)", "Data/MC scale factor product",
                                 f"{n}", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             # plot absolute error
             drawCorrelationPlot(prodHistsSF[era][n], "muon #eta", "muon p_{T} (GeV)", "Abs. uncertainty on SF product",
                                 f"absUnc_{n}", plotLabel="ForceTitle", outdir=outdir+"absoluteStatUncertainty/",
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotError=True,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             ## plot relative error
             drawCorrelationPlot(prodHistsSF[era][n], "muon #eta", "muon p_{T} (GeV)", "Rel. uncertainty on SF product",
                                 f"relUnc_{n}", plotLabel="ForceTitle", outdir=outdir+"relativeStatUncertainty/",
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

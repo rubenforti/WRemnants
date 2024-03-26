@@ -77,10 +77,9 @@ if __name__ == "__main__":
 
     workingPoints = ["noCut", "vetoMuon", "goodMuon", "goodMuonAndSA", "fullSelNoMT"]
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("-n", "--baseName", type=str, nargs="+", help="Histogram name in the file", default=["vertexStudyHisto_vetoMuon"], choices=[f"vertexStudyHisto_{wp}" for wp in workingPoints])
     parser.add_argument(     '--dzCut', default=0.1, type=float, help='Vertex dz(gen,reco) threshold in cm to calculate the efficiency')
     parser.add_argument('-p','--process', default="WplusmunuPostVFP", choices=["WplusmunuPostVFP", "WminusmunuPostVFP", "ZmumuPostVFP"], type=str, help='Choose what process to plot')
@@ -89,8 +88,8 @@ if __name__ == "__main__":
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
     fname = args.inputfile[0]
-    outdir = args.outdir[0]
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     ROOT.TH1.SetDefaultSumw2()
 
@@ -101,7 +100,7 @@ if __name__ == "__main__":
     yAxisName = "Muon p_{T} (GeV)"
 
     h5file = h5py.File(fname, "r")
-    results = narf.ioutils.pickle_load_h5py(h5file["results"])
+    results = input_tools.load_results_h5py(h5file)
 
     s = hist.tag.Slicer()
 
@@ -179,4 +178,4 @@ if __name__ == "__main__":
     drawGraphCMS([gr_vpts[wp] for wp in wps], xAxisName, f"{yAxisName}::{ymin},1.0", f"vtxEff_genBosonPt_multiWP_{postfixForCanvasName}", outdir,
                  leg_roc=wps[:], legendCoords = "0.55,0.30,0.95,0.58;1",
                  passCanvas=canvas, etabinText=f"{textForPlot}::0.18,0.15", skipLumi=True)
-    
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

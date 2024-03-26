@@ -456,7 +456,7 @@ if __name__ == "__main__":
                      "triggerminus" : f"{sfFolder}triggerminus3DSFVQTextended.root",
                      }
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('outdir', type=str, nargs=1, help='output directory to save things')
     parser.add_argument('-n', '--outfilename', type=str, default='smoothSF3D.pkl.lz4', help='Output file name, extension must be pkl.lz4, which is automatically added if no extension is given')
     parser.add_argument('--eta', type=int, nargs="*", default=[], help='Select some eta bins (ID goes from 1 to Neta')
@@ -504,8 +504,9 @@ if __name__ == "__main__":
     work.append([inputRootFile["triggerplus"],  "SF3D_nominal_trigger_plus",  "triggerplus", effHist["triggerplus"]])
     work.append([inputRootFile["triggerminus"], "SF3D_nominal_trigger_minus", "triggerminus", effHist["triggerminus"]])
 
-    outdir = args.outdir[0]
-    
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     resultDict = {}
     for w in work:
         inputfile, histname, step, eff = w
@@ -515,9 +516,9 @@ if __name__ == "__main__":
         for ret in rets:
             if ret != None:
                 resultDict[ret.name] = ret
-                
+
     resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})
-    
+
     outfile = outdir + args.outfilename
     logger.info(f"Going to store histograms in file {outfile}")
     logger.info(f"All keys: {resultDict.keys()}")
@@ -525,3 +526,4 @@ if __name__ == "__main__":
     with lz4.frame.open(outfile, 'wb') as f:
         pickle.dump(resultDict, f, protocol=pickle.HIGHEST_PROTOCOL)
     logger.info(f"Output saved: {time.time()-time0}")
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
