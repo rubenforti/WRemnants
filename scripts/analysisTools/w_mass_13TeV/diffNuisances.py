@@ -74,7 +74,7 @@ def sortParameters(params):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('infile', nargs=1, type=str, help='file with the fitresult')
     parser.add_argument(      '--expected-infile'        , dest='expInfile'     , default=''        , type=str, help='file with the fitresult for expected, to plot together with observed (still to be implemented)')
     parser.add_argument('-o','--outdir', dest='outdir', default=None, type=str, help='If given, plot the pulls of the nuisances in this output directory')
@@ -112,12 +112,12 @@ if __name__ == "__main__":
     if len(infile_exp):
         plotObsWithExp = True
 
-    if args.outdir:
-        createPlotDirAndCopyPhp(args.outdir)
-    else:
+    if not args.outdir:
         print("You must pass an output folder with option -o")
         quit()
-        
+
+    outdir_original = args.outdir:
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     #valuesPrefit = dict((k,v) for k,v in valuesAndErrorsAll.items() if k.endswith('_gen'))
     pois_regexps = list(args.pois.split(','))
 
@@ -213,7 +213,7 @@ if __name__ == "__main__":
                 if sigShift >= args.upperLimitSigma: continue
             numberRankedNuisances += 1
 
-        if args.outdir: 
+        if outdir: 
             nuis_p_i+=1
             hist_fit_s.SetBinContent(nuis_p_i, val_f)
             hist_fit_s.SetBinError(nuis_p_i,err_f)
@@ -259,7 +259,7 @@ if __name__ == "__main__":
         else:
             args.postfix = addPostfix
             
-    outnameNoExt = "{od}/nuisances_{ps}_{suff}".format(od=args.outdir, ps=args.uniqueString, suff=args.postfix)
+    outnameNoExt = "{od}/nuisances_{ps}_{suff}".format(od=outdir, ps=args.uniqueString, suff=args.postfix)
 
     for ext in args.format.split(','):
         txtfilename = "{noext}.{ext}".format(noext=outnameNoExt, ext=ext)
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         txtfile.close()
         print(f"Info: {ext} file {txtfilename} has been created")
 
-    if args.outdir:
+    if outdir:
         line = ROOT.TLine()
         lat  = ROOT.TLatex(); lat.SetNDC(); lat.SetTextFont(42); lat.SetTextSize(0.04)
         ROOT.gStyle.SetOptStat(0)
@@ -568,5 +568,5 @@ if __name__ == "__main__":
             for ext in ['png', 'pdf']:
                 canvas_nuis.SaveAs("{noext}.{ext}".format(noext=outnameNoExt, ext=ext))
 
-        
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
 

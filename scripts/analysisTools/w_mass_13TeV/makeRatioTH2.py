@@ -53,7 +53,7 @@ from scripts.analysisTools.plotUtils.utility import *
 
 if __name__ == "__main__":
             
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("file1", type=str, nargs=1, help="First file")
     parser.add_argument("hist1", type=str, nargs=1, help="Histogram name from first file")
     parser.add_argument("file2", type=str, nargs=1, help="Second file (can use 'SAME' if equal to first file)")
@@ -74,7 +74,6 @@ if __name__ == "__main__":
     parser.add_argument(     '--yRange', default=(0,-1), type=float, nargs=2, help='Select range for Y axis to plot. Also, bins outside this range are not considered in the 1D histogram. If min > max, the option is neglected')
     parser.add_argument('-e', '--divide-error', dest="divideError", action="store_true", help="Make ratio of uncertainties (the output histogram will have no error assigned to it)")
     parser.add_argument('-E',  '--divide-relative-error', dest="divideRelativeError", action="store_true", help="Make ratio of relative uncertainties (the output histogram will have no error assigned to it)")
-    parser.add_argument(     '--palette'  , default=55, type=int, help='Set palette: use a negative number to select a built-in one, otherwise the default is 55 (kRainbow)')
     parser.add_argument('-a', '--make-asymmetry', dest="makeAsymmetry", action="store_true", help="Make ratio of difference over the sum. For this to make sense, the binning of the two inputs must be consistent")
     parser.add_argument('-p', '--make-pulls', dest="makePulls", action="store_true", help="Make pulls of input histograms, i.e. (h1-h2)/error, where error is taken as the quadrature sum of the errors of the input")
     parser.add_argument(       '--pull-error-ScaleFactor', dest='pullErrorScaleFactor', default='1.', type=float, help='Inflate the error by this factor when making the pulls (because it is assumed the inputs are uncorrelated, so the error might need a correction)')
@@ -100,10 +99,11 @@ if __name__ == "__main__":
 
     print("")
 
-    if args.outdir:
-        outname = args.outdir
-        addStringToEnd(outname,"/",notAddIfEndswithMatch=True)
-        createPlotDirAndCopyPhp(outname)
+    outdir_original = args.outdir
+    outdir = None
+    if outdir_original:
+        addStringToEnd(outdir_original, "/", notAddIfEndswithMatch=True)
+        outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     else:
         print("Error: you should specify an output folder using option -o <name>. Exit")
         quit()
@@ -279,15 +279,15 @@ if __name__ == "__main__":
             args.ratioRange = (hratio.GetBinContent(hratio.GetMinimumBin()), hratio.GetBinContent(hratio.GetMaximumBin()))
         zAxisTitle = zAxisTitle + "::" + str(args.ratioRange[0]) + "," + str(args.ratioRange[1])
     drawCorrelationPlot(hratio,xAxisTitle,yAxisTitle,zAxisTitle,
-                        args.outhistname,"ForceTitle",outname,0,0,False,False,False,1,
+                        args.outhistname,"ForceTitle",outdir,0,0,False,False,False,1,
                         palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
 
     if args.drawOriginal:
         drawCorrelationPlot(hinput1,xAxisTitle,yAxisTitle,"Numerator",
-                            f"num_{args.outhistname}","ForceTitle",outname,0,0,False,False,False,1,
+                            f"num_{args.outhistname}","ForceTitle",outdir,0,0,False,False,False,1,
                             palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
         drawCorrelationPlot(hinput2,xAxisTitle,yAxisTitle,"Denominator",
-                            f"den_{args.outhistname}","ForceTitle",outname,0,0,False,False,False,1,
+                            f"den_{args.outhistname}","ForceTitle",outdir,0,0,False,False,False,1,
                             palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
 
     
@@ -297,7 +297,7 @@ if __name__ == "__main__":
                 hratio.GetZaxis().GetTitle() if args.zAxisTitle else "ratio",
                 "number of events",
                 f"ratioDistribution_{args.outhistname}",
-                outname,
+                outdir,
                 passCanvas=canvas
         )
 
@@ -350,7 +350,7 @@ if __name__ == "__main__":
         if args.divideError or args.divideRelativeError:
             drawNTH1([ratio_unrolled, unitLine], [f"Ratio {args.histTitle}", "Unity"],
                      xAxisTitle_unroll, zAxisTitle_unroll,
-                     ratio_unrolled.GetName(), outname,
+                     ratio_unrolled.GetName(), outdir,
                      leftMargin=0.06, rightMargin=0.01,
                      legendCoords="0.06,0.99,0.91,0.99;3", lowerPanelHeight=0.0, skipLumi=True, passCanvas=canvas_unroll,
                      drawVertLines=vertLineDivisions,
@@ -363,7 +363,7 @@ if __name__ == "__main__":
             colorUnrollHists = [ROOT.kBlack, ROOT.kRed] # only from second histogram onwards
             drawNTH1(unrollHists, legUnrollHists,
                      xAxisTitle_unroll, zAxisTitle_unroll,
-                     ratio_unrolled.GetName(), outname,
+                     ratio_unrolled.GetName(), outdir,
                      leftMargin=0.06, rightMargin=0.01,
                      legendCoords="0.06,0.99,0.91,0.99;3", lowerPanelHeight=0.0, skipLumi=True, passCanvas=canvas_unroll,
                      drawVertLines=vertLineDivisions,
@@ -386,12 +386,12 @@ if __name__ == "__main__":
             ratioRange1D = ""
         else:
             ratioRange1D = "::" + str(args.ratioRange1D[0]) + "," + str(args.ratioRange1D[1])
-        drawNTH1([hinput1_projX, hinput2_projX], [args.legendEntries1D[0], args.legendEntries1D[1]], xAxisTitle, "Events", f"{args.outhistname}_projX", outname,
+        drawNTH1([hinput1_projX, hinput2_projX], [args.legendEntries1D[0], args.legendEntries1D[1]], xAxisTitle, "Events", f"{args.outhistname}_projX", outdir,
                  topMargin=0.1, leftMargin=0.16, rightMargin=0.05, labelRatioTmp=f"Ratio{ratioRange1D}",
                  legendCoords="0.16,0.95,0.8,0.9;1", lowerPanelHeight=0.4, skipLumi=True, passCanvas=canvas1D,
                  transparentLegend=True, onlyLineColor=True, noErrorRatioDen=False,
                  useLineFirstHistogram=True, setOnlyLineRatio=False, lineWidth=2)
-        drawNTH1([hinput1_projY, hinput2_projY], [args.legendEntries1D[0], args.legendEntries1D[1]], yAxisTitle, "Events", f"{args.outhistname}_projY", outname,
+        drawNTH1([hinput1_projY, hinput2_projY], [args.legendEntries1D[0], args.legendEntries1D[1]], yAxisTitle, "Events", f"{args.outhistname}_projY", outdir,
                  topMargin=0.1, leftMargin=0.16, rightMargin=0.05, labelRatioTmp=f"Ratio{ratioRange1D}",
                  legendCoords="0.16,0.95,0.8,0.9;1", lowerPanelHeight=0.4, skipLumi=True, passCanvas=canvas1D,
                  transparentLegend=True, onlyLineColor=True, noErrorRatioDen=False,
@@ -436,13 +436,13 @@ if __name__ == "__main__":
                 "pulls",
                 "number of events",
                 f"pullDistribution_{args.outhistname}",
-                outname,
+                outdir,
                 passCanvas=canvas,
                 fitString="gaus;LEMSQ+;;-5;5",
                 plotTitleLatex=plotTitleLatex
                 )
         drawCorrelationPlot(hpull2D,xAxisTitle,yAxisTitle,"Pulls::-5,5",
-                            f"pullDistribution2D_{args.outhistname}","ForceTitle",outname,0,0,
+                            f"pullDistribution2D_{args.outhistname}","ForceTitle",outdir,0,0,
                             False,False,False,1,palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
  
     ###########################
@@ -451,12 +451,12 @@ if __name__ == "__main__":
     if args.outfilename:
         if not args.outfilename.endswith(".root"):
             args.outfilename = args.outfilename + ".root"
-        tf = ROOT.TFile.Open(outname+args.outfilename,'recreate')
+        tf = ROOT.TFile.Open(outdir+args.outfilename,'recreate')
         hratio.Write(args.outhistname)
         tf.Close()
         print("")
-        print("Created file %s" % (outname+args.outfilename))
+        print("Created file %s" % (outdir+args.outfilename))
         print("")
 
-                               
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
          

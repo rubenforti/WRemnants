@@ -105,26 +105,22 @@ def plotUnrolledHistogram(h, process, syst, outdir, canvas, hist2DforBins, yAxis
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1, help="Input root file")
     parser.add_argument("outdir",   type=str, nargs=1, help="Folder for plots")
     parser.add_argument("-s", "--systematics",    type=str, default=".*pdf.*", help="Comma separated list of syst names or regular expressions to select systematics to make ratios with nominal")
     parser.add_argument("-p", "--processes",    type=str, default="Wmunu", help="Comma separated list of processes to plot (full name please)")
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51 (let it be odd, so the central strip is white if not using --abs-value and the range is symmetric)')
-    parser.add_argument(     '--palette'  , dest='palette',      default=55, type=int, help='Set palette: use 0 for a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette' , default=False , action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument(     '--plot', dest='plot', default="unrolled", choices=["2D", "unrolled", "all"],  help='Plots to make')
     parser.add_argument(     '--plotNominal', dest='plotNominal' , default=False , action='store_true',   help='Plot nominal histogram')
     parser.add_argument(     '--plotSystOriginal', dest='plotSystOriginal' , default=False , action='store_true',   help='Plot syst histogram also before ratio with nominal')
     parser.add_argument(     '--plotStat', dest='plotStat' , default=False , action='store_true',   help='Plot histogram to show statistical uncertainty on each nominal process')
     parser.add_argument(     '--addErrorBars', dest='addErrorBars' , default=False , action='store_true',   help='Plot error bars on ratio plots for systematics (not recommended if not for test, but better to use --plotStat to check the stat uncertainty)')
     parser.add_argument(     '--statUncRatio', dest='statUncRatio' , default=False , action='store_true',   help='Add ratio of stat uncertainties between syst and nomi, so see if there are correlations with fluctuating bins in the ratio of yields')
-    parser.add_argument(     '--source', dest='source' , type=str, default="wrem", choices=["wrem", "cmg"],  help='Select which tool was used to make histograms (cmg=CMGTools or wrem=WRemnants), the naming convention is different for processes and systematics')
-    parser.add_argument('-c','--charge', dest='charge', default=None, choices=["plus", "minus"], type=str, help='For source=wrem, needs to specify the charge, since all histograms are in the same file')
+    parser.add_argument('-c','--charge', dest='charge', default=None, choices=["plus", "minus"], type=str, help='Needs to specify the charge, since all histograms are in the same file (actually this should be more generally just the datacard channel)')
     parser.add_argument(     '--systPostfix', type=str, default=None, help="Postfix for plot showing some syst variations")
     parser.add_argument(     '--fakeSystToW', default=False , action='store_true',   help='Make additional plots where systs on fakes are translated into signal variation')
     parser.add_argument(     '--sumFakeAndW', default=False , action='store_true',   help='In addition to other plots, and as alternative to --fakeSystToW, sum Fake and W and show variations from varying signal or Fake only')
-    parser.add_argument(     '--compareSingleSystToNomi', default=False , action='store_true',   help='Make plots comparing each single variation with nominal, rather than puttng all in the same plot when multiple are selected')
+    parser.add_argument(     '--compareSingleSystToNomi', default=False , action='store_true',   help='Make plots comparing each single variation with nominal, rather than putting all in the same plot when multiple are selected')
     parser.add_argument(     '--difference', dest='addDifference',  action='store_true', help='Also plot difference of syst and nomi, not just their ratio')
     parser.add_argument(     '--ratioRange', default=None, type=float, nargs=2, help="Range for ratio plot (if None, use default from plotted histograms)")
     args = parser.parse_args()
@@ -133,11 +129,10 @@ if __name__ == "__main__":
     do2D       = (args.plot == "2D") or (args.plot == "all")
     
     fname = args.rootfile[0]
-    outdir = args.outdir[0] + "/"
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outdir[0] + "/"
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
-    isWrem = True if args.source == "wrem" else False
-    if isWrem and not args.charge:
+    if not args.charge:
         print("For histograms from WRemnants the charge must be specified using -c [minus|plus].")
         quit()
     
@@ -186,10 +181,7 @@ if __name__ == "__main__":
             print(f"Browsing file into subfolder {p}")
             f = rf.GetDirectory(p)
             #f.cd(p)
-        if isWrem:
-            nominals[p] = safeGetObject(f, f"nominal_{p}_{args.charge}")
-        else:
-            nominals[p] = safeGetObject(f, f"nominal_{p}")
+        nominals[p] = safeGetObject(f, f"nominal_{p}_{args.charge}")
         nominals[p].SetTitle(p)
         if args.plotNominal:
             if do2D:
@@ -197,14 +189,14 @@ if __name__ == "__main__":
                 drawCorrelationPlot(nominals[p], "Muon #eta", "Muon p_{T} (GeV)", f"Events::{minnomi},{maxnomi}",
                                     nominals[p].GetName(), plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False, draw_both0_noLog1_onlyLog2=1,
-                                    palette=args.palette, nContours=args.nContours, invertePalette=args.invertePalette,
+                                    palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                                     passCanvas=canvas, drawOption="COLZ0")
             if doUnrolled:
                 nomi_unrolled = unroll2Dto1D(nominals[p], newname=f"unrolled_{nominals[p].GetName()}", cropNegativeBins=False)
                 plotUnrolledHistogram(nomi_unrolled, p, nominals[p].GetName().replace("x_",""), outdir, canvas_unroll, nominals[p], yAxisTitle="Events", channelCharge=args.charge)
             
         if args.plotStat:
-            h_relativeStatUnc = copy.deepcopy(nominals[p].Clone(f"relativeStatUnc_{p}_{args.charge}" if isWrem else f"relativeStatUnc_{p}"))
+            h_relativeStatUnc = copy.deepcopy(nominals[p].Clone(f"relativeStatUnc_{p}_{args.charge}"))
             for ib in range(1+h_relativeStatUnc.GetNcells()):
                 value = 0.0 if nominals[p].GetBinContent(ib) == 0.0 else nominals[p].GetBinError(ib) / nominals[p].GetBinContent(ib)
                 h_relativeStatUnc.SetBinContent(ib, value)
@@ -212,7 +204,7 @@ if __name__ == "__main__":
                 drawCorrelationPlot(h_relativeStatUnc, "Muon #eta", "Muon p_{T} (GeV)", f"Relative stat. uncertainty",
                                     h_relativeStatUnc.GetName(), plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False, draw_both0_noLog1_onlyLog2=1,
-                                    palette=args.palette, nContours=args.nContours, invertePalette=args.invertePalette,
+                                    palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                                     passCanvas=canvas, drawOption="COLZ0")
             if doUnrolled:
                 ratio_unrolled = unroll2Dto1D(h_relativeStatUnc, newname=f"unrolled_{h_relativeStatUnc.GetName()}", cropNegativeBins=False)
@@ -254,32 +246,24 @@ if __name__ == "__main__":
             continue
         for k in f.GetListOfKeys():
             name = k.GetName()
-            if isWrem and not name.endswith(args.charge): continue
+            if not name.endswith(args.charge): continue
             # check name also allowing for perfect matching
             if not any(x in name for x in inputsysts) and not regexp_syst.match(name): continue
 
             # TODO: find more general way to split name, if process or syst name has underscores
-            if isWrem:
-                if len(processes) == 1:
-                    pname = processes[0]
-                    tokens = name.split("_")
-                    sname = name.split(f"{pname}_")[1]
-                    sname = f"{'_'.join(sname.split('_')[:-1])}"
-                else:
-                    tokens = name.split("_")
-                    pname = f"{tokens[1]}"
-                    sname = f"{'_'.join(tokens[2:-1])}"
-                if pname not in processes: continue
-                snameLeg = sname.replace("effStatSmooth", "effStat").replace("qall","")
-                systLeg[pname].append(snameLeg)
-                sname += f"_{args.charge}"
+            if len(processes) == 1:
+                pname = processes[0]
+                tokens = name.split("_")
+                sname = name.split(f"{pname}_")[1]
+                sname = f"{'_'.join(sname.split('_')[:-1])}"
             else:
-                tokens = name.split("__") # remove "x_" and name of nuisance
-                #print(tokens)
-                pname = tokens[0].lstrip("x_")
-                if pname not in processes: continue
-                sname = tokens[1]
-                systLeg[pname].append(sname)
+                tokens = name.split("_")
+                pname = f"{tokens[1]}"
+                sname = f"{'_'.join(tokens[2:-1])}"
+            if pname not in processes: continue
+            snameLeg = sname.replace("effStatSmooth", "effStat").replace("qall","")
+            systLeg[pname].append(snameLeg)
+            sname += f"_{args.charge}"
 
             alternate = f.Get(name)
             alternate.SetDirectory(0)    
@@ -306,7 +290,7 @@ if __name__ == "__main__":
                     drawCorrelationPlot(alternate, "Muon #eta", "Muon p_{T} (GeV)", "Events",
                                         f"{name}_Syst", plotLabel="ForceTitle", outdir=outdir,
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False, draw_both0_noLog1_onlyLog2=1,
-                                        palette=args.palette, nContours=args.nContours, invertePalette=args.invertePalette,
+                                        palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                                         passCanvas=canvas, drawOption="COLZ0")
                 if doUnrolled:
                     plotUnrolledHistogram(systList[pname][-1], pname, sname+"_Syst", outdir, canvas_unroll, ratio, errorBars=args.addErrorBars, yAxisTitle="Events", channelCharge=args.charge)
@@ -325,13 +309,13 @@ if __name__ == "__main__":
                 drawCorrelationPlot(ratio, "Muon #eta", "Muon p_{T} (GeV)", f"{pname}: syst / nominal::{minratio},{maxratio}",
                                     f"ratio_{name}", plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False, draw_both0_noLog1_onlyLog2=1,
-                                    palette=args.palette, nContours=args.nContours, invertePalette=args.invertePalette,
+                                    palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                                     passCanvas=canvas, drawOption="COLZ0")
                 if args.addDifference:
                     drawCorrelationPlot(difference, "Muon #eta", "Muon p_{T} (GeV)", f"Difference: syst - nominal",
                                         f"diff_{name}", plotLabel="ForceTitle", outdir=outdir,
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False, draw_both0_noLog1_onlyLog2=1,
-                                        palette=args.palette, nContours=args.nContours, invertePalette=args.invertePalette,
+                                        palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                                         passCanvas=canvas, drawOption="COLZ0")
 
             if doUnrolled:
@@ -507,5 +491,6 @@ if __name__ == "__main__":
                  onlyLineColor=True, noErrorRatioDen=True, useLineFirstHistogram=True,
                  setOnlyLineRatio=True, lineWidth=2)
         #
-                
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
     print()

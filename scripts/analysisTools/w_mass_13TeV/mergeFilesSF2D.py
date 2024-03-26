@@ -45,7 +45,7 @@ import wremnants
 
 if __name__ == "__main__":
             
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('inputfile',  type=str, nargs=1,   help='Input root file with TH2')
     parser.add_argument('outputfile', type=str, nargs=1,   help='Output file absolute path')
     parser.add_argument('mergefiles', type=str, nargs='+', help='List of files to merge to inputfile into outputfile, keys already in inputfile are overridden, unless --noOverwriteDuplicate is specified')
@@ -62,12 +62,13 @@ if __name__ == "__main__":
         raise ValueError(f"Invalid outputfile name {args.outputfile[0]}, it would overwrite the input file {args.inputfile[0]}")
 
     #allSmooth_GtoHout.root
-    outdir = os.path.dirname(os.path.abspath(args.outputfile[0])) + "/"
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = os.path.dirname(os.path.abspath(args.outputfile[0])) + "/"
+    outdir = createPlotDirAndCopyPhp(outdir_original)
 
-    outfile = safeOpenFile(args.outputfile[0], mode="RECREATE")
+    outfilenameLocal = outdir + "/" + os.path.basename(args.outputfile[0]) 
+    outfile = safeOpenFile(outfilenameLocal, mode="RECREATE")
     
-    infile = safeOpenFile(args.inputfile[0])
+    infile = safeOpenFile(args.inputfile[0]) # might not work if the input is on eos and one uses the mount
     inputHistnames = []
     for k in infile.GetListOfKeys():
         name = k.GetName()
@@ -96,5 +97,6 @@ if __name__ == "__main__":
                     h.Write(name)
         infile.Close()
                     
-    logger.info(f"Done, closing file {args.outputfile[0]}")
+    logger.info(f"Done, closing file {outfile.GetName()}")
     outfile.Close()
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

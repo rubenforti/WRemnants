@@ -66,17 +66,13 @@ finalhistCorr = {"file": "/eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_ana
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("outfolder",   type=str, nargs=1)
     parser.add_argument("outfilename", type=str, nargs=1)
     parser.add_argument("outhistname", type=str, nargs=1, help="Charge added to name automatically")
     parser.add_argument('-p', '--plot', dest='plot', action='store_true', help='Plot pseudodata')
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51 (let it be odd, so the central strip is white if not using --abs-value and the range is symmetric)')
-    parser.add_argument(     '--palette'  , dest='palette',      default=55, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette' , action='store_true',   help='Inverte color ordering in palette')
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     args = parser.parse_args()
-    
+
     logger = common.setup_color_logger(os.path.basename(__file__), args.verbose)
 
     charges = ["plus", "minus"]
@@ -147,9 +143,10 @@ if __name__ == "__main__":
         
     for c in charges:
         pseudodataHist[c].SetTitle(f"Pseudodata for charge {c}")
-        
-    createPlotDirAndCopyPhp(args.outfolder[0])
-    outname = f"{args.outfolder[0]}/{args.outfilename[0]}"
+
+    outdir_original = args.outfolder[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+    outname = f"{outdir}/{args.outfilename[0]}"
     if not outname.endswith(".root"):
         outname += ".root"
     fout = safeOpenFile(outname, mode="RECREATE")
@@ -164,12 +161,14 @@ if __name__ == "__main__":
                                 pseudodataHist[c].GetXaxis().GetTitle(),
                                 pseudodataHist[c].GetYaxis().GetTitle(),
                                 "Events",
-                                pseudodataHist[c].GetName(), plotLabel="ForceTitle", outdir=f"{args.outfolder[0]}/",
+                                pseudodataHist[c].GetName(), plotLabel="ForceTitle", outdir=outdir,
                                 draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
-    
+                                invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
+
     for c in charges:
         pseudodataHist[c].Write()
         logger.info(f"Writing histogram {pseudodataHist[c].GetName()}: integral = {pseudodataHist[c].Integral()}")
     fout.Close()
     logger.info(f"Output saved in file {outname}")
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

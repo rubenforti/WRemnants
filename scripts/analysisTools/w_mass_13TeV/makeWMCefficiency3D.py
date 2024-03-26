@@ -72,14 +72,10 @@ def getEtaPtEff(n_pass, n_tot, getRoot=False, rootName="", rootTitle=""):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file", default="yieldsForWeffMC")
-    parser.add_argument(     '--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument(     '--passMt', action='store_true',   help='Measure efficiencies only for events passing mT, otherwise stay inclusive')
     parser.add_argument('-p','--processes', default=["Wmunu"], nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
@@ -88,8 +84,8 @@ if __name__ == "__main__":
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
     fname = args.inputfile[0]
-    outdir = args.outdir[0]
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original)
         
     ROOT.TH1.SetDefaultSumw2()
 
@@ -174,35 +170,35 @@ if __name__ == "__main__":
                             f"{eff_iso.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_isonotrig_boost2D,eff_isonotrig = getEtaPtEff(n_isonotrig_pass, n_isonotrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isonotrig", rootTitle="P(iso | ID+IP)")
         drawCorrelationPlot(eff_isonotrig, xAxisName, yAxisName, f"MC isolation efficiency",
                             f"{eff_isonotrig.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_isoantitrig_boost2D,eff_isoantitrig = getEtaPtEff(n_isoantitrig_pass, n_isoantitrig_tot, getRoot=True, rootName=f"{d}_MC_eff_isoantitrig", rootTitle="P(iso | ID+IP & fail trig)")
         drawCorrelationPlot(eff_isoantitrig, xAxisName, yAxisName, f"MC isolation efficiency",
                             f"{eff_isoantitrig.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_triggerplus_boost2D,eff_triggerplus = getEtaPtEff(n_triggerplus_pass, n_triggerplus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerplus", rootTitle="P(trig | ID+IP)")
         drawCorrelationPlot(eff_triggerplus, xAxisName, yAxisName, f"MC trigger plus efficiency",
                             f"{eff_triggerplus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_triggerminus_boost2D,eff_triggerminus = getEtaPtEff(n_triggerminus_pass, n_triggerminus_tot, getRoot=True, rootName=f"{d}_MC_eff_triggerminus", rootTitle="P(trig | ID+IP)")
         drawCorrelationPlot(eff_triggerminus, xAxisName, yAxisName, f"MC trigger minus efficiency",
                             f"{eff_triggerminus.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
         eff_iso_3D = getBoostEff(n_iso_pass, n_iso_tot, rebinUt=args.rebinUt)
         #eff_isonotrig_3D = getBoostEff(n_isonotrig_pass, n_isonotrig_tot, rebinUt=args.rebinUt)
@@ -276,3 +272,4 @@ if __name__ == "__main__":
     eff_triggerplus.Write()
     eff_triggerminus.Write()
     rf.Close()
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
