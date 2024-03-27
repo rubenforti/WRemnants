@@ -211,7 +211,7 @@ class Datagroups(object):
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
-            auxiliary_info["smooth_shapecorrection"]=smoothen
+            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x=None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
@@ -228,9 +228,9 @@ class Datagroups(object):
             base_member = self.groups[g].members[:][0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(h, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
             else:
-                self.groups[g].histselector = signalselector(h, **kwargs)
+                self.groups[g].histselector = signalselector(h, fakerate_axes=self.fakerate_axes, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.
@@ -428,8 +428,6 @@ class Datagroups(object):
             if self.rebinOp and self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
-
-            group.hists[label] = hh.rebinHist(group.hists[label], "pt", [26, 28, 30, 33, 40, 56])
 
             if group.histselector is not None:
                 if not applySelection:

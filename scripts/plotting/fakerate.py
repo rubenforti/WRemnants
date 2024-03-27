@@ -702,8 +702,10 @@ def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True,
 
 
 ### plot closure
-def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=False):
+def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=True):
     h = h[{"charge":hist.sum}]
+    h = hh.rebinHist(h, "pt", [28, 30, 33, 40, 56])
+    h = hh.disableFlow(h, "pt")
 
     # smoothing_axis_name = "muonJetPt"
     # fakerate_axes = ["abseta" "muonJetPt"] #, "charge",
@@ -720,12 +722,12 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         if smoothing_axis_name == "muonJetPt":
             rebin_smoothing_axis = [26, 42, 46, 48, 54]
         elif smoothing_axis_name == "pt":
-            rebin_smoothing_axis = [26, 28, 30, 33, 40, 56]
+            rebin_smoothing_axis = [28, 30, 33, 40, 56]
     else:
         if smoothing_axis_name == "muonJetPt":
             h = hh.rebinHist(h, "muonJetPt", [26, 42, 46, 48, 54])
         if smoothing_axis_name == "pt":
-            h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
+            h = hh.rebinHist(h, "pt", [28, 30, 33, 40, 56])
         rebin_smoothing_axis=None
 
     hss=[]
@@ -739,7 +741,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hBootstrap = h.copy()
 
 
-    info=dict(fakerate_axes=fakerate_axes, smoothing_axis_name=smoothing_axis_name, rebin_smoothing_axis=rebin_smoothing_axis)
+    info=dict(fakerate_axes=fakerate_axes, smoothing_axis_name=smoothing_axis_name, rebin_smoothing_axis=rebin_smoothing_axis, integrate_x=True)
 
     # signal selection
     hSel_sig = sel.SignalSelectorABCD(h, **info)
@@ -747,39 +749,39 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     hss.append(hD_sig)
     labels.append("D")
     
-    # # simple ABCD
-    # logger.info("Make simple ABCD prediction")
-    # if smoothed:
-    #     hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
-    #     hD_simple = hSel_simple.get_hist(h)
-    #     hss.append(hD_simple)
-    #     labels.append("simple smoothed")
-    # else:
-    #     hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
+    # simple ABCD
+    logger.info("Make simple ABCD prediction")
+    if smoothed:
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
+        hD_simple = hSel_simple.get_hist(h)
+        hss.append(hD_simple)
+        labels.append("simple smoothed")
+    else:
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
 
-    #     if bootstrap:
-    #         # throw posson toys
-    #         toy_shape = [nsamples, *values.shape]
-    #         rng = np.random.default_rng(seed)
-    #         toys = rng.poisson(values, size=toy_shape)
+        if bootstrap:
+            # throw posson toys
+            toy_shape = [nsamples, *values.shape]
+            rng = np.random.default_rng(seed)
+            toys = rng.poisson(values, size=toy_shape)
 
-    #         vals = []
-    #         for i in range(nsamples):
-    #             hBootstrap.values(flow=True)[...] = toys[i,...]
-    #             hSel_simple.h_nominal = None
-    #             hD_simple = hSel_simple.get_hist(hBootstrap)
-    #             vals.append(hD_simple.values(flow=True))
+            vals = []
+            for i in range(nsamples):
+                hBootstrap.values(flow=True)[...] = toys[i,...]
+                hSel_simple.h_nominal = None
+                hD_simple = hSel_simple.get_hist(hBootstrap)
+                vals.append(hD_simple.values(flow=True))
 
-    #         vals = np.array(vals)
-    #         toy_mean = np.mean(vals, axis=0)
-    #         toy_var = np.var(vals, ddof=1, axis=0) 
-    #         hD_simple.values(flow=True)[...] = toy_mean
-    #         hD_simple.variances(flow=True)[...] = toy_var
-    #     else:
-    #         hD_simple = hSel_simple.get_hist(h)
+            vals = np.array(vals)
+            toy_mean = np.mean(vals, axis=0)
+            toy_var = np.var(vals, ddof=1, axis=0) 
+            hD_simple.values(flow=True)[...] = toy_mean
+            hD_simple.variances(flow=True)[...] = toy_var
+        else:
+            hD_simple = hSel_simple.get_hist(h)
 
-    #     hss.append(hD_simple)
-    #     labels.append("simple")
+        hss.append(hD_simple)
+        labels.append("simple")
 
     # extrapolate ABCD x-axis
     if not smoothed:
@@ -790,13 +792,28 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # labels.append("pol0(x)")
 
         hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1)
-        hD_Xpol1 = hSel_Xpol1.get_hist(h, variations_frf=False)[{"mt":hist.sum}]
-        centrals = hD_Xpol1.values(flow=True)
-        hSel_Xpol1.h_nominal = None
-        hD_Xpol1_var = hSel_Xpol1.get_hist(h, variations_frf=True)
-        hD_Xpol1_var = hD_Xpol1_var[{"mt":hist.sum, "_pt":hist.sum, "_abseta":hist.sum}]
-        variations = [(hD_Xpol1_var[...,iparam,1].values(flow=True) - centrals)**2 for iparam in range(hD_Xpol1_var.shape[-2])] # squares of up variations
-        hD_Xpol1.variances(flow=True)[...] = hD_Xpol1.variances(flow=True)[...] + np.sum(variations, axis=0)
+
+        if bootstrap:
+            # throw posson toys
+            toy_shape = [nsamples, *values.shape]
+            rng = np.random.default_rng(seed)
+            toys = rng.poisson(values, size=toy_shape)
+
+            vals = []
+            for i in range(nsamples):
+                hBootstrap.values(flow=True)[...] = toys[i,...]
+                hSel_Xpol1.h_nominal = None
+                hD_Xpol1 = hSel_Xpol1.get_hist(hBootstrap)
+                vals.append(hD_Xpol1.values(flow=True))
+
+            vals = np.array(vals)
+            toy_mean = np.mean(vals, axis=0)
+            toy_var = np.var(vals, ddof=1, axis=0) 
+            hD_Xpol1.values(flow=True)[...] = toy_mean
+            hD_Xpol1.variances(flow=True)[...] = toy_var
+        else:
+            hD_Xpol1 = hSel_Xpol1.get_hist(h)
+
         hss.append(hD_Xpol1)
         labels.append("pol1(x)")
 
@@ -844,45 +861,45 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # hss.append(hD_ext5)
         # labels.append("ext(5) binned (iso<0.45)")
 
-    # # extended ABCD in 8 control regions
-    # logger.info("Make 2D extended ABCD prediction in 8 control regions")
-    # if smoothed:
-    #     hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info)
-    #     hD_ext8 = hSel_ext8.get_hist(h)
-    #     hss.append(hD_ext8)
-    #     labels.append("ext(8) smoothed")
+    # extended ABCD in 8 control regions
+    logger.info("Make 2D extended ABCD prediction in 8 control regions")
+    if smoothed:
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info)
+        hD_ext8 = hSel_ext8.get_hist(h)
+        hss.append(hD_ext8)
+        labels.append("ext(8) smoothed")
 
-    #     # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
-    #     # hD_ext8 = hSel_ext8.get_hist(h)
-    #     # hss.append(hD_ext8)
-    #     # labels.append("ext(8) smoothed (full)")
-    # else:
-    #     hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
-    #         integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) smoothed (full)")
+    else:
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+            integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
 
-    #     if bootstrap:
-    #         # throw posson toys
-    #         toy_shape = [nsamples, *values.shape]
-    #         rng = np.random.default_rng(seed)
-    #         toys = rng.poisson(values, size=toy_shape)
+        if bootstrap:
+            # throw posson toys
+            toy_shape = [nsamples, *values.shape]
+            rng = np.random.default_rng(seed)
+            toys = rng.poisson(values, size=toy_shape)
 
-    #         vals = []
-    #         for i in range(nsamples):
-    #             hBootstrap.values(flow=True)[...] = toys[i,...]
-    #             hSel_ext8.h_nominal = None
-    #             hD_ext8 = hSel_ext8.get_hist(hBootstrap)
-    #             vals.append(hD_ext8.values(flow=True))
+            vals = []
+            for i in range(nsamples):
+                hBootstrap.values(flow=True)[...] = toys[i,...]
+                hSel_ext8.h_nominal = None
+                hD_ext8 = hSel_ext8.get_hist(hBootstrap)
+                vals.append(hD_ext8.values(flow=True))
 
-    #         vals = np.array(vals)
-    #         toy_mean = np.mean(vals, axis=0)
-    #         toy_var = np.var(vals, ddof=1, axis=0) 
-    #         hD_ext8.values(flow=True)[...] = toy_mean
-    #         hD_ext8.variances(flow=True)[...] = toy_var
-    #     else:
-    #         hD_ext8 = hSel_ext8.get_hist(h)
+            vals = np.array(vals)
+            toy_mean = np.mean(vals, axis=0)
+            toy_var = np.var(vals, ddof=1, axis=0) 
+            hD_ext8.values(flow=True)[...] = toy_mean
+            hD_ext8.variances(flow=True)[...] = toy_var
+        else:
+            hD_ext8 = hSel_ext8.get_hist(h)
 
-    #     hss.append(hD_ext8)
-    #     labels.append("ext(8)")
+        hss.append(hD_ext8)
+        labels.append("ext(8)")
 
         # labels.append("extended 2D")
 
@@ -918,7 +935,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     if "charge" in hss[0].axes.name and len(hss[0].axes["charge"])==1:
         hss = [h[{"charge":slice(None,None,hist.sum)}] for h in hss]
     
-    hss = [h[{"mt":hist.sum}] if "mt" in h.axes.name else h for h in hss]
+    # hss = [h[{"mt":hist.sum}] if "mt" in h.axes.name else h for h in hss]
 
     # hss = [hh.rebinHist(h[{"muonJetPt": hist.sum}], "pt", [26, 28, 30, 33, 40, 56]) for h in hss]
 

@@ -216,7 +216,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
         datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation, fake_processes=[args.qcdProcessName],
-            args.smoothFakeEstimation, simultaneousABCD=simultaneousABCD)
+            smoothen=args.smoothFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
@@ -289,7 +289,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes, applySelection=False)
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
-                mode=args.fakeEstimation, fake_processes=["QCD",], 
+                mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=args.smoothFakeEstimation, 
                 simultaneousABCD=simultaneousABCD, 
                 )
         else:
@@ -343,16 +343,17 @@ def setup(args, inputFile, fitvar, xnorm=False):
         signal_samples_forMass = ["signal_samples"]
 
     if wmass and (args.smoothFakeEstimation or args.fakeEstimation in ["extrapolate"]):
+        syst_axes = ["eta", "charge"] if (args.smoothFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
             name=args.baseName, 
             group=cardTool.getFakeName(), 
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
             mirror=False, 
-            scale=2,
+            scale=1,
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
-            systAxes=[f"_{x}" for x in ["eta", "charge"] if x in fitvar]+["_param", "downUpVar"])
+            systAxes=[f"_{x}" for x in syst_axes if x in fitvar]+["_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
             rename=subgroup,
@@ -368,6 +369,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_scf=True),
             )
+    datagroups.unconstrainedProcesses.append(args.qcdProcessName)
 
     if simultaneousABCD:
         # Fakerate A/B = C/D

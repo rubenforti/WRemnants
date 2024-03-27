@@ -198,8 +198,9 @@ def extend_edges(traits, x):
 class HistselectorABCD(object):
     target_edges_dict = {
         # "pt": [26,27,28,29,30,31,33,36,40,46,56], 
-        "pt": [26, 28, 30, 33, 40, 56],
+        "pt": [28, 30, 33, 40, 56], #[26, 28, 30, 33, 40, 56],
         "muonJetPt": [26,40,44,46,50,54,62],
+        # "mt": [0, 20, 40, 44, 49, 55, 62]
         "mt": [0, 20, 40, 44, 49, 55, 62]
     }
 
@@ -207,9 +208,11 @@ class HistselectorABCD(object):
         fakerate_axes=["eta","pt","charge"], 
         smoothing_axis_name="pt", 
         rebin_smoothing_axis="automatic", # can be a list of bin edges, "automatic", or None
-        upper_bound_y=None # using an upper bound on the abcd y-axis (e.g. isolation)
+        upper_bound_y=None, # using an upper bound on the abcd y-axis (e.g. isolation)
+        integrate_x=True, # integrate the abcd x-axis in final histogram (allows simplified procedure e.g. for extrapolation method)   
     ):           
         self.upper_bound_y=upper_bound_y
+        self.integrate_x = integrate_x
 
         self.name_x = name_x
         self.name_y = name_y
@@ -273,10 +276,10 @@ class HistselectorABCD(object):
         ts = abcd_thresholds[self.name_x]
         s = hist.tag.Slicer()
         if self.name_x in ["mt", "pt"]:
-            self.sel_x = s[complex(0,ts[2])::]
+            self.sel_x = s[complex(0,ts[2])::hist.sum] if self.integrate_x else s[complex(0,ts[2])::]
             self.sel_dx = s[complex(0,ts[0]):complex(0,ts[2]):hist.sum]
         elif self.name_x in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):]
+            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum] if self.integrate_x else s[complex(0,ts[0]):complex(0,ts[1]):]
             self.sel_dx = s[complex(0,ts[1])::hist.sum]
         else:
             raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
@@ -394,7 +397,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
 
         # select sideband regions
-        sel = {n: hist.sum for n in self.fakerate_integration_axes}
         ha = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
         hb = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
 
@@ -517,7 +519,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
     def calculate_fullABCD(self, h, flow=True):
         if len(self.fakerate_integration_axes) > 0:
-            logger.warning(f"Fakerate integration axes {self.fakerate_integration_axes} are set but a binned fake estimation is performed, the bin-by-bin stat uncertainties are not correct along this axis.")
+            logger.warning(f"Binned fake estimation is performed but fakerate integration axes {self.fakerate_integration_axes} are set, the bin-by-bin stat uncertainties are not correct along this axis.")
+        if not self.integrate_x:
+            logger.warning(f"Binned fake estimation is performed but ABCD x-axis is not integrated, the bin-by-bin stat uncertainties are not correct along this axis.")
 
         frf, frf_var = self.compute_fakeratefactor(h)
         c, cvar = self.get_yields_applicationregion(h)
@@ -559,7 +563,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
     def __init__(self, h, *args, 
         smooth_fakerate=False,
         polynomial="power",
-        extrapolation_order=2,
+        extrapolation_order=1,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
         **kwargs
     ):
@@ -604,23 +608,33 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
 
     def get_hist(self, h, variations_frf=False, flow=True):
-
-        h = self.transfer_variances(h)
-
-        y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
         c, cvar = self.get_yields_applicationregion(h)
+        if self.integrate_x and self.h_nominal is None:
+            # can convert syst variations into bin by bin stat; do for the fist call (nominal histogram) 
+            logger.debug("Integrate abcd x-axis, treat uncertainty as bin by bin stat")
+            y_frf, y_frf_variation = self.compute_fakeratefactor(h, syst_variations=True)
+            d = c * y_frf
+            d_variation = c[..., np.newaxis,np.newaxis] * y_frf_variation
+            # sum up abcd-x axis (sum up variatoins to treat uncertainty fully correlated across abcd-x axis bins)
+            idx_x = h[{self.name_y: self.sel_dy}].axes.name.index(self.name_x)
+            d = d.sum(axis=idx_x)
+            d_variation = d_variation.sum(axis=idx_x)
 
-        d = c * y_frf
-
-        if variations_frf:
-            dvar = c[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
+            dvar = np.sum([(d_variation[...,iparam,0] - d)**2 for iparam in range(d_variation.shape[-2])], axis=0) # sum of squares of up variations
+            dvar += (y_frf**2 * cvar).sum(axis=idx_x) # add uncorrelated bin by bin uncertainty from application region
         else:
-            # only take bin by bin uncertainty from c region
-            dvar = y_frf**2 * cvar
+            h = self.transfer_variances(h)
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
+            if variations_frf:
+                dvar = c[..., np.newaxis,np.newaxis] * y_frf_var
+            else:
+                # only take bin by bin uncertainty from c region
+                dvar = y_frf**2 * cvar
+            d = c * y_frf
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
+        axes = h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes
+        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
         if variations_frf:
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
         else:
@@ -658,13 +672,24 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         # the bins where the regression is performed (can be different to the bin in h)
         x = self.get_bin_centers(ha, self.name_x, flow=False) 
-        y, y_var = self.extrapolate_fakerate(h[{self.name_x: self.sel_x}], x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
+        if len(x)-1 < self.extrapolation_order:
+            raise RuntimeError(f"The extrapolation order is {self.extrapolation_order} but it can not be higher than the number of bins in {self.name_x} of {len(x)} -1")
+        # if len(x)-1 == self.extrapolation_order:
+        #     logger.info("Extrapolation can be done fully analytical")
+        #     pdb.set_trace()
+        #     slope = (y[...,1] - y[...,0]) / (x[1] - x[0])
+        #     offset = y[...,0] - slope * x[0]
+
+        #     x_extrapolation = self.get_bin_centers(h[{self.name_x: self.sel_x}], self.name_x, flow=flow)
+        #     y = slope[...,np.newaxis] * x_extrapolation + offset[...,np.newaxis]
+
+        y, y_var = self.extrapolate_fakerate(h[{**sel, self.name_x: self.sel_x}], x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
         # TODO: smoothing
         # if self.smooth_fakerate:
 
         # broadcast abcd-x axis and application axes
-        slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y]
+        slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y and (not self.integrate_x or n != self.name_x)]
         y = y[*slices]
         y_var = y_var[*slices] if y_var is not None else None
 
@@ -687,20 +712,21 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         # regression frf (e.g. in mT)
         X, XTY = get_parameter_matrices(x, y, w, self.extrapolation_order, pol=self.polynomial)
-        
+
         params, cov = self.solve(X, XTY)
 
         # evaluate in range of application region of original histogram
         x_extrapolation = self.get_bin_centers(h, self.name_x, flow=flow)
         y_extrapolation = self.f_frf(x_extrapolation, params)
 
+
         if syst_variations:
             y_extrapolation_var = self.make_eigen_variations_frf(params, cov, x_extrapolation)
         else: 
             y_extrapolation_var = None
 
-        # move extrapolation axis to original positon again
         if idx_ax_regress != len(axes)-1:
+            # move extrapolation axis to original positon again
             y_extrapolation = np.moveaxis(y_extrapolation, -1, idx_ax_regress)
             y_extrapolation_var = np.moveaxis(y_extrapolation_var, -3, idx_ax_regress) if syst_variations else None
 
@@ -720,27 +746,25 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         else:
             return y_extrapolation, y_extrapolation_var
 
-
-
 class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
     # extended ABCD method with 5 control regions as desribed in https://arxiv.org/abs/1906.10831 equation 16
     def __init__(self, h, *args, **kwargs):
         super().__init__(h, *args, **kwargs)
         self.sel_d2x = None    
-        self.set_selections_x()
+        self.set_selections_x(integrate_x=self.integrate_x)
 
     # set slices object for selection of sideband regions
-    def set_selections_x(self):
+    def set_selections_x(self, integrate_x=True):
         if self.name_x not in abcd_thresholds:
             raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
         ts = abcd_thresholds[self.name_x]
         s = hist.tag.Slicer()
         self.sel_dx = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
         if self.name_x in ["mt", "pt"]:
-            self.sel_x = s[complex(0,ts[2])::]
+            self.sel_x = s[complex(0,ts[2])::hist.sum] if integrate_x else s[complex(0,ts[2])::]
             self.sel_d2x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
         elif self.name_x in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):]
+            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum] if integrate_x else s[complex(0,ts[0]):complex(0,ts[1]):]
             self.sel_d2x = s[complex(0,ts[2]):complex(0,ts[3]):hist.sum]
         else:
             raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
@@ -777,7 +801,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
 
     def calculate_fullABCD(self, h, flow=True):
         if len(self.fakerate_integration_axes) > 0:
-            logger.warning(f"Fakerate integration axes {self.fakerate_integration_axes} are set but a binned fake estimation is performed, the bin-by-bin stat uncertainties are not correct along this axis.")
+            logger.warning(f"Binned fake estimation is performed but fakerate integration axes {self.fakerate_integration_axes} are set, the bin-by-bin stat uncertainties are not correct along this axis.")
+        if not self.integrate_x:
+            logger.warning(f"Binned fake estimation is performed but ABCD x-axis is not integrated, the bin-by-bin stat uncertainties are not correct along this axis.")
 
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
 
@@ -904,6 +930,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         super().__init__(h, *args, **kwargs)
         self.sel_d2y = None
         self.set_selections_y()
+        self.set_selections_x(integrate_x=False)
 
         self.interpolate_x = interpolate_x
         self.interpolation_order = interpolation_order
@@ -990,7 +1017,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 dvar = y_frf**2 *( 4*(c/cy)**2 * cvar + (c/cy**2)**2 * cyvar )
         else:
             # no smoothing of rates
-            d, dvar = self.calculate_fullABCD(h)
+            d, dvar = self.calculate_fullABCD(h)            
 
         # set histogram in signal region
         hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
@@ -1002,6 +1029,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             if hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
 
+        if self.integrate_x:
+            hSignal = hSignal[{self.name_x: hist.sum}]
+
         return hSignal
 
     def compute_shapecorrection(self, h, syst_variations=False, apply=False, flow=True, auxiliary_info=False):
@@ -1011,7 +1041,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # rebin in smoothing axis to have stable ratios
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
-        hNew = hh.rebinHist(hNew, self.name_x, self.rebin_x) if self.rebin_x is not None else hNew 
+        if self.rebin_x is not None and (self.interpolate_x or self.smooth_shapecorrection):
+            hNew = hh.rebinHist(hNew, self.name_x, self.rebin_x) # only rebin for regression
         hNew = hNew[{self.name_x: self.sel_x}]
 
         hc = hNew[{self.name_y: self.sel_dy}]
@@ -1320,7 +1351,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
     def calculate_fullABCD(self, h, flow=True):
         if len(self.fakerate_integration_axes) > 0:
-            logger.warning(f"Fakerate integration axes {self.fakerate_integration_axes} are set but a binned fake estimation is performed, the bin-by-bin stat uncertainties are not correct along this axis.")
+            logger.warning(f"Binned fake estimation is performed but fakerate integration axes {self.fakerate_integration_axes} are set, the bin-by-bin stat uncertainties are not correct along this axis.")
+        if not self.integrate_x:
+            logger.warning(f"Binned fake estimation is performed but ABCD x-axis is not integrated, the bin-by-bin stat uncertainties are not correct along this axis.")
 
         frf, frf_var = self.compute_fakeratefactor(h)
         c_scf, c_scf_var = self.compute_shapecorrection(h, apply=True)

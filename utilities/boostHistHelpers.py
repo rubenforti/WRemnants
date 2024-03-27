@@ -357,7 +357,7 @@ def disableFlow(h, axis_name):
     axes = list(h.axes)
     axes[ax_idx] = new_ax
     hnew = hist.Hist(*axes, name=h.name, storage=h.storage_type())
-    slices = [slice(None) if i!= ax_idx else slice(0,new_ax.size) for i in range(len(axes))]
+    slices = [slice(None) if i!= ax_idx else slice(ax.traits.underflow,new_ax.size+ax.traits.underflow) for i in range(len(axes))]
     hnew.values(flow=True)[...] = h.values(flow=True)[*slices]
     if hnew.storage_type == hist.storage.Weight:
         hnew.variances(flow=True)[...] = h.variances(flow=True)[*slices]
