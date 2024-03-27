@@ -256,46 +256,9 @@ else:
 
             ch_end = ch_start+np.product(shape) # in combinetf1 the channels are concatenated and we need to index one after the other
 
-    # get axes from the directory name
-    filename_parts = [x for x in filter(lambda x: x, args.infile.split("/"))]
-    analysis = filename_parts[-2].split("_")[0]
-    if analysis=="ZMassDilepton":
-        all_axes = {
-            "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=False, underflow=False),
-            "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=False, underflow=False),
-            "ptll": hist.axis.Variable([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100], name = "ptll", underflow=False, overflow=False),
-        }
-    elif analysis=="ZMassWLike":
-        all_axes = {
-            "pt": hist.axis.Regular(34, 26, 60, name = "pt", overflow=False, underflow=False),
-            "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
-            "charge": common.axis_charge,
-            "ptGen": hist.axis.Regular(33, 27, 60, name = "ptGen", overflow=False, underflow=False),
-            "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
-            "qGen": common.axis_charge,
-        }
-    elif analysis=="WMass":
-        all_axes = {
-            # "pt": hist.axis.Regular(30, 26, 56, name = "pt", overflow=False, underflow=False),
-            # "pt": hist.axis.Regular(31, 26, 57, name = "pt", overflow=False, underflow=False),
-            "pt": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
-            "eta": hist.axis.Regular(48, -2.4, 2.4, name = "eta", overflow=False, underflow=False),
-            "charge": common.axis_charge,
-            "passIso": common.axis_passIso,
-            "passMT": common.axis_passMT,
-            "ptGen": hist.axis.Regular(29, 27, 56, name = "ptGen", overflow=False, underflow=False),
-            "absEtaGen": hist.axis.Variable(differential.eta_binning, name = "absEtaGen", overflow=False, underflow=False),
-            "qGen": common.axis_charge,
-        }
-    axes = [all_axes[part] for part in filename_parts[-2].split("_") if part in all_axes.keys()]
-    if args.axlim:
-        nv = len(args.axlim)
-        if nv % 2:
-            raise ValueError("if --axlim is specified it must have two values per axis!")
-        axlim = np.array(args.axlim).reshape((int(nv/2), 2))
-        axes = [ax if lim is None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])], flow=False) 
-                    for ax,lim in itertools.zip_longest(axes, axlim)]
-    shape = [len(a) for a in axes]
+            hist_data = fitresult["obs;1"].to_hist()
+            values = np.reshape(hist_data.values()[ch_start:ch_end], shape)
+            hist_data = hist.Hist(*info["axes"], storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
 
             # last bin can be masked channel; slice with [:nBins]
             hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()
