@@ -200,16 +200,18 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", simultaneousABCD=False, **kwargs
+        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
             return # histselectors only implemented for single lepton (with fakes)
+        auxiliary_info={}
         signalselector = sel.SignalSelectorABCD
         if mode == "extended1D":
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
+            auxiliary_info["smooth_shapecorrection"]=smoothen
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
@@ -226,7 +228,7 @@ class Datagroups(object):
             base_member = self.groups[g].members[:][0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h, **kwargs)
+                self.groups[g].histselector = fakeselector(h, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h, **kwargs)
 
@@ -381,14 +383,14 @@ class Datagroups(object):
                     logger.debug("force non zero")
                     h = hh.clipNegativeVals(h, createNew=False)
 
-                scale = self.processScaleFactor(member)
-                scale *= scaleToNewLumi
-                if group.scale:
-                    scale *= group.scale(member)
+                # scale = self.processScaleFactor(member)
+                # scale *= scaleToNewLumi
+                # if group.scale:
+                #     scale *= group.scale(member)
 
-                if not np.isclose(scale, 1, rtol=0, atol=1e-10):
-                    logger.debug(f"Scale hist with {scale}")
-                    h = hh.scaleHist(h, scale, createNew=False)
+                # if not np.isclose(scale, 1, rtol=0, atol=1e-10):
+                #     logger.debug(f"Scale hist with {scale}")
+                #     h = hh.scaleHist(h, scale, createNew=False)
 
                 hasPartialSumForFake = False
                 if hasFake and procName != self.fakeName:
@@ -426,6 +428,8 @@ class Datagroups(object):
             if self.rebinOp and self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
+
+            group.hists[label] = hh.rebinHist(group.hists[label], "pt", [26, 28, 30, 33, 40, 56])
 
             if group.histselector is not None:
                 if not applySelection:
@@ -657,6 +661,12 @@ class Datagroups(object):
             raise ValueError("Inconsistent rebin or axlim arguments. axlim must be at most two entries per axis, and rebin at most one")
         self.rebinBeforeSelection = rebin_before_selection
 
+        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
+            if absval:
+                logger.info(f"Taking the absolute value of axis '{var}'")
+                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
+                axes[i] = f"abs{var}" if rename else var
+
         def rebin(h, axes, lows=[], highs=[], rebins=[]):
             sel = {}
             for ax,low,high,rebin in itertools.zip_longest(axes, lows, highs, rebins):
@@ -673,11 +683,6 @@ class Datagroups(object):
         if len(ax_lim)>0 or len(ax_rebin)>0:
             self.setRebinOp(lambda h,axes=axes,lows=ax_lim[::2],highs=ax_lim[1::2],rebins=ax_rebin: rebin(h, axes, lows, highs, rebins))
 
-        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
-            if absval:
-                logger.info(f"Taking the absolute value of axis '{var}'")
-                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
-                axes[i] = f"abs{var}" if rename else var
 
     def readHist(self, baseName, proc, group, syst):
         output = self.results[proc.name]["output"]

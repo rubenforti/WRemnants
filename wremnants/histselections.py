@@ -484,7 +484,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         hsyst.values(flow=flow)[...] = variations
 
         # decorrelate in fakerate axes
-        axes_names = [n for n in self.fakerate_axes if n != self.smoothing_axis_name]
+        axes_names = [n for n in self.fakerate_axes if not self.smooth_fakerate or n != self.smoothing_axis_name]
         hsyst = hh.expand_hist_by_duplicate_axes(hsyst, axes_names, [f"_{n}" for n in axes_names])    
 
         # add nominal hist and broadcast
@@ -631,7 +631,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         return hSignal
 
     def compute_fakeratefactor(self, h, syst_variations=False, flow=True, auxiliary_info=False):
-        sel = {self.name_x: self.sel_dx, **{n: hist.sum for n in self.fakerate_integration_axes}}
+        sel = {n: hist.sum for n in self.fakerate_integration_axes}
         # rebin in regression axis to have stable ratios
         hNew = hh.rebinHist(h[sel], self.name_x, self.rebin_x) if self.rebin_x is not None else h[sel]
 
@@ -639,8 +639,8 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         hNew = hh.disableFlow(hNew, self.name_x)
 
         # select sideband regions
-        ha = hNew[{self.name_y: self.sel_dy}]
-        hb = hNew[{self.name_y: self.sel_y}]
+        ha = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
+        hb = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
 
         a = ha.values(flow=flow)
         b = hb.values(flow=flow)
@@ -654,10 +654,10 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             # full variances
             avar = ha.variances(flow=flow)
             bvar = hb.variances(flow=flow)
-            y_var = y**2 * (bvar/b**2 + avar/a**2)
+            y_var = bvar/a**2 + avar*b**2/a**4
 
         # the bins where the regression is performed (can be different to the bin in h)
-        x = self.get_bin_centers(hNew, self.name_x, flow=False) 
+        x = self.get_bin_centers(ha, self.name_x, flow=False) 
         y, y_var = self.extrapolate_fakerate(h[{self.name_x: self.sel_x}], x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
         # TODO: smoothing
@@ -988,9 +988,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             else:
                 # # take bin by bin uncertainty from c * c/cy 
                 dvar = y_frf**2 *( 4*(c/cy)**2 * cvar + (c/cy**2)**2 * cyvar )
-            # y_var = y**2 * (cvar/c**2 + cyvar/cy**2 )
-            # y_var = cvar/cy**2 + (c**2 * cyvar)/cy**4 # multiply out for better numerical stability (avoid NaNs from divisions)
-
         else:
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h)
@@ -1007,7 +1004,10 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         return hSignal
 
-    def compute_shapecorrection(self, h, syst_variations=False, flow=True, auxiliary_info=False):
+    def compute_shapecorrection(self, h, syst_variations=False, apply=False, flow=True, auxiliary_info=False):
+        # if apply=True, shape correction is multiplied to application region for correct statistical uncertainty, only allowed if not smoothing
+        if apply and (self.interpolate_x or self.smooth_shapecorrection):
+            raise NotImplementedError(f"Direct application of shapecorrection only supported when no smoothing is performed")
         # rebin in smoothing axis to have stable ratios
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
@@ -1031,7 +1031,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             cyvar = cyvar.sum(axis=idx_x)
 
         # shape correction factor
-        y_num = c
+        y_num = c**2 if apply else c
         y_den = cy
         y = y_num/y_den
         if (cy <= 0).sum() > 0:
@@ -1073,7 +1073,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             logger.info("Done with toys")
 
-
         if self.interpolate_x or self.smooth_shapecorrection:
             if h.storage_type == hist.storage.Weight:
                 y_var = cvar/cy**2 + (c**2 * cyvar)/cy**4 # multiply out for better numerical stability (avoid NaNs from divisions)
@@ -1082,9 +1081,11 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 logger.warning("Smoothing extended ABCD on histogram without uncertainties, make an unweighted linear squared solution.")
                 w = np.ones_like(y)
         else:
-            # y_var = cvar/cy**2 + (c**2 * cyvar)/cy**4 # multiply out for better numerical stability (avoid NaNs from divisions)
             if h.storage_type == hist.storage.Weight:
-                y_var = y**2 * (4*cvar/c**2 + cyvar/cy**2 )
+                if apply:
+                    y_var = 4*c**2/cy**2*cvar + c**4/cy**4*cyvar # multiply out for better numerical stability (avoid NaNs from divisions)
+                else:
+                    y_var = 1/cy**2*cvar + c**2/cy**4*cyvar # multiply out for better numerical stability (avoid NaNs from divisions)
 
         if self.interpolate_x:
             axes = [n for n in h.axes.name if n not in [*self.fakerate_integration_axes, self.name_y] ]
@@ -1267,24 +1268,17 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             values = np.stack([a, ax, ay, axy, b, bx], axis=-1)
             variances = np.stack([avar, axvar, ayvar, axyvar, bvar, bxvar], axis=-1)
 
-            # # throw toys for nominator and denominator instead
-            # y_num_var = y_num**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + 4*bvar/b**2)
-            # y_den_var = y_den**2 * (16*avar/a**2 + axyvar/axy**2 + bxvar/bx**2)
-            # values = np.stack([y_num, y_den], axis=-1)
-            # variances = np.stack([y_num_var, y_den_var], axis=-1)
-
             nsamples=10000
-            seed=41
+            seed=42 # For reproducibility
 
             if self.throw_toys == "normal":
                 # throw gaussian toys
                 toy_shape = [*values.shape, nsamples]
                 toy_size=np.product(toy_shape)
-                np.random.seed(seed)  # For reproducibility
+                np.random.seed(seed)
                 toys = np.random.normal(0, 1, size=toy_size)
                 toys = np.reshape(toys, toy_shape)
                 toys = toys*np.sqrt(variances)[...,np.newaxis] + values[...,np.newaxis]
-                # toy = toys[...,0,:] / toys[...,1,:]
                 toy = (toys[...,1,:]*toys[...,2,:]*toys[...,4,:])**2 / (toys[...,0,:]**4 * toys[...,3,:] * toys[...,5,:])
                 toy_mean = np.mean(toy, axis=-1)
                 toy_var = np.var(toy, ddof=1, axis=-1) 
@@ -1294,7 +1288,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 rng = np.random.default_rng(seed)
                 toys = rng.poisson(values, size=toy_shape)
                 toys = toys.astype(np.double)
-                # toy = (toys[...,1]*toys[...,2]*toys[...,4]/toys[...,0])**2 / (toys[...,0]**2 * toys[...,3] * toys[...,5])
                 toy = (toys[...,1]*toys[...,2]*toys[...,4])**2 / (toys[...,0]**4 * toys[...,3] * toys[...,5])
                 toy_mean = np.mean(toy, axis=0)
                 toy_var = np.var(toy, ddof=1, axis=0) 
@@ -1330,11 +1323,10 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             logger.warning(f"Fakerate integration axes {self.fakerate_integration_axes} are set but a binned fake estimation is performed, the bin-by-bin stat uncertainties are not correct along this axis.")
 
         frf, frf_var = self.compute_fakeratefactor(h)
-        scf, scf_var = self.compute_shapecorrection(h)
-        c, cvar = self.get_yields_applicationregion(h)
+        c_scf, c_scf_var = self.compute_shapecorrection(h, apply=True)
 
-        d = c * frf * scf
+        d = frf * c_scf
         if h.storage_type == hist.storage.Weight:
-            dvar = d**2 * ( frf_var/frf**2 + scf_var/scf**2)
+            dvar = d**2 * (frf_var/frf**2 + c_scf_var/c_scf**2)
 
         return d, dvar

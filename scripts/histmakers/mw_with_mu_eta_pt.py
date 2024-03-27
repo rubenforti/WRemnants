@@ -117,7 +117,7 @@ axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, over
 # axes with only a few bins for the ABCD method
 axis_isoCat = hist.axis.Variable([0,4,8], name = "iso",underflow=False, overflow=True)
 axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=False, overflow=True)
-axis_mtCat = hist.axis.Variable([0,20,40,44,49,55,62], name = "mt",underflow=False, overflow=True)
+axis_mtCat = hist.axis.Variable([0,4,11,20,21,40,44,49,55,62,80], name = "mt",underflow=False, overflow=True)
 
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
