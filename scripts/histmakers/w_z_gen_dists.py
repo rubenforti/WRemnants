@@ -29,7 +29,7 @@ parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = common.set_parser_default(parser, "theoryCorr", [])
 parser = common.set_parser_default(parser, "ewTheoryCorr", [])
 
-args = common.parse_histmaker_args(parser)
+args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 

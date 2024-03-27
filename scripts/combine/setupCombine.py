@@ -52,8 +52,7 @@ def make_parser(parser=None):
     parser.add_argument("--resumUnc", default="tnp", type=str, choices=["scale", "tnp", "tnp_minnlo", "minnlo",  "none"], help="Include SCETlib uncertainties")
     parser.add_argument("--noTransitionUnc", action="store_true", help="Do not include matching transition parameter variations.")
     parser.add_argument("--npUnc", default="Delta_Lambda", type=str, choices=combine_theory_helper.TheoryHelper.valid_np_models, help="Nonperturbative uncertainty model")
-    parser.add_argument("--tnpMagnitude", default=1, type=float, help="Variation size for the TNP")
-    parser.add_argument("--scaleTNP", default=5, type=float, help="Scale the TNP uncertainties by this factor")
+    parser.add_argument("--scaleTNP", default=1, type=float, help="Scale the TNP uncertainties by this factor")
     parser.add_argument("--scalePdf", default=1, type=float, help="Scale the PDF hessian uncertainties by this factor")
     parser.add_argument("--pdfUncFromCorr", action='store_true', help="Take PDF uncertainty from correction hist (Requires having run that correction)")
     parser.add_argument("--massVariation", type=float, default=100, help="Variation of boson mass")
@@ -126,9 +125,10 @@ def setup(args, inputFile, fitvar, xnorm=False):
     lowPU = "lowpu" in datagroups.mode
     # Detect lowpu dilepton
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)
+    genfit = datagroups.mode == "vgen"
 
     simultaneousABCD = wmass and args.ABCD and not xnorm
-    constrainMass = (dilepton and not "mll" in fitvar) or args.fitXsec
+    constrainMass = genfit or (dilepton and not "mll" in fitvar) or args.fitXsec
 
     if wmass:
         base_group = "Wenu" if datagroups.flavor == "e" else "Wmunu"
@@ -260,8 +260,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     label = 'W' if wmass else 'Z'
     cardTool.setCustomSystGroupMapping({
         "theoryTNP" : f".*resum.*|.*TNP.*|mass.*{label}.*",
-        "resumTheory" : f".*resum.*|.*TNP.*|mass.*{label}.*",
-        "allTheory" : f"pdf.*|.*QCD.*|.*resum.*|.*TNP.*|mass.*{label}.*",
+        "resumTheory" : f".*scetlib.*|.*resum.*|.*TNP.*|mass.*{label}.*",
+        "allTheory" : f".*scetlib.*|pdf.*|.*QCD.*|.*resum.*|.*TNP.*|mass.*{label}.*",
         "ptTheory" : f".*QCD.*|.*resum.*|.*TNP.*|mass.*{label}.*",
     })
     cardTool.setCustomSystForCard(args.excludeNuisances, args.keepNuisances)
@@ -498,9 +498,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
         transitionUnc = not args.noTransitionUnc,
         propagate_to_fakes=to_fakes,
         np_model=args.npUnc,
-        tnp_magnitude=args.tnpMagnitude,
         tnp_scale = args.scaleTNP,
-        mirror_tnp=True,
+        mirror_tnp=False,
         pdf_from_corr=args.pdfUncFromCorr,
         scale_pdf_unc=args.scalePdf,
         minnlo_unc=args.minnloScaleUnc,
@@ -514,7 +513,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
 
-    if xnorm or datagroups.mode == "vgen":
+    if xnorm or genfit:
         return cardTool
 
     # Below: experimental uncertainties
