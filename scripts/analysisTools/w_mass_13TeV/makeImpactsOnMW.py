@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     ROOT.gStyle.SetOptStat(0)
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1)
     parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')    
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
@@ -112,9 +112,6 @@ if __name__ == "__main__":
     parser.add_argument(     '--canvasSize', default='800,1200', type=str, help='Pass canvas dimensions as "width,height" ')
     # parser.add_argument(     '--draw-option', dest='drawOption', default='COLZ TEXT', type=str, help='Options for drawing TH2')
     parser.add_argument(     '--margin',   default='', type=str, help='Pass canvas margin as "left,right,top,bottom" ')
-    parser.add_argument(     '--nContours',    default=51, type=int, help='Number of contours in palette. Default is 51 (let it be odd, so the central strip is white if not using --abs-value and the range is symmetric)')
-    parser.add_argument(     '--palette',      default=0, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', default=False , action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument(     '--scaleToMeV', default=False , action='store_true',   help='Report numbers in terms of uncertainty on mW in MeV (default is to report percentage of prefit uncertainty)')
     parser.add_argument(     '--showTotal', default=False , action='store_true',   help='Show total uncertainty in plot')
     parser.add_argument(     '--prefitUncertainty',      default=100.0, type=float, help='prefit uncertainty on mW in MeV')
@@ -315,6 +312,8 @@ if __name__ == "__main__":
     if len(postfix) and  not postfix.startswith("_"):
         postfix = "_" + postfix
     smallBoson = "z" if args.isWlike else "w"
-    createPlotDirAndCopyPhp(args.outdir)
+    outdir_original = args.outdir
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     for ext in ["pdf", "png"]:
-        c1.SaveAs(f"{args.outdir}/impactsOnM{smallBoson}{postfix}.{ext}")
+        c1.SaveAs(f"{outdir}/impactsOnM{smallBoson}{postfix}.{ext}")
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

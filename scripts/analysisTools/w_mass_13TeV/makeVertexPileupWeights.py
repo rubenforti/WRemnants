@@ -31,18 +31,19 @@ outputfile = data_dir + "/vertex/vertexPileupWeights.root"
 plotFolder = "plots/testNanoAOD/testvertexPileupWeights/"
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    
+    parser = common_plot_parser()
     args = parser.parse_args()
 
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 800, 800) 
 
     outfile = safeOpenFile(outputfile, mode="RECREATE")
-    
+    outdir_original = plotFolder
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     for f in inputfiles:
         era = "preVFP" if "preVFP" in f else "postVFP" if "postVFP" in f else "full2016"
-        outFolder = f"{plotFolder}/{era}/"
+        outFolder = f"{outdir}/{era}/"
         createPlotDirAndCopyPhp(outFolder)
         infile = safeOpenFile(f)
         # get vertex binning from file (although it should be 55 bins from -15 to 15 cm)
@@ -88,4 +89,5 @@ if __name__ == "__main__":
         infile.Close()
 
     outfile.Close()
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
     

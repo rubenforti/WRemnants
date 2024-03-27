@@ -40,14 +40,10 @@ from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import plot
 sys.path.append(os.getcwd())
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
-    parser.add_argument(     '--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     parser.add_argument('-c','--charges', default="both", choices=["plus", "minus", "both"], type=str,
@@ -58,18 +54,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
-    # if 0:
-    #     logger.critical("TEST LOGGER CRITICAL")
-    #     logger.error("TEST LOGGER ERROR")
-    #     logger.warning("TEST LOGGER WARNING")
-    #     logger.info("TEST LOGGER INFO")
-    #     logger.debug("TEST LOGGER DEBUG")
-    #     quit()
 
     fname = args.inputfile[0]
-    outdir = args.outdir[0]
-    createPlotDirAndCopyPhp(outdir)
-        
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
@@ -146,7 +135,7 @@ if __name__ == "__main__":
                                         f"{h.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertPalette)
+                                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 hist2D[charge][f"{d}_{charge}"] = h
         print()
 
@@ -190,7 +179,7 @@ if __name__ == "__main__":
                                     f"{hFRF.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 # plot unrolled FRF to better see how it looks like
                 hFRF_unrolled = unroll2Dto1D(hFRF, newname=f"{hFRF.GetName()}_unrolled")
                 drawSingleTH1(hFRF_unrolled, XlabelUnroll, f"Fake rate factor ({c})", f"{hFRF.GetName()}_unrolled",
@@ -216,10 +205,4 @@ if __name__ == "__main__":
                                   drawVertLines="{a},{b}".format(a=hFakeYields.GetNbinsY(),b=hFakeYields.GetNbinsX()),
                                   textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=0)
 
-
-    # processes = ["WplusmunuPostVFP"]
-    # hnomi = {}
-    # for p in processes:
-    #     hnomi[p] = input_tools.read_and_scale(fname, p, args.baseName, True)
-    #     print(hnomi[p].axes)
-    # quit()
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

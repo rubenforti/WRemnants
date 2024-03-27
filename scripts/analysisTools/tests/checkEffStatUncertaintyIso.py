@@ -27,28 +27,26 @@ from scripts.analysisTools.plotUtils.utility import *
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1)
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder (subfolder 'checkEffStatUncertaintyIso/' created automatically inside)")
     parser.add_argument("-e", "--era",    type=str, default="GtoH", help="Comma separated list of eras for SF in histogram name; default: %(default)s")
     parser.add_argument("-n", "--sfnames", type=str, default="iso,antiiso", help="Comma separated list of SF names inside root file, which will be plotted (trigger uses both plus and minus automatically); default: %(default)s")
-    parser.add_argument(     '--nContours', dest='nContours',    default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , dest='palette',      default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette' , default=False , action='store_true',   help='Inverte color ordering in palette')
     args = parser.parse_args()
 
     ROOT.TH1.SetDefaultSumw2()
 
     eras = args.era.split(',')
     fname = args.rootfile[0]
-    outdirOriginal = args.outdir[0] # to keep it below
-    if not outdirOriginal.endswith('/'):
-        outdirOriginal = outdirOriginal + '/'
-    outdirOriginal += "checkEffStatUncertaintyIso/"
+    outdir_original = args.outdir[0] # to keep it below
+    if not outdir_original.endswith('/'):
+        outdir_original = outdir_original + '/'
+    outdir_original += "checkEffStatUncertaintyIso/"
 
+    outdir_local = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     # make folder structure
     for era in eras:
-        folder = outdirOriginal + era + "/"
+        folder = outdir_local + era + "/"
         createPlotDirAndCopyPhp(folder)
 
     names = args.sfnames.split(',')
@@ -56,7 +54,7 @@ if __name__ == "__main__":
              "effData" : {e: {n: None for n in names} for e in eras},
              "effMC"   : {e: {n: None for n in names} for e in eras}
     }
-        
+
     f = safeOpenFile(fname)
     for htype in hists.keys():
         for n in names:
@@ -71,7 +69,7 @@ if __name__ == "__main__":
     canvas = ROOT.TCanvas("canvas","",800,800)
 
     for era in eras:
-        outdir = outdirOriginal + era + "/"
+        outdir = outdir_original + era + "/"
 
         effRelUnc = {"effData" : {"iso" : None, "antiiso" : None},
                      "effMC"   : {"iso" : None, "antiiso" : None}
@@ -88,19 +86,19 @@ if __name__ == "__main__":
                                     f"{htype}_{n}_value", plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 ## abs. uncertainty
                 drawCorrelationPlot(hists[htype][era][n], "muon #eta", "muon p_{T} (GeV)", f"abs. unc. on {n} {plotVar}",
                                     f"{htype}_{n}_absUnc", plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotError=True,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
                 ## rel. uncertainty
                 drawCorrelationPlot(hists[htype][era][n], "muon #eta", "muon p_{T} (GeV)", f"rel. unc. on {n} {plotVar}::{rangeRelUnc}",
                                     f"{htype}_{n}_relUnc", plotLabel="ForceTitle", outdir=outdir,
                                     smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                     draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                    nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                    nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
             # do also ratio of relative uncertainty between data and MC efficiency
             effRelUnc["effData"][n] = copy.deepcopy(hists["effData"][era][n].Clone(f"effRelUncData_{n}"))
@@ -115,7 +113,7 @@ if __name__ == "__main__":
                                 f"relUncRatio_dataOverMC_{n}", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             
             # further studies
             # define SF by shifting either the data efficiency or the MC one, so to get two independent SF uncertainties
@@ -140,12 +138,12 @@ if __name__ == "__main__":
                                 f"SF2D_{n}_relUnc_dataEffUncOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             drawCorrelationPlot(sf_mcEffUncOnly, "muon #eta", "muon p_{T} (GeV)", f"rel. unc. on {n} data/MC SF::{rangeRelUnc}",
                                 f"SF2D_{n}_relUnc_mcEffUncOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             
             # now define really alternative sf shifting efficiency in either data or MC by the uncertainty. For iso or antiiso the shifts must be opposite, since eff(antiiso) = 1 - eff(iso)
             dataEffUnc = copy.deepcopy(hists["effData"][era][n].Clone("dataEffUnc"))
@@ -169,12 +167,12 @@ if __name__ == "__main__":
                                 f"SF2D_{n}_value_dataEffShiftOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             drawCorrelationPlot(sf_mcEffShift, "muon #eta", "muon p_{T} (GeV)", f"{n} scale factor",
                                 f"SF2D_{n}_value_mcEffShiftOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             # and now plot (sf_shift - sf) / sf, which will also show the sign of the variation
             # in order to have same sign for the z axis we multiply by -1.0 when doing antiiso
             sf_dataEffShift.Add(hists["SF2D"][era][n], -1.0)
@@ -192,12 +190,12 @@ if __name__ == "__main__":
                                 f"SF2D_{n}_relVariation_dataEffShiftOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             drawCorrelationPlot(sf_mcEffShift, "muon #eta", "muon p_{T} (GeV)", f"{n} {deltaSF} / SF::{rangeRelUnc}",
                                 f"SF2D_{n}_relVariation_mcEffShiftOnly", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                                nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
             
                 
 
@@ -254,4 +252,6 @@ if __name__ == "__main__":
                             rho.GetName(), plotLabel="ForceTitle", outdir=outdir,
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                            nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                            nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

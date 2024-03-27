@@ -275,15 +275,13 @@ if __name__ == "__main__":
                                     "channelmu"             : "mu",
     }
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('fitresult', type=str, nargs=1, help="fitresult.root file from combinetf")
     parser.add_argument('-o','--outdir', default='', type=str, help='output directory to save the matrix')
     parser.add_argument('-p','--params', default='', type=str, help='parameters for which you want to show the correlation matrix. comma separated list of regexps')
     parser.add_argument('-t','--type'  , default='hessian', choices=['toys', 'scans', 'hessian'], type=str, help='which type of input file: toys(default),scans, or hessian')
     parser.add_argument(     '--postfix', default='', type=str, help='Postfix for the correlation matrix')
     parser.add_argument(     '--uniqueString',  default=None, required=True, type=str, help='Keyword for canvas name to uniquely identify the output plot')
-    parser.add_argument(     '--nContours', default=51, type=int, help='Number of contours in palette. Default is 51 (keep it odd: no correlation is white with our palette)')
-    parser.add_argument(     '--palette'  , default=0, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
     parser.add_argument(     '--vertical-labels-X', dest='verticalLabelsX', action='store_true', help='Set labels on X axis vertically (sometimes they overlap if rotated)')
     parser.add_argument(     '--noTextMatrix', action='store_true', help='Do not print text with values on the matrix')
     parser.add_argument(     '--title'  , default='', type=str, help='Title for matrix ')
@@ -318,9 +316,10 @@ if __name__ == "__main__":
                                          array ("d", [1.00, 1.00, 0.00]),
                                          255,  0.95)
 
-
-    if args.outdir:
-        createPlotDirAndCopyPhp(args.outdir)
+    outdir_original = args.outdir:
+    outdir = None
+    if outdir_original:
+        outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     else:
         print("You must pass an output folder with option -o")
         quit()
@@ -535,7 +534,7 @@ if __name__ == "__main__":
                        
             args.skipLatexOnTop = True
             
-        if args.outdir:
+        if outdir:
             ROOT.gStyle.SetPaintTextFormat('1.2f')
             if len(params) < 30 and not args.noTextMatrix: tmp_mat.Draw('colz text45')
             else: tmp_mat.Draw('colz')
@@ -554,7 +553,7 @@ if __name__ == "__main__":
             paramsName = args.uniqueString
 
             suff = '' if not args.postfix else '_'+args.postfix
-            outfname = args.outdir+'/small{corcov}_{pn}{suff}'.format(suff=suff,pn=paramsName,corcov=corcov)
+            outfname = outdir+'/small{corcov}_{pn}{suff}'.format(suff=suff,pn=paramsName,corcov=corcov)
             for i in ['pdf', 'png']:
                 c.SaveAs('{ofn}.{i}'.format(ofn=outfname,i=i))
             # save matrix in root file
@@ -567,3 +566,6 @@ if __name__ == "__main__":
     if args.showMoreCorrelated:
         print("Option --show-more-correlated is not yet implemented")
         pass
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+
