@@ -7,7 +7,11 @@ parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for lumin
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen"])
+args = parser.parse_args()
+isUnfolding = args.analysisMode == "unfolding"
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
+
 args = parser.parse_args()
 
 import narf
@@ -66,8 +70,8 @@ gen_axes = {
 
 groups_to_aggregate = args.aggregateGroups
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
     groups_to_aggregate.append(f"{base_group}OOA")
 
@@ -120,7 +124,7 @@ def build_graph(df, dataset):
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name in sigProcs:
+    if isUnfolding and dataset.name in sigProcs:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
 
         if hasattr(dataset, "out_of_acceptance"):
