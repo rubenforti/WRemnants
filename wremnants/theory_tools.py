@@ -186,9 +186,9 @@ def expand_pdf_entries(pdf, alphas=False, renorm=False):
         vals = [info["branch"]+f"[{i}]" for i in range(first_entry, last_entry)]
 
     if renorm:
-        vals = [f"std::clamp({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
+        vals = [f"std::clamp<float>({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
     else:
-        vals = [f"std::clamp({x}, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
+        vals = [f"std::clamp<float>({x}, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
 
     return vals
 
