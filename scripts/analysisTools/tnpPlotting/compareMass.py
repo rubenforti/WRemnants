@@ -3,6 +3,7 @@
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -38,13 +39,15 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--postfix", type=str, default="", help="Postfix for output plots")
     args = parser.parse_args()
 
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
     ROOT.TH1.SetDefaultSumw2()
 
     outdir_original = args.outputfolder[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     if len(args.inputfile) != len(args.hname) or len(args.inputfile) != len(args.legendEntry):
-        print("Error: different number of input options for histograms")
+        logger.error("Different number of input options for histograms")
         quit()
         
     hists3D = []
@@ -67,8 +70,8 @@ if __name__ == "__main__":
     canvas.SetRightMargin(0.04)
     canvas.cd()
 
-    print(f"{hists3D[0].GetNbinsZ()} eta bins")
-    print(f"{hists3D[0].GetNbinsY()} pt  bins")
+    logger.info(f"{hists3D[0].GetNbinsZ()} eta bins")
+    logger.info(f"{hists3D[0].GetNbinsY()} pt  bins")
 
     iymin = 1
     iymax = hists3D[0].GetNbinsY()
