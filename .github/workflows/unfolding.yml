@@ -135,7 +135,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding 
           --pt 6 26 58 --eta 6 -2.4 2.4 --genBins 4 3
 
       - name: wmass analysis
@@ -143,7 +143,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding
 
   w-unfolding:
     # The type of runner that the job will run on
@@ -176,7 +176,7 @@ jobs:
       - name: wmass combine setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE --unfold --simultaneousABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --simultaneousABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
         run: >-
@@ -280,7 +280,7 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding 
           --pt 10 26 58 --eta 24 -2.4 2.4 --genBins 4 3
 
       - name: wlike analysis
@@ -288,7 +288,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding
 
 
   wlike-unfolding:
@@ -322,7 +322,7 @@ jobs:
       - name: wlike combine unfolding setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wlike combine unfolding fit 
         run: >-
@@ -422,14 +422,14 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --unfolding --genVars ptVGen
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --genAxes ptVGen
 
       - name: dilepton analysis
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --unfolding
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding
 
 
   dilepton-unfolding:
@@ -470,14 +470,14 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding setup
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding fit
         run: >- 

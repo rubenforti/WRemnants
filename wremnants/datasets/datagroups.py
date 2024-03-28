@@ -550,7 +550,7 @@ class Datagroups(object):
             logger.warning("No meta data found so no gen axes could be auto set")
             return
 
-        self.all_gen_axes = args.get("genVars", [])
+        self.all_gen_axes = args.get("genAxes", [])
 
         if self.mode in ["wmass", "lowpu_w"]:
             self.all_gen_axes = ["qGen", *self.all_gen_axes]

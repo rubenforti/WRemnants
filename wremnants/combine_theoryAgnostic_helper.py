@@ -163,7 +163,7 @@ class TheoryAgnosticHelper(object):
                                 )
 
     def add_theoryAgnostic_uncertainty(self):
-        if self.args.theoryAgnosticPolVar:
+        if self.args.analysisMode == "theoryAgnosticPolVar":
             self.add_theoryAgnostic_polVar_uncertainty()
         else:
             self.add_theoryAgnostic_normVar_uncertainty()
