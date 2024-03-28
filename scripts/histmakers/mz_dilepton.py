@@ -22,15 +22,21 @@ parser.add_argument("--finePtBinning", action='store_true', help="Use fine binni
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen", "absYVGen"])
 parser = common.set_parser_default(parser, "pt", [34,26.,60.])
 parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 
 args = parser.parse_args()
+isUnfolding = args.analysisMode == "unfolding"
+isPoiAsNoi = isUnfolding and args.poiAsNoi
+
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen", "absYVGen"])
+args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
 
 thisAnalysis = ROOT.wrem.AnalysisType.Dilepton if args.useDileptonTriggerSelection else ROOT.wrem.AnalysisType.Wlike
 era = args.era
@@ -94,13 +100,13 @@ if args.csVarsHist:
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
 gen_axes = {
-    "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=args.poiAsNoi),
-    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=args.poiAsNoi),  
+    "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=isPoiAsNoi),
+    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=isPoiAsNoi),  
 }
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes, add_out_of_acceptance_axis=args.poiAsNoi)
-    if not args.poiAsNoi:
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes, add_out_of_acceptance_axis=isPoiAsNoi)
+    if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
 
 
@@ -170,7 +176,7 @@ def build_graph(df, dataset):
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name == "ZmumuPostVFP":
+    if isUnfolding and dataset.name == "ZmumuPostVFP":
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -180,9 +186,9 @@ def build_graph(df, dataset):
         else:
             logger.debug("Select events in fiducial phase space")
             df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, select=not args.poiAsNoi, accept=True)
+                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, select=not isPoiAsNoi, accept=True)
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
-            if not args.poiAsNoi:
+            if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
 
@@ -298,7 +304,7 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
-    if args.unfolding and args.poiAsNoi and dataset.name == "ZmumuPostVFP":
+    if isUnfolding and isPoiAsNoi and dataset.name == "ZmumuPostVFP":
         noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
         logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
         results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))       

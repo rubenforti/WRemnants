@@ -51,8 +51,8 @@ if __name__ == "__main__":
            
     fname = args.rootfile[0]
     postfix = f"_{args.postfix}" if args.postfix else ""
-    outdir = f"{args.outputfolder[0]}/mtCutEfficiency{postfix}/"
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = f"{args.outputfolder[0]}/mtCutEfficiency{postfix}/"
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     
     ROOT.TH1.SetDefaultSumw2()
     
@@ -193,3 +193,5 @@ def getHistograms(inputfile):
         drawGraphCMS([grSoverB[imt] for imt in grSoverB.keys()], "Transverse mass threshold (GeV)", f"QCD/{denLabel} yields for m_{{T}} {signCut} threshold::{miny},{maxy}",
                      f"QCDover{denLabel}_yieldRatio", outdir, grLeg2, legendCoords="0.6,0.48,0.9,0.64;1",
                      passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL", useOriginalGraphStyle=True)
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

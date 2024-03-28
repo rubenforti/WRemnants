@@ -861,14 +861,14 @@ def runStudy(fname, charges, mainOutputFolder, args):
                             "Fakerate factor",
                             FRF_jetInclusive_vsEtaPt.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                            invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                            invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
         drawCorrelationPlot(FRF_1orMoreJet_vsEtaPt,
                             xAxisName,
                             yAxisName,
                             "Fakerate factor",
                             FRF_1orMoreJet_vsEtaPt.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                            invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                            invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
         # and also the ratio between jet inclusive and >=1 jet
         FRF_ratioJet_vsEtaPt = copy.deepcopy(FRF_jetInclusive_vsEtaPt.Clone(f"FRF_ratioJet_vsEtaPt_{charge}"))
         FRF_ratioJet_vsEtaPt.SetTitle(f"jetInclusive/1orMoreJet, mT < {mtThreshold} GeV")
@@ -879,7 +879,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                             "Ratio of fakerate factors::0.8,1.6",
                             FRF_ratioJet_vsEtaPt.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                            invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                            invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
         # don't rebin mT here (default is 1 GeV),
         # otherwise the new binning might no longer be consistent with the one passed to --mt-bin-edges
@@ -907,14 +907,14 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                     "Events (data - MC)",
                                     h2PassIso.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                     draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                    invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                    invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
                 drawCorrelationPlot(h2FailIso,
                                     xAxisName,
                                     yAxisName,
                                     "Events (data - MC)",
                                     h2FailIso.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                     draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                    invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                    invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
             ratio.append(h2PassIso.Clone(f"fakerateFactor_mt{lowEdge}to{highEdge}"))
             ratio[imt].SetTitle("%s m_{T} #in [%d, %d]" % (args.met, lowEdge, highEdge))
@@ -926,7 +926,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                     "fakerate factor: N(iso) / N(not-iso)::0,3",
                                     ratio[imt].GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                     draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                    invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                    invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
 
         if args.mtNominalRange:
@@ -951,7 +951,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                 "fakerate factor: N(iso) / N(not-iso)",
                                 nominalFakerateFactor.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                 draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
             # plot also at high mt, including overflow
             h2PassIso_highMt = getTH2fromTH3(histoPassIso, f"pt_eta_mt{highEdge}toInf_passIso", binEnd, 1+histoPassIso.GetNbinsZ())
             h2FailIso_highMt = getTH2fromTH3(histoFailIso, f"pt_eta_mt{highEdge}toInf_failIso", binEnd, 1+histoFailIso.GetNbinsZ())
@@ -966,7 +966,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                 "fakerate factor: N(iso) / N(not-iso)",
                                 highMtFakerateFactor.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                 draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
             nomiFRF_unrolled = unroll2Dto1D(nominalFakerateFactor, newname=f"unrolled_{nominalFakerateFactor.GetName()}", cropNegativeBins=False)
             highMtFRF_unrolled = unroll2Dto1D(highMtFakerateFactor, newname=f"unrolled_{highMtFakerateFactor.GetName()}", cropNegativeBins=False)
             ptBinRanges = []
@@ -1105,7 +1105,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                     "fakerate factor: N(iso) / N(not-iso)",
                                     fakerateFactor_vs_etaMt.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                     draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                    invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                    invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
         if args.integralMtMethod == "sideband":
             if args.jetCut:
@@ -1125,7 +1125,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                             f"QCD template correction::{corrRange}",
                             hFRFcorr.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                            invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                            invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
         if args.fitPolDegree:
             drawTH1(histoChi2diffTest,
@@ -1232,7 +1232,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
         #                         f"QCD template correction::{corrRange}",
         #                         hFRFcorrTestCap.GetName(), plotLabel="ForceTitle", outdir=outfolder,
         #                         draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-        #                         invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+        #                         invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
         if hFRFcorr.GetNbinsX() == 1 or hFRFcorr.GetNbinsY() == 1:
             if hFRFcorr.GetNbinsY() == 1:
@@ -1289,7 +1289,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                 f"FRF correction uncertainty (quadrature sum)",
                                 etaPtTemplate.GetName(), plotLabel="ForceTitle", outdir=outfolder,
                                 draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-                                invertePalette=args.invertePalette, passCanvas=canvas, skipLumi=True)
+                                invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
             ROOT.wrem.broadCastTH2intoTH3(etaPtChargeTemplate, etaPtTemplate, chargeBin, chargeBin, True)
             etaPtChargeTemplate.Write()
 
@@ -1441,7 +1441,7 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1)
     parser.add_argument("outputfolder",   type=str, nargs=1)
     parser.add_argument("-x", "--xAxisName", default="Muon #eta", help="x axis name")
@@ -1459,13 +1459,9 @@ if __name__ == "__main__":
     parser.add_argument("--jetCut", action="store_true",   help="Use jet cut to derive the FRF (sample will be more QCD enriched but might bias the FRF)")
     parser.add_argument("--rebinx", dest="rebinEta", default=1, type=int, help="To rebin x axis (eta)")
     parser.add_argument("--rebiny", dest="rebinPt", default=1, type=int, help="To rebin y axis (pt)")
-    parser.add_argument("--nContours", dest="nContours",    default=51, type=int, help="Number of contours in palette. Default is 51 (let it be odd, so the central strip is white if the range is symmetric)")
-    parser.add_argument("--palette"  , dest="palette",      default=87, type=int, help="Set palette: default is a built-in one, 55 is kRainbow")
-    parser.add_argument("--invertPalette", dest="invertePalette" , action="store_true",   help="Inverte color ordering in palette")
     parser.add_argument("--absEta", dest="absEta" , action="store_true",   help="Do study using histograms folded into absolute value of pseudorapidity")
     parser.add_argument("--allPlot2D", dest="skipPlot2D" , action="store_false",   help="Do some 2D plots with FRF vs eta-Mt, pt-mT, and so on")
     parser.add_argument("--postfix", default="", type=str, help="Postfix for folder name")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     parser.add_argument("--useQCDMC", action="store_true",   help="Make study using QCD MC instead of data-driven fakes, as a cross check")
     parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=-1.0)
     parser.add_argument("--dphiStudy", action="store_true",   help="Only do some plots for dphi study skipping the rest")
@@ -1499,8 +1495,10 @@ if __name__ == "__main__":
     if args.postfix:
         subFolder += f"_{args.postfix}"
     subFolder += "/"
-    mainOutputFolder = args.outputfolder[0] + subFolder
-
+    outdir_original = args.outputfolder[0] + subFolder
+    
+    mainOutputFolder = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+    
     fname = "fakerateFactorMtBasedCorrection_vsEtaPt.root"
 
     filesToMerge = []
@@ -1521,3 +1519,5 @@ if __name__ == "__main__":
         print()
         print(f"Saving all FRF corrections vs eta-pt in file {outFile}")
         print()
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

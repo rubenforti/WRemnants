@@ -126,6 +126,54 @@ def set_parser_default(parser, argument, newDefault):
         logger.warning(f" Parser argument {argument} not found!")
     return parser
 
+def set_subparsers(subparser, name):
+
+    if name is None:
+        return subparser
+
+    # options in common between unfolding/theoryAgnostic but not known to the main parser
+    subparser.add_argument("--poiAsNoi", action='store_true',
+                           help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
+
+    if name == "unfolding":
+        # specific for unfolding
+        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"],
+                               help="Generator level variable")
+        subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
+                               help="Generator level definition for unfolding")
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[16, 0],
+                               help="Number of generator level bins")
+    elif "theoryAgnostic" in name:
+        # specific for theory agnostic
+        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")
+        subparser.add_argument("--genPtVbinEdges", type=float, nargs="*", default=[],
+                               help="Bin edges of gen ptV axis for theory agnostic")
+        subparser.add_argument("--genAbsYVbinEdges", type=float, nargs="*", default=[],
+                               help="Bin edges of gen |yV| axis for theory agnostic")
+        if name == "theoryAgnosticPolVar":
+            subparser.add_argument("--theoryAgnosticFilePath", type=str, default=".",
+                                   help="Path where input files are stored")
+            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"],
+                                   help="Tag for input files")
+            subparser.add_argument("--theoryAgnosticSplitOOA", action='store_true',
+                                   help="Define out-of-acceptance signal template as an independent process")
+
+    else:
+        raise NotImplementedError(f"Subparser {name} is not defined. Please check!")
+
+    return subparser
+
+def common_histmaker_subparsers(parser):
+
+    parser.add_argument("--analysisMode", type=str, default=None,
+                        choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
+                        help="Select analysis mode to run. Default is the traditional analysis")
+    
+    tmpKnownArgs,_ = parser.parse_known_args()
+    parser = set_subparsers(parser, tmpKnownArgs.analysisMode)
+
+    return parser
+
 def base_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
@@ -203,12 +251,6 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--dummyNonClosureMMag", default=0., type=float, help="magnitude of the dummy value for the alignment part of the Z non-closure")
     parser.add_argument("--noScaleToData", action="store_true", help="Do not scale the MC histograms with xsec*lumi/sum(gen weights) in the postprocessing step")
     parser.add_argument("--aggregateGroups", type=str, nargs="*", default=["Diboson", "Top"], help="Sum up histograms from members of given groups in the postprocessing step")
-    # options for unfolding/differential
-    parser.add_argument("--unfolding", action='store_true', help="Add information needed for unfolding")
-    parser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"], help="Generator level definition for unfolding")
-    parser.add_argument("--genVars", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"], help="Generator level variable")
-    parser.add_argument("--genBins", type=int, nargs="+", default=[16, 0], help="Number of generator level bins")
-    parser.add_argument("--poiAsNoi", action='store_true', help="Experimental option only with --theoryAgnostic or --unfolding, it will make the histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)
@@ -254,9 +296,26 @@ def common_parser(for_reco_highPU=False):
         sfFile = ""
 
     parser.add_argument("--sfFile", type=str, help="File with muon scale factors", default=sfFile)
-        
-    return parser,initargs
+    parser = common_histmaker_subparsers(parser)
 
+    class PrintParserAction(argparse.Action):                                            
+        def __init__(self, option_strings, dest, nargs=0, **kwargs):
+            if nargs != 0:
+                raise ValueError('nargs for PrintParserAction must be 0 since it does not require any argument')
+            super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+        def __call__(self, parser, namespace, values, option_string=None):
+            # meant to substitute the native help message of the parser printing the whole parser with its arguments
+            # needed because when we call parse_args only the options defined until there will fall in the help message
+            thisLogger = logging.child_logger(__name__)
+            thisLogger.warning("Printing parser with all its arguments")
+            thisLogger.warning("")
+            thisLogger.warning(namespace)
+            thisLogger.warning("")
+
+    parser.add_argument("--printParser", action=PrintParserAction, help="Print the whole parser with its arguments (use it as the last argument or default values might not be displayed correctly)")
+    
+    return parser,initargs
+    
 def plot_parser():
     parser = base_parser()
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
