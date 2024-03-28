@@ -197,8 +197,8 @@ def extend_edges(traits, x):
 
 class HistselectorABCD(object):
     target_edges_dict = {
-        # "pt": [26,27,28,29,30,31,33,36,40,46,56], 
-        "pt": [28, 30, 33, 40, 56], #[26, 28, 30, 33, 40, 56],
+        "pt": [26,27,28,29,30,31,33,36,40,46,56], 
+        # "pt": [26, 28, 30, 33, 40, 56],
         "muonJetPt": [26,40,44,46,50,54,62],
         # "mt": [0, 20, 40, 44, 49, 55, 62]
         "mt": [0, 20, 40, 44, 49, 55, 62]
@@ -676,13 +676,12 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             raise RuntimeError(f"The extrapolation order is {self.extrapolation_order} but it can not be higher than the number of bins in {self.name_x} of {len(x)} -1")
         # if len(x)-1 == self.extrapolation_order:
         #     logger.info("Extrapolation can be done fully analytical")
-        #     pdb.set_trace()
         #     slope = (y[...,1] - y[...,0]) / (x[1] - x[0])
         #     offset = y[...,0] - slope * x[0]
 
         #     x_extrapolation = self.get_bin_centers(h[{self.name_x: self.sel_x}], self.name_x, flow=flow)
         #     y = slope[...,np.newaxis] * x_extrapolation + offset[...,np.newaxis]
-
+        
         y, y_var = self.extrapolate_fakerate(h[{**sel, self.name_x: self.sel_x}], x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
         # TODO: smoothing
@@ -718,7 +717,6 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         # evaluate in range of application region of original histogram
         x_extrapolation = self.get_bin_centers(h, self.name_x, flow=flow)
         y_extrapolation = self.f_frf(x_extrapolation, params)
-
 
         if syst_variations:
             y_extrapolation_var = self.make_eigen_variations_frf(params, cov, x_extrapolation)
@@ -894,7 +892,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             elif self.throw_toys == "poisson":
                 # throw posson toys
                 toy_shape = [nsamples, *values.shape]
-                rng = np.random.default_rng()
+                rng = np.random.default_rng(seed)
                 toys = rng.poisson(values, size=toy_shape)
                 toy = (toys[...,1]*toys[...,2]**2) / (toys[...,0]**2 * toys[...,3])
                 toy_mean = np.mean(toy, axis=0)
@@ -950,8 +948,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # min and max (in application region) for transformation of bernstain polynomials into interval [0,1]
         self.axis_x_min = h[{self.name_x: self.sel_x}].axes[self.name_x].edges[0]
         if self.name_x == "mt":
-            # mt does not have an upper bound, cap at 80
-            self.axis_x_max = 80
+            # mt does not have an upper bound, cap at 100
+            self.axis_x_max = 100
         elif self.name_x in ["iso", "relIso", "relJetLeptonDiff", "dxy"]:
             # iso and dxy have a finite lower and upper bound in the application region
             self.axis_x_max = abcd_thresholds[self.name_x][1]
@@ -995,7 +993,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         if variations_scf and variations_frf:
             raise RuntimeError(f"Can only calculate vairances for fakerate factor or shape correction factor but not both")
 
-        idx_x = h.axes.name.index(self.name_x) # indices for broadcasting of x-axes used in ABCD
         if self.smooth_fakerate or self.interpolate_x or self.smooth_shapecorrection:
             h = self.transfer_variances(h)
 
@@ -1015,12 +1012,18 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             else:
                 # # take bin by bin uncertainty from c * c/cy 
                 dvar = y_frf**2 *( 4*(c/cy)**2 * cvar + (c/cy**2)**2 * cyvar )
+
+            if self.integrate_x:
+                idx_x = [n for n in h.axes.name if n != self.name_y].index(self.name_x)
+                d = d.sum(axis=idx_x)
+                dvar = dvar.sum(axis=idx_x)
         else:
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h)            
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
+        axes = [a for a in h.axes if a.name != self.name_y and (not self.integrate_x or a.name != self.name_x)]
+        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
 
         if variations_scf or variations_frf or variations_full:
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
@@ -1028,9 +1031,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             hSignal.values(flow=flow)[...] = d
             if hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
-
-        if self.integrate_x:
-            hSignal = hSignal[{self.name_x: hist.sum}]
 
         return hSignal
 
@@ -1326,10 +1326,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             y = toy_mean
             y_var = toy_var
 
-
-            y = toy_mean
-            y_var = toy_var
-
             logger.info("Done with toys")
 
         if self.smooth_fakerate:
@@ -1359,7 +1355,19 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         c_scf, c_scf_var = self.compute_shapecorrection(h, apply=True)
 
         d = frf * c_scf
-        if h.storage_type == hist.storage.Weight:
-            dvar = d**2 * (frf_var/frf**2 + c_scf_var/c_scf**2)
+
+        if self.integrate_x:
+            idx_x = [n for n in h.axes.name if n != self.name_y].index(self.name_x)
+            d = d.sum(axis=idx_x)
+
+            if h.storage_type == hist.storage.Weight:
+                # the fakerate factor is independent of the abcd x-axis and treated fully correlated
+                dvar = c_scf * frf_var**0.5
+                dvar = np.moveaxis(dvar, idx_x, -1)
+                dvar = np.einsum("...ni,...nj->...n", dvar, dvar)
+                dvar += (frf**2 * c_scf_var).sum(axis=idx_x)
+
+        elif h.storage_type == hist.storage.Weight:
+            dvar = c_scf**2 * frf_var + frf**2 * c_scf_var
 
         return d, dvar

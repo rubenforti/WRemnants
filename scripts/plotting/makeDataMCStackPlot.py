@@ -43,7 +43,8 @@ parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", hel
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=1' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
-parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["simple", "extended1D", "extended2D"])
+parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
 subparsers = parser.add_subparsers(dest="variation")
@@ -130,8 +131,9 @@ else:
 fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
 
 groups.setNominalName(args.baseName)
+groups.fakerate_axes=args.fakerateAxes
 if applySelection:
-    groups.set_histselectors(datasets, args.baseName, mode=args.fakeEstimation, fakerate_axes=["pt", "eta", "charge"])
+    groups.set_histselectors(datasets, args.baseName, mode=args.fakeEstimation)
 
 nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
 if not args.nominalRef:

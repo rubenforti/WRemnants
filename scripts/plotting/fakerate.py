@@ -423,7 +423,7 @@ def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True,
 
     smoothing_axis_name = "pt"
     fakerate_axes = ["abseta", "pt", "charge"]
-    h = hh.rebinHist(h[{"muonJetPt":hist.sum}], "pt", [26, 28, 30, 33, 40, 56])
+    h = hh.rebinHist(h[{"muonJetPt":hist.sum}], "pt", [28, 30, 33, 40, 56])
 
     hSel_simple_binned = sel.FakeSelectorSimpleABCD(h, fakerate_axes=fakerate_axes, smoothing_axis_name=smoothing_axis_name,
         rebin_smoothing_axis=None, smooth_fakerate=False, polynomial=polynomial)#, rebin_smoothing_axis=None)
@@ -702,7 +702,7 @@ def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True,
 
 
 ### plot closure
-def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=True):
+def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=False):
     h = h[{"charge":hist.sum}]
     h = hh.rebinHist(h, "pt", [28, 30, 33, 40, 56])
     h = hh.disableFlow(h, "pt")
@@ -791,7 +791,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # hss.append(hD_Xpol0)
         # labels.append("pol0(x)")
 
-        hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1)
+        hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,20,40,44,49,55,62,80])
 
         if bootstrap:
             # throw posson toys
@@ -813,11 +813,15 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_Xpol1.variances(flow=True)[...] = toy_var
         else:
             hD_Xpol1 = hSel_Xpol1.get_hist(h)
-
         hss.append(hD_Xpol1)
         labels.append("pol1(x)")
 
-        # hSel_Xpol2 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=2)
+        # hSel_Xpol1p = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,11,21,40,44,49,55,62,80])
+        # hD_Xpol1p = hSel_Xpol1p.get_hist(h)
+        # hss.append(hD_Xpol1p)
+        # labels.append("pol1(x)'")
+
+        # hSel_Xpol2 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=2, rebin_x=[0,11,21,40,44,49,55,62,80])
         # hD_Xpol2 = hSel_Xpol2.get_hist(h)
         # hss.append(hD_Xpol2)
         # labels.append("pol2(x)")    
@@ -937,7 +941,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     
     # hss = [h[{"mt":hist.sum}] if "mt" in h.axes.name else h for h in hss]
 
-    # hss = [hh.rebinHist(h[{"muonJetPt": hist.sum}], "pt", [26, 28, 30, 33, 40, 56]) for h in hss]
+    # hss = [hh.rebinHist(h[{"muonJetPt": hist.sum}], "pt", [28, 30, 33, 40, 56]) for h in hss]
 
     if rebin_smoothing_axis:
         hss = [hh.rebinHist(h, smoothing_axis_name, rebin_smoothing_axis) for h in hss]

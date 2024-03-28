@@ -205,7 +205,7 @@ class Datagroups(object):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
             return # histselectors only implemented for single lepton (with fakes)
-        auxiliary_info={}
+        auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
         signalselector = sel.SignalSelectorABCD
         if mode == "extended1D":
             fakeselector = sel.FakeSelector1DExtendedABCD

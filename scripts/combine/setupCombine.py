@@ -128,7 +128,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     datagroups = Datagroups(inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD)
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
-        datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection)
+        datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection, rename=False)
 
     wmass = datagroups.mode in ["wmass", "lowpu_w"]
     wlike = datagroups.mode == "wlike"
@@ -279,7 +279,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
             pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD)
             if not xnorm and (args.axlim or args.rebin or args.absval):
-                pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
+                pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     if args.pseudoDataFakes:
         cardTool.setPseudodata(args.pseudoDataFakes)
@@ -287,6 +287,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         if "closure" in args.pseudoDataFakes or "truthMC" in args.pseudoDataFakes:
             filterGroupFakes = ["QCD"]
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes, applySelection=False)
+            pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
                 mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=args.smoothFakeEstimation, 
@@ -294,9 +295,10 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 )
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup, applySelection= not xnorm and not args.simultaneousABCD)
+            pseudodataGroups.fakerate_axes=args.fakerateAxes
         if args.axlim or args.rebin or args.absval:
-            pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval)
-        pseudodataGroups.fakerate_axes=args.fakerateAxes
+            pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
+        
         cardTool.setPseudodataDatagroups(pseudodataGroups)
 
     cardTool.setLumiScale(args.lumiScale)
@@ -342,7 +344,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
-    if wmass and (args.smoothFakeEstimation or args.fakeEstimation in ["extrapolate"]):
+    if wmass and (args.smoothFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
         syst_axes = ["eta", "charge"] if (args.smoothFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
             name=args.baseName, 
@@ -350,7 +352,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
             mirror=False, 
-            scale=1,
+            scale=2,
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in fitvar]+["_param", "downUpVar"])
@@ -369,7 +371,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_scf=True),
             )
-    datagroups.unconstrainedProcesses.append(args.qcdProcessName)
+    # datagroups.unconstrainedProcesses.append(args.qcdProcessName)
 
     if simultaneousABCD:
         # Fakerate A/B = C/D
