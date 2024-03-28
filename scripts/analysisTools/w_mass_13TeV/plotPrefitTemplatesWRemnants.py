@@ -227,7 +227,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1, help="Input file with TH2 histograms")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
     parser.add_argument("-l", "--lumi",     type=str, default=None, help="Luminosity to print on canvas, by default it is not printed")
@@ -244,11 +244,11 @@ if __name__ == "__main__":
     parser.add_argument('-c','--charges', dest='charges', choices=['plus', 'minus', 'both'], default='both', type=str, help='Charges to process')
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.92,1.08), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
-           
+
     fname = args.rootfile[0]
-    outdir = args.outdir[0]
-    createPlotDirAndCopyPhp(outdir)
-    
+    outdir_original = args.outdir[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
@@ -260,13 +260,13 @@ if __name__ == "__main__":
     if not args.pseudodata:
         processes = ["Data"] + processes
     charges = ["plus", "minus"] if args.charges == "both" else [args.charges]
-    
+
     xAxisName = "Muon #eta"
     yAxisName = "Muon p_{T} (GeV)"
 
     colors = colors_plots_
     legEntries = legEntries_plots_
-    
+
     for charge in charges:
 
         # read histograms
@@ -291,3 +291,4 @@ if __name__ == "__main__":
                              colors=colors, legEntries=legEntries, isPseudoData=True if args.pseudodata else False,
                              ratioRange=args.ratioRange)
 
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

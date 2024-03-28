@@ -25,7 +25,7 @@ dataDictV9 = {
     'DYJetsToMuMuMass10to50PostVFP' : {
                    'filepaths' :
                     ["{BASE_PATH}/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
-                     "{BASE_PATH}/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos_ext1/NanoV9MCPostVFP_{NANO_PROD_TAG}"],
+                     ],
                    'xsec' : common.xsec_ZmmMass10to50PostVFP,
                    'group': "DYlowMass",
     },
@@ -169,8 +169,7 @@ dataDictV9 = {
     },
     'QCDmuEnrichPt15PostVFP' : { 
         'filepaths' : 
-        ["{BASE_PATH}/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
-         "{BASE_PATH}/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8_ext1/NanoV9MCPostVFP_{NANO_PROD_TAG}"],
+        ["{BASE_PATH}/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"],
         'xsec' : 238800,
         'group' : "QCD",
     },

@@ -498,7 +498,7 @@ class CardTool(object):
             # so detect these and then call the bin lookup on them
             # np.iscomplex returns false for 0.j, but still want to detect that
             to_lookup = np.array([isinstance(x, complex) for x in skipEntry])
-            skip_arr = np.array(skipEntry)
+            skip_arr = np.array(skipEntry, dtype=object)
             if to_lookup.any():
                 nsyst = len(self.systematics[syst]["systAxes"])+self.systematics[syst]["mirror"]
                 bin_lookup = np.array([ax.index(x.imag) for x, ax in 
@@ -913,7 +913,7 @@ class CardTool(object):
 
     def addPOISumGroups(self, gen_axes=None, additional_axes=None, genCharge=None):
         if gen_axes is None:
-            gen_axes = self.datagroups.gen_axes.copy()
+            gen_axes = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
             gen_axes += additional_axes
         # if only one or none gen axes, it is already included as main POI and no sumGroups are needed
@@ -922,8 +922,8 @@ class CardTool(object):
         # make a sum group for each gen axis
         axes_combinations = gen_axes
         # also include combinations of axes in case there are more than 2 axes
-        for n in range(2, len(self.datagroups.gen_axes)):
-            axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes, n)]
+        for n in range(2, len(self.datagroups.gen_axes_names)):
+            axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes_names, n)]
         for axes in axes_combinations:
             logger.debug(f"Add sum group for {axes}{' with ' + genCharge if genCharge else ''}")
 
@@ -1131,13 +1131,8 @@ class CardTool(object):
 
         name = self.variationName(proc, syst)
 
-        hists = {name: h} # always keep original variation in output file for checks
-
-        s = hist.tag.Slicer()
-        for hname, histo in hists.items():
-
-            if self.writeByCharge:
-                self.writeHistByCharge(histo, hname)
-            else:
-                self.writeHistWithCharges(histo, hname)
+        if self.writeByCharge:
+            self.writeHistByCharge(h, name)
+        else:
+            self.writeHistWithCharges(h, name)
         self.outfile.cd()

@@ -5,9 +5,14 @@ from utilities.io_tools import output_tools
 parser,initargs = common.common_parser()
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen"])
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
+
+args = parser.parse_args()
+isUnfolding = args.analysisMode == "unfolding"
+
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -67,8 +72,8 @@ gen_axes = {
     "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),  
 }
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
     
 # axes for final cards/fitting
@@ -104,13 +109,14 @@ def build_graph(df, dataset):
 
     if dataset.is_data: df = df.DefinePerSample("weight", "1.0")
     else: df = df.Define("weight", "std::copysign(1.0, genWeight)")
-  
+    df = df.Define("isEvenEvent", "event % 2 == 0")
+
     weightsum = df.SumAndCount("weight")
 
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name in sigProcs:
+    if isUnfolding and dataset.name in sigProcs:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -126,7 +132,7 @@ def build_graph(df, dataset):
             axes = [*axes, *unfolding_axes] 
             cols = [*cols, *unfolding_cols]
 
-    df = df.Define("TrigLep_charge", "event % 2 == 0 ? -1 : 1") # wlike charge
+    df = df.Define("TrigLep_charge", "isEvenEvent ? -1 : 1") # wlike charge
  
     if flavor == "mumu":
     
@@ -274,7 +280,7 @@ def build_graph(df, dataset):
     results.append(df.HistoBoost("noTrigMatch", [axis_lin], ["noTrigMatch", "nominal_weight"]))
 
     # W-like
-    #df = df.Define("TrigLep_charge", "event % 2 == 0 ? -1 : 1")
+    #df = df.Define("TrigLep_charge", "isEvenEvent ? -1 : 1")
     df = df.Define("NonTrigLep_charge", "-TrigLep_charge")
     df = df.Define("trigLeps", "Lep_charge == TrigLep_charge")
     df = df.Define("nonTrigLeps", "Lep_charge == NonTrigLep_charge")
