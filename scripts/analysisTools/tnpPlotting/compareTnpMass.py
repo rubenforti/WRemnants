@@ -4,10 +4,10 @@
 # example:
 # python w-mass-13TeV/compareTnpMass.py /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_data_vertexWeights1_oscharge0.root /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_mc_vertexWeights1_oscharge0.root plots/TnP/Steve_Marc_Raj/testTrackerMuons/tracking/ --zbin 1 3
 
-
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -41,12 +41,13 @@ if __name__ == "__main__":
     parser.add_argument(     "--plotPassProbes", action='store_true', help="Plot passing probes instead of failing probes")
     parser.add_argument(     "--plotPassAltProbes", action='store_true', help="Plot passing probes instead of failing probes")
     args = parser.parse_args()
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
     ROOT.TH1.SetDefaultSumw2()
 
     if args.showAllProbesMC:
         if args.plotPassAltProbes or args.plotPassProbes:
-            print("Warning: can't use --plotPassProbes or --plotPassAltProbes with --showAllProbesMC")
+            logger.error("Can't use --plotPassProbes or --plotPassAltProbes with --showAllProbesMC")
             quit()
 
     outdir_original = args.outputfolder[0]
@@ -88,8 +89,8 @@ if __name__ == "__main__":
     canvas.SetRightMargin(0.04)
     canvas.cd()
 
-    print(f"{hmcTot3D.GetNbinsZ()} eta bins")
-    print(f"{hmcTot3D.GetNbinsY()} pt  bins")
+    logger.info(f"{hmcTot3D.GetNbinsZ()} eta bins")
+    logger.info(f"{hmcTot3D.GetNbinsY()} pt  bins")
 
     iymin = 1
     iymax = hmcTot3D.GetNbinsY()
