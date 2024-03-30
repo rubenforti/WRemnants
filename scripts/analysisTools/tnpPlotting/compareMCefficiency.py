@@ -3,6 +3,7 @@
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -31,6 +32,8 @@ if __name__ == "__main__":
     parser.add_argument(     "--rebinz", dest="rebinZ", default=1, type=int, help="To rebin z axis (eta)")
     args = parser.parse_args()
 
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
     for il,l in enumerate(args.labels):
         args.labels[il] = l.replace(" ", "_") # safety thing since it is also used to name output files
 
@@ -57,8 +60,8 @@ if __name__ == "__main__":
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 800, 800)
 
-    print(f"{hmcpass3D.GetNbinsZ()} eta bins")
-    print(f"{hmcpass3D.GetNbinsY()} pt  bins")
+    logger.info(f"{hmcpass3D.GetNbinsZ()} eta bins")
+    logger.info(f"{hmcpass3D.GetNbinsY()} pt  bins")
     
     hmcpass2D = hmcpass3D.Project3D("yze") # do y versus z which is pt versus eta 
     hmcpass2D.SetName("hmcpass2D")

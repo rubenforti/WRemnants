@@ -565,6 +565,8 @@ def createPlotDirAndCopyPhp(outdir, eoscp=True):
     outdir = os.path.realpath(outdir)
     #logger.warning(f"Real output path is {outdir}")
     outdir = output_tools.make_plot_dir(outdir, outfolder=None, eoscp=eoscp, allowCreateLocalFolder=True)
+    if not outdir.endswith("/"):
+        outdir += "/"
     if outdir and not os.path.exists(outdir):
         os.makedirs(outdir)
     htmlpath = f"{os.environ['WREM_BASE']}/scripts/analysisTools/templates/index.php"
