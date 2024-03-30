@@ -586,7 +586,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         )
 
     # Experimental range
-    #widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
+    # widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
     # Variation from EW fit (mostly driven by alphas unc.)
     widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
     cardTool.addSystematic(f"widthWeight{label}",
