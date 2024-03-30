@@ -107,6 +107,7 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
+    text_size = text_size*(0.7 if shape == 1 else 1.3)
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
 
     if extra_text:
