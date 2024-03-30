@@ -338,7 +338,7 @@ app = dash.Dash(__name__)
 def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_ref=None):
     poi_type = poi.split("_")[-1] if poi else None
 
-    if "MeV" in poi:
+    if poi is not None and "MeV" in poi:
         scale = float(re.search(r'\d+(\.\d+)?', poi.split("MeV")[0].replace("p",".")).group())
         if "Diff" in poi:
             scale *= 2 # take diffs by 2 as up and down pull in opposite directions
@@ -352,6 +352,8 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             impact_title = "Impact on mass diff. (charge) (MeV)"
         elif poi.startswith("massDiffEta"):
             impact_title = "$\\mathrm{Impact\\ on\\ mass\\ diff. }(\\eta)\\ (\\mathrm{MeV})$"
+        else:
+            impact_title = "Impact on mass diff. (MeV)"
     elif poi and poi.startswith("Width"):
         impact_title = "Impact on width (MeV)"
     else:
