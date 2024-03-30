@@ -67,7 +67,8 @@ def make_parser(parser=None):
     parser.add_argument("--lumiScale", type=float, default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
-    parser.add_argument("--fitMassDiff", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range"], help="Fit an additional POI for the difference in the boson mass")
+    parser.add_argument("--fitWidth", action='store_true', help="Fit boson width")
+    parser.add_argument("--fitMassDiff", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the boson mass")
     parser.add_argument("--fitMassDecorr", type=str, default=None, help="Decorrelate POI for given axis, fit multiple POIs for the different POIs")
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
@@ -485,31 +486,48 @@ def setup(args, inputFile, fitvar, xnorm=False):
             )
             if args.fitMassDiff == "charge":
                 cardTool.addSystematic(**mass_diff_args,
-                                    # # on gen level based on the sample, only possible for mW
-                                    # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown")) 
-                                    #     for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
-                                    # on reco level based on reco charge
-                                    preOpMap={m.name: (lambda h: 
-                                            hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0)) 
-                                        for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                    # # on gen level based on the sample, only possible for mW
+                    # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown")) 
+                    #     for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
+                    # on reco level based on reco charge
+                    preOpMap={m.name: (lambda h: 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0) 
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "cosThetaStarll":
                 cardTool.addSystematic(**mass_diff_args, 
-                                    preOpMap={m.name: (lambda h: 
-                                            hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):]))
-                                        for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                    preOpMap={m.name: (lambda h: 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):])
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "eta-sign":
                 cardTool.addSystematic(**mass_diff_args, 
-                                preOpMap={m.name: (lambda h: 
-                                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):]))
-                                    for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                    preOpMap={m.name: (lambda h: 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):])
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "eta-range":
                 cardTool.addSystematic(**mass_diff_args, 
-                                    preOpMap={m.name: (lambda h: 
-                                            hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):]))
-                                        for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                    preOpMap={m.name: (lambda h: 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):])
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                )
+            elif args.fitMassDiff.startswith("etaRegion"):
+                # 3 bins, use 3 unconstrained parameters: mass; mass0 - mass2; mass0 + mass2 - mass1
+                mass_diff_args["rename"] = f"massDiff1{suffix}{label}"
+                mass_diff_args["systNameReplace"] = [("Shift",f"Diff1{suffix}")]
+                cardTool.addSystematic(**mass_diff_args, 
+                    preOpMap={m.name: (lambda h: hh.swap_histogram_bins(
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 2), # invert for mass2 
+                        "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                )
+                mass_diff_args["rename"] = f"massDiff2{suffix}{label}"
+                mass_diff_args["systNameReplace"] = [("Shift",f"Diff2{suffix}")]
+                cardTool.addSystematic(**mass_diff_args, 
+                    preOpMap={m.name: (lambda h: 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1)
+                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
 
     # this appears within doStatOnly because technically these nuisances should be part of it
@@ -586,14 +604,17 @@ def setup(args, inputFile, fitvar, xnorm=False):
         )
 
     # Experimental range
-    # widthVars = ['widthW2p043GeV', 'widthW2p127GeV'] if wmass else ['widthZ2p4929GeV', 'widthZ2p4975GeV']
+    #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
     # Variation from EW fit (mostly driven by alphas unc.)
-    widthVars = ['widthW2p09053GeV', 'widthW2p09173GeV'] if wmass else ['widthZ2p49333GeV', 'widthZ2p49493GeV']
+    widthVars = (0.6, ['widthW2p09053GeV', 'widthW2p09173GeV']) if wmass else (0.8, ['widthZ2p49333GeV', 'widthZ2p49493GeV'])
     cardTool.addSystematic(f"widthWeight{label}",
+                            rename=f"Width{label}{str(widthVars[0]).replace('.','p')}MeV",
                             processes=["signal_samples_inctau"],
-                            action=lambda h: h[{"width" : widthVars}],
+                            action=lambda h: h[{"width" : widthVars[1]}],
                             group=f"width{label}",
                             mirror=False,
+                            noi=args.fitWidth,
+                            noConstraint=args.fitWidth,
                             systAxes=["width"],
                             outNames=[f"width{label}Down", f"width{label}Up"],
                             passToFakes=passSystToFakes,
@@ -877,6 +898,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not input_tools.args_from_metadata(cardTool, "noSmearing"):
         cardTool.addSystematic("muonResolutionSyst_responseWeights", 
             mirror = True,
+            # scale=10,
             processes=['single_v_samples'],
             group="resolutionCrctn",
             splitGroup={f"muonCalibration" : f".*"},

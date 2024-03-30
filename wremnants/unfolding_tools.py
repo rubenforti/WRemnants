@@ -55,7 +55,7 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
             df = df.Define("ptGen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
             df = df.Define("absEtaGen", "event % 2 == 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
             df = df.Define("ptOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
-            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
+            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? fabs(genlanti.eta()) : fabs(genl.eta())")
 
     elif gen_level == "postFSR":
         df = theory_tools.define_postfsr_vars(df, mode=mode)
