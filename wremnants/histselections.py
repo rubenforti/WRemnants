@@ -13,6 +13,7 @@ from uncertainties import unumpy as unp
 
 logger = logging.child_logger(__name__)
 
+# thresholds, 
 abcd_thresholds={
     "pt":[26,28,30],
     "mt":[0,20,40],
@@ -21,6 +22,21 @@ abcd_thresholds={
     "relJetLeptonDiff": [0,0.2,0.35,0.5],
     "dxy":[0,0.01,0.02,0.03]
 }
+
+def get_selection_edges(axis_name, upper_bound=False):
+    # returns edges from pass to fail regions [x0, x1, x2, x3] e.g. x=[x0,x1], dx=[x1,x2], d2x=[x2,x3]
+    if axis_name in abcd_thresholds:
+        ts = abcd_thresholds[axis_name]
+        if axis_name in ["mt", "pt"]:
+            # low: failing, high: passing, no upper bound 
+            return None, complex(0,ts[2]), complex(0,ts[1]), complex(0,ts[0])
+        if axis_name in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
+            # low: passing, high: failing, no upper bound 
+            return complex(0,ts[0]), complex(0,ts[1]), complex(0,ts[2]), (complex(0,ts[3]) if upper_bound else None)
+    else:
+        raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
+
+
 # default abcd_variables to look for
 abcd_variables = (("mt", "passMT"), ("relIso", "passIso"), ("iso", "passIso"), ("relJetLeptonDiff", "passIso"), ("dxy", "passDxy"))
 
@@ -207,7 +223,7 @@ class HistselectorABCD(object):
     def __init__(self, h, name_x=None, name_y=None,
         fakerate_axes=["eta","pt","charge"], 
         smoothing_axis_name="pt", 
-        rebin_smoothing_axis="automatic", # can be a list of bin edges, "automatic", or None
+        rebin_smoothing_axis=None, # can be a list of bin edges, "automatic", or None
         upper_bound_y=None, # using an upper bound on the abcd y-axis (e.g. isolation)
         integrate_x=True, # integrate the abcd x-axis in final histogram (allows simplified procedure e.g. for extrapolation method)   
     ):           
@@ -251,6 +267,19 @@ class HistselectorABCD(object):
         self.smoothing_axis_min = edges[0]
         self.smoothing_axis_max = edges[-1]
 
+    # A
+    def get_hist_failX_failY(self, h):
+        return h[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
+    # B
+    def get_hist_failX_passY(self, h):
+        return h[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
+    # C
+    def get_hist_passX_failY(self, h):
+        return h[{self.name_x: self.sel_x, self.name_y: self.sel_dy}]
+    # D
+    def get_hist_passX_passY(self, h):
+        return h[{self.name_x: self.sel_x, self.name_y: self.sel_y}]
+
     def set_abcd_axes(self, h):
         for a, b in abcd_variables:
             if self.name_x is None and a in h.axes.name: 
@@ -271,35 +300,26 @@ class HistselectorABCD(object):
 
     # set slices object for selection of signal and sideband regions
     def set_selections_x(self):
-        if self.name_x not in abcd_thresholds:
-            raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
-        ts = abcd_thresholds[self.name_x]
-        s = hist.tag.Slicer()
-        if self.name_x in ["mt", "pt"]:
-            self.sel_x = s[complex(0,ts[2])::hist.sum] if self.integrate_x else s[complex(0,ts[2])::]
-            self.sel_dx = s[complex(0,ts[0]):complex(0,ts[2]):hist.sum]
-        elif self.name_x in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum] if self.integrate_x else s[complex(0,ts[0]):complex(0,ts[1]):]
-            self.sel_dx = s[complex(0,ts[1])::hist.sum]
+        if self.name_x.startswith("pass"):
+            self.sel_x = 1
+            self.sel_dx = 0
         else:
-            raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
+            x0, x1, x2, x3 = get_selection_edges(self.name_x)
+            s = hist.tag.Slicer()
+            do = hist.sum if self.integrate_x else None
+            self.sel_x = s[x0:x1:do] if x0 is not None and x1.imag > x0.imag else s[x1:x0:do]
+            self.sel_dx = s[x1:x3:hist.sum] if x3 is None or x3.imag > x1.imag else s[x3:x1:hist.sum]
 
     def set_selections_y(self):
-        if self.name_y not in abcd_thresholds:
-            raise RuntimeError(f"Can not find threshold for abcd axis {self.name_y}")
-        ts = abcd_thresholds[self.name_y]
-        s = hist.tag.Slicer()
-        if self.name_y in ["mt", "pt"]:
-            self.sel_y = s[complex(0,ts[2])::hist.sum]
-            self.sel_dy = s[complex(0,ts[0]):complex(0,ts[2]):hist.sum]
-        elif self.name_y in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_y = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
-            if self.upper_bound_y is None:
-                self.sel_dy = s[complex(0,ts[1])::hist.sum]
-            else:
-                self.sel_dy = s[complex(0,ts[1]):self.upper_bound_y:hist.sum]         
+        if self.name_y.startswith("pass"):
+            self.sel_y = 1
+            self.sel_dy = 0
         else:
-            raise RuntimeError(f"Unknown thresholds for axis name {self.name_y}")
+            y0, y1, y2, y3 = get_selection_edges(self.name_y, upper_bound=self.upper_bound_y)
+            s = hist.tag.Slicer()
+            self.sel_y = s[y0:y1:hist.sum] if y0 is not None and y1.imag > y0.imag else s[y1:y0:hist.sum]
+            self.sel_dy = s[y1:y3:hist.sum] if y3 is None or y3.imag > y1.imag else s[y3:y1:hist.sum]
+
 
 class SignalSelectorABCD(HistselectorABCD):
     # simple ABCD method
@@ -308,15 +328,14 @@ class SignalSelectorABCD(HistselectorABCD):
 
     # signal region selection
     def get_hist(self, h):
-        return h[{self.name_x: self.sel_x, self.name_y: self.sel_y}]
+        return self.get_hist_passX_passY(h)
 
 class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
-        smooth_fakerate=True, 
+        smooth_fakerate=False, 
         smoothing_order_fakerate=1, 
-        polynomial="bernstein", 
-        # polynomial="power",
+        polynomial="bernstein", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
         **kwargs
     ):
@@ -384,7 +403,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         return hSignal            
 
     def get_yields_applicationregion(self, h, flow=True):
-        hC = h[{self.name_x: self.sel_x, self.name_y: self.sel_dy}]
+        hC = self.get_hist_passX_failY(h)
         c = hC.values(flow=flow)
         if h.storage_type == hist.storage.Weight:
             cvar = hC.variances(flow=flow)
@@ -397,8 +416,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
 
         # select sideband regions
-        ha = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
-        hb = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
+        ha = self.get_hist_failX_failY(h)
+        hb = self.get_hist_failX_passY(h)
 
         a = ha.values(flow=flow)
         b = hb.values(flow=flow)
@@ -532,7 +551,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         
         return d, dvar
 
-class FakeSelectorSimultaneousABCD(HistselectorABCD):
+class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
     # simple ABCD method simultaneous fitting all regions
     def __init__(self, h, *args, **kwargs):
         super().__init__(h, *args, **kwargs)
@@ -555,7 +574,7 @@ class FakeSelectorSimultaneousABCD(HistselectorABCD):
 
         # set the expected values in the signal region
         slices = [self.sel_x if n==self.name_x else self.sel_y if n==self.name_y else slice(None) for n in h.axes.name]
-        h.values(flow=True)[*slices] = self.fakeHist(h).values(flow=True)
+        h.values(flow=True)[*slices] = super().get_hist(h).values(flow=True)
         return h
 
 class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
@@ -594,18 +613,10 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
     # set slices object for selection of sideband regions
     def set_selections_x(self):
-        if self.name_x not in abcd_thresholds:
-            raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
-        ts = abcd_thresholds[self.name_x]
+        x0, x1, x2, x3 = get_selection_edges(self.name_x)
         s = hist.tag.Slicer()
-        if self.name_x in ["mt", "pt"]:
-            self.sel_x = s[complex(0,ts[2])::]
-            self.sel_dx = s[complex(0,ts[0]):complex(0,ts[2]):]
-        elif self.name_x in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):]
-            self.sel_dx = s[complex(0,ts[1])::]
-        else:
-            raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
+        self.sel_x = s[x0:x1:] if x0 is not None and x1.imag > x0.imag else s[x1:x0:]
+        self.sel_dx = s[x1:x3:] if x3 is None or x3.imag > x1.imag else s[x3:x1:]
 
     def get_hist(self, h, variations_frf=False, flow=True):
         c, cvar = self.get_yields_applicationregion(h)
@@ -753,19 +764,12 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
 
     # set slices object for selection of sideband regions
     def set_selections_x(self, integrate_x=True):
-        if self.name_x not in abcd_thresholds:
-            raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
-        ts = abcd_thresholds[self.name_x]
+        x0, x1, x2, x3 = get_selection_edges(self.name_x)
         s = hist.tag.Slicer()
-        self.sel_dx = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
-        if self.name_x in ["mt", "pt"]:
-            self.sel_x = s[complex(0,ts[2])::hist.sum] if integrate_x else s[complex(0,ts[2])::]
-            self.sel_d2x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
-        elif self.name_x in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_x = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum] if integrate_x else s[complex(0,ts[0]):complex(0,ts[1]):]
-            self.sel_d2x = s[complex(0,ts[2]):complex(0,ts[3]):hist.sum]
-        else:
-            raise RuntimeError(f"Unknown thresholds for axis name {self.name_x}")
+        do = hist.sum if integrate_x else None
+        self.sel_x = s[x0:x1:do] if x0 is not None and x1.imag > x0.imag else s[x1:x0:do]
+        self.sel_dx = s[x1:x2:hist.sum] if x2.imag > x1.imag else s[x2:x1:hist.sum]
+        self.sel_d2x = s[x2:x3:hist.sum] if x3.imag > x2.imag else s[x3:x2:hist.sum]
 
     def get_hist(self, h, variations_frf=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
@@ -974,20 +978,11 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
     # set slices object for selection of sideband regions
     def set_selections_y(self):
-        if self.name_y not in abcd_thresholds:
-            raise RuntimeError(f"Can not find threshold for abcd axis {self.name_y}")
-        ts = abcd_thresholds[self.name_y]
+        y0, y1, y2, y3 = get_selection_edges(self.name_y, upper_bound=self.upper_bound_y)
         s = hist.tag.Slicer()
-        self.sel_dy = s[complex(0,ts[1]):complex(0,ts[2]):hist.sum]
-        if self.name_y in ["mt","pt"]:
-            self.sel_y = s[complex(0,ts[2])::hist.sum]
-            self.sel_d2y = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
-        elif self.name_y in ["dxy", "iso", "relIso", "relJetLeptonDiff"]:
-            self.sel_y = s[complex(0,ts[0]):complex(0,ts[1]):hist.sum]
-            if self.upper_bound_y is None:
-                self.sel_d2y = s[complex(0,ts[2])::hist.sum] # no upper bound
-            else:
-                self.sel_d2y = s[complex(0,ts[2]):hist.overflow:hist.sum] # upper bound, no overflow
+        self.sel_y = s[y0:y1:hist.sum] if y0 is not None and y1.imag > y0.imag else s[y1:y0:hist.sum]
+        self.sel_dy = s[y1:y2:hist.sum] if y2.imag > y1.imag else s[y2:y1:hist.sum]
+        self.sel_d2y = s[y2:y3:hist.sum] if y3 is None or y3.imag > y2.imag else s[y3:y2:hist.sum]
 
     def get_hist(self, h, variations_scf=False, variations_frf=False, variations_full=False, flow=True):
         if variations_scf and variations_frf:

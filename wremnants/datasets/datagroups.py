@@ -23,7 +23,7 @@ logger = logging.child_logger(__name__)
 
 class Datagroups(object):
 
-    def __init__(self, infile, mode=None, extendedABCD=False, **kwargs):
+    def __init__(self, infile, mode=None, **kwargs):
         self.h5file = None
         self.rtfile = None
         if infile.endswith(".pkl.lz4"):
@@ -72,7 +72,6 @@ class Datagroups(object):
         self.dataName = "Data"
         self.gen_axes = {}
         self.fakerate_axes = ["pt", "eta", "charge"]
-        self.container = {}
 
         self.setGenAxes()
 
@@ -383,14 +382,14 @@ class Datagroups(object):
                     logger.debug("force non zero")
                     h = hh.clipNegativeVals(h, createNew=False)
 
-                # scale = self.processScaleFactor(member)
-                # scale *= scaleToNewLumi
-                # if group.scale:
-                #     scale *= group.scale(member)
+                scale = self.processScaleFactor(member)
+                scale *= scaleToNewLumi
+                if group.scale:
+                    scale *= group.scale(member)
 
-                # if not np.isclose(scale, 1, rtol=0, atol=1e-10):
-                #     logger.debug(f"Scale hist with {scale}")
-                #     h = hh.scaleHist(h, scale, createNew=False)
+                if not np.isclose(scale, 1, rtol=0, atol=1e-10):
+                    logger.debug(f"Scale hist with {scale}")
+                    h = hh.scaleHist(h, scale, createNew=False)
 
                 hasPartialSumForFake = False
                 if hasFake and procName != self.fakeName:
