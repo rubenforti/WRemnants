@@ -76,11 +76,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     axes_names = [a.name for a in axes]
     if len(h_data.axes) > 1:
         # make unrolled 1D histograms
-        if axes_names[-1].startswith("eta"): # convention is to plot eta-pt 
-            axes_names = axes_names[::-1]
-        h_data = hh.unrolledHist(h_data, binwnorm=1, obs=axes_names)
-        h_inclusive = hh.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
-        h_stack = [hh.unrolledHist(h, binwnorm=1, obs=axes_names) for h in h_stack]
+        h_data = sel.unrolledHist(h_data, binwnorm=1, obs=axes_names)
+        h_inclusive = sel.unrolledHist(h_inclusive, binwnorm=1, obs=axes_names)
+        h_stack = [sel.unrolledHist(h, binwnorm=1, obs=axes_names) for h in h_stack]
 
     axis_name = "_".join([a for a in axes_names])
     xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
