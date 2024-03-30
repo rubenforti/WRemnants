@@ -176,7 +176,7 @@ jobs:
       - name: wmass combine setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
-          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --simultaneousABCD --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
         run: >-
