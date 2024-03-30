@@ -417,7 +417,7 @@ def build_graph(df, dataset):
             weight_expr = "weight_pu*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom"
         else:
             weight_expr = "weight_pu*L1PreFiringWeight_Muon_Nom*L1PreFiringWeight_ECAL_Nom"
-            
+
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
@@ -428,7 +428,11 @@ def build_graph(df, dataset):
         if not args.smooth3dsf:
             columnsForSF.remove("goodMuons_uT0")
 
+<<<<<<< HEAD
         if not (isQCDMC or args.noScaleFactors):
+=======
+        if not isQCDMC and not args.noScaleFactors:
+>>>>>>> 216ddf4cd337c11925e0225e5fb582b8683cc3bc
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
@@ -471,7 +475,7 @@ def build_graph(df, dataset):
         results.append(mTStudyForFakes)
 
     # add filter of deltaPhi(muon,met) before other histograms (but after histogram mTStudyForFakes)
-    if not args.makeMCefficiency and args.dphiMuonMetCut > 0:
+    if args.dphiMuonMetCut > 0.0 and not args.makeMCefficiency:
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
 
@@ -545,10 +549,16 @@ def build_graph(df, dataset):
     if not dataset.is_data and not args.onlyMainHistograms:
 
         if not args.onlyTheorySyst:
+<<<<<<< HEAD
             if not args.noScaleFactors:
                 df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
                     what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
+=======
+            if not isQCDMC and not args.noScaleFactors:
+                df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
+            df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
+>>>>>>> 216ddf4cd337c11925e0225e5fb582b8683cc3bc
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
             df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
             if isZveto:

@@ -98,7 +98,7 @@ def plotProjection1Dfrom3D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes
     axisProj = "x" if projectAxisToKeep == 0 else "y" if projectAxisToKeep == 1 else "z"
     for d in datasets:
         rootHists[d].GetZaxis().SetRange(chargeBin, chargeBin)
-        logger.warning("In plotProjection1Dfrom3D(): setting pt axis to exclude overflows from projections")
+        # logger.warning("In plotProjection1Dfrom3D(): setting pt axis to exclude overflows from projections")
         rootHists[d].GetYaxis().SetRange(1, rootHists[d].GetNbinsY())
         if d == "Data":
             hdata = rootHists[d].Project3D(f"{axisProj}eo")
