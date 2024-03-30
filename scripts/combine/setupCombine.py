@@ -73,8 +73,8 @@ def make_parser(parser=None):
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
-    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--smoothFakeEstimation", action='store_true', help="Smoothen fakerate factor (and shaperate factor)")
+    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
+    parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) in bins w/o smooting")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -239,7 +239,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
         datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation, fake_processes=[args.qcdProcessName],
-            smoothen=args.smoothFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
+            smoothen=not args.binnedFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
@@ -320,7 +320,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
-                mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=args.smoothFakeEstimation, 
+                mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=not args.binnedFakeEstimation, 
                 simultaneousABCD=simultaneousABCD, 
                 )
         else:
@@ -374,8 +374,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
-    if wmass and (args.smoothFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        syst_axes = ["eta", "charge"] if (args.smoothFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
+    if wmass and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
             name=args.baseName, 
             group=cardTool.getFakeName(), 
