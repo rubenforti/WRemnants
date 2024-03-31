@@ -679,7 +679,6 @@ def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
 
 def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, base_name="nominal", for_wmass=True, addhelicity=False):
     logger.debug(f"Make theory histograms for {dataset_name} dataset, histogram {base_name}")
-    axis_chargeVgen = qcdScaleByHelicity_helper.hist.axes["chargeVgen"]
     axis_ptVgen = hist.axis.Variable(
         common.ptV_binning, 
         name = "ptVgen", underflow=False
@@ -689,8 +688,12 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
     ## here should probably not force using the same ptVgen axis when addhelicity=True
     #scale_axes = [*axes, axis_chargeVgen] if addhelicity else [*axes, axis_ptVgen, axis_chargeVgen]
     #scale_cols = [*cols, "chargeVgen"] if addhelicity else [*cols, "ptVgen", "chargeVgen"]
-    scale_axes = [*axes, axis_ptVgen]
-    scale_cols = [*cols, "ptVgen"]
+    if "ptVgen" not in cols:
+        scale_axes = [*axes, axis_ptVgen]
+        scale_cols = [*cols, "ptVgen"]
+    else:
+        scale_axes = axes
+        scale_cols = cols
 
     df = theory_tools.define_scale_tensor(df)
     df = define_mass_weights(df, dataset_name)
@@ -707,12 +710,17 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
             corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ)
         )
 
+    if "gen" in base_name:
+        df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhi, scaleWeights_tensor, nominal_weight)")
+        helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", axes, [*cols, "helicity_moments_scale_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
+        results.append(helicity_moments_scale)
+
     if for_wmass or isZ:
         logger.debug(f"Make QCD scale histograms for {dataset_name}")
         # there is no W backgrounds for the Wlike, make QCD scale histograms only for Z
         # should probably remove the charge here, because the Z only has a single charge and the pt distribution does not depend on which charged lepton is selected
 
-        if not args.skipHelicity:
+        if qcdScaleByHelicity_helper is not None:
             add_qcdScaleByHelicityUnc_hist(results, df, qcdScaleByHelicity_helper, scale_axes, scale_cols, base_name=base_name, addhelicity=addhelicity)
 
         # TODO: Should have consistent order here with the scetlib correction function

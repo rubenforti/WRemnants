@@ -118,6 +118,9 @@ def postprocess_corr_hist(corrh):
     if "vars" not in corrh.axes.name:
         return corrh
 
+    if type(corrh.axes["vars"]) != hist.axis.StrCategory:
+        return corrh
+
     additional_var_hists = {}
 
     renorm_scale_vars = ["pdf0", "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
@@ -219,9 +222,7 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
-
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
-
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
