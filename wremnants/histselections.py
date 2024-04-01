@@ -204,20 +204,18 @@ def extend_edges(traits, x):
     if traits.underflow:
         new_x = x[0] - x[1] + x[0]
         x = np.array([new_x, *x])
-        logger.debug(f"Extend bin center array by underflow bin using {new_x}")
+        logger.debug(f"Extend array by underflow bin using {new_x}")
     if traits.overflow:
         new_x = x[-1] + x[-1] - x[-2]
         x = np.array([*x, new_x])
-        logger.debug(f"Extend bin center array by overflow bin using {new_x}")
+        logger.debug(f"Extend array by overflow bin using {new_x}")
     return x
 
 class HistselectorABCD(object):
     target_edges_dict = {
-        "pt": [26,27,28,29,30,31,33,36,40,46,56], 
-        # "pt": [26, 28, 30, 33, 40, 56],
-        "muonJetPt": [26,40,44,46,50,54,62],
-        # "mt": [0, 20, 40, 44, 49, 55, 62]
-        "mt": [0, 20, 40, 44, 49, 55, 62]
+        "pt": [26., 27.,28.,29.,30.,31.,33.,36.,40.,46., 56.], 
+        "muonJetPt": [26.,40.,44.,46.,50.,54.,62.],
+        "mt": [0., 20., 40., 44., 49., 55., 62.]
     }
 
     def __init__(self, h, name_x=None, name_y=None,
@@ -255,14 +253,17 @@ class HistselectorABCD(object):
             if smoothing_axis_name not in self.target_edges_dict.keys():
                 raise RuntimeError(f"No automatic rebinning known for axis {smoothing_axis_name}")
             # try to find suitible binning
-            edges = h.axes[smoothing_axis_name].edges.astype(int)
-            target_edges = self.target_edges_dict[smoothing_axis_name]
-            self.rebin_smoothing_axis = [x for x in target_edges if x in edges]
-            logger.debug(f"For smoothing, axis {smoothing_axis_name} will be rebinned to {self.rebin_smoothing_axis}")
+            edges = h.axes[smoothing_axis_name].edges
+            self.rebin_smoothing_axis = [edges[0]] + [x for x in self.target_edges_dict[smoothing_axis_name][1:-1] if x in edges] + [edges[-1]]
+            if len(self.rebin_smoothing_axis) <= 2:
+                logger.debug(f"No automatic rebinning possible for smoothing axis {self.rebin_smoothing_axis}")
+                self.rebin_smoothing_axis=None
+            else:
+                logger.debug(f"For smoothing, axis {smoothing_axis_name} will be rebinned to {self.rebin_smoothing_axis}")
         else:
             self.rebin_smoothing_axis = rebin_smoothing_axis
 
-        edges = h.axes[smoothing_axis_name].edges
+        edges = h.axes[smoothing_axis_name].edges if self.rebin_smoothing_axis is None else self.rebin_smoothing_axis
         edges = extend_edges(h.axes[smoothing_axis_name].traits, edges)
         self.smoothing_axis_min = edges[0]
         self.smoothing_axis_max = edges[-1]
@@ -455,7 +456,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             w = np.ones_like(y)
 
         # move smoothing axis to last
-        axes = [n for n in h.axes.name if n not in [self.name_x, self.name_y] ]
+        axes = [n for n in h.axes.name if n not in [self.name_x, self.name_y, *self.fakerate_integration_axes] ]
         idx_ax_smoothing = axes.index(self.smoothing_axis_name)
         if idx_ax_smoothing != len(axes)-1:
             y = np.moveaxis(y, idx_ax_smoothing, -1)
@@ -463,7 +464,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # smooth frf (e.g. in pT)
         X, XTY = get_parameter_matrices(x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
-        
+
         params, cov = self.solve(X, XTY)
 
         # evaluate in range of original histogram
@@ -537,7 +538,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                     x[x < 0] = 0
                     x[x > 1] = 1
                 else:
-                    raise RuntimeError(f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 and {np.sum(x > 1)} larger 1 found after transformation with xmin={xmin} and xmax={xmax}")
+                    raise RuntimeError(f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 ({x[x < 0]}) and {np.sum(x > 1)} larger 1 ({x[x > 1]}) found after transformation with xmin={xmin} and xmax={xmax}")
         return x
 
     def calculate_fullABCD(self, h, flow=True):
@@ -601,8 +602,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
                 raise RuntimeError(f"No automatic rebinning known for axis {self.name_x}")
             # try to find suitible binning
             edges = h.axes[self.name_x].edges.astype(int)
-            target_edges = self.target_edges_dict[self.name_x]
-            self.rebin_x = [x for x in target_edges if x in edges]
+            self.rebin_x = [edges[0]] + [x for x in self.target_edges_dict[self.name_x][1:-1] if x in edges] + [edges[-1]]
             logger.debug(f"For interpolation, abcd x-axis {self.name_x} will be rebinned to {self.rebin_x}")
         else:
             self.rebin_x = rebin_x
@@ -955,8 +955,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 raise RuntimeError(f"No automatic rebinning known for axis {self.name_x}")
             # try to find suitible binning
             edges = h.axes[self.name_x].edges.astype(int)
-            target_edges = self.target_edges_dict[self.name_x]
-            self.rebin_x = [x for x in target_edges if x in edges]
+            self.rebin_x = [edges[0]] + [x for x in self.target_edges_dict[self.name_x][1:-1] if x in edges] + [edges[-1]]
             logger.debug(f"For interpolation, abcd x-axis {self.name_x} will be rebinned to {self.rebin_x}")
         else:
             self.rebin_x = rebin_x

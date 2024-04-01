@@ -49,8 +49,8 @@ mtw_min=40 # for Wmass (roughly half the boson mass)
 
 
 # axes used in fakerate calculation
-axis_fakerate_pt = hist.axis.Variable([26., 27., 28., 29., 30., 32., 34., 37., 40., 44., 49., 56.], name = "pt", underflow=False)
-axis_fakerate_eta = hist.axis.Regular(12, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+axis_fakerate_pt = hist.axis.Variable([26,27,28,29,30,31,33,36,40,46,56], name = "pt", underflow=False)
+axis_fakerate_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
 
 # standard regular axes
 axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)

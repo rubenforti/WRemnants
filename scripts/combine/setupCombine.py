@@ -374,34 +374,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.error("Temporarily not using mass weights for Wtaunu. Please update when possible")
         signal_samples_forMass = ["signal_samples"]
 
-    if wmass and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
-        info=dict(
-            name=args.baseName, 
-            group=cardTool.getFakeName(), 
-            processes=cardTool.getFakeName(), 
-            noConstraint=False, 
-            mirror=False, 
-            scale=2,
-            applySelection=False, # don't apply selection, all regions will be needed for the action
-            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
-            systAxes=[f"_{x}" for x in syst_axes if x in fitvar]+["_param", "downUpVar"])
-        subgroup = f"{cardTool.getFakeName()}Rate"
-        cardTool.addSystematic(**info,
-            rename=subgroup,
-            splitGroup = {subgroup: f".*"},
-            systNamePrepend=subgroup,
-            actionArgs=dict(variations_frf=True),
-        )
-        if args.fakeEstimation in ["extended2D",]:
-            subgroup = f"{cardTool.getFakeName()}Shape"
-            cardTool.addSystematic(**info,
-                rename=subgroup,
-                splitGroup = {subgroup: f".*"},
-                systNamePrepend=subgroup,
-                actionArgs=dict(variations_scf=True),
-            )
-
     if simultaneousABCD:
         # Fakerate A/B = C/D
         fakerate_axes_syst = [f"_{n}" for n in args.fakerateAxes]
@@ -529,6 +501,34 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1)
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
+
+    if wmass and not xnorm and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
+        info=dict(
+            name=args.baseName, 
+            group=cardTool.getFakeName(), 
+            processes=cardTool.getFakeName(), 
+            noConstraint=False, 
+            mirror=False, 
+            scale=2,
+            applySelection=False, # don't apply selection, all regions will be needed for the action
+            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
+            systAxes=[f"_{x}" for x in syst_axes if x in fitvar]+["_param", "downUpVar"])
+        subgroup = f"{cardTool.getFakeName()}Rate"
+        cardTool.addSystematic(**info,
+            rename=subgroup,
+            splitGroup = {subgroup: f".*"},
+            systNamePrepend=subgroup,
+            actionArgs=dict(variations_frf=True),
+        )
+        if args.fakeEstimation in ["extended2D",]:
+            subgroup = f"{cardTool.getFakeName()}Shape"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_scf=True),
+            )
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
