@@ -37,6 +37,7 @@ else:
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="e" else ["singleelectron"])),
+                        base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
                         mode="lowpu")
 
