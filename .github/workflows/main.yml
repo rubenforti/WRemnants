@@ -27,6 +27,8 @@ env:
   OUTFILE_LOWPU_MU: "mw_lowPU_mu.hdf5"
   OUTFILE_LOWPU_EE: "mz_lowPU_ee.hdf5"
   OUTFILE_LOWPU_MUMU: "mz_lowPU_mumu.hdf5"
+  DATAPATH: "/scratch/shared/NanoAOD/"
+  DATAPATH_LOWPU: "/scratch/shared/NanoAOD/LowPU/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -153,7 +155,7 @@ jobs:
       # run this with --analysiMode theoryAgnosticNormVar --poiAsNoi since it only adds one histogram without changing anything else
       - name: wmass analysis
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py --dataPath /scratch/shared/NanoAOD/ 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py --dataPath $DATAPATH 
           -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --analysisMode theoryAgnosticNormVar --poiAsNoi
 
   w-fit:
@@ -273,7 +275,7 @@ jobs:
       - name: lowpu w mu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath /scratch/shared/NanoAOD/LowPU/ --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
 
       - name: lowpu w mu plot ptW
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -296,7 +298,7 @@ jobs:
       - name: lowpu w e analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath /scratch/shared/NanoAOD/LowPU/ -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor e --analysisMode unfolding
+          --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor e --analysisMode unfolding
 
       - name: lowpu w e plot ptW
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -362,7 +364,7 @@ jobs:
       - name: lowpu z mumu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath /scratch/shared/NanoAOD/LowPU/ --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
 
       - name: lowpu z mumu plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p mumu $HIST_FILE_MUMU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -376,7 +378,7 @@ jobs:
       - name: lowpu z ee analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath /scratch/shared/NanoAOD/LowPU/ --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee
 
       - name: lowpu z ee plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p ee $HIST_FILE_EE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -465,7 +467,7 @@ jobs:
       - name: wlike analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py 
-          --dataPath /scratch/shared/NanoAOD/ -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --forceDefaultName
+          --dataPath $DATAPATH -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --forceDefaultName
 
       - name: wlike combine setup
         run: >-
@@ -559,7 +561,7 @@ jobs:
 
       - name: dilepton mll analysis
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath /scratch/shared/NanoAOD/ 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes etaAbsEta mll cosThetaStarll --forceDefaultName --postfix mll
 
       - name: dilepton plotting mll
@@ -601,7 +603,7 @@ jobs:
 
       - name: dilepton analysis
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath /scratch/shared/NanoAOD/ 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName
 
       - name: dilepton combine ptll setup
@@ -709,7 +711,7 @@ jobs:
 
       - name: gen analysis
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/w_z_gen_dists.py --dataPath /scratch/shared/NanoAOD/ 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/w_z_gen_dists.py --dataPath $DATAPATH 
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --filterProcs WplusmunuPostVFP WminusmunuPostVFP WplustaunuPostVFP WminustaunuPostVFP ZmumuPostVFP ZtautauPostVFP WplusToMuNu_horace-nlo WplusToMuNu_winhac-lo-photos ZToMuMu_horace-lo-photos
 
 
