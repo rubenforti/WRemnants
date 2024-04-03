@@ -16,7 +16,6 @@ import math
 import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
-from wremnants.datasets.dataset_tools import getDatasets
 from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
