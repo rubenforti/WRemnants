@@ -59,7 +59,6 @@ class TheoryHelper(object):
         self.pdf_from_corr = pdf_from_corr
         self.pdf_operation = pdf_operation
         self.scale_pdf_unc = scale_pdf_unc
-        self.minnlo_unc = minnlo_unc
         self.samples = []
         self.skipFromSignal = False
 
@@ -195,6 +194,13 @@ class TheoryHelper(object):
             hscale = self.card_tool.getHistsForProcAndSyst(signal_samples[0], scale_hist)
             # A bit janky, but refer to the original ptVgen ax since the alt hasn't been added yet
             orig_binning = hscale.axes[pt_ax.replace("Alt", "")].edges
+            if not (np.isclose(binning[0], orig_binning[0]) and np.isclose(binning[-1], orig_binning[-1])):
+                if len(binning) == 2:
+                    binning = np.array((orig_binning[0], orig_binning[-1]))
+                else:
+                    binning = binning[(binning >= orig_binning[0]-1e-5) & (binning <= orig_binning[-1]+1e-6)]
+                logger.warning(f"Adjusting requested binning to {binning}")
+
             if not hh.compatibleBins(orig_binning, binning):
                 logger.warning(f"Requested binning {binning} is not compatible with hist binning {orig_binning}. Will not rebin!")
                 binning = orig_binning
@@ -203,11 +209,13 @@ class TheoryHelper(object):
                 pt_idx = np.argmax(binning >= pt_min)
                 skip_entries.extend([{pt_ax : complex(0, x)} for x in binning[:pt_idx]])
 
-            func = syst_tools.hist_to_variations
+            func = syst_tools.gen_hist_to_variations if pt_ax == "ptVgenAlt" else syst_tools.hist_to_variations
             preop_map = {proc : func for proc in expanded_samples}
             preop_args["gen_axes"] = [pt_ax]
             preop_args["rebin_axes"] = [pt_ax]
             preop_args["rebin_edges"] = [binning]
+            if pt_ax == "ptVgenAlt":
+                preop_args["gen_obs"] = ["ptVgen"]
 
         # Skip MiNNLO unc. 
         if self.resumUnc and not (pt_binned or helicity):
@@ -269,12 +277,16 @@ class TheoryHelper(object):
 
             def preop_func(h, *args, **kwargs):
                 hsel = h[{"vars" : ["pdf0"] + sel_vars}]
-                return syst_tools.hist_to_variations(hsel, *args, **kwargs)
+                func = syst_tools.gen_hist_to_variations if pt_ax == "ptVgenAlt" else syst_tools.hist_to_variations
+                return func(hsel, *args, **kwargs)
 
             preop_args = {}
             preop_args["gen_axes"] = [pt_ax]
             preop_args["rebin_axes"] = [pt_ax]
             preop_args["rebin_edges"] = [binning]
+
+            if pt_ax == "ptVgenAlt":
+                preop_args["gen_obs"] = ["ptVgen"]
 
             self.card_tool.addSystematic(name=self.scale_hist_name,
                 processes=[sample_group],
@@ -301,7 +313,8 @@ class TheoryHelper(object):
         tnp_has_mirror = ("+" in self.tnp_nuisances[0] and self.tnp_nuisances[0].replace("+", "-") in syst_ax) or \
                             ("-" in self.tnp_nuisances[0] and self.tnp_nuisances[0].replace("-", "") in syst_ax)
         if not tnp_has_mirror and not self.mirror_tnp:
-            raise ValueError("Up or down variation missing in TNP histogram. Use mirroring")
+            logger.warning("Up or down variation missing in TNP histogram. Will use mirroring")
+            self.mirror_tnp = True
 
         central_var = syst_ax[0]
         

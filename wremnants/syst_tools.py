@@ -327,6 +327,12 @@ def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_f
     # 5) add back to the nominal histogram and broadcase the nominal histogram
     return hh.addHists(href, hsyst)
 
+def gen_hist_to_variations(hist_in, gen_obs, gen_axes=["ptVgen", "chargeVgen", "helicity"], sum_axes=[], rebin_axes=[], rebin_edges=[]):
+    for obs in gen_obs:
+        hist_in = hh.expand_hist_by_duplicate_axis(hist_in, obs, obs+"Alt", swap_axes=True)
+
+    return hist_to_variations(hist_in, gen_axes, sum_axes, rebin_axes, rebin_edges)
+
 def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], rebin_edges=[]):
 
     if hist_in.name is None:

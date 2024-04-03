@@ -566,6 +566,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
 
     if xnorm or genfit:
+        if genfit:
+            cardTool.addLnNSystematic("lumi", processes=["signal_samples"], size=1.012, group="luminosity")
         return cardTool
 
     # Below: experimental uncertainties

@@ -392,7 +392,7 @@ def makePlotWithRatioToRef(
             flow='none',
         )
         hep.histplot(
-            hh.divideHists(data, hists[0], cutoff=1.e-8, flow=False, by_ax_name=False),
+            hh.divideHists(hists[-1], hists[0], cutoff=1.e-8, flow=False, by_ax_name=False),
             histtype="errorbar",
             color=colors[-1],
             xerr=False,

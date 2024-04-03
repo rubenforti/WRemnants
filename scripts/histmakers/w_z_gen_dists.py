@@ -5,7 +5,7 @@ parser,initargs = common.common_parser()
 
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections
+from wremnants import theory_tools,syst_tools,theory_corrections,unfolding_tools
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
 import math
@@ -24,6 +24,7 @@ parser.add_argument("--signedY", action='store_true', help="use signed Y")
 parser.add_argument("--applySelection", action='store_true', help="Apply selection on leptons")
 parser.add_argument("--auxiliaryHistograms", action="store_true", help="Safe auxiliary histograms (mainly for ew analysis)")
 parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q variable instead of ptVgen, GEN only ", default=None)
+parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHelicity hist")
 
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = common.set_parser_default(parser, "theoryCorr", [])
@@ -131,6 +132,14 @@ def build_graph(df, dataset):
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
     lep_cols = ["etaPrefsrLep", "ptPrefsrLep", "chargeVgen"]
 
+    if args.applySelection:
+        df = unfolding_tools.define_gen_level(df, "preFSR", dataset.name, mode="dilepton" if isZ else "wmass")
+        if isZ:
+            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=26, pt_max=60, 
+                mass_min=60, mass_max=120)
+        elif isW:
+            df = unfolding_tools.select_fiducial_space(df, mtw_min=40, mode="wmass")
+
     if args.singleLeptonHists and (isW or isZ):
         if isW:
             df = df.Define('ptPrefsrLep', 'genl.pt()')
@@ -230,27 +239,6 @@ def build_graph(df, dataset):
                 results.append(df.HistoBoost("nominal_sublPhoton", [axis_photonPt, axis_photonEta], ["sublPhotonPt", "sublPhotonEta", "nominal_weight"], storage=hist.storage.Weight()))
                 results.append(df.HistoBoost("nominal_trailPhoton", [axis_photonPt, axis_photonEta], ["trailPhotonPt", "trailPhotonEta", "nominal_weight"], storage=hist.storage.Weight()))
 
-            if args.applySelection:
-                # for fiducial EW corrections
-                # apply acceptance cuts on post FSR objects
-                if isZ:
-                    # mz_wlike_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wlike")
-                    df_fiducial = df.Filter(f"""
-                        postfsrOtherLep_pt>26 && postfsrOtherLep_pt<60 
-                        && postfsrOtherLep_absEta<2.5
-                        && postfsrMV > 60 && postfsrMV < 120
-                        && postfsrMT > 45
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
-                        """)
-                elif isW:
-                    # mw_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wmass")
-                    df_fiducial = df.Filter(f"""
-                        postfsrMT > 40
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
-                        """)
-
                 # postfsr definition
                 axis_eta = hist.axis.Regular(25, 0, 2.5, name = "postfsrLep_absEta", overflow=True, underflow=False)
                 axis_pt = hist.axis.Regular(50, 20, 70, name = "postfsrLep_pt", overflow=True, underflow=True)
@@ -264,7 +252,10 @@ def build_graph(df, dataset):
 
     if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
             "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames():
-        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, None, nominal_axes, nominal_cols, base_name="nominal_gen")
+
+        qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
+
+        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen")
 
     return results, weightsum
 

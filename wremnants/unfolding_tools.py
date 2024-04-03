@@ -53,9 +53,9 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
 
         if mode in ["wlike", "dilepton"]:
             df = df.Define("ptGen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
-            df = df.Define("absEtaGen", "event % 2 == 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
+            df = df.Define("absEtaGen", "event % 2 == 0 ? std::abs(genl.eta()) : std::abs(genlanti.eta())")
             df = df.Define("ptOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
-            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
+            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? std::abs(genlanti.eta()) : std::abs(genl.eta())")
 
     elif gen_level == "postFSR":
         df = theory_tools.define_postfsr_vars(df, mode=mode)
@@ -96,10 +96,10 @@ def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=Non
     elif mode == "dilepton":
         selection = f"""
             (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
-            && (ptGen > {pt_min}) && (ptOtherGen > {pt_min}) 
-            && (ptGen < {pt_max}) && (ptOtherGen < {pt_max}) 
+            && (ptGen > {pt_min}) && (ptOtherGen > {pt_min})
+            && (ptGen < {pt_max}) && (ptOtherGen < {pt_max})
             && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
+        """
     else:
         raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
 
@@ -109,6 +109,8 @@ def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=Non
     for sel in selections:
         logger.debug(f"Add selection {sel} for fiducial phase space")
         selection += f" && ({sel})"
+
+    logger.debug(f"Applying fiducial selection {selection}")
 
     df = df.Define("acceptance", selection)
 
