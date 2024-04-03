@@ -16,7 +16,6 @@ import math
 import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
-from wremnants.datasets.dataset_tools import getDatasets
 
 logger = logging.child_logger(__name__)
 

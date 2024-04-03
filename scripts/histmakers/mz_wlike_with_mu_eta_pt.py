@@ -25,6 +25,7 @@ isUnfolding = args.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
+parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
     parser = common.set_parser_default(parser, "genBins", [18, 0])
