@@ -128,8 +128,6 @@ if args.selection:
 else:
     applySelection=True
 
-fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
-
 groups.setNominalName(args.baseName)
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
@@ -192,7 +190,7 @@ if addVariation:
             action = None
         groups.addSummedProc(nominalName, relabel=args.baseName, name=name, label=label, exclude=exclude,
             color=color, reload=reload, rename=varname, procsToRead=datasets, actionRequiresRef=requiresNominal,
-            preOpMap=load_op, action=action, forceNonzero=True, applySelection=applySelection)
+            preOpMap=load_op, action=action, forceNonzero=False, applySelection=applySelection)
 
         exclude.append(varname)
         unstack.append(varname)

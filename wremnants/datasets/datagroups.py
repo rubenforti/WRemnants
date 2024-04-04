@@ -67,7 +67,7 @@ class Datagroups(object):
         self.rebinBeforeSelection = False
         self.globalAction = None
         self.unconstrainedProcesses = []
-        self.fakeName = "Fake" + (self.flavor if self.flavor is not None else '')
+        self.fakeName = "Fake" + (f"_{self.flavor}" if self.flavor is not None else '')
         self.dataName = "Data"
         self.gen_axes = {}
         self.fakerate_axes = ["pt", "eta", "charge"]
@@ -283,7 +283,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
+        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -377,6 +377,10 @@ class Datagroups(object):
                     logger.debug("Applying global action")
                     h = self.globalAction(h)
 
+                if forceNonzero:
+                    logger.debug("force non zero")
+                    h = hh.clipNegativeVals(h, createNew=False)
+
                 scale = self.processScaleFactor(member)
                 scale *= scaleToNewLumi
                 if group.scale:
@@ -434,13 +438,6 @@ class Datagroups(object):
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
-
-            if forceNonzero:
-                logger.debug("force non zero")
-                nnegative = (group.hists[label].values(flow=True)<0).sum()
-                if nnegative > 0:
-                    logger.warning(f"Found {nnegative} bins with negaive values. Those will be set to 0")
-                    group.hists[label] = hh.clipNegativeVals(group.hists[label], createNew=False)
 
         # Avoid situation where the nominal is read for all processes for this syst
         if nominalIfMissing and not foundExact:

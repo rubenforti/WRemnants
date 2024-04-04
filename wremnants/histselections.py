@@ -231,6 +231,14 @@ def get_rebinning(edges, axis_name):
     logger.debug(f"Rebin axis {axis_name} to {rebin}")
     return rebin
 
+def divide_arrays(num, den, cutoff=1):
+    r = num/den
+    criteria = abs(den) < cutoff
+    if np.sum(criteria) > 0:
+        logger.warning(f"Found {np.sum(criteria)} values in denominator below {cutoff}, the ratio will be set to 0 for those")
+    r[abs(den) < cutoff] = 0 # if denumerator is close to 0 set ratio to zero to avoid large negative/positive values
+    return r
+
 class HistselectorABCD(object):
     def __init__(self, h, name_x=None, name_y=None,
         fakerate_axes=["eta","pt","charge"], 
@@ -433,18 +441,12 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         a = ha.values(flow=flow)
         b = hb.values(flow=flow)
         # fakerate factor
-        y = b/a
-        if (a <= 0).sum() > 0 or (b < 0).sum() > 0:
-            logger.warning(f"{(a < 0).sum()} ({(b < 0).sum()}) bins with negative and {(a == 0).sum()} ({(b == 0).sum()}) bins with empty content found for denominator (numerator) in the fakerate factor, those will be set to 1.")
-            y[(a <= 0) | (b <= 0)]=1
-
+        y = divide_arrays(b,a)
         if h.storage_type == hist.storage.Weight:
             avar = ha.variances(flow=flow)
             bvar = hb.variances(flow=flow)
             y_var = bvar/a**2 + b**2*avar/a**4
-            if (a <= 0).sum() > 0:
-                logger.warning(f"{(a < 0).sum()} bins with negative and {(a == 0).sum()} bins with empty content found for denominator in the fakerate factor, set variances for those to 1.")
-                y_var[a <= 0]=1
+            y_var[abs(a) < 1]=0
 
         if self.smooth_fakerate:
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
@@ -680,19 +682,13 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         b = hb.values(flow=flow)
 
         # fakerate factor
-        y = b/a
-        if (a <= 0).sum() > 0:
-            logger.warning(f"{(a < 0).sum()} bins with negative and {(a == 0).sum()} bins with empty content found for denominator in the fakerate factor.")
-            y[(a <= 0) | (b <= 0)]=1
-
+        y = divide_arrays(b,a)
         if h.storage_type == hist.storage.Weight:
             # full variances
             avar = ha.variances(flow=flow)
             bvar = hb.variances(flow=flow)
-            y_var = bvar/a**2 + avar*b**2/a**4
-            if (a <= 0).sum() > 0:
-                logger.warning(f"{(a < 0).sum()} bins with negative and {(a == 0).sum()} bins with empty content found for denominator in the fakerate factor, set variances for those to 1.")
-                y_var[a <= 0]=1
+            y_var = bvar/a**2 + b**2*avar/a**4
+            y_var[abs(a) <= 0]=0
 
         # the bins where the regression is performed (can be different to the bin in h)
         x = self.get_bin_centers(ha, self.name_x, flow=False) 
@@ -873,10 +869,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         y_num = ax*b**2
         y_den = bx*a**2
         # fakerate factor
-        y = y_num/y_den
-        if (y_den <= 0).sum() > 0:
-            logger.warning(f"{(y_den < 0).sum()} bins with negative and {(y_den == 0).sum()} bins with empty content found for denominator in the fakerate factor.")
-            y[(a <= 0) | (b <= 0)]=1
+        y = divide_arrays(y_num,y_den)
 
         if h.storage_type == hist.storage.Weight:
             # full variances
@@ -885,9 +878,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             bvar = hb.variances(flow=flow)
             bxvar = hbx.variances(flow=flow)
             y_var = b**4/(bx**2*a**4)*axvar + ax**2*b**2/(bx**2*a**4)*4*bvar + 4*avar/a**2 + ax**2*b**4/(bx**4*a**4)*bxvar
-            if (y_den <= 0).sum() > 0:
-                logger.warning(f"{(y_den < 0).sum()} bins with negative and {(y_den == 0).sum()} bins with empty content found for denominator in the fakerate factor, set variances for those to 1.")
-                y_var[y_den <= 0]=1
+            y_var[abs(y_den) <= 0]=0
 
         if self.throw_toys:
             logger.info("Throw toys")
@@ -1070,9 +1061,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # shape correction factor
         y_num = c**2 if apply else c
         y_den = cy
-        y = y_num/y_den
-        if (cy <= 0).sum() > 0:
-            logger.warning(f"{(cy < 0).sum()} bins with negative and {(cy == 0).sum()} bins with empty content found for denominator in the shape correction factor.")
+        y = divide_arrays(y_num,y_den)
 
         if self.throw_toys:
             logger.info("Throw toys")
@@ -1285,10 +1274,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # fakerate factor
         y_num = (ax*ay*b)**2
         y_den = a**4 * axy * bx
-        y = y_num/y_den
-        if (y_den <= 0).sum() > 0:
-            logger.warning(f"{(y_den < 0).sum()} bins with negative and {(y_den == 0).sum()} bins with empty content found for denominator in the fakerate factor.")
-            y[(a <= 0) | (b <= 0)]=1
+        y = divide_arrays(y_num,y_den)
 
         if h.storage_type == hist.storage.Weight:
             # full variances
@@ -1299,10 +1285,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             bvar = hb.variances(flow=flow)
             bxvar = hbx.variances(flow=flow)
             y_var = y**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 16*avar/a**2 + bxvar/bx**2)
-            if (y_den <= 0).sum() > 0:
-                logger.warning(f"{(y_den < 0).sum()} bins with negative and {(y_den == 0).sum()} bins with empty content found for denominator in the fakerate factor, set variances for those to 1.")
-                y_var[y_den <= 0]=1
-
+            y_var[abs(y_den) <= 0]=0
 
         if self.throw_toys:
             logger.info("Throw toys")

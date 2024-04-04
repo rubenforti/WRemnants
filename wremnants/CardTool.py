@@ -743,7 +743,7 @@ class CardTool(object):
             if name != "":
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc, hnomi=hnom)
 
-    def loadPseudodataFakes(self, datagroups, forceNonzero=True):
+    def loadPseudodataFakes(self, datagroups, forceNonzero=False):
         # get the nonclosure for fakes/multijet background from QCD MC
         datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
@@ -799,7 +799,7 @@ class CardTool(object):
 
         return hdata
 
-    def loadPseudodata(self, forceNonzero=True):
+    def loadPseudodata(self, forceNonzero=False):
         datagroups = self.pseudodata_datagroups
         processes = [x for x in datagroups.groups.keys() if x != self.getDataName() and self.pseudoDataProcsRegexp.match(x)]
         processes = self.expandProcesses(processes)
@@ -910,7 +910,7 @@ class CardTool(object):
         self.cardName = (f"{self.outfolder}/{basename}_{{chan}}{suffix}.txt")
         self.setOutfile(os.path.abspath(f"{self.outfolder}/{basename}CombineInput{suffix}.root"))
             
-    def writeOutput(self, args=None, forceNonzero=True, check_systs=True):
+    def writeOutput(self, args=None, forceNonzero=False, check_systs=True):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
