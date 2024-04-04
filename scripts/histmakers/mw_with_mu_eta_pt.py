@@ -93,6 +93,7 @@ logger.info(f"Pt binning: {template_npt} bins from {template_minpt} to {template
 # standard regular axes
 axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta", overflow=False, underflow=False)
 axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_muonJetPt = hist.axis.Regular(50, 26, 76, name = "muonJetPt", underflow=False, overflow=True)
 
 axis_charge = common.axis_charge
@@ -101,23 +102,25 @@ axis_passMT = common.axis_passMT
 axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120], name = "mt", underflow=False, overflow=True)
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
+# for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
+# may not exactly reproduce the same pt range as analysis, though
+axis_fakes_eta = hist.axis.Regular(int((template_maxeta-template_mineta)*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
+
+axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(template_minpt, template_maxpt), name = "pt", overflow=False, underflow=False)
+
+axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min), name = "mt", underflow=False, overflow=True)
+axes_abcd = [axis_mtCat, common.axis_relIsoCat]
+axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
+columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
+
+nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
+nominal_cols = columns_fakerate
+
 # auxiliary axes
 axis_iso = hist.axis.Regular(100, 0, 25, name = "iso",underflow=False, overflow=True)
 axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, overflow=True)
 
-# axes with only a few bins for the ABCD method
-axis_isoCat = hist.axis.Variable([0,4,8], name = "iso",underflow=False, overflow=True)
-axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=False, overflow=True)
-axis_mtCat = hist.axis.Variable([0,20,40,44,49,55,62], name = "mt",underflow=False, overflow=True)
-
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
-
-base_axes = [axis_eta, axis_pt, axis_charge]
-base_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0"]
-
-nominal_axes = [axis_eta, axis_pt, axis_charge, axis_mtCat, axis_relIsoCat]
-# nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0"]
-nominal_cols = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
 axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
@@ -160,10 +163,6 @@ otherStudyForFakes_axes = [axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_cha
                            axis_Njets_fakes, axis_leadjetPt_fakes,
                            axis_dphi_fakes]
 
-# for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
-# may not exactly reproduce the same pt range as analysis, though
-axis_eta_utilityHist = hist.axis.Regular(24, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
-axis_pt_utilityHist = hist.axis.Variable([26,27,28,29,30,31,33,36,40,46,56], name = "pt", overflow=False, underflow=False)
 
 axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 axis_recoWpt = hist.axis.Regular(40, 0., 80., name = "recoWpt", underflow=False, overflow=True)
@@ -402,7 +401,7 @@ def build_graph(df, dataset):
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
-    df = df.Define("passIso", "goodMuons_iso0 < 0.15")
+    df = df.Define("passIso", "goodMuons_relIso0 < 0.15")
 
     ########################################################################
     # define event weights here since they are needed below for some helpers
@@ -478,10 +477,16 @@ def build_graph(df, dataset):
     df = df.Define("passMT", f"transverseMass >= {mtw_min}")    
 
     if auxiliary_histograms:
-        # utility plot, mt and met, to plot them later (need eta-pt to make fakes)
-        results.append(df.HistoBoost("MET", [axis_met, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_relIsoCat], ["MET_corr_rec_pt", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
-        results.append(df.HistoBoost("transverseMass", [axis_mt_fakes, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_relIsoCat], ["transverseMass", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_iso0", "nominal_weight"]))
-        results.append(df.HistoBoost("ptW", [axis_recoWpt, axis_eta_utilityHist, axis_pt_utilityHist, axis_charge, axis_mtCat, axis_relIsoCat], ["ptW", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_iso0", "nominal_weight"]))
+        # control plots, lepton, met, to plot them later (need eta-pt to make fakes)
+        results.append(df.HistoBoost("leptonPhi", [axis_phi, *axes_fakerate], ["goodMuons_phi0", *columns_fakerate, "nominal_weight"]))
+        results.append(df.HistoBoost("MET", [axis_met, *axes_fakerate], ["MET_corr_rec_pt", *columns_fakerate, "nominal_weight"]))
+        results.append(df.HistoBoost("METPhi", [axis_phi, *axes_fakerate], ["MET_corr_rec_phi", *columns_fakerate, "nominal_weight"]))
+        results.append(df.HistoBoost("deltaPhiMuonMet", [axis_phi, *axes_fakerate], ["deltaPhiMuonMet", *columns_fakerate, "nominal_weight"]))
+        results.append(df.HistoBoost("ptW", [axis_recoWpt, *axes_fakerate], ["ptW", *columns_fakerate, "nominal_weight"]))
+        # for mt use axis with different binning
+        results.append(df.HistoBoost("transverseMass", [axis_fakes_eta, axis_fakes_pt, axis_charge, axis_mt, common.axis_relIsoCat], ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0", "nominal_weight"]))
+
+        # other plots
         results.append(df.HistoBoost("iso", [axis_iso], ["goodMuons_iso0", "nominal_weight"]))
         results.append(df.HistoBoost("relIso", [axis_relIso], ["goodMuons_relIso0", "nominal_weight"]))
 

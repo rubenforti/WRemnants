@@ -67,7 +67,7 @@ class Datagroups(object):
         self.rebinBeforeSelection = False
         self.globalAction = None
         self.unconstrainedProcesses = []
-        self.fakeName = "Fake"
+        self.fakeName = "Fake" + (self.flavor if self.flavor is not None else '')
         self.dataName = "Data"
         self.gen_axes = {}
         self.fakerate_axes = ["pt", "eta", "charge"]
@@ -198,7 +198,7 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=True, simultaneousABCD=False, **kwargs
+        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
@@ -221,9 +221,10 @@ class Datagroups(object):
             raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
-            if len(self.groups[g].members[:]) == 0:
+            members = self.groups[g].members[:]
+            if len(members) == 0:
                 raise RuntimeError(f"No member found for group {g}")
-            base_member = self.groups[g].members[:][0].name
+            base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
                 self.groups[g].histselector = fakeselector(h, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
@@ -282,7 +283,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
+        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -348,7 +349,6 @@ class Datagroups(object):
                         continue
 
                 h_id = id(h)
-
                 logger.debug(f"Hist axes are {h.axes.name}")
 
                 if group.memberOp:
@@ -376,10 +376,6 @@ class Datagroups(object):
                 if self.globalAction:
                     logger.debug("Applying global action")
                     h = self.globalAction(h)
-
-                if forceNonzero:
-                    logger.debug("force non zero")
-                    h = hh.clipNegativeVals(h, createNew=False)
 
                 scale = self.processScaleFactor(member)
                 scale *= scaleToNewLumi
@@ -431,11 +427,20 @@ class Datagroups(object):
                 if not applySelection:
                     logger.warning(f"Selection requested for process {procName} but applySelection=False, thus it will be ignored")
                 elif label in group.hists.keys() and group.hists[label] is not None:
-                    group.hists[label] = group.histselector.get_hist(group.hists[label])
+                    group.hists[label] = group.histselector.get_hist(group.hists[label], is_nominal=(label==self.nominalName))
+                else:
+                    raise RuntimeError("Failed to apply selection")
 
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
+
+            if forceNonzero:
+                logger.debug("force non zero")
+                nnegative = (group.hists[label].values(flow=True)<0).sum()
+                if nnegative > 0:
+                    logger.warning(f"Found {nnegative} bins with negaive values. Those will be set to 0")
+                    group.hists[label] = hh.clipNegativeVals(group.hists[label], createNew=False)
 
         # Avoid situation where the nominal is read for all processes for this syst
         if nominalIfMissing and not foundExact:

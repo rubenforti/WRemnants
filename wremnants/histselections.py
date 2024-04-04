@@ -211,13 +211,27 @@ def extend_edges(traits, x):
         logger.debug(f"Extend array by overflow bin using {new_x}")
     return x
 
-class HistselectorABCD(object):
-    target_edges_dict = {
-        "pt": [26., 27.,28.,29.,30.,31.,33.,36.,40.,46., 56.], 
-        "muonJetPt": [26.,40.,44.,46.,50.,54.,62.],
-        "mt": [0., 20., 40., 44., 49., 55., 62.]
-    }
+def get_rebinning(edges, axis_name):
+    if axis_name == "mt":
+        target_edges = common.get_binning_fakes_mt()
+    elif axis_name == "pt":
+        target_edges = common.get_binning_fakes_pt(edges[0],edges[-1])
+    else:
+        raise RuntimeError(f"No automatic rebinning known for axis {axis_name}")
 
+    if edges == target_edges:
+        logger.debug(f"Axis has already in target edges, no rebinning needed")
+        return None
+
+    rebin = [edges[0]] + [x for x in target_edges[1:-1] if x in edges[1:-1]] + [edges[-1]]
+    if len(rebin) <= 2:
+        logger.warning(f"No automatic rebinning possible for axis {axis_name}")
+        return None
+    
+    logger.debug(f"Rebin axis {axis_name} to {rebin}")
+    return rebin
+
+class HistselectorABCD(object):
     def __init__(self, h, name_x=None, name_y=None,
         fakerate_axes=["eta","pt","charge"], 
         smoothing_axis_name="pt", 
@@ -249,22 +263,14 @@ class HistselectorABCD(object):
             logger.debug(f"Setting fakerate integration axes to {self.fakerate_integration_axes}")
 
         self.smoothing_axis_name = smoothing_axis_name
+        edges = h.axes[smoothing_axis_name].edges
         if rebin_smoothing_axis == "automatic":
-            if smoothing_axis_name not in self.target_edges_dict.keys():
-                raise RuntimeError(f"No automatic rebinning known for axis {smoothing_axis_name}")
-            # try to find suitible binning
-            edges = h.axes[smoothing_axis_name].edges
-            self.rebin_smoothing_axis = [edges[0]] + [x for x in self.target_edges_dict[smoothing_axis_name][1:-1] if x in edges] + [edges[-1]]
-            if len(self.rebin_smoothing_axis) <= 2:
-                logger.debug(f"No automatic rebinning possible for smoothing axis {self.rebin_smoothing_axis}")
-                self.rebin_smoothing_axis=None
-            else:
-                logger.debug(f"For smoothing, axis {smoothing_axis_name} will be rebinned to {self.rebin_smoothing_axis}")
+            self.rebin_smoothing_axis = get_rebinning(edges, self.smoothing_axis_name)
         else:
             self.rebin_smoothing_axis = rebin_smoothing_axis
 
-        edges = h.axes[smoothing_axis_name].edges if self.rebin_smoothing_axis is None else self.rebin_smoothing_axis
-        edges = extend_edges(h.axes[smoothing_axis_name].traits, edges)
+        edges = edges if self.rebin_smoothing_axis is None else self.rebin_smoothing_axis
+        edges = extend_edges(h.axes[self.smoothing_axis_name].traits, edges)
         self.smoothing_axis_min = edges[0]
         self.smoothing_axis_max = edges[-1]
 
@@ -328,7 +334,7 @@ class SignalSelectorABCD(HistselectorABCD):
         super().__init__(h, *args, **kwargs)
 
     # signal region selection
-    def get_hist(self, h):
+    def get_hist(self, h, is_nominal=False):
         return self.get_hist_passX_passY(h)
 
 class FakeSelectorSimpleABCD(HistselectorABCD):
@@ -368,17 +374,21 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         if self.smooth_fakerate:
             self.f_frf = get_regression_function(self.smoothing_order_fakerate, pol=self.polynomial)
 
-    def transfer_variances(self, h):
-        if self.h_nominal is None:
+    def transfer_variances(self, h, set_nominal=False):
+        if set_nominal:
             self.h_nominal = h.copy()
-        elif self.h_nominal.sum(flow=True) != h.sum(flow=True):
+        elif self.h_nominal is not None:
             h = hh.transfer_variances(h, self.h_nominal)
+        elif h.storage_type == hist.storage.Weight:
+            logger.warning("Nominal histogram is not set but current histogram has variances, use those")
+        else:
+            raise RuntimeError(f"Failed to transfer variances")
         return h
 
-    def get_hist(self, h, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
         if self.smooth_fakerate:
-            h = self.transfer_variances(h)
+            h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
             c, cvar = self.get_yields_applicationregion(h)
             d = c * y_frf
@@ -596,14 +606,9 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         self.extrapolation_order = extrapolation_order
 
-        # rebin x for regression
         if rebin_x == "automatic":
-            if self.name_x not in self.target_edges_dict.keys():
-                raise RuntimeError(f"No automatic rebinning known for axis {self.name_x}")
-            # try to find suitible binning
-            edges = h.axes[self.name_x].edges.astype(int)
-            self.rebin_x = [edges[0]] + [x for x in self.target_edges_dict[self.name_x][1:-1] if x in edges] + [edges[-1]]
-            logger.debug(f"For interpolation, abcd x-axis {self.name_x} will be rebinned to {self.rebin_x}")
+            edges = h.axes[self.name_x].edges
+            self.rebin_x = get_rebinning(edges, self.rebin_x)
         else:
             self.rebin_x = rebin_x
 
@@ -622,9 +627,9 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         self.sel_x = s[x0:x1:] if x0 is not None and x1.imag > x0.imag else s[x1:x0:]
         self.sel_dx = s[x1:x3:] if x3 is None or x3.imag > x1.imag else s[x3:x1:]
 
-    def get_hist(self, h, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
         c, cvar = self.get_yields_applicationregion(h)
-        if self.integrate_x and self.h_nominal is None:
+        if self.integrate_x and is_nominal:
             # can convert syst variations into bin by bin stat; do for the fist call (nominal histogram) 
             logger.debug("Integrate abcd x-axis, treat uncertainty as bin by bin stat")
             y_frf, y_frf_variation = self.compute_fakeratefactor(h, syst_variations=True)
@@ -638,7 +643,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             dvar = np.sum([(d_variation[...,iparam,0] - d)**2 for iparam in range(d_variation.shape[-2])], axis=0) # sum of squares of up variations
             dvar += (y_frf**2 * cvar).sum(axis=idx_x) # add uncorrelated bin by bin uncertainty from application region
         else:
-            h = self.transfer_variances(h)
+            h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
             if variations_frf:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var
@@ -779,10 +784,10 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         self.sel_dx = s[x1:x2:hist.sum] if x2.imag > x1.imag else s[x2:x1:hist.sum]
         self.sel_d2x = s[x2:x3:hist.sum] if x3.imag > x2.imag else s[x3:x2:hist.sum]
 
-    def get_hist(self, h, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
         if self.smooth_fakerate:
-            h = self.transfer_variances(h)
+            h = self.transfer_variances(h, set_nominal=is_nominal)
 
             y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
             c, cvar = self.get_yields_applicationregion(h)
@@ -949,14 +954,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.interpolate_x = interpolate_x
         self.interpolation_order = interpolation_order
 
-        # rebin x for interpolation but evaluate at original binning
         if rebin_x == "automatic":
-            if self.name_x not in self.target_edges_dict.keys():
-                raise RuntimeError(f"No automatic rebinning known for axis {self.name_x}")
-            # try to find suitible binning
-            edges = h.axes[self.name_x].edges.astype(int)
-            self.rebin_x = [edges[0]] + [x for x in self.target_edges_dict[self.name_x][1:-1] if x in edges] + [edges[-1]]
-            logger.debug(f"For interpolation, abcd x-axis {self.name_x} will be rebinned to {self.rebin_x}")
+            edges = h.axes[self.name_x].edges
+            self.rebin_x = get_rebinning(h, self.rebin_x)
         else:
             self.rebin_x = rebin_x
 
@@ -995,12 +995,12 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.sel_dy = s[y1:y2:hist.sum] if y2.imag > y1.imag else s[y2:y1:hist.sum]
         self.sel_d2y = s[y2:y3:hist.sum] if y3 is None or y3.imag > y2.imag else s[y3:y2:hist.sum]
 
-    def get_hist(self, h, variations_scf=False, variations_frf=False, variations_full=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_scf=False, variations_frf=False, variations_full=False, flow=True):
         if variations_scf and variations_frf:
             raise RuntimeError(f"Can only calculate vairances for fakerate factor or shape correction factor but not both")
 
         if self.smooth_fakerate or self.interpolate_x or self.smooth_shapecorrection:
-            h = self.transfer_variances(h)
+            h = self.transfer_variances(h, set_nominal=is_nominal)
 
             y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
             y_scf, y_scf_var = self.compute_shapecorrection(h, syst_variations=variations_scf)

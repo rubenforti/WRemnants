@@ -24,7 +24,6 @@ import hist
 import ROOT
 import wremnants.lowpu as lowpu
 
-
 ###################################
 flavor = args.flavor # mu, e
 if flavor == "mu":
@@ -47,16 +46,14 @@ for d in datasets: logger.info(f"Dataset {d.name}")
 
 mtw_min=40 # for Wmass (roughly half the boson mass)
 
-
-
 # axes used in fakerate calculation
-axis_fakerate_pt = hist.axis.Variable([26,27,28,29,30,31,33,36,40,46,56], name = "pt", underflow=False)
-axis_fakerate_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(args.pt[1], args.pt[2]), name = "pt", underflow=False)
+axis_fakes_eta = hist.axis.Regular(int((args.eta[2]-args.eta[1])*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 # standard regular axes
 axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
-axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False)
-axis_phi = hist.axis.Regular(50, -4, 4, name = "phi")
+axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
+axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "iso")
 
 axis_lin = hist.axis.Regular(5, 0, 5, name = "lin")
@@ -78,7 +75,7 @@ if isUnfolding:
 
 # axes for final cards/fitting
 nominal_axes = [
-    axis_fakerate_pt, axis_fakerate_eta, common.axis_charge, 
+    axis_fakes_pt, axis_fakes_eta, common.axis_charge, 
     hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptW", underflow=False, overflow=True),    
     common.axis_passIso, common.axis_passMT]
 
@@ -86,10 +83,10 @@ nominal_axes = [
 nominal_cols = ["lep_pt", "lep_eta", "lep_charge", "ptW", "passIso",  "passMT"]
 
 # mt final cards/fitting
-axis_mT = hist.axis.Variable([0] + list(range(40, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
+axis_mT = hist.axis.Variable([0] + list(range(mtw_min, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
 # axis_mT = hist.axis.Regular(100, 0, 200, name = "mt", underflow=False)
 
-axes_mT = [axis_fakerate_pt, axis_fakerate_eta, common.axis_charge, axis_mT, common.axis_passIso]
+axes_mT = [axis_fakes_pt, axis_fakes_eta, common.axis_charge, axis_mT, common.axis_passIso]
 cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
 
 # reco_mT_axes = [common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, common.axis_charge, common.axis_passMT, common.axis_passIso]

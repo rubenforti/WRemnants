@@ -56,7 +56,7 @@ def make_parser(parser=None):
     parser.add_argument("--absolutePathInCard", action="store_true", help="In the datacard, set Absolute path for the root file where shapes are stored")
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
     parser.add_argument("--noHist", action='store_true', help="Skip the making of 2D histograms (root file is left untouched if existing)")
-    parser.add_argument("--qcdProcessName" , type=str, default="Fake", help="Name for QCD process (must be consistent with what is used in datagroups2016.py")
+    parser.add_argument("--qcdProcessName" , type=str, default=None, help="Name for QCD process (by default taken from datagroups object")
     # setting on the fit behaviour
     parser.add_argument("--realData", action='store_true', help="Store real data in datacards")
     parser.add_argument("--fitvar", nargs="+", help="Variable to fit", default=["eta-pt-charge"])
@@ -73,8 +73,8 @@ def make_parser(parser=None):
     parser.add_argument("--fitresult", type=str, default=None ,help="Use data and covariance matrix from fitresult (for making a theory fit)")
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
-    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) in bins w/o smooting")
+    parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
+    parser.add_argument("--smoothenFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) in bins w/o smooting")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -236,16 +236,18 @@ def setup(args, inputFile, fitvar, xnorm=False):
         else:
             datagroups.groups[base_group].deleteMembers(to_del)    
 
+    if args.qcdProcessName:
+        datagroups.fakeName = args.qcdProcessName
+
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation, fake_processes=[args.qcdProcessName],
-            smoothen=not args.binnedFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
+        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation,
+            smoothen=args.smoothenFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
     cardTool.setDatagroups(datagroups)
-    if args.qcdProcessName:
-        cardTool.setFakeName(args.qcdProcessName)
+
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
         cardTool.setAbsolutePathShapeInCard()
@@ -320,7 +322,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
-                mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=not args.binnedFakeEstimation, 
+                mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=args.smoothenFakeEstimation, 
                 simultaneousABCD=simultaneousABCD, 
                 )
         else:
@@ -381,7 +383,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             name="nominal",
             rename=f"{cardTool.getFakeName()}Rate",
             processes=cardTool.getFakeName(),
-            group=cardTool.getFakeName(),
+            group="Fake",
             systNamePrepend=f"{cardTool.getFakeName()}Rate",
             noConstraint=True,
             mirror=True,
@@ -398,7 +400,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             name="nominal",
             rename=f"{cardTool.getFakeName()}Norm",
             processes=cardTool.getFakeName(),
-            group=cardTool.getFakeName(),
+            group="Fake",
             systNamePrepend=f"{cardTool.getFakeName()}Norm",
             noConstraint=True,
             mirror=True,
@@ -502,18 +504,18 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
 
-    if wmass and not xnorm and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
+    if wmass and not xnorm and (args.smoothenFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+        syst_axes = ["eta", "charge"] if (args.smoothenFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
             name=args.baseName, 
-            group=cardTool.getFakeName(), 
+            group="Fake",
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
             mirror=False, 
             scale=2,
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
-            systAxes=[f"_{x}" for x in syst_axes if x in fitvar]+["_param", "downUpVar"])
+            systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
             rename=subgroup,
@@ -653,7 +655,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
     cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
-        cardTool.addLnNSystematic("CMS_Fakes", processes=[cardTool.getFakeName()], size=1.50, group="CMS_background")
+        # cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=1.50, group="CMS_background")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")
         cardTool.addSystematic("luminosity",
@@ -999,7 +1001,7 @@ if __name__ == "__main__":
         if len(outnames) == 1:
             outfile, outfolder = outnames[0]
         else:
-            outfile, outfolder = f"{args.outfolder}/Combination{'_statOnly' if args.doStatOnly else ''}_{args.postfix}/", "Combination"
+            outfile, outfolder = f"{args.outfolder}/Combination{'_statOnly' if args.doStatOnly else ''}{'_'+args.postfix if args.postfix else ''}/", "Combination"
         logger.info(f"Writing HDF5 output to {outfile}")
         writer.write(args, outfile, outfolder)
     else:
