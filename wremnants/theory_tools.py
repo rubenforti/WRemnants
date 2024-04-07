@@ -595,7 +595,7 @@ def define_theory_corr_weight_column(df, generator):
 
     return df
 
-def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_central_weight, isW):
+def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_central_weight, isW, storage_type=hist.storage.Double()):
     res = []
     
     for i, generator in enumerate(generators):
@@ -603,15 +603,15 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
             continue
         
         if i == 0 and modify_central_weight:
-            res.append(df.HistoBoost(f"{name}_uncorr", axes, [*cols, "nominal_weight_uncorr"], storage=hist.storage.Double()))
+            res.append(df.HistoBoost(f"{name}_uncorr", axes, [*cols, "nominal_weight_uncorr"], storage=storage_type))
             if name == "nominal":
-                res.append(df.HistoBoost(f"weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], storage=hist.storage.Double()))
+                res.append(df.HistoBoost(f"weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], storage=storage_type))
 
         var_axis = helpers[generator].tensor_axes[-1]
 
         hist_name = f"{name}_{generator}Corr"
         weight_tensor_name = f"{generator}Weight_tensor"
-        unc = df.HistoBoost(hist_name, axes, [*cols, weight_tensor_name], tensor_axes=[var_axis], storage=hist.storage.Double())
+        unc = df.HistoBoost(hist_name, axes, [*cols, weight_tensor_name], tensor_axes=[var_axis], storage=storage_type)
         res.append(unc)
 
         def is_flavor_dependent_np(var_label):

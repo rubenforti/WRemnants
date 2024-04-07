@@ -31,19 +31,19 @@ if __name__ == "__main__":
         members = list(filter(lambda y: y.group == "Top", groups.datasets.values())),
         label = "Top",
         color = "#DE5A6A",
-        selectOp = sel.signalHistWmass if flavor == "mu" else None,
+        selectOp = sel.signalHistABCD if flavor == "mu" else None,
     )
     groups.addGroup("EWK_Z",
         members = [x for x in groups.datasets.values() if not x.is_data and x.group not in ["Zmumu", "Top"] and x.group != "QCD"],
         label = r"EWK (#tau^{#plus}#tau^{#minus}, VV)",
         color = "#64C0E8",
-        selectOp = sel.signalHistWmass if flavor == "mu" else None,
+        selectOp = sel.signalHistABCD if flavor == "mu" else None,
     )
     groups.addGroup("EWK_W",
         members = [x for x in groups.datasets.values() if not x.is_data and x.group not in ["Wmunu", "Top"] and x.group != "QCD"],
         label = r"EWK (#tau^{#plus}#tau^{#minus}, VV)",
         color = "#64C0E8",
-        selectOp = sel.signalHistWmass if flavor == "mu" else None,
+        selectOp = sel.signalHistABCD if flavor == "mu" else None,
     )
 
     groups.groups['Zmumu'].color = "#F8CE68"

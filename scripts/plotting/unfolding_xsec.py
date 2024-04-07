@@ -14,11 +14,10 @@ from narf import ioutils
 
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.styles import styles
-from wremnants import plot_tools, histselections as sel
-from wremnants.datasets.datagroups import Datagroups
 from utilities.io_tools import input_tools, output_tools
 from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
-
+from wremnants.datasets.datagroups import Datagroups
+from wremnants import plot_tools
 import pdb
 
 hep.style.use(hep.style.ROOT)
@@ -131,12 +130,12 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     binwnorm = 1 if poi_type not in ["noi", "mu",] else None
     axes_names = hist_xsec.axes.name
     if len(axes_names) > 1:
-        hist_xsec = sel.unrolledHist(hist_xsec, binwnorm=binwnorm, add_flow_bins=args.genFlow)
-        hist_others = [sel.unrolledHist(h, binwnorm=binwnorm, add_flow_bins=args.genFlow) for h in hist_others]
+        hist_xsec = hh.unrolledHist(hist_xsec, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+        hist_others = [hh.unrolledHist(h, binwnorm=binwnorm, add_flow_bins=args.genFlow) for h in hist_others]
         if hist_ref is not None:
-            hist_ref = sel.unrolledHist(hist_ref, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+            hist_ref = hh.unrolledHist(hist_ref, binwnorm=binwnorm, add_flow_bins=args.genFlow)
         if hist_xsec_stat is not None:
-            hist_xsec_stat = sel.unrolledHist(hist_xsec_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+            hist_xsec_stat = hh.unrolledHist(hist_xsec_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
 
     xlabel = get_xlabel(axes_names, proc)
 
@@ -319,8 +318,8 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     # unroll histograms
     binwnorm = 1 if poi_type not in ["noi", "mu",] else None
     if len(axes_names) > 1:
-        hist_err = sel.unrolledHist(hist_err, binwnorm=binwnorm, add_flow_bins=args.genFlow)
-        hist_err_stat = sel.unrolledHist(hist_err_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+        hist_err = hh.unrolledHist(hist_err, binwnorm=binwnorm, add_flow_bins=args.genFlow)
+        hist_err_stat = hh.unrolledHist(hist_err_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
 
     if args.ylim is None:
         if logy:
@@ -362,7 +361,7 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     i=0
     for syst in syst_labels[::-1]:
         if len(axes_names) > 1:
-            hist_err_syst_i = sel.unrolledHist(hist_err_syst[{"syst": syst}], binwnorm=binwnorm, add_flow_bins=args.genFlow)
+            hist_err_syst_i = hh.unrolledHist(hist_err_syst[{"syst": syst}], binwnorm=binwnorm, add_flow_bins=args.genFlow)
         else:
             hist_err_syst_i = hist_err_syst[{"syst": syst}]
 

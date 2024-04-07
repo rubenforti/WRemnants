@@ -234,11 +234,17 @@ jobs:
       - name: wmass plotting
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
+      - name: wmass plot lepton phi
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 10 --logy --baseName leptonPhi --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
+
       - name: wmass plot mt
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName transverseMass --hists mt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot MET
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName MET --hists met -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+
+      - name: wmass plot MET phi
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName METPhi --hists phi -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot Wpt
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.5 --baseName ptW  --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
@@ -278,22 +284,34 @@ jobs:
           --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
 
       - name: lowpu w mu plot ptW
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
-      - name: lowpu w mu plot pt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+      - name: lowpu w mu plot lepton pt
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --baseName lep_pt_eta_phi --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
-      - name: lowpu w mu plot eta
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.5 --baseName lep_eta --hists eta -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+      - name: lowpu w mu plot lepton
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot mt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu combine mt setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE_MU --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
+          -i $HIST_FILE_MU --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
 
       - name: lowpu w mu plot response matrix
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py --axes ptW-ptVGen --procFilters Wmunu -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+        run: >-  
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
+          --axes ptW-ptVGen --procFilters Wmunu -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w e analysis
         run: >-
@@ -301,22 +319,34 @@ jobs:
           --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor e --analysisMode unfolding
 
       - name: lowpu w e plot ptW
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
-      - name: lowpu w e plot pt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName lep_pt --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+      - name: lowpu w e plot lepton pt
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --baseName lep_pt_eta_phi --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
-      - name: lowpu w e plot eta
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.5 --baseName lep_eta --hists eta -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+      - name: lowpu w e plot lepton
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot mt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple 
+          --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e combine mt setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE_E --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
+          -i $HIST_FILE_E --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
 
       - name: lowpu w e plot response matrix
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py --axes ptW-ptVGen --procFilters Wenu -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
+          --axes ptW-ptVGen --procFilters Wenu -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: aggregate combine inputs
         run: |
@@ -420,7 +450,7 @@ jobs:
           lfs: 'true'
 
       - name: lowpu combine unfolding setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --analysisMode unfolding -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix LowPU_ptll --hdf5 --sparse --ewUnc
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --analysisMode unfolding -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix LowPU_ptll --hdf5 --sparse --ewUnc
 
       - name: lowpu combine unfolding fit 
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ unfolding $COMBINED_DIR/Combination_LowPU_ptll Combination.hdf5

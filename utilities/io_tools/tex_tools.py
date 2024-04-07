@@ -5,16 +5,22 @@ logger = logging.child_logger(__name__)
 
 def make_latex_table(df, output_dir="./", output_name="table", column_name="column_name", row_name="dataset",
     caption="Table", label="Model", sublabel="Uncertainty", column_title="Configuration", 
-    cell_columns=["chi2", "pvalue"], color_condition=lambda x, y: y > x, cell_format=lambda x, y: f"${round(x)} ({round(y)})$"
+    cell_columns=["chi2", "pvalue"], color_condition=lambda x, y: y > x, cell_format=lambda x, y: f"${round(x)} ({round(y)})$",
+    sort=[],
 ):
     # df: pandas dataframe
     # cell_columns: columns to fill the cells
     # color_condition: function with condition to color the cell, has to return a boolean
     # cell_format: function with the cell formatting, has to return a string
 
-    df.sort_values(by=[row_name])
+    if len(sort)>0:
+        df.sort_values(by=sort)
 
-    column_names = sorted(set(df[column_name].values))
+    column_names = df[column_name].values
+    if hasattr(column_names, "categories"):
+        column_names = [x for x in column_names.categories]
+    else:
+        column_names = sorted(set(column_names))
 
     outfile=f"{output_dir}/{output_name}.tex"
     logger.info(f"write {outfile}")
