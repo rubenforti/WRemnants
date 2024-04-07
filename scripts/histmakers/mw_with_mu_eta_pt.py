@@ -522,7 +522,7 @@ def build_graph(df, dataset):
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
 
-    if dataset.is_data or isQCDMC:
+    if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
         results.append(nominal)
     else:  
