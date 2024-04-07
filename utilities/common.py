@@ -66,7 +66,7 @@ calib_filepaths = {
     # 'tflite_file': f"{calib_dir}/muon_response_nosmearing.tflite"
 }
 closure_filepaths = {
-    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_newres_MCstat_new.root",
+    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_fullres.root",
     # 'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_simul.root",
     'binned': f"{closure_dir}/closureZ_LBL_smeared_v721.root"
 }
