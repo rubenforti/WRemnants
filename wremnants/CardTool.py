@@ -521,7 +521,7 @@ class CardTool(object):
         # Jan: moved above the mirror action, as this action can cause mirroring
         if systInfo["action"]:
             if systInfo["actionRequiresNomi"]:
-               hvar = systInfo["action"](hvar, hnom, **systInfo["actionArgs"])
+                hvar = systInfo["action"](hvar, hnom, **systInfo["actionArgs"])
             else:
                 hvar = systInfo["action"](hvar, **systInfo["actionArgs"])
         if self.outfile:
