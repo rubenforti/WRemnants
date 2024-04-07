@@ -307,7 +307,7 @@ def make_muon_smearing_helpers(filenamedata = f"{data_dir}/calibration/resolutio
 
     return helper, helper_var
 
-def add_resolution_uncertainty(df, axes, results, nominal_cols, smearing_uncertainty_helper, reco_sel_GF):
+def add_resolution_uncertainty(df, axes, results, nominal_cols, smearing_uncertainty_helper, reco_sel_GF, storage_type=hist.storage.Double()):
 
     if smearing_uncertainty_helper is None:
         return df
@@ -326,7 +326,7 @@ def add_resolution_uncertainty(df, axes, results, nominal_cols, smearing_uncerta
     muonResolutionSyst_responseWeights = df.HistoBoost(
             "nominal_muonResolutionSyst_responseWeights", axes,
             [*nominal_cols, "muonResolutionSyst_weights"],
-            tensor_axes = var_axes, storage=hist.storage.Double()
+            tensor_axes = var_axes, storage=storage_type
         )
     results.append(muonResolutionSyst_responseWeights)
 
@@ -921,7 +921,7 @@ def define_corrected_reco_muon_kinematics(df, muons="goodMuons", kinematic_vars 
 
 def add_jpsi_crctn_stats_unc_hists(
     args, df, axes, results, nominal_cols, nominal_cols_gen_smeared,
-    calib_filepaths, jpsi_crctn_data_unc_helper, smearing_weights_procs, reco_sel_GF, dataset_name, isW
+    calib_filepaths, jpsi_crctn_data_unc_helper, smearing_weights_procs, reco_sel_GF, dataset_name, isW, storage_type=hist.storage.Double()
 ):
     df = df.DefinePerSample("bool_true", "true")
     df = df.DefinePerSample("bool_false", "false")
@@ -1036,14 +1036,14 @@ def add_jpsi_crctn_stats_unc_hists(
             "nominal_muonScaleSyst_responseWeights", axes,
             [*nominal_cols, "nominal_muonScaleSyst_responseWeights_tensor"],
             tensor_axes = jpsi_crctn_data_unc_helper.tensor_axes,
-            storage = hist.storage.Double()
+            storage = storage_type
         )
         results.append(nominal_muonScaleSyst_responseWeights)
     return df
 
 def add_jpsi_crctn_Z_non_closure_hists(
     args, df, nominal_axes, results, nominal_cols, nominal_cols_gen_smeared,
-    z_non_closure_parametrized_helper, z_non_closure_binned_helper, reco_sel_GF
+    z_non_closure_parametrized_helper, z_non_closure_binned_helper, reco_sel_GF, storage_type=hist.storage.Double()
 ):
     if args.muonScaleVariation == 'smearingWeightsSplines':
         input_kinematics = [
@@ -1080,7 +1080,7 @@ def add_jpsi_crctn_Z_non_closure_hists(
             nominal_axes,
             [*nominal_cols_non_closure, "Z_non_closure_parametrized_A"],
             tensor_axes = z_non_closure_parametrized_helper.tensor_axes,
-            storage=hist.storage.Double()
+            storage=storage_type
         )
         results.append(hist_Z_non_closure_parametrized_A)
     if args.nonClosureScheme in ["A-M-separated", "binned-plus-M", "M-only"]:
@@ -1097,7 +1097,7 @@ def add_jpsi_crctn_Z_non_closure_hists(
             nominal_axes,
             [*nominal_cols_non_closure, "Z_non_closure_parametrized_M"],
             tensor_axes = z_non_closure_parametrized_helper.tensor_axes,
-            storage=hist.storage.Double()
+            storage=storage_type
         )
         results.append(hist_Z_non_closure_parametrized_M)
     if args.nonClosureScheme == "A-M-combined":
@@ -1114,7 +1114,7 @@ def add_jpsi_crctn_Z_non_closure_hists(
             nominal_axes,
             [*nominal_cols_non_closure, "Z_non_closure_parametrized"],
             tensor_axes = z_non_closure_parametrized_helper.tensor_axes,
-            storage=hist.storage.Double()
+            storage=storage_type
         )
         results.append(hist_Z_non_closure_parametrized)
     if args.nonClosureScheme in ["binned", "binned-plus-M"]:
@@ -1129,7 +1129,7 @@ def add_jpsi_crctn_Z_non_closure_hists(
             nominal_axes,
             [*nominal_cols_non_closure, "Z_non_closure_binned"],
             tensor_axes = z_non_closure_binned_helper.tensor_axes,
-            storage=hist.storage.Double()
+            storage=storage_type
         )
         results.append(hist_Z_non_closure_binned)
     return df

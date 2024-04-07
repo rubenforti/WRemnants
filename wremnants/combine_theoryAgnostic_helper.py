@@ -56,7 +56,7 @@ class TheoryAgnosticHelper(object):
                                        #splitGroup={f"{groupName}_{coeffKey}" : f"{groupName}_{coeffKey}"}
                                        )
 
-    def add_theoryAgnostic_normVar_uncertainty(self):
+    def add_theoryAgnostic_normVar_uncertainty(self, flow=True):
 
         common_noi_args = dict(
             group = f"normXsec{self.label}",
@@ -89,7 +89,8 @@ class TheoryAgnosticHelper(object):
                                 systAxesFlow=[], # only bins in acceptance in this call
                                 skipEntries=[{"helicitySig" : [6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
                                 preOpMap={
-                                    m.name: (lambda h, scale_hist=scale_hists[m.name]: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}], hh.multiplyHists(hh.addGenericAxis(h,common.down_up_axis, flow=False), hh.rescaleBandVariation(scale_hist,self.args.theoryAgnosticBandSize),flow=False))) if sign in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}]) for g in self.card_tool.procGroups["signal_samples"] for m in self.card_tool.datagroups.groups[g].members},
+                                    m.name: (
+                                        lambda h, scale_hist=scale_hists[m.name]: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}], hh.multiplyHists(hh.addGenericAxis(h,common.down_up_axis, flow=flow), hh.rescaleBandVariation(scale_hist,self.args.theoryAgnosticBandSize),flow=flow))) if sign in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}]) for g in self.card_tool.procGroups["signal_samples"] for m in self.card_tool.datagroups.groups[g].members},
                                 )
             # now OOA
             nuisanceBaseNameOOA = f"{nuisanceBaseName}OOA_"

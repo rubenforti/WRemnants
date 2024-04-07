@@ -1,5 +1,4 @@
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
 from wremnants import plot_tools
 import matplotlib.pyplot as plt
 import argparse
@@ -42,7 +41,7 @@ combine_files_root_dir = os.environ['combine_files_dir']
 
 if args.channels == "all": chns = ['plus', 'minus']
 else: chns = args.channels.split(",")
-if args.observable == "unrolled": action = lambda x: sel.unrolledHist(x)
+if args.observable == "unrolled": action = lambda x: hh.unrolledHist(x)
 else: action = lambda x: x.project(args.observable)
 
 for chn in chns:

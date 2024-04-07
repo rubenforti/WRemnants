@@ -16,6 +16,7 @@ import math
 import numpy as np
 
 from wremnants.datasets.datagroup import Datagroup
+from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
 
@@ -66,11 +67,10 @@ class Datagroups(object):
         self.rebinBeforeSelection = False
         self.globalAction = None
         self.unconstrainedProcesses = []
-        self.fakeName = "Fake"
+        self.fakeName = "Fake" + (f"_{self.flavor}" if self.flavor is not None else '')
         self.dataName = "Data"
         self.gen_axes = {}
         self.fakerate_axes = ["pt", "eta", "charge"]
-        self.fakerate_integration_axes = []
 
         self.setGenAxes()
 
@@ -146,6 +146,7 @@ class Datagroups(object):
                 logger.warning(f"Did not find group {g}. continue without merging it to new group {new_name}.")
         if len(groups_to_merge) < 1:
             logger.warning(f"No groups to be merged. continue without merging.")
+            return
         if new_name != groups_to_merge[0]:
             self.copyGroup(groups_to_merge[0], new_name)
         self.groups[new_name].label = styles.process_labels.get(new_name, new_name)
@@ -196,11 +197,39 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def setFakerateIntegrationAxes(self, axes=[]):
-        for group in self.groups.values():
-            if group.selectOpArgs is not None and "fakerate_integration_axes" in group.selectOpArgs:
-                logger.info(f"Set fakerate_integration_axes={axes} for {group.name}")
-                group.selectOpArgs["fakerate_integration_axes"] = axes
+    def set_histselectors(self, 
+        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
+    ):
+        logger.info(f"Set histselector")
+        if self.mode not in ["wmass", "lowpu_w"]:
+            return # histselectors only implemented for single lepton (with fakes)
+        auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
+        signalselector = sel.SignalSelectorABCD
+        if mode == "extended1D":
+            fakeselector = sel.FakeSelector1DExtendedABCD
+        elif mode == "extended2D":
+            fakeselector = sel.FakeSelector2DExtendedABCD
+            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x=None))
+        elif mode == "extrapolate":
+            fakeselector = sel.FakeSelectorExtrapolateABCD
+        elif mode == "simple":
+            if simultaneousABCD:
+                fakeselector = sel.FakeSelectorSimultaneousABCD
+            else:
+                fakeselector = sel.FakeSelectorSimpleABCD
+        else:
+            raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
+        fake_processes = [self.fakeName] if fake_processes is None else fake_processes
+        for i, g in enumerate(group_names):
+            members = self.groups[g].members[:]
+            if len(members) == 0:
+                raise RuntimeError(f"No member found for group {g}")
+            base_member = members[0].name
+            h = self.results[base_member]["output"][histToRead].get()
+            if g in fake_processes:
+                self.groups[g].histselector = fakeselector(h, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
+            else:
+                self.groups[g].histselector = signalselector(h, fakerate_axes=self.fakerate_axes, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.
@@ -254,7 +283,7 @@ class Datagroups(object):
     ## baseName takes values such as "nominal"
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=True, preOpMap=None, preOpArgs={}, 
+        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
         scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -320,7 +349,6 @@ class Datagroups(object):
                         continue
 
                 h_id = id(h)
-
                 logger.debug(f"Hist axes are {h.axes.name}")
 
                 if group.memberOp:
@@ -374,7 +402,7 @@ class Datagroups(object):
                         logger.debug(f"Summing hist {read_syst} for {member.name} to {self.fakeName} with scale = {scaleProcForFake}")
                         hProcForFake = scaleProcForFake * h
                         histForFake = hh.addHists(histForFake, hProcForFake, createNew=False) if histForFake else hProcForFake
-                                
+
                 # The following must be done when the group is not Fake, or when the previous part for fakes was not done
                 # For fake this essentially happens when the process doesn't have the syst, so that the nominal is used
                 if procName != self.fakeName or (procName == self.fakeName and not hasPartialSumForFake):
@@ -399,12 +427,13 @@ class Datagroups(object):
                 logger.debug(f"Apply rebin operation for process {procName}")
                 group.hists[label] = self.rebinOp(group.hists[label])
 
-            if group.selectOp:
+            if group.histselector is not None:
                 if not applySelection:
                     logger.warning(f"Selection requested for process {procName} but applySelection=False, thus it will be ignored")
                 elif label in group.hists.keys() and group.hists[label] is not None:
-                    logger.debug(f"Apply selection for process {procName}")
-                    group.hists[label] = group.selectOp(group.hists[label], **group.selectOpArgs)
+                    group.hists[label] = group.histselector.get_hist(group.hists[label], is_nominal=(label==self.nominalName))
+                else:
+                    raise RuntimeError("Failed to apply selection")
 
             if self.rebinOp and not self.rebinBeforeSelection:
                 logger.debug(f"Apply rebin operation for process {procName}")
@@ -630,6 +659,12 @@ class Datagroups(object):
             raise ValueError("Inconsistent rebin or axlim arguments. axlim must be at most two entries per axis, and rebin at most one")
         self.rebinBeforeSelection = rebin_before_selection
 
+        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
+            if absval:
+                logger.info(f"Taking the absolute value of axis '{var}'")
+                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
+                axes[i] = f"abs{var}" if rename else var
+
         def rebin(h, axes, lows=[], highs=[], rebins=[]):
             sel = {}
             for ax,low,high,rebin in itertools.zip_longest(axes, lows, highs, rebins):
@@ -646,11 +681,6 @@ class Datagroups(object):
         if len(ax_lim)>0 or len(ax_rebin)>0:
             self.setRebinOp(lambda h,axes=axes,lows=ax_lim[::2],highs=ax_lim[1::2],rebins=ax_rebin: rebin(h, axes, lows, highs, rebins))
 
-        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
-            if absval:
-                logger.info(f"Taking the absolute value of axis '{var}'")
-                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
-                axes[i] = f"abs{var}" if rename else var
 
     def readHist(self, baseName, proc, group, syst):
         output = self.results[proc.name]["output"]
