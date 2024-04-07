@@ -193,8 +193,8 @@ def make_muon_smearing_helpers_binned(filename = f"{data_dir}/calibration/smeari
 
     return helper, helper_var
 
-def make_muon_smearing_helpers(filenamedata = f"{data_dir}/calibration/resolutionDATA_LBL_JZ_deltaphim_d50.root",
-                               filenamemc = f"{data_dir}/calibration/resolutionMC_LBL_JZ_deltaphim_d50.root",
+def make_muon_smearing_helpers(filenamedata = f"{data_dir}/calibration/resolutionDATA_LBL_JZ_deltaphim_Apr3.root",
+                               filenamemc = f"{data_dir}/calibration/resolutionMC_LBL_JZ_deltaphim_Apr3.root",
                                override_d = None,
                                dummy_vars = False):
     # this helper smears muon pT to match the resolution in data

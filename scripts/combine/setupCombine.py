@@ -100,9 +100,9 @@ def make_parser(parser=None):
     parser.add_argument("--muonScaleVariation", choices=["smearingWeights", "massWeights", "manualShift"], default="smearingWeights", help="the method with which the muon scale variation histograms are derived")
     parser.add_argument("--scaleMuonCorr", type=float, default=1.0, help="Scale up/down dummy muon scale uncertainty by this factor")
     parser.add_argument("--correlatedNonClosureNuisances", action='store_true', help="get systematics from histograms for the Z non-closure nuisances without decorrelation in eta and pt")
-    parser.add_argument("--calibrationStatScaling", type=float, default=2.2, help="scaling of calibration statistical uncertainty")
+    parser.add_argument("--calibrationStatScaling", type=float, default=2.0, help="scaling of calibration statistical uncertainty")
     parser.add_argument("--correlatedAdHocA", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on b-field term A (in addition to Z pdg mass)")
-    parser.add_argument("--correlatedAdHocM", type=float, default=3.5e-6, help="fully correlated ad-hoc uncertainty on alignment term M")
+    parser.add_argument("--correlatedAdHocM", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on alignment term M")
     parser.add_argument("--noEfficiencyUnc", action='store_true', help="Skip efficiency uncertainty (useful for tests, because it's slow). Equivalent to --excludeNuisances '.*effSystTnP|.*effStatTnP' ")
     parser.add_argument("--effStatLumiScale", type=float, default=None, help="Rescale equivalent luminosity for efficiency stat uncertainty by this value (e.g. 10 means ten times more data from tag and probe)")
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
@@ -888,15 +888,16 @@ def setup(args, inputFile, fitvar, xnorm=False):
         passToFakes=passSystToFakes,
         scale = scaleA,
     )
-    cardTool.addSystematic("muonScaleClosMSyst_responseWeights",
-        processes=['single_v_samples'],
-        group="scaleClosMCrctn",
-        splitGroup={f"muonCalibration" : f".*"},
-        baseName="ScaleClosM_correction_",
-        systAxes=["unc", "downUpVar"],
-        passToFakes=passSystToFakes,
-        scale = scaleM,
-    )
+    if abs(scaleM) > 0.:
+        cardTool.addSystematic("muonScaleClosMSyst_responseWeights",
+            processes=['single_v_samples'],
+            group="scaleClosMCrctn",
+            splitGroup={f"muonCalibration" : f".*"},
+            baseName="ScaleClosM_correction_",
+            systAxes=["unc", "downUpVar"],
+            passToFakes=passSystToFakes,
+            scale = scaleM,
+        )
     if not input_tools.args_from_metadata(cardTool, "noSmearing"):
         cardTool.addSystematic("muonResolutionSyst_responseWeights", 
             mirror = True,
