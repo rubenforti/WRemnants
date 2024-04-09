@@ -655,32 +655,10 @@ class Datagroups(object):
         return df
 
     def set_rebin_action(self, axes, ax_lim=[], ax_rebin=[], ax_absval=[], rebin_before_selection=False, rename=True):
-        if len(ax_lim) % 2 or len(ax_lim)/2 > len(axes) or len(ax_rebin) > len(axes):
-            raise ValueError("Inconsistent rebin or axlim arguments. axlim must be at most two entries per axis, and rebin at most one")
         self.rebinBeforeSelection = rebin_before_selection
 
-        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
-            if absval:
-                logger.info(f"Taking the absolute value of axis '{var}'")
-                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
-                axes[i] = f"abs{var}" if rename else var
-
-        def rebin(h, axes, lows=[], highs=[], rebins=[]):
-            sel = {}
-            for ax,low,high,rebin in itertools.zip_longest(axes, lows, highs, rebins):
-                if low is not None and high is not None:
-                    # in case high edge is upper edge of last bin we need to manually set the upper limit
-                    upper = hist.overflow if high==h.axes[ax].edges[-1] else complex(0, high) 
-                    logger.info(f"Restricting the axis '{ax}' to range [{low}, {high}]")
-                    sel[ax] = slice(complex(0, low), upper, hist.rebin(rebin) if rebin else None)
-                elif rebin:
-                    logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
-                    sel[ax] = slice(None,None,hist.rebin(rebin))
-            return h[sel] if len(sel)>0 else h
-
-        if len(ax_lim)>0 or len(ax_rebin)>0:
-            self.setRebinOp(lambda h,axes=axes,lows=ax_lim[::2],highs=ax_lim[1::2],rebins=ax_rebin: rebin(h, axes, lows, highs, rebins))
-
+        for a in hh.get_rebin_actions(axes, ax_lim=ax_lim, ax_rebin=ax_rebin, ax_absval=ax_absval, rename=rename):
+            self.setRebinOp(a)
 
     def readHist(self, baseName, proc, group, syst):
         output = self.results[proc.name]["output"]
