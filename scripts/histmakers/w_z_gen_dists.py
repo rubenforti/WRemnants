@@ -236,40 +236,48 @@ def build_graph(df, dataset):
             if args.applySelection:
                 # histograms for comparisons to unfolded results; apply acceptance cuts on pre/post FSR objects
                 if isZ:
+                    mass_min = 60
+                    mass_max = 120
+                    pt_min = 26
+                    pt_max = 60
+                    mt_min = 45
+                    ptV_max = 100
+                    absY_max = 2.5
                     # mz_wlike_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df_fiducial_postFSR = df.Filter("""
-                        postfsrOtherLep_pt>26 && postfsrOtherLep_pt<60 
-                        && postfsrOtherLep_absEta<2.4
-                        && postfsrMV > 60 && postfsrMV < 120
-                        && postfsrMT > 45
-                        """)
-                    df_fiducial_preFSR = df.Filter("""
-                        ptOthergen>26 && ptOthergen<60 
+                    df_fiducial_preFSR = df.Filter(f"""
+                        ptOthergen>{pt_min} && ptOthergen<{pt_max} 
                         && absetaOthergen<2.4
-                        && massVgen > 60 && massVgen < 120
-                        && mTVgen > 45
+                        && massVgen > {mass_min} && massVgen < {mass_max}
+                        && mTVgen > {mt_min}
+                        """)
+                    df_fiducial_postFSR = df.Filter(f"""
+                        postfsrOtherLep_pt>{pt_min} && postfsrOtherLep_pt<{pt_max} 
+                        && postfsrOtherLep_absEta<2.4
+                        && postfsrMV > {mass_min} && postfsrMV < {mass_max}
+                        && postfsrMT > {mt_min}
                         """)
                     # Z dilepton selection
-                    df_fiducial_preFSR_dilepton = df.Filter("""
+                    df_fiducial_preFSR_dilepton = df.Filter(f"""
                         (std::fabs(genl.eta()) < 2.4) && (std::fabs(genlanti.eta()) < 2.4) 
-                        && (genl.pt() > 26) && (genlanti.pt() > 26) 
-                        && (genl.pt() < 60) && (genlanti.pt() < 60) 
-                        && (massVgen > 60) && (massVgen < 120)
-                        && (ptVgen < 100) && (absYVgen < 2.5)
+                        && (genl.pt() > {pt_min}) && (genlanti.pt() > {pt_min}) 
+                        && (genl.pt() < {pt_max}) && (genlanti.pt() < {pt_max}) 
+                        && (massVgen > {mass_min}) && (massVgen < {mass_max})
+                        && (ptVgen < {ptV_max}) && (absYVgen < {absY_max})
                         """)
-                    df_fiducial_postFSR_dilepton = df.Filter("""
+                    df_fiducial_postFSR_dilepton = df.Filter(f"""
                         (postfsrLep_absEta < 2.4) && (postfsrOtherLep_absEta < 2.4) 
-                        && (postfsrLep_pt > 26) && (postfsrOtherLep_pt > 26) 
-                        && (postfsrLep_pt < 60) && (postfsrOtherLep_pt < 60) 
-                        && (postfsrMV > 60) && (postfsrMV < 120)
-                        && (postfsrPTV < 100) && (postfsrabsYV < 2.5)
+                        && (postfsrLep_pt > {pt_min}) && (postfsrOtherLep_pt > {pt_min}) 
+                        && (postfsrLep_pt < {pt_max}) && (postfsrOtherLep_pt < {pt_max}) 
+                        && (postfsrMV > {mass_min}) && (postfsrMV < {mass_max})
+                        && (postfsrPTV < {ptV_max}) && (postfsrabsYV < {absY_max})
                         """)
-                    results.append(df_fiducial_postFSR_dilepton.HistoBoost("dilepton_prefsr", [gen_axes["ptVGen"], gen_axes["absYVGen"]], ["ptVgen", "absYVgen", "nominal_weight"], storage=hist.storage.Weight()))
+                    results.append(df_fiducial_preFSR_dilepton.HistoBoost("dilepton_prefsr", [gen_axes["ptVGen"], gen_axes["absYVGen"]], ["ptVgen", "absYVgen", "nominal_weight"], storage=hist.storage.Weight()))
                     results.append(df_fiducial_postFSR_dilepton.HistoBoost("dilepton_postfsr", [gen_axes["ptVGen"], gen_axes["absYVGen"]], ["postfsrPTV", "postfsrabsYV", "nominal_weight"], storage=hist.storage.Weight()))
                 elif isW:
                     # mw_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df_fiducial_preFSR = df.Filter("mTVgen > 40")
-                    df_fiducial_postFSR = df.Filter("postfsrMT > 40")
+                    mt_min = 40
+                    df_fiducial_preFSR = df.Filter(f"mTVgen > {mt_min}")
+                    df_fiducial_postFSR = df.Filter(f"postfsrMT > {mt_min}")
 
                 axis_eta = hist.axis.Regular(24, 0, 2.4, name = "postfsrLep_absEta", overflow=True, underflow=False)
                 axis_pt = hist.axis.Regular(30, 26, 56, name = "postfsrLep_pt", overflow=True, underflow=True)
