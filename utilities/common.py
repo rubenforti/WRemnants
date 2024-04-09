@@ -314,7 +314,7 @@ def common_parser(for_reco_highPU=False):
                     raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
                 else:
                     sfFile = "allSmooth_2018_vtxAgnIso.root"
-            elif commonargs.era == "2017": ### FYI this is to FIXED!!!!!!!!!! (with noScaleFactors, this line has no effect eventually)
+            elif commonargs.era == "2017": 
                 if commonargs.isolationDefinition == "iso04":
                     raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
                 else:
