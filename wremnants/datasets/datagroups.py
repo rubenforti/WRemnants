@@ -209,7 +209,7 @@ class Datagroups(object):
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
-            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x=None))
+            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x="automatic" if smoothen else None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
