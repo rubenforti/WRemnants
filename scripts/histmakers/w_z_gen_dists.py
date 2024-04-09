@@ -93,6 +93,9 @@ axis_chargeZgen = hist.axis.Integer(
 axis_l_eta_gen = hist.axis.Regular(48, -2.4, 2.4, name = "eta")
 axis_l_pt_gen = hist.axis.Regular(29, 26., 55., name = "pt")
 
+# dilepton gen axes used in unfolding
+gen_axes = common.get_gen_axes(flow=False)
+
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
 
@@ -166,7 +169,7 @@ def build_graph(df, dataset):
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
         axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
-        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "dilepton")
+        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "wlike")
         results.append(df.HistoBoost("dressed_MllPTll", [axis_ewMll, axis_ewPtll], ["dressed_MV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllPTll", [axis_ewAbsYll, axis_ewPtll], ["dressed_absYV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllMll", [axis_ewAbsYll, axis_ewMll], ["dressed_absYV", "dressed_MV", "nominal_weight"], storage=hist.storage.Weight()))
@@ -231,30 +234,47 @@ def build_graph(df, dataset):
                 results.append(df.HistoBoost("nominal_trailPhoton", [axis_photonPt, axis_photonEta], ["trailPhotonPt", "trailPhotonEta", "nominal_weight"], storage=hist.storage.Weight()))
 
             if args.applySelection:
-                # for fiducial EW corrections
-                # apply acceptance cuts on post FSR objects
+                # histograms for comparisons to unfolded results; apply acceptance cuts on pre/post FSR objects
                 if isZ:
                     # mz_wlike_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wlike")
-                    df_fiducial = df.Filter(f"""
+                    df_fiducial_postFSR = df.Filter("""
                         postfsrOtherLep_pt>26 && postfsrOtherLep_pt<60 
-                        && postfsrOtherLep_absEta<2.5
+                        && postfsrOtherLep_absEta<2.4
                         && postfsrMV > 60 && postfsrMV < 120
                         && postfsrMT > 45
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
                         """)
+                    df_fiducial_preFSR = df.Filter("""
+                        ptOthergen>26 && ptOthergen<60 
+                        && absetaOthergen<2.4
+                        && massVgen > 60 && massVgen < 120
+                        && mTVgen > 45
+                        """)
+                    # Z dilepton selection
+                    df_fiducial_preFSR_dilepton = df.Filter("""
+                        (std::fabs(genl.eta()) < 2.4) && (std::fabs(genlanti.eta()) < 2.4) 
+                        && (genl.pt() > 26) && (genlanti.pt() > 26) 
+                        && (genl.pt() < 60) && (genlanti.pt() < 60) 
+                        && (massVgen > 60) && (massVgen < 120)
+                        && (ptVgen < 100) && (absYVgen < 2.5)
+                        """)
+                    df_fiducial_postFSR_dilepton = df.Filter("""
+                        (postfsrLep_absEta < 2.4) && (postfsrOtherLep_absEta < 2.4) 
+                        && (postfsrLep_pt > 26) && (postfsrOtherLep_pt > 26) 
+                        && (postfsrLep_pt < 60) && (postfsrOtherLep_pt < 60) 
+                        && (postfsrMV > 60) && (postfsrMV < 120)
+                        && (postfsrPTV < 100) && (postfsrabsYV < 2.5)
+                        """)
+                    results.append(df_fiducial_postFSR_dilepton.HistoBoost("dilepton_prefsr", [gen_axes["ptVGen"], gen_axes["absYVGen"]], ["ptVgen", "absYVgen", "nominal_weight"], storage=hist.storage.Weight()))
+                    results.append(df_fiducial_postFSR_dilepton.HistoBoost("dilepton_postfsr", [gen_axes["ptVGen"], gen_axes["absYVGen"]], ["postfsrPTV", "postfsrabsYV", "nominal_weight"], storage=hist.storage.Weight()))
                 elif isW:
                     # mw_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wmass")
-                    df_fiducial = df.Filter(f"""
-                        postfsrMT > 40
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
-                        """)
+                    df_fiducial_preFSR = df.Filter("mTVgen > 40")
+                    df_fiducial_postFSR = df.Filter("postfsrMT > 40")
 
-                # postfsr definition
-                axis_eta = hist.axis.Regular(25, 0, 2.5, name = "postfsrLep_absEta", overflow=True, underflow=False)
-                axis_pt = hist.axis.Regular(50, 20, 70, name = "postfsrLep_pt", overflow=True, underflow=True)
-                results.append(df_fiducial.HistoBoost("nominal_postfsr", [axis_eta, axis_pt], ["postfsrLep_absEta", "postfsrLep_pt", "nominal_weight"], storage=hist.storage.Weight()))
+                axis_eta = hist.axis.Regular(24, 0, 2.4, name = "postfsrLep_absEta", overflow=True, underflow=False)
+                axis_pt = hist.axis.Regular(30, 26, 56, name = "postfsrLep_pt", overflow=True, underflow=True)
+                results.append(df_fiducial_preFSR.HistoBoost("nominal_prefsr", [axis_eta, axis_pt], ["absetagen", "ptgen", "nominal_weight"], storage=hist.storage.Weight()))
+                results.append(df_fiducial_postFSR.HistoBoost("nominal_postfsr", [axis_eta, axis_pt], ["postfsrLep_absEta", "postfsrLep_pt", "nominal_weight"], storage=hist.storage.Weight()))
 
     if 'powheg' in dataset.name:
         return results, weightsum

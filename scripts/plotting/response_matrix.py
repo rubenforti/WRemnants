@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
+outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
 groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'])
 

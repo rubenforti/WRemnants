@@ -54,7 +54,8 @@ mass_min = 60
 mass_max = 120
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
-dilepton_ptV_binning = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not args.finePtBinning else range(60)
+
+dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 # available axes for dilepton validation plots
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -100,16 +101,10 @@ if args.csVarsHist:
 
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
-gen_axes = {
-    "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=isPoiAsNoi),
-    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=isPoiAsNoi),  
-}
-
 if isUnfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes, add_out_of_acceptance_axis=isPoiAsNoi)
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning), add_out_of_acceptance_axis=isPoiAsNoi)
     if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
-
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -226,8 +221,8 @@ def build_graph(df, dataset):
         df = df.Alias("muonsPlus_pt0", "nonTrigMuons_pt0")
         df = df.Alias("muonsMinus_eta0", "trigMuons_eta0")
         df = df.Alias("muonsPlus_eta0", "nonTrigMuons_eta0")
-        df = df.Alias("muonsMinus_mon4", "trigMuons_mom4")
-        df = df.Alias("muonsPlus_mon4", "nonTrigMuons_mom4")
+        df = df.Alias("muonsMinus_mom4", "trigMuons_mom4")
+        df = df.Alias("muonsPlus_mom4", "nonTrigMuons_mom4")
     else:
         df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons", era=era)
         df = df.Define("trigMuon_isNegative",  "trigMuons_charge0 == -1")
@@ -235,8 +230,8 @@ def build_graph(df, dataset):
         df = df.Define("muonsPlus_pt0",   "trigMuon_isNegative ? nonTrigMuons_pt0 : trigMuons_pt0")
         df = df.Define("muonsMinus_eta0", "trigMuon_isNegative ? trigMuons_eta0 : nonTrigMuons_eta0")
         df = df.Define("muonsPlus_eta0",  "trigMuon_isNegative ? nonTrigMuons_eta0 : trigMuons_eta0")
-        df = df.Define("muonsMinus_mon4", "trigMuon_isNegative ? trigMuons_mom4 : nonTrigMuons_mom4")
-        df = df.Define("muonsPlus_mon4",  "trigMuon_isNegative ? nonTrigMuons_mom4 : trigMuons_mom4")
+        df = df.Define("muonsMinus_mom4", "trigMuon_isNegative ? trigMuons_mom4 : nonTrigMuons_mom4")
+        df = df.Define("muonsPlus_mom4",  "trigMuon_isNegative ? nonTrigMuons_mom4 : trigMuons_mom4")
     
     df = df.Define("ptll", "ll_mom4.pt()")
     df = df.Define("yll", "ll_mom4.Rapidity()")
@@ -256,7 +251,7 @@ def build_graph(df, dataset):
     df = df.Define("etaSum", "muonsPlus_eta0 + muonsMinus_eta0") 
     df = df.Define("etaDiff", "muonsPlus_eta0 - muonsMinus_eta0") # plus - minus 
 
-    df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mon4, muonsMinus_mon4)")
+    df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mom4, muonsMinus_mom4)")
     df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
     df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
 

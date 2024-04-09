@@ -288,12 +288,17 @@ def define_prefsr_vars(df, mode=None):
     df = df.Define("phiVgen", "genV.Phi()")
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define("chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]")
-    df = df.Define("csSineCosThetaPhi", "wrem::csSineCosThetaPhi(genlanti, genl)")
+    df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
 
-    # define gen lepton in wlike case for ew corrections
+    # define w and w-like variables 
+    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
     df = df.Define("ptgen", "isEvenEvent ? genl.pt() : genlanti.pt()")
     df = df.Define("etagen", "isEvenEvent ? genl.eta() : genlanti.eta()")
-    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
+    df = df.Define("absetagen", "std::fabs(etagen)")
+    df = df.Define("ptOthergen", "isEvenEvent ? genlanti.pt() : genl.pt()")
+    df = df.Define("etaOthergen", "isEvenEvent ? genlanti.eta() : genl.eta()")
+    df = df.Define("absetaOthergen", "std::fabs(etaOthergen)")
+    df = df.Define("mTVgen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
 
     return df
 
@@ -371,6 +376,7 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define('postfsrGenV_mom4', 'postfsrLep_mom4 + postfsrAntiLep_mom4')
             df = df.Define('postfsrMV', 'postfsrGenV_mom4.mass()')
             df = df.Define('postfsrYV', 'postfsrGenV_mom4.Rapidity()')
+            df = df.Define('postfsrabsYV', 'std::fabs(postfsrYV)')
             df = df.Define('postfsrPTV', 'postfsrGenV_mom4.pt()')
 
         if mode == "wmass":
@@ -574,7 +580,7 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
         helper = dataset_helpers[generator]
 
         if "Helicity" in generator:
-            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight_uncorr"])
+            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight_uncorr"])
         else:
             df = define_theory_corr_weight_column(df, generator)
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", f"{generator}_corr_weight"])

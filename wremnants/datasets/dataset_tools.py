@@ -137,53 +137,6 @@ def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_dat
     logger.debug(f"Length of list is {len(toreturn)} for paths {expandedPaths}")
     return toreturn
 
-def selectProc(selection, datasets):
-    if any(selection == x.group for x in datasets):
-        # if the selection matches any of the group names in the given dataset, the selection is applied to groups
-        return list(filter(lambda x, s=selection: x.group is not None and x.group == s, datasets))
-    else:
-        # otherwise, the selection is applied to sample names
-        return list(filter(lambda x, s=selection: s in x.name, datasets))
-
-def selectProcs(selections, datasets):
-    new_datasets = []
-    for selection in selections:
-        new_datasets += selectProc(selection, datasets)
-
-    # remove duplicates selected by multiple filters
-    new_datasets = list(set(new_datasets))
-    return new_datasets
-
-def filterProcs(filters, datasets):
-    if filters:
-        if isinstance(filters, list):
-            new_datasets = selectProcs(filters, datasets)
-        elif isinstance(filters, str):
-            new_datasets = selectProc(filters, datasets)
-        else:
-            new_datasets = list(filter(filters, datasets))
-    else:
-        return datasets
-
-    if len(new_datasets) == 0:
-        logger.warning("Try to filter processes/groups but didn't find any match. Continue without filtering.")
-        return datasets
-
-    return new_datasets
-
-def excludeProcs(excludes, datasets):
-    if excludes:
-        if isinstance(excludes, list):
-            # remove selected datasets
-            return list(filter(lambda x: x not in selectProcs(excludes, datasets), datasets))
-        elif isinstance(excludes, str):
-            # remove selected datasets
-            return list(filter(lambda x: x not in selectProc(excludes, datasets), datasets))
-        else:
-            return list(filter(excludes, datasets))
-    else:
-        return datasets
-
 def getDataPath(mode=None):
     import socket
     hostname = socket.gethostname()
@@ -247,6 +200,11 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
 
     narf_datasets = []
     for sample,info in dataDict.items():
+        if filt not in [None,[]] and not (info["group"] in filt or sample in filt):
+            continue
+        if excl not in [None,[]] and (info["group"] in excl or sample in excl):
+            continue
+
         if sample in genDataDict:
             base_path = base_path.replace("NanoAOD", "NanoGen")
 
@@ -288,9 +246,6 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
                 )
             )
         narf_datasets.append(narf.Dataset(**narf_info))
-
-    narf_datasets = filterProcs(filt, narf_datasets)
-    narf_datasets = excludeProcs(excl, narf_datasets)
 
     for sample in narf_datasets:
         if not sample.filepaths:

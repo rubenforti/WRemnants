@@ -83,12 +83,12 @@ def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuo
         
     return df
 
-def select_z_candidate(df, mass_min=60, mass_max=120, name_first="trigMuons", name_second="nonTrigMuons"):
+def select_z_candidate(df, mass_min=60, mass_max=120, name_first="trigMuons", name_second="nonTrigMuons", mass="wrem::muon_mass"):
 
     df = df.Filter(f"Sum({name_first}) == 1 && Sum({name_second}) == 1")
 
-    df = df.Define(f"{name_first}_mom4", f"ROOT::Math::PtEtaPhiMVector({name_first}_pt0, {name_first}_eta0, {name_first}_phi0, wrem::muon_mass)")
-    df = df.Define(f"{name_second}_mom4", f"ROOT::Math::PtEtaPhiMVector({name_second}_pt0, {name_second}_eta0, {name_second}_phi0, wrem::muon_mass)")
+    df = df.Define(f"{name_first}_mom4", f"ROOT::Math::PtEtaPhiMVector({name_first}_pt0, {name_first}_eta0, {name_first}_phi0, {mass})")
+    df = df.Define(f"{name_second}_mom4", f"ROOT::Math::PtEtaPhiMVector({name_second}_pt0, {name_second}_eta0, {name_second}_phi0, {mass})")
     df = df.Define("ll_mom4", f"ROOT::Math::PxPyPzEVector({name_first}_mom4)+ROOT::Math::PxPyPzEVector({name_second}_mom4)")
     df = df.Define("mll", "ll_mom4.mass()")
 
