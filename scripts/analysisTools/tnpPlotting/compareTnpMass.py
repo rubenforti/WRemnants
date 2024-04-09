@@ -4,10 +4,10 @@
 # example:
 # python w-mass-13TeV/compareTnpMass.py /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_data_vertexWeights1_oscharge0.root /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_mc_vertexWeights1_oscharge0.root plots/TnP/Steve_Marc_Raj/testTrackerMuons/tracking/ --zbin 1 3
 
-
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -39,21 +39,30 @@ if __name__ == "__main__":
     parser.add_argument(     "--zbin", type=int, nargs=2, default=[0, 0], help="Bins for z axis to plot, default is to do all")
     parser.add_argument(     "--showAllProbesMC", action='store_true', help="Show sum of failing and passing probes for MC (when not using --plotPassProbes, and it only works for steps where standalone muons were used)")
     parser.add_argument(     "--plotPassProbes", action='store_true', help="Plot passing probes instead of failing probes")
+    parser.add_argument(     "--plotPassAltProbes", action='store_true', help="Plot passing probes instead of failing probes")
     args = parser.parse_args()
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
     ROOT.TH1.SetDefaultSumw2()
+
+    if args.showAllProbesMC:
+        if args.plotPassAltProbes or args.plotPassProbes:
+            logger.error("Can't use --plotPassProbes or --plotPassAltProbes with --showAllProbesMC")
+            quit()
 
     outdir_original = args.outputfolder[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
-    probeType = "pass" if args.plotPassProbes else "fail"
-    
+    probeType = "passAlt" if args.plotPassAltProbes else "pass" if args.plotPassProbes else "fail"
+    probeTypeHist = "pass" if (args.plotPassAltProbes or args.plotPassProbes) else "fail"
+    passAltNamePostfix = "_alt" if probeType == "passAlt" else ""
+
     f = safeOpenFile(args.inputfileData[0])
-    hdata3D = safeGetObject(f, f"{probeType}_mu_RunGtoH")
+    hdata3D = safeGetObject(f, f"{probeTypeHist}_mu_RunGtoH{passAltNamePostfix}")
     f.Close()
-    
+
     f = safeOpenFile(args.inputfileMC[0])
-    hmc3D = safeGetObject(f, f"{probeType}_mu_DY_postVFP")
+    hmc3D = safeGetObject(f, f"{probeTypeHist}_mu_DY_postVFP{passAltNamePostfix}")
     hmcTot3D = copy.deepcopy(hmc3D.Clone("all_mu_DY_postVFP"))
     if args.showAllProbesMC:
         try:
@@ -64,14 +73,13 @@ if __name__ == "__main__":
     else:
         hmcalt3D = None
     f.Close()
-    
 
     hists = [hmcTot3D, hmc3D, hdata3D]
     for h in hists:
         if args.rebinX > 1: h.RebinX(args.rebinX)
         if args.rebinY > 1: h.RebinY(args.rebinY)
         if args.rebinZ > 1: h.RebinZ(args.rebinZ)
-    
+
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 900, 800)
     canvas.SetTickx(1)
@@ -81,8 +89,8 @@ if __name__ == "__main__":
     canvas.SetRightMargin(0.04)
     canvas.cd()
 
-    print(f"{hmcTot3D.GetNbinsZ()} eta bins")
-    print(f"{hmcTot3D.GetNbinsY()} pt  bins")
+    logger.info(f"{hmcTot3D.GetNbinsZ()} eta bins")
+    logger.info(f"{hmcTot3D.GetNbinsY()} pt  bins")
 
     iymin = 1
     iymax = hmcTot3D.GetNbinsY()
@@ -93,7 +101,7 @@ if __name__ == "__main__":
     izmax = hmcTot3D.GetNbinsZ()
     if args.zbin[0] > 0 and args.zbin[1] > 0:
         izmin,izmax = args.zbin
-    
+
     for ieta in range(1, 1 + hmcTot3D.GetNbinsZ()):
         if not (izmin <= ieta <= izmax):
             continue
@@ -115,9 +123,9 @@ if __name__ == "__main__":
             hdata.SetMarkerStyle(20)
             hdata.SetMarkerSize(1)
 
-            hmcTotScale = hdata.Integral()/hmcTot.Integral()
+            hmcTotScale = hdata.Integral()/hmcTot.Integral() if hmcTot.Integral() > 0.0 else 1.0
             hmcTot.Scale(hmcTotScale)
-            hmcScale = hdata.Integral()/hmc.Integral()
+            hmcScale = hdata.Integral()/hmc.Integral() if hmc.Integral() > 0.0 else 1.0
             hmc.Scale(hmcScale)
 
             miny, maxy =  getMinMaxMultiHisto([hdata, hmc, hmcTot] if args.showAllProbesMC else [hdata, hmc], excludeEmpty=False, sumError=False)
@@ -146,7 +154,7 @@ if __name__ == "__main__":
             header = "{} < #eta < {}".format(round(hmcTot3D.GetZaxis().GetBinLowEdge(ieta),1), round(hmcTot3D.GetZaxis().GetBinUpEdge(ieta),1))
             header += "   ---   "
             header += "{} < p_{{T}} < {} GeV".format(round(hmcTot3D.GetYaxis().GetBinLowEdge(ipt),0), round(hmcTot3D.GetYaxis().GetBinUpEdge(ipt),0))
-            
+
             leg = ROOT.TLegend(0.2, 0.78 if args.showAllProbesMC else 0.82, 0.9, 0.9)
             leg.SetNColumns(3)
             leg.SetFillColor(0)

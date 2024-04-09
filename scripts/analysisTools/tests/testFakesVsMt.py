@@ -98,7 +98,7 @@ def plotProjection1Dfrom3D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes
     axisProj = "x" if projectAxisToKeep == 0 else "y" if projectAxisToKeep == 1 else "z"
     for d in datasets:
         rootHists[d].GetZaxis().SetRange(chargeBin, chargeBin)
-        logger.warning("In plotProjection1Dfrom3D(): setting pt axis to exclude overflows from projections")
+        # logger.warning("In plotProjection1Dfrom3D(): setting pt axis to exclude overflows from projections")
         rootHists[d].GetYaxis().SetRange(1, rootHists[d].GetNbinsY())
         if d == "Data":
             hdata = rootHists[d].Project3D(f"{axisProj}eo")
@@ -488,7 +488,6 @@ def runStudy(fname, charges, mainOutputFolder, args):
 
     hFRFcorr = None
     hFRFcorrUnc = None
-    #hFRFcorrTestCap = None
     hFRF_proj = None
     histoChi2diffTest = None
     histoPullsPol1Slope = None
@@ -990,12 +989,11 @@ def runStudy(fname, charges, mainOutputFolder, args):
         ptHigh = round(0.01 + h2PassIso.GetYaxis().GetBinLowEdge(1+h2PassIso.GetNbinsY()), 1)
 
         nPtBins = h2PassIso.GetNbinsY()
-        logger.warning(f"hFRFcorr defined with {nPtBins} pt bins from {round(ptLow,1)} to pt = {round(ptLow,1)}")
+        logger.warning(f"hFRFcorr defined with {nPtBins} pt bins from {round(ptLow,1)} to pt = {round(ptHigh,1)}")
 
         hFRFcorr = ROOT.TH2D(f"fakerateFactorCorrection_{charge}", "%s m_{T} > %d GeV" % (args.met, int(args.mtNominalRange.split(',')[1])),
                                      h2PassIso.GetNbinsX(), round(etaLow,1), round(etaHigh,1),
-                                     nPtBins, round(ptLow,1), round(ptLow,1))
-        #hFRFcorrTestCap = copy.deepcopy(hFRFcorr.Clone(f"fakerateFactorCorrTestCap_{charge}"))
+                                     nPtBins, round(ptLow,1), round(ptHigh,1))
         if args.fitPolDegree == 1:
             histoChi2diffTest = ROOT.TH1D(f"histoChi2diffTest_{charge}", "Probability(#chi^{2}_{0} - #chi^{2}_{1})", 10, 0, 1)
             histoPullsPol1Slope = ROOT.TH1D(f"histoPullsPol1Slope_{charge}", "Pulls for slope parameter in pol1 fits", 20, -5, 5)
@@ -1079,7 +1077,6 @@ def runStudy(fname, charges, mainOutputFolder, args):
                         binContent = 0.05
                     inverseNomiFRF = 1.0/binContent
                     hFRFcorr.SetBinContent(ieta, ipt, valFRF * inverseNomiFRF)
-                    #hFRFcorrTestCap.SetBinContent(ieta, ipt, valFRFCap * inverseNomiFRF)
                     if hFRFcorrUnc == None:
                         hFRFcorrUnc = {}
                         for key in uncFRF.keys():
@@ -1147,16 +1144,11 @@ def runStudy(fname, charges, mainOutputFolder, args):
                         ROOT.kAzure+2, ROOT.kAzure+1,
                         ROOT.kOrange+2, ROOT.kOrange+1,
                         ROOT.kGreen+2, ROOT.kGreen+1] # colors only passed for variations
-            # if hFRFcorrTestCap:
-            #     hList.append( unroll2Dto1D(hFRFcorrTestCap,
-            #                                newname=f"unrolled_{hFRFcorrTestCap.GetName()}",
-            #                                cropNegativeBins=False) )
-            #     legEntries.append( "syst(cap FRF)" )
-            #     colorVec = [ROOT.kGreen+3] + colorVec
             ptBinRanges = []
             for ipt in range(hFRFcorr.GetNbinsY()):
-                ptBinRanges.append("[{ptmin},{ptmax}] GeV".format(ptmin=int(hFRFcorr.GetYaxis().GetBinLowEdge(ipt+1)),
-                                                                  ptmax=int(hFRFcorr.GetYaxis().GetBinLowEdge(ipt+2))))
+                ptmin = int(hFRFcorr.GetYaxis().GetBinLowEdge(ipt+1))
+                ptmax = int(hFRFcorr.GetYaxis().GetBinLowEdge(ipt+2))
+                ptBinRanges.append("[{ptmin},{ptmax}] GeV".format(ptmin=ptmin, ptmax=ptmax))
 
             for ivar in uncFRF.keys():
                 if ivar == "quadsum":
@@ -1224,15 +1216,6 @@ def runStudy(fname, charges, mainOutputFolder, args):
                  textForLines=ptBinRanges, transparentLegend=False,
                  onlyLineColor=True, noErrorRatioDen=False, useLineFirstHistogram=True, setOnlyLineRatio=False,
                  drawErrorAll=True)
-
-        # if hFRFcorrTestCap is not None:
-        #     drawCorrelationPlot(hFRFcorrTestCap,
-        #                         xAxisName,
-        #                         yAxisName,
-        #                         f"QCD template correction::{corrRange}",
-        #                         hFRFcorrTestCap.GetName(), plotLabel="ForceTitle", outdir=outfolder,
-        #                         draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
-        #                         invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
         if hFRFcorr.GetNbinsX() == 1 or hFRFcorr.GetNbinsY() == 1:
             if hFRFcorr.GetNbinsY() == 1:

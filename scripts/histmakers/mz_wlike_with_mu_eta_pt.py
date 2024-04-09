@@ -18,18 +18,22 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=45, help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 
-parser = common.set_parser_default(parser, "genVars", ["qGen", "ptGen", "absEtaGen"])
-parser = common.set_parser_default(parser, "genBins", [18, 0])
-parser = common.set_parser_default(parser, "pt", [34, 26, 60])
-parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
-parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
-
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-if args.unfolding:
+isUnfolding = args.analysisMode == "unfolding"
+
+parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
+parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
+parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
+    parser = common.set_parser_default(parser, "genBins", [18, 0])
     parser = common.set_parser_default(parser, "pt", [36,26.,62.])
-    args = parser.parse_args()
+else:
+    parser = common.set_parser_default(parser, "pt", [34, 26, 60])
+
+args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 era = args.era
@@ -65,7 +69,7 @@ axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name =
 nominal_axes = [axis_eta, axis_pt, common.axis_charge]
 nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
 
-if args.unfolding:
+if isUnfolding:
     template_wpt = (template_maxpt-template_minpt)/args.genBins[0]
     min_pt_unfolding = template_minpt+template_wpt
     max_pt_unfolding = template_maxpt-template_wpt
@@ -141,7 +145,7 @@ def build_graph(df, dataset):
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and isZ:
+    if isUnfolding and isZ:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -236,10 +240,11 @@ def build_graph(df, dataset):
     df = df.Define("met_wlike_TV2_pt", "met_wlike_TV2.Mod()")
     results.append(df.HistoBoost("WlikeMET", [hist.axis.Regular(20, 0, 100, name="Wlike-MET")], ["met_wlike_TV2_pt", "nominal_weight"]))
     ###########
-    
+
     # cutting after storing mt distributions for plotting, since the cut is only on corrected met
-    df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
-    df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
+    if args.dphiMuonMetCut > 0.0:
+        df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
+        df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
     df = df.Filter(f"transverseMass >= {mtw_min}")
 
     if not args.onlyMainHistograms:

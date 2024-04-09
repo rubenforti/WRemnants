@@ -77,6 +77,7 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--make-asymmetry', dest="makeAsymmetry", action="store_true", help="Make ratio of difference over the sum. For this to make sense, the binning of the two inputs must be consistent")
     parser.add_argument('-p', '--make-pulls', dest="makePulls", action="store_true", help="Make pulls of input histograms, i.e. (h1-h2)/error, where error is taken as the quadrature sum of the errors of the input")
     parser.add_argument(       '--pull-error-ScaleFactor', dest='pullErrorScaleFactor', default='1.', type=float, help='Inflate the error by this factor when making the pulls (because it is assumed the inputs are uncorrelated, so the error might need a correction)')
+    parser.add_argument(     '--nBinsPull1D'  , default=100, type=int, help='Number of bins for pull distribution in 1D')
     parser.add_argument('--pullErrorSource', default='both', type=str, choices=["both", "num", "den"], help='When doing pulls, choose where to pick the error to normalize (both is the quadrature sum of num and den)')
     parser.add_argument('-u', '--unroll', action="store_true",  help="Make plot of unrolled 1D histogram from the 2D ratio (along x)")
     parser.add_argument(      '--unrolly', action="store_true",  help="Unroll along y instead of along x")
@@ -311,7 +312,7 @@ if __name__ == "__main__":
         canvas_unroll.SetBottomMargin(bottomMargin)                                            
 
         unrollNameID = "unrolled"
-        xAxisTitle_unroll = f"Unrolled bin: '{yAxisTitle}' vs '{xAxisTitle}'"
+        xAxisTitle_unroll = f"Unrolled bin: '{yAxisTitle.split('::')[0]}' vs '{xAxisTitle.split('::')[0]}'"
         vertLineDivisions="{a},{b}".format(a=hratio.GetNbinsY(),b=hratio.GetNbinsX())
         nBinsUnrollVar = hratio.GetNbinsY()
         unrollAxis = hratio.GetYaxis()
@@ -324,8 +325,13 @@ if __name__ == "__main__":
 
         unrollBinRanges = []
         if nBinsUnrollVar > 15:
-            for ibin in range(nBinsUnrollVar):
-                unrollBinRanges.append("") # keep dummy otherwise there's too much text most of the time
+            for ibin in range(0,nBinsUnrollVar):
+                if not (ibin % 5): # only print 5 labels
+                    unrollBinRanges.append("#splitline{{{v} in}}{{[{vmin},{vmax}]}}".format(v="x" if args.unrolly else "y",
+                                                                                            vmin=int(unrollAxis.GetBinLowEdge(ibin+1)),
+                                                                                            vmax=int(unrollAxis.GetBinLowEdge(ibin+2))))
+                else:
+                    unrollBinRanges.append("")
         else:
             for ibin in range(nBinsUnrollVar):
                 unrollBinRanges.append("#splitline{{{v} in}}{{[{vmin},{vmax}]}}".format(v="x" if args.unrolly else "y",
@@ -399,7 +405,7 @@ if __name__ == "__main__":
 
     # making distribution of pulls
     if args.makePulls:
-        hpull = ROOT.TH1D("pulls","Distribution of pulls",100,-5,5)
+        hpull = ROOT.TH1D("pulls","Distribution of pulls",args.nBinsPull1D,-5,5)
         hpull2D = copy.deepcopy(hinput1.Clone("hpull2D"))
         hpull2D.Reset("ICESM")
         plotTitleLatex = ""
@@ -438,7 +444,7 @@ if __name__ == "__main__":
                 f"pullDistribution_{args.outhistname}",
                 outdir,
                 passCanvas=canvas,
-                fitString="gaus;LEMSQ+;;-5;5",
+                fitString="gaus;LEMSQ+;;-3;3",
                 plotTitleLatex=plotTitleLatex
                 )
         drawCorrelationPlot(hpull2D,xAxisTitle,yAxisTitle,"Pulls::-5,5",

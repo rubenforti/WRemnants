@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(     '--justPrint', action='store_true', help='Print without plotting')
     args = parser.parse_args()
 
-    logger = logging.setup_logger(os.path.basename(__file__), 3)
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
     # palettes:
     # 69 + inverted, using TColor::InvertPalette(), kBeach
     # 70 + inverted, using TColor::InvertPalette(), kBlackBody

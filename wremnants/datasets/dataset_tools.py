@@ -110,6 +110,7 @@ def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_dat
 
             files = buildFileList(path)
             if maxFiles > 0 and len(files) >= maxFiles:
+                logger.info(f"Booking {len(files)} of {maxFiles} files with tag {prod_tag} with path {path}")
                 break
 
             if len(files) == 0:
@@ -118,6 +119,8 @@ def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_dat
             else:
                 if fallback:
                     logger.warning(f"Falling back to tag {prod_tag} with path {path}")
+                else:
+                    logger.info(f"Booking {len(files)} of {maxFiles} files with tag {prod_tag} with path {path}")
                 break
 
         filelist.extend(files)

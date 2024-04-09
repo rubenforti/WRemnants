@@ -48,7 +48,7 @@ process_labels = {
     "Wenu": r"W$^{\pm}\to e\nu$",
     "Wtaunu": r"W$^{\pm}\to\tau\nu$",
     "DYlowMass": r"Z$\to\mu\mu$, $10<m<50$ GeV",
-    "PhotonInduced": "Photon-induced EW",
+    "PhotonInduced": r"$\gamma$-induced",
     "Top": "Top",
     "Diboson": "Diboson",
     "QCD": "QCD MC",
@@ -63,8 +63,10 @@ xlabels = {
     "ptGen" : r"p$_{T}^{\ell}$ (GeV)",
     "ptW" : r"p$_{T}^{\ell+p_{\mathrm{T}}^{miss}}$ (GeV)",
     "ptVGen" : r"p$_{T}^\mathrm{V}$ (GeV)",
+    "muonJetPt": r"p$_{T}^\mathrm{jet[\ell]}$ (GeV)",
     "eta" : r"$\eta^{\ell}$",
     "etaGen" : r"$\eta^{\ell}$",
+    "abseta" : r"$|\eta^{\ell}|$",
     "absEta" : r"$|\eta^{\ell}|$",
     "absEtaGen" : r"$|\eta^{\ell}|$",
     "ptll" : r"p$_{\mathrm{T}}^{\ell\ell}$ (GeV)",
@@ -80,6 +82,7 @@ xlabels = {
     "MET" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "met" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "mt" : r"m$_{T}^{\ell\nu}$ (GeV)",
+    "mtfix" : r"m$_{T}^\mathrm{fix}$ (GeV)",
     "etaPlus" : r"$\eta^{\ell(+)}$",
     "etaMinus" : r"$\eta^{\ell(-)}$",
     "ptPlus" : r"p$_{\mathrm{T}}^{\ell(+)}$ (GeV)",
@@ -91,18 +94,9 @@ xlabels = {
     "ewMll": "ewMll",
     "ewMlly": "ewMlly",
     "ewLogDeltaM": "ewLogDeltaM",
-    # add 2d unrolled plots 
-    "pt-eta" : r"(p$_{T}^{\ell}$, $\eta^{\ell}$) bin",
-    "ptll-yll":r"p$_{\mathrm{T}}^{\ell\ell}$, y$^{\ell\ell}$ bin",
-    "mll-yll":r"m$_{\ell\ell}$, y$^{\ell\ell}$ bin",
-    "mll-ptll":r"m$_{\ell\ell}$, p$_{\mathrm{T}}^{\ell\ell}$ bin",
-    "mll-etaPlus":r"m$_{\ell\ell}$, $\eta^{\ell(+)}$ bin",
-    "mll-etaMinus":r"m$_{\ell\ell}$, $\eta^{\ell(-)}$ bin",
-    "etaPlus-etaMinus":r"$\eta^{\ell(+)}$, $\eta^{\ell(-)}$ bin",
-    "etaSum-etaDiff":r"$\eta^{\ell(+)} + \eta^{\ell(-)}$, $\eta^{\ell(+)} - \eta^{\ell(-)}$ bin",
-    # add 3d unrolled plots 
-    "mll-etaPlus-etaMinus":r"m$_{\ell\ell}$, $\eta^{\ell(+)}$, $\eta^{\ell(-)}$ bin",
-    "mll-etaSum-etaDiff":r"m$_{\ell\ell}$, $\eta^{\ell(+)} + \eta^{\ell(-)}$, $\eta^{\ell(+)} - \eta^{\ell(-)}$ bin",
+    "dxy":r"$d_\mathrm{xy}$ (cm)",
+    "iso": r"$I$ (GeV)",
+    "relIso": "$I_\mathrm{rel}$",
 }
 
 # uncertainties
@@ -114,7 +108,8 @@ common_groups = [
     "CMS_recoil",
     "CMS_background",
     "theory_ew",
-    "normXsecW"
+    "normXsecW",
+    "width"
 ]
 nuisance_groupings = {
     "max": common_groups + [
@@ -126,7 +121,8 @@ nuisance_groupings = {
         "muon_eff_stat",
         "prefire",
         "muonCalibration",
-        "bcQuarkMass",
+        "Fake",
+        "bcQuarkMass"
     ],
     "min": common_groups + [
         "massShiftW", "massShiftZ",
@@ -137,6 +133,7 @@ nuisance_groupings = {
         "muon_eff_syst_reco", "muon_eff_syst_trigger", "muon_eff_syst_iso", "muon_eff_syst_idip",
         "muonPrefire", "ecalPrefire",
         "nonClosure", "resolutionCrctn",
+        "FakeRate", "FakeShape", "FakeeRate", "FakeeShape", "FakemuRate", "FakemuShape"
     ],
     "unfolding_max": [
         "Total",
@@ -154,7 +151,6 @@ nuisance_groupings = {
         "theory_ew",
     ]
 }
-
 
 text_dict = {
     "Zmumu": r"$\mathrm{Z}\rightarrow\mu\mu$",

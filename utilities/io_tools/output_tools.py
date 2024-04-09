@@ -115,6 +115,8 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False, tmpFolder="temp", allowC
     full_outpath = outpath
     if outfolder:
         full_outpath = os.path.join(outpath, outfolder)
+    if not full_outpath.endswith("/"):
+        full_outpath += "/"
     if outpath and not os.path.isdir(outpath):
         # instead of raising, create folder to deal with cases where nested folders are created during code execution
         # (this would happen when outpath is already a path to a local subfolder not created in the very beginning)
@@ -143,20 +145,22 @@ def copy_to_eos(outpath, outfolder=None, tmpFolder="temp", deleteFullTmp=False):
 
     tmppath = os.path.join(tmpFolder, fullpath)
 
-    nCopiedFiles = 0
     for f in glob.glob(tmppath+"/*"):
-        if os.path.isfile(f):
-            command = ["xrdcp", "-f", f, "/".join(["root://eosuser.cern.ch", eospath, f.replace(f"{tmpFolder}/", "")])]
+        if not (os.path.isfile(f) or os.path.isdir(f)):
+            continue
+        outPathForCopy = "/".join(["root://eosuser.cern.ch", eospath, f.replace(f"{tmpFolder}/", "")])
+        if os.path.isdir(f):
+            # remove last folder to do "xrdcp -fr /path/to/folder/ root://eosuser.cern.ch//eos/cms/path/to/"
+            # in this way one can copy the whole subfolder through xrdcp without first creating the structure
+            outPathForCopy = os.path.dirname(outPathForCopy.rstrip("/"))
+        command = ["xrdcp", "-fr", f, outPathForCopy]
 
-            logger.debug(f"Executing {' '.join(command)}")
-            if subprocess.call(command):
-                raise IOError("Failed to copy the files to eos! Perhaps you are missing a kerberos ticket and need to run kinit <user>@CERN.CH?"
-                    " from lxplus you can run without eoscp and take your luck with the mount.")
-            else:
-                nCopiedFiles += 1
+        logger.debug(f"Executing {' '.join(command)}")
+        if subprocess.call(command):
+            raise IOError("Failed to copy the files to eos! Perhaps you are missing a kerberos ticket and need to run kinit <user>@CERN.CH?"
+                " from lxplus you can run without eoscp and take your luck with the mount.")
 
     shutil.rmtree(f"{tmpFolder}/" if deleteFullTmp else tmppath)
-    logger.debug(f"Copied {nCopiedFiles} files to eos")
 
 def write_theory_corr_hist(output_name, process, output_dict, args=None, file_meta_data=None): 
     outname = output_name
