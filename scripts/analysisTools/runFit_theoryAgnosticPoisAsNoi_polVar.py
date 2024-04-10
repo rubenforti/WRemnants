@@ -1,11 +1,11 @@
 import os
 
 # for setup and fit
-skipSetup = 0
-skipFit = 0
+skipSetup = 1
+skipFit = 1
 # for plots
 skipImpacts = 1
-skipCorrelation = 1
+skipCorrelation = 0
 skipDiffnuis = 1
 skipCompareDiffnuis = 1
 skipTemplates = 1 # check settings
@@ -20,8 +20,8 @@ foldEtaIntoAbsEta = True
 
 splitOOA = True # use out-of-acceptance as a different process (it assumes the histograms were created accordingly)
 onlySignal = False #  out-of-acceptance is excluded when splitOOA = True
-onlySignalAndOOA = True # (requires onlySignal=True to be effective) signal only but keep OOA as background, with all uncertainties if applied
-doStatOnly = False
+onlySignalAndOOA = False # (requires onlySignal=True to be effective) signal only but keep OOA as background, with all uncertainties if applied
+doStatOnly = True
 noFake = False # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False # irrelevant when doStatOnly=True
 tag = "x0p30_y3p00_V4"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
@@ -44,12 +44,12 @@ else:
                    "exclude" : '.*recoil'
                    }
 
-baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/mergeWmass_30Jan2023/{tag}/"
-basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/mergeWmass_30Jan2023/"
+baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/fromTanmay_09Apr2024/{tag}/"
+basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/fromTanmay_09Apr2024/"
 
-inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1{splitOOAtag}.hdf5"
+inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_2016{splitOOAtag}.hdf5"
 if oneMCfileEveryN > 1:
-    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1{splitOOAtag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
+    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_2016{splitOOAtag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
 
 if noPDFandQCDtheorySystOnSignal and not doStatOnly:
     testFolder += "/noPDFandQCDtheorySystOnSignal/"
@@ -58,9 +58,9 @@ procFolder = "onlySignal" if onlySignal else "allProcsNoFake" if noFake else "al
 if onlySignal and onlySignalAndOOA:
     procFolder = "onlySignalAndOOA"
     
-outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
+outdir = "/afs/cern.ch/work/t/tsarkar/public/OutPut_2016_ploVar/x0p30_y3p00_V8/fullStat_2016_splitOOA_statOnly/allProcs/" #f"{baseOutdir}/{testFolder}/{procFolder}/"
 
-theoryAgnosticOptions = " theoryAgnosticPolVar --poiAsNoi"
+theoryAgnosticOptions = " --analysisMode theoryAgnosticPolVar --poiAsNoi"
 
 setupCombineOptions = ""
 if doStatOnly:
@@ -86,7 +86,7 @@ baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]
 coeffs = ["UL", "ULandA4", "ULandA0andA4", "and".join(x for x in baseCoeffs if x not in ["A1", "A2"]), "and".join(x for x in baseCoeffs)]
 #coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A3"])]
 #coeffs = ["and".join(x for x in baseCoeffs)]
-coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A2"])]
+#coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A2"])]
 
 def safeSystem(cmd, dryRun=False, quitOnFail=True):
     print(cmd)
