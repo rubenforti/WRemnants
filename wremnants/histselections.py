@@ -219,11 +219,19 @@ def get_rebinning(edges, axis_name):
     else:
         raise RuntimeError(f"No automatic rebinning known for axis {axis_name}")
 
-    if edges == target_edges:
+    if len(edges) == len(target_edges) and all(edges == target_edges):
         logger.debug(f"Axis has already in target edges, no rebinning needed")
         return None
 
-    rebin = [edges[0]] + [x for x in target_edges[1:-1] if x in edges[1:-1]] + [edges[-1]]
+    i=0
+    rebin = []
+    for e in edges:
+        if e >= target_edges[i]:
+            rebin.append(e)
+            i+=1
+        if i >= len(target_edges):
+            break
+
     if len(rebin) <= 2:
         logger.warning(f"No automatic rebinning possible for axis {axis_name}")
         return None
@@ -610,7 +618,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         if rebin_x == "automatic":
             edges = h.axes[self.name_x].edges
-            self.rebin_x = get_rebinning(edges, self.rebin_x)
+            self.rebin_x = get_rebinning(edges, self.name_x)
         else:
             self.rebin_x = rebin_x
 
@@ -799,7 +807,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             d, dvar = self.calculate_fullABCD(h)
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
+        hSignal = hist.Hist(*h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
 
         if variations_frf and self.smooth_fakerate:
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
@@ -947,7 +955,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         if rebin_x == "automatic":
             edges = h.axes[self.name_x].edges
-            self.rebin_x = get_rebinning(h, self.rebin_x)
+            self.rebin_x = get_rebinning(edges, self.name_x)
         else:
             self.rebin_x = rebin_x
 
@@ -955,7 +963,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.axis_x_min = h[{self.name_x: self.sel_x}].axes[self.name_x].edges[0]
         if self.name_x == "mt":
             # mt does not have an upper bound, cap at 100
-            self.axis_x_max = 100
+            edges = self.rebin_x if self.rebin_x is not None else h.axes[self.name_x].edges
+            self.axis_x_max = extend_edges(h.axes[self.name_x].traits, edges)[-1]
         elif self.name_x in ["iso", "relIso", "relJetLeptonDiff", "dxy"]:
             # iso and dxy have a finite lower and upper bound in the application region
             self.axis_x_max = abcd_thresholds[self.name_x][1]
@@ -1019,7 +1028,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             d, dvar = self.calculate_fullABCD(h)            
 
         # set histogram in signal region
-        axes = [a for a in h.axes if a.name != self.name_y and (not self.integrate_x or a.name != self.name_x)]
+        axes = [a for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y]
         hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
 
         if variations_scf or variations_frf or variations_full:
@@ -1125,7 +1134,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             if self.smooth_shapecorrection:
                 # interpolate scf in mT and smooth in pT (i.e. 2D)
-
                 idx_ax_smoothing = hNew.axes.name.index(self.smoothing_axis_name)
                 if idx_ax_smoothing != len(axes)-2 or idx_ax_interpol != len(axes)-1:
                     y = np.moveaxis(y, (idx_ax_smoothing, idx_ax_interpol), (-2, -1))
