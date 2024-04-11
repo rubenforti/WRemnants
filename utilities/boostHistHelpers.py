@@ -4,6 +4,7 @@ from functools import reduce
 import collections
 from utilities import common, logging
 import copy
+import itertools
 
 logger = logging.child_logger(__name__)
 
@@ -64,10 +65,18 @@ def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_
     out = outh.values(flow=flow) if createNew else np.full(outh.values(flow=flow).shape, cutoff_val)
 
     # Apply cutoff to both numerator and denominator
+    # only do the division if denominator is above cutoff, keep nominator values else
     cutoff_criteria = np.abs(h2vals) > cutoff
-    # By the argument that 0/0 = 1
-    out[(np.abs(h2vals) < cutoff) & (np.abs(h1vals) < cutoff)] = cutoff_val
+
+    # if denominator and nominator below cutoff, set to cutoff_val. By the argument that 0/0 = 1
+    cutoff_criteatia2 = (np.abs(h2vals) < cutoff) & (np.abs(h1vals) < cutoff)
+    out[cutoff_criteatia2] = cutoff_val
     val = np.divide(h1vals, h2vals, out=out, where=cutoff_criteria)
+
+    if cutoff_criteatia2.sum():
+        logger.warning(f"Encountered {cutoff_criteatia2.sum()} values below {cutoff} in h1 and h2 in divideHists, these will be set to {cutoff_val}")
+    elif (~cutoff_criteria).sum():
+        logger.warning(f"Encountered {(~cutoff_criteria).sum()} values below {cutoff} in h2 in divideHists, these will be set to h1")
 
     if outh.storage_type == hist.storage.Weight:
         relvars = relVariances(h1vals, h2vals, h1vars, h2vars, cutoff=cutoff)
@@ -231,6 +240,9 @@ def addHists(h1, h2, allowBroadcast=True, createNew=True, scale1=None, scale2=No
             outvars = h1vars if h1.shape == outh.shape else h2vars
             np.add(h1vars, h2vars, out=outvars)
             outh.variances(flow=True)[...] = outvars
+        elif h1._storage_type() == hist.storage.Weight():
+            logger.debug("Histogram h1 has weights but h2 not, values for h1 are updated but variances not.")
+
         return outh
 
 def sumHists(hists):
@@ -329,16 +341,43 @@ def compatibleBins(edges1, edges2):
     comparef = np.vectorize(lambda x: np.isclose(x, edges1).any())
     return np.all(comparef(edges2))
 
-def rebinHistMultiAx(h, axis_map):
-    for ax, binning in axis_map.items():
+def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
+    # edges: lists of new edges or integers to merge bins, in case new edges are given the lows and highs will be ignored
+    # lows: list of new lower boundaries
+    # highs: list of new upper boundaries
+
+    sel = {}
+    for ax,low,high,rebin in itertools.zip_longest(axes, lows, highs, edges):
         if ax not in h.axes.name:
             logger.debug(f"Did not find axis {ax} in hist. Skipping rebin.")
             continue
-        h = rebinHist(h, ax, binning)
+        if rebin not in [None, []] and type(rebin) != int:
+            h = rebinHist(h, ax, rebin)
+        elif low is not None and high is not None:
+            # in case high edge is upper edge of last bin we need to manually set the upper limit
+            upper = hist.overflow if high==h.axes[ax].edges[-1] else complex(0, high) 
+            logger.info(f"Restricting the axis '{ax}' to range [{low}, {high}]")
+            sel[ax] = slice(complex(0, low), upper, hist.rebin(rebin) if rebin else None)
+        elif type(rebin) == int:
+            logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
+            sel[ax] = slice(None,None,hist.rebin(rebin))
+    return h[sel] if len(sel)>0 else h        
 
-    return h
+def disableFlow(h, axis_name):
+    # disable the overflow and underflow bins of a single axes, while keeping the flow bins of other axes
+    ax = h.axes[axis_name]
+    ax_idx = [a.name for a in h.axes].index(axis_name)
+    new_ax = type(ax)(ax.edges, name=ax.name, overflow=False, underflow=False)
+    axes = list(h.axes)
+    axes[ax_idx] = new_ax
+    hnew = hist.Hist(*axes, name=h.name, storage=h.storage_type())
+    slices = [slice(None) if i!= ax_idx else slice(ax.traits.underflow,new_ax.size+ax.traits.underflow) for i in range(len(axes))]
+    hnew.values(flow=True)[...] = h.values(flow=True)[*slices]
+    if hnew.storage_type == hist.storage.Weight:
+        hnew.variances(flow=True)[...] = h.variances(flow=True)[*slices]
+    return hnew
 
-def rebinHist(h, axis_name, edges):
+def rebinHist(h, axis_name, edges, flow=True):
     if type(edges) == int:
         return h[{axis_name : hist.rebin(edges)}]
 
@@ -355,7 +394,6 @@ def rebinHist(h, axis_name, edges):
     # If you rebin to a subset of initial range, keep the overflow and underflow
     overflow = ax.traits.overflow or (edges[-1] < ax.edges[-1] and not np.isclose(edges[-1], ax.edges[-1]))
     underflow = ax.traits.underflow or (edges[0] > ax.edges[0] and not np.isclose(edges[0], ax.edges[0]))
-    flow = overflow or underflow
     new_ax = hist.axis.Variable(edges, name=ax.name, overflow=overflow, underflow=underflow)
     axes = list(h.axes)
     axes[ax_idx] = new_ax
@@ -390,6 +428,20 @@ def rebinHist(h, axis_name, edges):
         hnew.variances(flow=flow)[...] = np.add.reduceat(h.variances(flow=flow), edge_idx, 
                 axis=ax_idx).take(indices=range(new_ax.size+flow_add), axis=ax_idx)
     return hnew
+
+def get_rebin_actions(axes, ax_lim=[], ax_rebin=[], ax_absval=[], rename=False):
+    if len(ax_lim) % 2 or len(ax_lim)/2 > len(axes) or len(ax_rebin) > len(axes):
+        raise ValueError("Inconsistent rebin or axlim arguments. axlim must be at most two entries per axis, and rebin at most one")
+    actions=[]
+    if len(ax_lim)>0 or len(ax_rebin)>0:
+        actions.append(lambda h,axes=axes,rebins=ax_rebin,lows=ax_lim[::2],highs=ax_lim[1::2]: rebinHistMultiAx(h, axes, rebins, lows, highs))
+
+    for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
+        if absval:
+            logger.info(f"Taking the absolute value of axis '{var}'")
+            actions.append(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
+            axes[i] = f"abs{var}" if rename else var
+    return actions
 
 def mergeAxes(ax1, ax2):
     if ax1.edges[0] < ax2.edges[0]:
@@ -482,6 +534,44 @@ def projectNoFlow(h, proj_ax, exclude=[]):
         proj_ax = [proj_ax]
     hnoflow = h[{ax : s[0:hist.overflow:hist.sum] for ax in h.axes.name if ax not in exclude+list(proj_ax)}]
     return hnoflow.project(*proj_ax) 
+
+def unrolledHist(h, obs=None, binwnorm=None, add_flow_bins=False):
+    # add_flow_bins to add the overflow and underflow bins into bins of the unrolled histogram
+    if obs is not None:
+        hproj = h.project(*obs)
+    else:
+        hproj = h
+
+    if binwnorm:
+        edges = plot_tools.extendEdgesByFlow(hproj) if add_flow_bins else hproj.axes.edges
+        binwidths = np.outer(*[np.diff(e.squeeze()) for e in edges]).flatten()
+        scale = binwnorm/binwidths
+    else:
+        scale = 1
+
+    bins = np.product(hproj.axes.extent) if add_flow_bins else np.product(hproj.axes.size)
+    newh = hist.Hist(hist.axis.Integer(0, bins, underflow=False, overflow=False), storage=hproj._storage_type())
+    if hproj._storage_type() == hist.storage.Double():
+        newh.view(flow=False)[...] = np.ravel(hproj.values(flow=add_flow_bins))*scale
+    else:
+        newh.view(flow=False)[...] = np.stack([np.ravel(hproj.values(flow=add_flow_bins))*scale, np.ravel(hproj.variances(flow=add_flow_bins))*scale**2], axis=-1)
+    return newh
+
+def transfer_variances(h1, h2, flow=True):
+    # take variances from h2 to set variances in h1 by scaling with the relative yields
+    val2 = h2.values(flow=flow)
+    var2 = h2.variances(flow=flow)
+    val1 = h1.values(flow=flow)
+    # extra dimensions for systematic axes
+    extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val1.ndim - val2.ndim)
+    var1 = np.ones_like(val1)*var2[extra_dimensions] # use var2 directly in cases of not finite values
+    mask = np.isfinite(var2) & (var2!=0)
+    # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same,
+    factors = (val1[mask] / val2[mask][extra_dimensions])
+    var1[mask] = var2[mask][extra_dimensions] * factors**2
+    hNew = hist.Hist(*h1.axes, storage=hist.storage.Weight())
+    hNew.view(flow=flow)[...] = np.stack((val1, var1), axis=-1)
+    return hNew
 
 def syst_min_and_max_env_hist(h, proj_ax, syst_ax, indices, no_flow=[]):
     logger.debug(f"Taking the envelope of variation axis {syst_ax}, indices {indices}")
@@ -586,7 +676,7 @@ def set_flow(h, val="nearest"):
 
 # For converting the helicity scale hist to variations, keeping the gen axis to be fit
 # If swap_axes = True, the new axis takes the place of the old gen axis in the ordering
-def expand_hist_by_duplicate_axis(href, ref_ax_name, new_ax_name, swap_axes=False, flow=True):
+def expand_hist_by_duplicate_axis(href, ref_ax_name, new_ax_name, swap_axes=False, put_trailing=False, flow=True):
     if ref_ax_name not in href.axes.name:
         raise ValueError(f"Did not find axis {ref_ax_name} in hist!")
 
@@ -597,19 +687,28 @@ def expand_hist_by_duplicate_axis(href, ref_ax_name, new_ax_name, swap_axes=Fals
     new_ax = copy.deepcopy(ref_ax)
     new_ax._ax.metadata["name"] = new_ax_name
 
-    new_axes = [new_ax, *axes]
+    if put_trailing:
+        new_axes = [*axes, new_ax]
+        new_axis_idx=-1
+    else:
+        new_axes = [new_ax, *axes] 
+        new_axis_idx=0
     if swap_axes:
-        new_axes[0], new_axes[ref_ax_idx+1] = new_axes[ref_ax_idx+1], new_axes[0]
+        new_axes[new_axis_idx], new_axes[ref_ax_idx+1] = new_axes[ref_ax_idx+1], new_axes[new_axis_idx]
     hnew = hist.Hist(*new_axes, storage=href.storage_type())
 
+    # Temporarily move axis to duplicate first 
     data = np.moveaxis(href.values(flow=flow), ref_ax_idx, 0)
     # Copy data from other axis along the diagnoal, off-diagonals will be zero
     exp_data = data*np.reshape(np.identity(data.shape[0]), (data.shape[0], data.shape[0], *(1 for i in data.shape[1:])))
-    hnew.values(flow=flow)[...] = np.moveaxis(exp_data, 1, ref_ax_idx+1)
+    # Move original and duplicated axes to desired positions
+    exp_data = np.moveaxis(exp_data, 0, new_axis_idx)
+    hnew.values(flow=flow)[...] = np.moveaxis(exp_data, 0, ref_ax_idx+(new_axis_idx!=-1 and new_axis_idx<ref_ax_idx)) # move back one further if new axis comes before old one
     if href.storage_type == hist.storage.Weight:
         var = np.moveaxis(href.variances(flow=flow), ref_ax_idx, 0)
         exp_var = var*np.reshape(np.identity(var.shape[0]), (var.shape[0], var.shape[0], *(1 for i in var.shape[1:])))
-        hnew.variances(flow=flow)[...] = np.moveaxis(exp_var, 1, ref_ax_idx+1)
+        exp_var = np.moveaxis(exp_var, 0, new_axis_idx)
+        hnew.variances(flow=flow)[...] = np.moveaxis(exp_var, 0, ref_ax_idx+(new_axis_idx!=-1 and new_axis_idx<ref_ax_idx))
 
     return hnew
 
