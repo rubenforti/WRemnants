@@ -324,7 +324,6 @@ if __name__ == "__main__":
         print("You must pass an output folder with option -o")
         quit()
 
-        
     pois_regexps = list(args.params.split(','))
     print(f"Filtering parameters with the following regex: {pois_regexps}")
 

@@ -5,7 +5,7 @@ skipSetup = 1
 skipFit = 1
 # for plots
 skipImpacts = 1
-skipCorrelation = 0
+skipCorrelation = 1
 skipDiffnuis = 1
 skipCompareDiffnuis = 1
 skipTemplates = 1 # check settings
@@ -24,7 +24,7 @@ onlySignalAndOOA = False # (requires onlySignal=True to be effective) signal onl
 doStatOnly = True
 noFake = False # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False # irrelevant when doStatOnly=True
-tag = "x0p30_y3p00_V4"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
+tag = "x0p30_y3p00_V8"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
 oneMCfileEveryN = 1
 testFolder = f"oneMCfileEvery{oneMCfileEveryN}" if oneMCfileEveryN > 1 else "fullStat"
 
@@ -58,7 +58,7 @@ procFolder = "onlySignal" if onlySignal else "allProcsNoFake" if noFake else "al
 if onlySignal and onlySignalAndOOA:
     procFolder = "onlySignalAndOOA"
     
-outdir = "/afs/cern.ch/work/t/tsarkar/public/OutPut_2016_ploVar/x0p30_y3p00_V8/fullStat_2016_splitOOA_statOnly/allProcs/" #f"{baseOutdir}/{testFolder}/{procFolder}/"
+outdir = "/scratch/mciprian/CombineStudies/TRASHTEST/x0p30_y3p00_V8/fullStat_2016_splitOOA_statOnly/allProcs/" #f"{baseOutdir}/{testFolder}/{procFolder}/"
 
 theoryAgnosticOptions = " --analysisMode theoryAgnosticPolVar --poiAsNoi"
 
@@ -171,8 +171,9 @@ for c in coeffs:
         print()
 
     corr_postfix = f"{subFolder}"
-        
-    cmdCorr = f"python scripts/analysisTools/w_mass_13TeV/subMatrix.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/subMatrix/ --postfix {corr_postfix}_withMW -p '.*polVar|.*mass' --uniqueString polVar --title 'Th. agn., {subFolder}' --noTextMatrix"
+    corr_stat = "_statOnly" if doStatOnly else ""
+
+    cmdCorr = f"python scripts/analysisTools/w_mass_13TeV/subMatrix.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/subMatrix/ --postfix {corr_postfix}_withMW -p '.*polVar|.*mass' --uniqueString polVar{corr_stat} --title 'Th. agn., {subFolder}' --noTextMatrix"
 
     if not skipCorrelation:
         safeSystem(cmdCorr, dryRun=justPrint)
@@ -213,7 +214,7 @@ if oneMCfileEveryN == 1 and not skipTemplates:
     for charge in charges:
         for c in baseCoeffs:
 
-            cmdTempl = f"python scripts/analysisTools/w_mass_13TeV/makeSystRatios.py {fullStatFolder}/{analysisFolderBase}/WMassCombineInput.root {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/makeSystRatios/muonRecoCharge_{charge}/{c}/Wmunu/ -s '.*polVarW_{c}_{charge}' --systPostfix 'polVarW_{c}_{charge}' -p 'Wmunu' -c {charge} --plot 2D --compareSingleSystToNomi"
+            cmdTempl = f"python scripts/analysisTools/w_mass_13TeV/makeSystRatios.py {fullStatFolder}/{fitFolder}/WMassCombineInput.root {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/makeSystRatios/muonRecoCharge_{charge}/{c}/Wmunu/ -s '.*polVarW_{c}_{charge}' --systPostfix 'polVarW_{c}_{charge}' -p 'Wmunu' -c {charge} --plot 2D --compareSingleSystToNomi"
 
             safeSystem(cmdTempl, dryRun=justPrint)
             print()

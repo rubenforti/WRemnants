@@ -116,7 +116,7 @@ if __name__ == "__main__":
         print("You must pass an output folder with option -o")
         quit()
 
-    outdir_original = args.outdir:
+    outdir_original = args.outdir
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     #valuesPrefit = dict((k,v) for k,v in valuesAndErrorsAll.items() if k.endswith('_gen'))
     pois_regexps = list(args.pois.split(','))
