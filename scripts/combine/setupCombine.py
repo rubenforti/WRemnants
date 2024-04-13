@@ -77,7 +77,7 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) with smooting in pT (and mT)")
+    parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")

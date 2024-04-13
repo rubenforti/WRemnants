@@ -44,7 +44,7 @@ parser.add_argument("--selection", type=str, help="Specify custom selections as 
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
-parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) with smooting in pT (and mT)")
+parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
