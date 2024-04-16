@@ -55,7 +55,7 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
 def common_plot_parser():
     parser = common.base_parser()
     parser.add_argument('--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument('--palette'  , default=87, type=int, help='Set palette: default is a built-in one, 55 is kRainbow')
+    parser.add_argument('--palette'  , default=112, type=int, help='Set palette: 55 is kRainbow, 112 is kViridis, 87 is kLightTemperature')
     parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
     return parser

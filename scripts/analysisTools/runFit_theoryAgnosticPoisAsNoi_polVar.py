@@ -1,14 +1,15 @@
 import os
 
 # for setup and fit
-skipSetup = 0
-skipFit = 0
+skipSetup = 1
+skipFit = 1
 # for plots
 skipImpacts = 1
 skipCorrelation = 1
+skipCorrLine = 1
 skipDiffnuis = 1
 skipCompareDiffnuis = 1
-skipTemplates = 1 # check settings
+skipTemplates = 0 # check settings
 #
 justPrint = 1
 
@@ -20,18 +21,27 @@ foldEtaIntoAbsEta = True
 
 splitOOA = True # use out-of-acceptance as a different process (it assumes the histograms were created accordingly)
 onlySignal = False #  out-of-acceptance is excluded when splitOOA = True
-onlySignalAndOOA = True # (requires onlySignal=True to be effective) signal only but keep OOA as background, with all uncertainties if applied
+onlySignalAndOOA = False # (requires onlySignal=True to be effective) signal only but keep OOA as background, with all uncertainties if applied
 doStatOnly = False
 noFake = False # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False # irrelevant when doStatOnly=True
-tag = "x0p30_y3p00_V4"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
+tag = "x0p30_y3p00_V7"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
 oneMCfileEveryN = 1
 testFolder = f"oneMCfileEvery{oneMCfileEveryN}" if oneMCfileEveryN > 1 else "fullStat"
+projectToNewLumi = -1.0 # set negative to skip it.
+lumiScaleVarianceLinearly = ["Data"] # [], ["Data", "MC"], use in conjunction with projectToNewLumi when it is not negative
 
 splitOOAtag = ""
+setupLumiOption = ""
 if splitOOA:
     splitOOAtag = "_splitOOA"
     testFolder = f"{testFolder}{splitOOAtag}"
+if projectToNewLumi > 0.0:
+    lumiFactor = str(round(projectToNewLumi,2)).replace('.','p')
+    testFolder = f"{testFolder}_projectLumiX{lumiFactor}{''.join(lumiScaleVarianceLinearly)}"
+    setupLumiOption = f" --effStatLumiScale {projectToNewLumi} --lumiScale {projectToNewLumi}"
+    if len(lumiScaleVarianceLinearly):
+        setupLumiOption += f" --lumiScaleVarianceLinearly {' '.join(x.lower() for x in lumiScaleVarianceLinearly)}"
     
 if doStatOnly:
     doSystTests = {"tag" : "noSysts",
@@ -44,12 +54,13 @@ else:
                    "exclude" : '.*recoil'
                    }
 
-baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/mergeWmass_30Jan2023/{tag}/"
-basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/mergeWmass_30Jan2023/"
+#baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/fromTanmay_09Apr2024/{tag}/"
+baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
+basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/pdfCT18Z_April2024/"
 
-inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1{splitOOAtag}.hdf5"
+inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_{tag}.hdf5"
 if oneMCfileEveryN > 1:
-    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1{splitOOAtag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
+    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_{tag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
 
 if noPDFandQCDtheorySystOnSignal and not doStatOnly:
     testFolder += "/noPDFandQCDtheorySystOnSignal/"
@@ -60,9 +71,9 @@ if onlySignal and onlySignalAndOOA:
     
 outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
 
-theoryAgnosticOptions = " theoryAgnosticPolVar --poiAsNoi"
+theoryAgnosticOptions = " --analysisMode theoryAgnosticPolVar --poiAsNoi"
 
-setupCombineOptions = ""
+setupCombineOptions = setupLumiOption
 if doStatOnly:
     setupCombineOptions += " --doStatOnly"
 elif noPDFandQCDtheorySystOnSignal:
@@ -86,7 +97,8 @@ baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]
 coeffs = ["UL", "ULandA4", "ULandA0andA4", "and".join(x for x in baseCoeffs if x not in ["A1", "A2"]), "and".join(x for x in baseCoeffs)]
 #coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A3"])]
 #coeffs = ["and".join(x for x in baseCoeffs)]
-coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A2"])]
+#coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A2"])]
+#coeffs =["ULandA3"] 
 
 def safeSystem(cmd, dryRun=False, quitOnFail=True):
     print(cmd)
@@ -141,7 +153,8 @@ for c in coeffs:
 
     cmdCard = f"/usr/bin/time -v python scripts/combine/setupCombine.py -i {inputFileHDF5} -o {mainOutputFolder}/ --absolutePathInCard {setupCombineOptions} {customOpt}"
 
-    etaVar = "abseta" if foldEtaIntoAbsEta else "eta"
+    #etaVar = "abseta" if foldEtaIntoAbsEta else "eta"
+    etaVar = "eta" #patch, it seems the folder name stays eta also with --absval 1
     analysisFolderBase = f"WMass_{etaVar}_pt_charge" 
     fitFolder = analysisFolderBase
     if doStatOnly:
@@ -164,23 +177,34 @@ for c in coeffs:
 
     impact_postfix = f"asimov_{procFolder}_{subFolder}"
 
-    cmdImp = f"python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/makeImpactsOnMW/ --scaleToMeV --showTotal --postfix {impact_postfix}  -x '.*eff_(stat|syst)_|.*AlphaS|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*polVar|.*QCDscale$|.*resum$|.*(muon|ecal)Prefire'  --compareFile {halfStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --printAltVal --legendEntries 'Full MC stat' '1/2 MC stat'"
+    fitResultFile = f"{fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root"
+    baseOutputPlotPath = f"{basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}"
+    
+    cmdImp = f"python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py {fitResultFile} -o {baseOutputPlotPath}/makeImpactsOnMW/ --scaleToMeV --showTotal --postfix {impact_postfix}  -x '.*eff_(stat|syst)_|.*AlphaS|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*resum$|.*(muon|ecal)Prefire'  --compareFile {halfStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --printAltVal --legendEntries 'Full MC stat' '1/2 MC stat'"
 
     if not skipImpacts:
         safeSystem(cmdImp, dryRun=justPrint)
         print()
 
     corr_postfix = f"{subFolder}"
-        
-    cmdCorr = f"python scripts/analysisTools/w_mass_13TeV/subMatrix.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/subMatrix/ --postfix {corr_postfix}_withMW -p '.*polVar|.*mass' --uniqueString polVar --title 'Th. agn., {subFolder}' --noTextMatrix"
+    corr_stat = "_statOnly" if doStatOnly else ""
+
+    cmdCorr = f"python scripts/analysisTools/w_mass_13TeV/subMatrix.py {fitResultFile} -o {baseOutputPlotPath}/subMatrix/ --postfix {corr_postfix}_withMW -p '.*polVar|.*massShiftW' --uniqueString polVar{corr_stat} --title 'Th. agn., {subFolder}' --noTextMatrix"
 
     if not skipCorrelation:
         safeSystem(cmdCorr, dryRun=justPrint)
         print()
 
+    nCorrLinePar = 30
+    cmdCorrLine = f"python scripts/analysisTools/w_mass_13TeV/getCorrelationLine.py {fitResultFile} -o {baseOutputPlotPath}/getCorrelationLine/ --postfix {subFolder} -p massShiftW100MeV -m none --title '{subFolder}: first {nCorrLinePar} parameters more correlated with m_{{W}}' -n {nCorrLinePar}"
+
+    if not skipCorrLine:
+        safeSystem(cmdCorrLine, dryRun=justPrint)
+        print()
+
     diffnuis_postfix = f"{subFolder}"
         
-    cmdDiff = f"python scripts/analysisTools/w_mass_13TeV/diffNuisances.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/diffNuisances/ --postfix {diffnuis_postfix} --pois '.*polVar' --uniqueString polVar --y-setting -0.5 -0.25 0 0.25 0.5 --defaultYmax 0.75"
+    cmdDiff = f"python scripts/analysisTools/w_mass_13TeV/diffNuisances.py {fitResultFile} -o {baseOutputPlotPath}/diffNuisances/ --postfix {diffnuis_postfix} --pois '.*polVar' --uniqueString polVar --y-setting -0.5 -0.25 0 0.25 0.5 --defaultYmax 0.75"
 
     if not skipDiffnuis:
         safeSystem(cmdDiff, dryRun=justPrint)
@@ -188,7 +212,7 @@ for c in coeffs:
 
     if doSystTests['tag'] == "allSysts":
 
-        systToPlot = {"resumAndSCETlibAndEW" : " --pois '.*resum|.*scetlib|.*horace' ",
+        systToPlot = {"resumAndSCETlib" : " --pois '.*resum|.*scetlib' ",
                       "PDFandAlphaS"         : " --pois '.*pdf' ",
                       "QCDscaleW"            : " --pois '.*QCDscaleW.*helicity_[0-4]+' --bm 0.45 "
                       }
@@ -198,7 +222,7 @@ for c in coeffs:
         for s in systToPlot.keys():
             expr = systToPlot[s]
             
-            cmdCompareDiff = f"python scripts/analysisTools/w_mass_13TeV/diffNuisances.py {fullStatFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/diffNuisances/ --postfix {diffnuis_postfix}_compareTraditional {expr} --uniqueString {s} --y-setting -1.5 -0.5 0 0.5 1.5 --defaultYmax 1.5 --expected-infile {traditionalFitFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --postfitLegendLabelObs 'Theory agnostic fit' --postfitLegendLabelExp 'Traditional fit' "
+            cmdCompareDiff = f"python scripts/analysisTools/w_mass_13TeV/diffNuisances.py {fitResultFile} -o {baseOutputPlotPath}/diffNuisances/ --postfix {diffnuis_postfix}_compareTraditional {expr} --uniqueString {s} --y-setting -1.5 -0.5 0 0.5 1.5 --defaultYmax 1.5 --expected-infile {traditionalFitFolder}/{fitFolder}/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --postfitLegendLabelObs 'Theory agnostic fit' --postfitLegendLabelExp 'Traditional fit' "
 
             if not skipCompareDiffnuis:
                 safeSystem(cmdCompareDiff, dryRun=justPrint)
@@ -213,7 +237,7 @@ if oneMCfileEveryN == 1 and not skipTemplates:
     for charge in charges:
         for c in baseCoeffs:
 
-            cmdTempl = f"python scripts/analysisTools/w_mass_13TeV/makeSystRatios.py {fullStatFolder}/{analysisFolderBase}/WMassCombineInput.root {basePlotDir}/checkFullStat{splitOOAtag}/{tag}/{procFolder}/{analysisFolderBase}/makeSystRatios/muonRecoCharge_{charge}/{c}/Wmunu/ -s '.*polVarW_{c}_{charge}' --systPostfix 'polVarW_{c}_{charge}' -p 'Wmunu' -c {charge} --plot 2D --compareSingleSystToNomi"
+            cmdTempl = f"python scripts/analysisTools/w_mass_13TeV/makeSystRatios.py {fullStatFolder}/{fitFolder}/WMassCombineInput.root {baseOutputPlotPath}/makeSystRatios/muonRecoCharge_{charge}/{c}/Wmunu/ -s '.*polVarW_{c}_{charge}' --systPostfix 'polVarW_{c}_{charge}' -p 'Wmunu' -c {charge} --plot 2D --compareSingleSystToNomi"
 
             safeSystem(cmdTempl, dryRun=justPrint)
             print()
@@ -222,3 +246,12 @@ if oneMCfileEveryN == 1 and not skipTemplates:
 
 ## other utility commands
 # python scripts/analysisTools/w_mass_13TeV/getCorrelationLine.py /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p40_y3p50_V4//fullStat_splitOOA/onlySignal//allCoeff_noSysts/WMass_eta_pt_charge_statOnly/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/TESTS/theoryAgnostic_polVar//checkFullStat_splitOOA/x0p40_y3p50_V4/onlySignal/WMass_eta_pt_charge/getCorrelationLine/ --postfix allCoeff_noSysts -p massShiftW100MeV -m none -n -1 --title "Correlation of signal variations with m_{W}: fit with all coeffs"
+
+
+# fit setup traditonal (here for 1/2 stat) with eta or abseta
+# /usr/bin/time -v python scripts/combine/setupCombine.py -i /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_x0p30_y3p00_V8_oneMCfileEvery2.hdf5 -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//oneMCfileEvery2_splitOOA/allProcs//traditionalFit_allSysts_abseta/ --absolutePathInCard  -x '.*recoil'  --absval 1
+# /usr/bin/time -v python scripts/combine/setupCombine.py -i /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_x0p30_y3p00_V8_oneMCfileEvery2.hdf5 -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//oneMCfileEvery2_splitOOA/allProcs//traditionalFit_allSysts/ --absolutePathInCard  -x '.*recoil'
+
+# Fit traditional (full and 1/2 stat), eta and abseta
+# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//fullStat_splitOOA/allProcs/traditionalFit_allSysts_abseta/WMass_eta_pt_charge/ --skip-fit-data --comb
+# python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p30_y3p00_V8//fullStat_splitOOA/allProcs/traditionalFit_allSysts/WMass_eta_pt_charge/ --skip-fit-data --comb

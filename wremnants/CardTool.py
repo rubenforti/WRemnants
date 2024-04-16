@@ -66,6 +66,7 @@ class CardTool(object):
         self.unroll = False # unroll final histogram before writing to root
         self.keepSyst = None # to override previous one with exceptions for special cases
         self.lumiScale = 1.
+        self.lumiScaleVarianceLinearly = []
         self.fit_axes = None
         self.xnorm = xnorm
         self.simultaneousABCD = simultaneousABCD
@@ -126,8 +127,9 @@ class CardTool(object):
         else:
             raise ValueError("In setNoStatUncForProcs(): expecting string or list argument")
     
-    def setLumiScale(self, lumiScale):
+    def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly=[]):
         self.lumiScale = lumiScale
+        self.lumiScaleVarianceLinearly = lumiScaleVarianceLinearly
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
@@ -375,7 +377,8 @@ class CardTool(object):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=syst, label="syst",
             procsToRead=[proc],
-            scaleToNewLumi=self.lumiScale)
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly)
         return self.datagroups.getDatagroups()[proc].hists["syst"]
 
     def getNominalHistForSignal(self):
@@ -748,7 +751,8 @@ class CardTool(object):
         datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
             procsToRead=datagroups.groups.keys(),
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
             applySelection=False 
@@ -762,7 +766,8 @@ class CardTool(object):
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
             label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=not self.simultaneousABCD)
         procDictFromNomi = self.datagroups.getDatagroups()
@@ -827,7 +832,8 @@ class CardTool(object):
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
-                scaleToNewLumi=self.lumiScale, 
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
@@ -843,6 +849,7 @@ class CardTool(object):
                     procsToRead=processesFromNomi, 
                     label=pseudoData,
                     scaleToNewLumi=self.lumiScale,
+                    lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                     forceNonzero=forceNonzero,
                     sumFakesPartial=not self.simultaneousABCD)
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
@@ -915,7 +922,8 @@ class CardTool(object):
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
             label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=not self.simultaneousABCD)
         
@@ -943,6 +951,7 @@ class CardTool(object):
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                 preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
                 scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceToNominal=forceToNominal,
                 sumFakesPartial=not self.simultaneousABCD
             )
