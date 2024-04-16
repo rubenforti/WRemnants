@@ -359,8 +359,6 @@ def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], reb
     nom_hist = hist_in[{"vars" : 0}]
     nom_hist_sum = nom_hist[gen_sum_expr]
 
-    print(hist_in.axes.name, nom_hist.axes.name, nom_hist_sum.axes.name, gen_sum_expr)
-
     variation_data = hist_in.view(flow=True) - nom_hist.view(flow=True)[..., None] + nom_hist_sum.view(flow=True)[..., *len(gen_sum_expr)*[None], None]
 
     variation_hist = hist.Hist(*hist_in.axes, storage = hist_in._storage_type(),
