@@ -129,15 +129,17 @@ if args.selection:
 else:
     applySelection=True
 
-groups.setNominalName(args.baseName)
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
     groups.set_histselectors(datasets, args.baseName, smoothen=not args.binnedFakeEstimation, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation)
 
-nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
 if not args.nominalRef:
+    nominalName = args.baseName.rsplit("_", 1)[0]
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
+    nominalName = args.nominalRef
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
 exclude = ["Data"] 
