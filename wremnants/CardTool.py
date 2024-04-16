@@ -127,7 +127,7 @@ class CardTool(object):
         else:
             raise ValueError("In setNoStatUncForProcs(): expecting string or list argument")
     
-    def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly):
+    def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly=[]):
         self.lumiScale = lumiScale
         self.lumiScaleVarianceLinearly = lumiScaleVarianceLinearly
 
