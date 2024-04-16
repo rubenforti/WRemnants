@@ -747,7 +747,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     hSel_sig = sel.SignalSelectorABCD(h, **info)
     hD_sig = hSel_sig.get_hist(h)
     hss.append(hD_sig)
-    labels.append("D")
+    labels.append("D (truth)")
     
     # simple ABCD
     logger.info("Make simple ABCD prediction")
@@ -781,50 +781,50 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_simple = hSel_simple.get_hist(h)
 
         hss.append(hD_simple)
-        labels.append("simple")
+        labels.append("simple ABCD")
 
-    # extrapolate ABCD x-axis
-    if not smoothed:
-        # logger.info("Make extrapolated ABCD prediction")
-        # hSel_Xpol0 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=0)
-        # hD_Xpol0 = hSel_Xpol0.get_hist(h)
-        # hss.append(hD_Xpol0)
-        # labels.append("pol0(x)")
+    # # extrapolate ABCD x-axis
+    # if not smoothed:
+    #     # logger.info("Make extrapolated ABCD prediction")
+    #     # hSel_Xpol0 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=0)
+    #     # hD_Xpol0 = hSel_Xpol0.get_hist(h)
+    #     # hss.append(hD_Xpol0)
+    #     # labels.append("pol0(x)")
 
-        hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,20,40,44,49,55,62])
+    #     hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,20,40,44,49,55,62])
 
-        if bootstrap:
-            # throw posson toys
-            toy_shape = [nsamples, *values.shape]
-            rng = np.random.default_rng(seed)
-            toys = rng.poisson(values, size=toy_shape)
+    #     if bootstrap:
+    #         # throw posson toys
+    #         toy_shape = [nsamples, *values.shape]
+    #         rng = np.random.default_rng(seed)
+    #         toys = rng.poisson(values, size=toy_shape)
 
-            vals = []
-            for i in range(nsamples):
-                hBootstrap.values(flow=True)[...] = toys[i,...]
-                hSel_Xpol1.h_nominal = None
-                hD_Xpol1 = hSel_Xpol1.get_hist(hBootstrap)
-                vals.append(hD_Xpol1.values(flow=True))
+    #         vals = []
+    #         for i in range(nsamples):
+    #             hBootstrap.values(flow=True)[...] = toys[i,...]
+    #             hSel_Xpol1.h_nominal = None
+    #             hD_Xpol1 = hSel_Xpol1.get_hist(hBootstrap)
+    #             vals.append(hD_Xpol1.values(flow=True))
 
-            vals = np.array(vals)
-            toy_mean = np.mean(vals, axis=0)
-            toy_var = np.var(vals, ddof=1, axis=0) 
-            hD_Xpol1.values(flow=True)[...] = toy_mean
-            hD_Xpol1.variances(flow=True)[...] = toy_var
-        else:
-            hD_Xpol1 = hSel_Xpol1.get_hist(h, is_nominal=True)
-        hss.append(hD_Xpol1)
-        labels.append("pol1(x)")
+    #         vals = np.array(vals)
+    #         toy_mean = np.mean(vals, axis=0)
+    #         toy_var = np.var(vals, ddof=1, axis=0) 
+    #         hD_Xpol1.values(flow=True)[...] = toy_mean
+    #         hD_Xpol1.variances(flow=True)[...] = toy_var
+    #     else:
+    #         hD_Xpol1 = hSel_Xpol1.get_hist(h, is_nominal=True)
+    #     hss.append(hD_Xpol1)
+    #     labels.append("pol1(x)")
 
-        # hSel_Xpol1p = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,11,21,40,44,49,55,62,80])
-        # hD_Xpol1p = hSel_Xpol1p.get_hist(h)
-        # hss.append(hD_Xpol1p)
-        # labels.append("pol1(x)'")
+    #     # hSel_Xpol1p = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,11,21,40,44,49,55,62,80])
+    #     # hD_Xpol1p = hSel_Xpol1p.get_hist(h)
+    #     # hss.append(hD_Xpol1p)
+    #     # labels.append("pol1(x)'")
 
-        # hSel_Xpol2 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=2, rebin_x=[0,11,21,40,44,49,55,62,80])
-        # hD_Xpol2 = hSel_Xpol2.get_hist(h)
-        # hss.append(hD_Xpol2)
-        # labels.append("pol2(x)")    
+    #     # hSel_Xpol2 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=2, rebin_x=[0,11,21,40,44,49,55,62,80])
+    #     # hD_Xpol2 = hSel_Xpol2.get_hist(h)
+    #     # hss.append(hD_Xpol2)
+    #     # labels.append("pol2(x)")    
 
     # extended ABCD in 5 control regions
     logger.info("Make 1D extended ABCD prediction in 5 control regions")
@@ -832,7 +832,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info)
         hD_ext5 = hSel_ext5.get_hist(h)
         hss.append(hD_ext5)
-        labels.append("ext(5) smoothed")
+        labels.append("ext. 1D smoothed")
     else:
         hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
 
@@ -858,7 +858,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_ext5 = hSel_ext5.get_hist(h)
 
         hss.append(hD_ext5)
-        labels.append("ext(5)")
+        labels.append("ext. 1D")
 
         # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False upper_bound_y=hist.overflow)
         # hD_ext5 = hSel_ext5.get_hist(h)
@@ -871,7 +871,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info)
         hD_ext8 = hSel_ext8.get_hist(h)
         hss.append(hD_ext8)
-        labels.append("ext(8) smoothed")
+        labels.append("ext. 2D smoothed")
 
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
         # hD_ext8 = hSel_ext8.get_hist(h)
@@ -903,7 +903,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_ext8 = hSel_ext8.get_hist(h)
 
         hss.append(hD_ext8)
-        labels.append("ext(8)")
+        labels.append("ext. 2D")
 
         # labels.append("extended 2D")
 
@@ -994,7 +994,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         if not smoothed:
             chi2s = [sum((h1d.values(flow=True) - hss[0].values(flow=True))**2/(h1d.variances(flow=True) + hss[0].variances(flow=True))) for h1d in hss]
             ndf = len(hss[0].values(flow=True)) - normalized
-            labels = [f"{l} $\chi^2/ndf={round(c)}/{ndf}$" for l, c in zip(labels, chi2s)]
+            labels = [f"{l} $\chi^2/ndf={round(c)}/{ndf}$" if i!= 0 else l for i, (l, c) in enumerate(zip(labels, chi2s))]
 
     hep.histplot(
         hs,
