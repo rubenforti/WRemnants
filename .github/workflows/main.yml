@@ -464,8 +464,8 @@ jobs:
 
       - name: lowpu combine unfolding result to hist
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.hdf5 -o $COMBINED_DIR/Combination_LowPU_ptll/
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py
+          --expected $COMBINED_DIR/Combination_LowPU_ptll/fitresults_123456789.hdf5 -o $COMBINED_DIR/Combination_LowPU_ptll/
 
   wlike:
     # The type of runner that the job will run on
