@@ -2,7 +2,7 @@ from utilities import boostHistHelpers as hh, logging
 
 logger = logging.child_logger(__name__)
     
-def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGroups=None, filterGroups=None, **kwargs):
+def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGroups=None, filterGroups=None):
     # reset datagroups
     dg.groups = {}
 

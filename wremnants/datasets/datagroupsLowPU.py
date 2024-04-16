@@ -2,7 +2,7 @@ from utilities import boostHistHelpers as hh, logging
 
 logger = logging.child_logger(__name__)
 
-def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=None, **kwargs):
+def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=None):
     # reset datagroups
     dg.groups = {}
 
