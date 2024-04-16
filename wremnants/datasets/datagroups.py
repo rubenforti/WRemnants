@@ -287,7 +287,7 @@ class Datagroups(object):
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
         applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
-        scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
+                               scaleToNewLumi=1, lumiScaleVarianceLinearly=[], excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
         logger.debug(f"The basename and syst is: {baseName}, {syst}")
@@ -385,9 +385,18 @@ class Datagroups(object):
                     h = hh.clipNegativeVals(h, createNew=False)
 
                 scale = self.processScaleFactor(member)
-                scale *= scaleToNewLumi
                 if group.scale:
                     scale *= group.scale(member)
+
+                # When scaling yields by a luminosity factor, select whether to scale the variance linearly or quadratically (default).
+                # A linear scaling results in lower relative uncertainty, as if one really had more data and/or MC.
+                # If linear scaling of the variance is requested, apply this specific scaling separately from other possible scaling factors (usually only in MC, such as for the xsec)
+                # Note: the delicate point is that the actual stat fluctuations in the data template will no longer correspond to the real statistical uncertainty, which may not be what one wants
+                if not np.isclose(scaleToNewLumi, 1, rtol=0, atol=1e-6) and ((procName == "Data" and "data" in lumiScaleVarianceLinearly) or (procName != "Data" and "mc" in lumiScaleVarianceLinearly)):
+                        logger.warning(f"Scale {procName} hist by {scaleToNewLumi} as a multiplicative luminosity factor, with variance scaled linearly")
+                        h = hh.scaleHist(h, scaleToNewLumi, createNew=False, scaleVarianceLinearly=True)
+                else:
+                    scale *= scaleToNewLumi
 
                 if not np.isclose(scale, 1, rtol=0, atol=1e-10):
                     logger.debug(f"Scale hist with {scale}")

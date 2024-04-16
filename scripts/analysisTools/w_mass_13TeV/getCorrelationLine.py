@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
-
 # python w-helicity-13TeV/getCorrelationLine.py cards/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/fit/hessian/fitresults_123456789_Asimov_combinedLep_bbb1_cxs1.root -o plots/diffXsecAnalysis/muon/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/getCorrelationLine/ -p CMS_Wmu_sig_lepeff -m sumpoisnorm -n 50
-
 
 import os, re, operator, math
 import argparse
 import datetime
 
 from array import array
-
 
 #from subMatrix import niceName # skip for now, have to adapt the script
 from operator import itemgetter
@@ -43,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument('-p','--param',  default='', type=str, help='parameter for which you want to show the correlation matrix. Must be a single object')
     parser.add_argument('-t','--type',   default='hessian', type=str, choices=['toys', 'hessian'], help='which type of input file: toys or hessian (default)')
     parser.add_argument('-m','--matrix', default='', type=str, help='matrix to be used (name is correlation_matrix_channel<matrix>)')
-    parser.add_argument(     '--postfix', default='', type=str, help='suffix for the plotted correlation matrix')
+    parser.add_argument(     '--postfix', default='', type=str, help='Postfix for the plotted correlation matrix')
     parser.add_argument(     '--vertical-labels-X', dest='verticalLabelsX', action='store_true', help='Set labels on X axis vertically (sometimes they overlap if rotated)')
     parser.add_argument(     '--title',  default='', type=str, help='Title for matrix. Use 0 to remove title. By default, string passed to option -p is used')
     parser.add_argument('-n','--show-N' , dest='showN',    default=10, type=int, help='Show the N nuisances more correlated (in absolute value) with the parameter given with --param.')
@@ -59,7 +56,6 @@ if __name__ == "__main__":
                                       array ("d", [0.82, 1.00, 0.00]),
                                       255,  0.95)
 
-
     if not args.matrix:
         print("Need to specify which matrix with option -m (e.g. -m 'channelnone')")
         quit()
@@ -68,14 +64,13 @@ if __name__ == "__main__":
         print("Need to specify a parameter with option -p")
         quit()
 
-    outdir_original = args.outdir:
+    outdir_original = args.outdir
     outdir = None
     if outdir_original:
         outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     param = args.param
     print(f"Will do parameter with the following name: {param}")
-    
 
     corr = {}
     sign = {}
@@ -95,7 +90,7 @@ if __name__ == "__main__":
                 ## store mean and rms into the dictionaries from before
                 ## also keep a list of the parameter names, for sorting
                 index = ib
-            
+
     ## construct the covariances and the correlations in one go.
     for bin in range(1+corrmatrix.GetNbinsX()+1):
         label = corrmatrix.GetXaxis().GetBinLabel(bin)
@@ -153,8 +148,6 @@ if __name__ == "__main__":
 
     if outdir:
         for i in ['pdf', 'png']:
-            suff = '' if not args.postfix else '_'+args.postfix
-            c.SaveAs(outdir+'/corrLine{suff}_{pn}_{ch}.{i}'.format(suff=suff,i=i,pn=param, ch=args.matrix.replace("channel","")))
+            pf = '' if not args.postfix else '_'+args.postfix
+            c.SaveAs(outdir+'/corrLine{pf}_{pn}_{ch}.{i}'.format(pf=pf, i=i, pn=param, ch=args.matrix.replace("channel","")))
     copyOutputToEos(outdir_original, eoscp=args.eoscp)
-
-
