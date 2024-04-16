@@ -388,11 +388,8 @@ class Datagroups(object):
                 if group.scale:
                     scale *= group.scale(member)
 
-                # When scaling yields by a luminosity factor, select whether to scale the variance linearly or quadratically (default).
-                # A linear scaling results in lower relative uncertainty, as if one really had more data and/or MC.
-                # If linear scaling of the variance is requested, apply this specific scaling separately from other possible scaling factors (usually only in MC, such as for the xsec)
-                # Note: the delicate point is that the actual stat fluctuations in the data template will no longer correspond to the real statistical uncertainty, which may not be what one wants
-                if not np.isclose(scaleToNewLumi, 1, rtol=0, atol=1e-6) and ((procName == "Data" and "data" in lumiScaleVarianceLinearly) or (procName != "Data" and "mc" in lumiScaleVarianceLinearly)):
+                # When scaling yields by a luminosity factor, select whether to scale the variance linearly (e.g. for extrapolation studies) or quadratically (default).
+                if not np.isclose(scaleToNewLumi, 1, rtol=0, atol=1e-6) and ((procName == self.dataName and "data" in lumiScaleVarianceLinearly) or (procName != self.dataName and "mc" in lumiScaleVarianceLinearly)):
                         logger.warning(f"Scale {procName} hist by {scaleToNewLumi} as a multiplicative luminosity factor, with variance scaled linearly")
                         h = hh.scaleHist(h, scaleToNewLumi, createNew=False, scaleVarianceLinearly=True)
                 else:
