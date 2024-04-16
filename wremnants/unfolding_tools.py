@@ -92,7 +92,7 @@ def get_fiducial_args(mode, pt_min=28, pt_max=60, abseta_max=2.4):
 
     return fidargs
 
-def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=0, pt_max=1300, abseta_max=2.4, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
+def select_fiducial_space(df, select=True, accept=True, mode="mw", pt_min=0, pt_max=1300, abseta_max=2.4, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
     # accept = False: reject events in fiducial pahse space

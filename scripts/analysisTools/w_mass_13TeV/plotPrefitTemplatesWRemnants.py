@@ -234,10 +234,19 @@ if __name__ == "__main__":
     parser.add_argument("--pt-range-projection", dest="ptRangeProjection", default=(0,-1), type=float, nargs=2, help="Pt range to select bins to use for 1D projection (for upper range remember that upper bin edge belongs to next bin in ROOT)")
     parser.add_argument("--wlike", dest="isWlike", action="store_true", help="Flag for W-like analysis")
     parser.add_argument("--pd", "--pseudodata", dest="pseudodata", type=str, default=None, help="Name for pseudodata histogram, to be used instead of x_Data (with no charge postfix, it is added in this script)")
-    
+
     commonargs,_ = parser.parse_known_args()
-    # TODO: get the process from the list of folders in the input file
-    defaultProcs = ["Zmumu", "Ztautau", "Other"] if commonargs.isWlike else ["Wmunu", "Wtaunu", "Zmumu", "DYlowMass", "Ztautau", "Fake", "Top", "Diboson", "PhotonInduced", "ZmumuVeto", "DYlowMassVeto", "ZtautauVeto"]
+
+    # defaultProcs = ["Zmumu", "Ztautau", "Other"] if commonargs.isWlike else ["Wmunu", "Wtaunu", "Zmumu", "DYlowMass", "Ztautau", "Fake", "Top", "Diboson", "PhotonInduced", "ZmumuVeto", "DYlowMassVeto", "ZtautauVeto"]
+
+    defaultProcs = []
+    fname = args.rootfile[0]
+    tmpf = safeOpenFile(fname)
+    for k in tmpf.GetListOfKeys():
+        name = k.GetName()
+        if k.ClassName() == "TDirectoryFile" and name not in ["Data", "meta_info"]
+        defaultProcs.append(name)
+    tmpf.Close()
 
     parser.add_argument("--pp", "--predicted-processes", dest="predictedProcesses", type=str, nargs="*", help="Use these names for predicted processes to make plots", default=defaultProcs)
     parser.add_argument("--xpp", "--exclude-predicted-processes", dest="excludePredictedProcesses", type=str, nargs="*", help="Use these names to exclude predicted processes to make plots", default=[])
@@ -245,7 +254,6 @@ if __name__ == "__main__":
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.92,1.08), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
 
-    fname = args.rootfile[0]
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 

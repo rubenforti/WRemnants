@@ -25,6 +25,7 @@ isUnfolding = args.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
+parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
     parser = common.set_parser_default(parser, "genBins", [18, 0])
@@ -239,10 +240,11 @@ def build_graph(df, dataset):
     df = df.Define("met_wlike_TV2_pt", "met_wlike_TV2.Mod()")
     results.append(df.HistoBoost("WlikeMET", [hist.axis.Regular(20, 0, 100, name="Wlike-MET")], ["met_wlike_TV2_pt", "nominal_weight"]))
     ###########
-    
+
     # cutting after storing mt distributions for plotting, since the cut is only on corrected met
-    df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
-    df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
+    if args.dphiMuonMetCut > 0.0:
+        df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
+        df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
     df = df.Filter(f"transverseMass >= {mtw_min}")
 
     if not args.onlyMainHistograms:

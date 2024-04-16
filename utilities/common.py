@@ -13,6 +13,7 @@ data_dir =  f"{pathlib.Path(__file__).parent}/../wremnants-data/data/"
 
 BR_TAUToMU = 0.1739
 BR_TAUToE = 0.1782
+# cross sections in pb
 xsec_ZmmPostVFP = 2001.9
 xsec_WpmunuPostVFP = 11765.9
 xsec_WmmunuPostVFP = 8703.87
@@ -66,7 +67,7 @@ calib_filepaths = {
     # 'tflite_file': f"{calib_dir}/muon_response_nosmearing.tflite"
 }
 closure_filepaths = {
-    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_newres_MCstat_new.root",
+    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_fullres.root",
     # 'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_simul.root",
     'binned': f"{closure_dir}/closureZ_LBL_smeared_v721.root"
 }
@@ -92,6 +93,8 @@ axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, nam
 down_up_axis = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "downUpVar")
 down_nom_up_axis = hist.axis.Regular(3, -1.5, 1.5, underflow=False, overflow=False, name = "downNomUpVar")
 
+# for fake estimation
+# binary categories for simple ABCD method
 passIsoName = "passIso"
 passMTName = "passMT"
 
@@ -102,7 +105,22 @@ failMT = {passMTName: False}
 
 axis_passIso = hist.axis.Boolean(name = passIsoName)
 axis_passMT = hist.axis.Boolean(name = passMTName)
-    
+
+# axes with only a few bins for beyond simple ABCD methods
+axis_isoCat = hist.axis.Variable([0,4,8], name = "iso",underflow=False, overflow=True)
+axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=False, overflow=True)
+
+def get_binning_fakes_pt(min_pt, max_pt):
+    edges = np.arange(min_pt,32,1)
+    edges = np.append(edges, [e for e in [33,36,40,46,56] if e<max_pt][:-1])
+    edges = np.append(edges, [max_pt])
+    return edges
+
+def get_binning_fakes_mt(mt_cut=40):
+    edges = np.array([0, int(mt_cut/2.), mt_cut])
+    edges = np.append(edges, [e for e in [30,32,34,36,38,40,44,49,55,62] if e>mt_cut])
+    return edges
+
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)
@@ -154,7 +172,7 @@ def set_subparsers(subparser, name):
         if name == "theoryAgnosticPolVar":
             subparser.add_argument("--theoryAgnosticFilePath", type=str, default=".",
                                    help="Path where input files are stored")
-            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"],
+            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V8", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6", "x0p30_y3p00_V7", "x0p30_y3p00_V8"],
                                    help="Tag for input files")
             subparser.add_argument("--theoryAgnosticSplitOOA", action='store_true',
                                    help="Define out-of-acceptance signal template as an independent process")
@@ -237,7 +255,7 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--noVertexWeight", action='store_true', help="Do not apply reweighting of vertex z distribution in MC to match data")
     parser.add_argument("--validationHists", action='store_true', help="make histograms used only for validations")
     parser.add_argument("--onlyMainHistograms", action='store_true', help="Only produce some histograms, skipping (most) systematics to run faster when those are not needed")
-    parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET"], help="MET (DeepMETReso or RawPFMET)", default="DeepMETReso")
+    parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"], help="Choice of MET", default="DeepMETPVRobust")
     parser.add_argument("-o", "--outfolder", type=str, default="", help="Output folder")
     parser.add_argument("--appendOutputFile", type=str, default="", help="Append analysis output to specified output file")
     parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP", "2017", "2018"], help="Data set to process", default="2016PostVFP")
@@ -255,7 +273,7 @@ def common_parser(for_reco_highPU=False):
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)
-        parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=0.25)
+        parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=0.0)
         parser.add_argument("--muonCorrMC", type=str, default="idealMC_lbltruth", 
             choices=["none", "trackfit_only", "trackfit_only_idealMC", "lbl", "idealMC_lbltruth", "idealMC_massfit", "idealMC_lbltruth_massfit"], 
             help="Type of correction to apply to the muons in simulation")
@@ -276,7 +294,7 @@ def common_parser(for_reco_highPU=False):
         parser.add_argument("--noSmooth3dsf", dest="smooth3dsf", action='store_false', help="If true (default) use smooth 3D scale factors instead of the original 2D ones (but eff. systs are still obtained from 2D version)")
         parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing") 
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
-        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso03chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
 
     commonargs,_ = parser.parse_known_args()
 
@@ -322,7 +340,7 @@ def plot_parser():
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
     parser.add_argument("-f", "--outfolder", type=str, default="./test", help="Subfolder for output")
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")
-    parser.add_argument("--cmsDecor", default="Preliminary", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
+    parser.add_argument("--cmsDecor", default="Work in progress", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
     parser.add_argument("--lumi", type=float, default=16.8, help="Luminosity used in the fit, needed to get the absolute cross section")
     parser.add_argument("--eoscp", action='store_true', help="Override use of xrdcp and use the mount instead")
     parser.add_argument("--scaleleg", type=float, default=1.0, help="Scale legend text")

@@ -1,12 +1,12 @@
 import pathlib
 import mplhep as hep
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from matplotlib import patches
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools
-from wremnants import histselections as sel
 import hist
 import math
 import numpy as np
@@ -26,6 +26,8 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
     hax = href.axes[0]
     if not xlim:
         xlim = [hax.edges[0], hax.edges[-1]]
+    if not automatic_scale:
+        return plt.figure(figsize=(width_scale*8,8)), xlim
     xlim_range = float(xlim[1] - xlim[0])
     original_xrange = float(hax.edges[-1] - hax.edges[0])
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
@@ -36,9 +38,17 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
     bin_density = 300, cms_label = None, logy=False, logx=False,
-    width_scale=1, automatic_scale=True
+    width_scale=1, height=8, automatic_scale=True
 ):
-    fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
+    if isinstance(href, hist.Hist):
+        fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
+    else:
+        if automatic_scale:
+            raw_width = (len(href)/float(bin_density))
+            width = math.ceil(raw_width)
+        else:
+            width = 1
+        fig = plt.figure(figsize=(width_scale*height*width,height))
 
     ax1 = fig.add_subplot() 
     if cms_label: hep.cms.text(cms_label)
@@ -123,13 +133,17 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
 def makeStackPlotWithRatio(
     histInfo, stackedProcs, histName="nominal", unstacked=None, 
     fitresult=None, prefit=False,
-    xlabel="", ylabel="Events/bin", rlabel = "Data/Pred.", rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2,
+    xlabel="", ylabel=None, rlabel = "Data/Pred.", rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2,
     binwnorm=None, select={},  action = (lambda x: x), extra_text=None, extra_text_loc=(0.8, 0.7), grid = False, 
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
-    no_fill=False, bin_density=300, unstacked_linestyles=[],
+    no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
     ratio_error=True, normalize_to_data=False,
 ):
+    add_ratio = not (no_stack or no_ratio) 
+    if ylabel is None:
+        ylabel = "Events/bin" if not density else "density"
+
     colors = [histInfo[k].color for k in stackedProcs if histInfo[k].hists[histName]]
     labels = [histInfo[k].label for k in stackedProcs if histInfo[k].hists[histName]]
 
@@ -159,8 +173,12 @@ def makeStackPlotWithRatio(
         else:
             data_hist = h
 
-    fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
-        grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+    if add_ratio:
+        fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+    else:
+        fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
+            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
 
     if fitresult:
         import uproot
@@ -198,10 +216,19 @@ def makeStackPlotWithRatio(
                 np.append(nom-std, (nom-std)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
 
-        ax2.fill_between(axis, 
-                np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
-                np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
-            step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+        if add_ratio:
+            ax2.fill_between(axis, 
+                    np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+                    np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
+                step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+    
+    opts=dict(stack=not no_stack, flow=flow)
+    opts2=opts.copy() # no binwnorm for ratio axis
+    opts2["density"]=density
+    if density:
+        opts["density"]=True
+    else:
+        opts["binwnorm"]=binwnorm
 
     if type(unstacked) == str: 
         unstacked = unstacked.split(",")
@@ -221,14 +248,12 @@ def makeStackPlotWithRatio(
         histtype="fill" if not no_fill else "step",
         color=colors,
         label=labels,
-        stack=True,
         ax=ax1,
-        binwnorm=binwnorm,
         zorder=1,
-        flow='none',
+        **opts
     )
     
-    if "Data" in histInfo and ratio_to_data:
+    if "Data" in histInfo and ratio_to_data and add_ratio:
         hep.histplot(
             hh.divideHists(hh.sumHists(stack), data_hist, cutoff=0.01, by_ax_name=False),
             histtype="step",
@@ -237,7 +262,7 @@ def makeStackPlotWithRatio(
             yerr=False,
             ax=ax2,
             zorder=3,
-            flow='none',
+            **opts
         )
 
     if unstacked:
@@ -250,18 +275,33 @@ def makeStackPlotWithRatio(
         linestyles = np.array(linestyles, dtype=object)
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
-        ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack) 
-        if baseline:
+        ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
+        if baseline and add_ratio:
             hep.histplot(
                 hh.divideHists(ratio_ref, ratio_ref, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False),
                 histtype="step",
                 color="grey",
                 alpha=0.5,
-                yerr=ratio_error,
+                yerr=ratio_error if ratio_ref.storage_type == hist.storage.Weight else False,
                 ax=ax2,
                 linewidth=2,
-                flow='none',
+                **opts2
             )
+
+        if fill_between and add_ratio:
+            fill_procs = [x for x in unstacked if x != "Data"]
+            if fill_between < 0:
+                fill_between = len(fill_procs)+1
+            logger.debug(f"Filling first {fill_between}")
+            for up,down in zip(fill_procs[:fill_between:2], fill_procs[1:fill_between:2]):
+                unstack_up = action(histInfo[up].hists[histName])*scale
+                unstack_down = action(histInfo[down].hists[histName])*scale
+                unstack_upr = hh.divideHists(unstack_up, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
+                unstack_downr = hh.divideHists(unstack_down, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
+                ax2.fill_between(unstack_up.axes[0].edges, 
+                    np.insert(unstack_upr, 0, unstack_upr[0]),
+                    np.insert(unstack_downr, 0, unstack_downr[0]),
+                    step='pre', color=histInfo[up].color, alpha=0.5)
 
         for proc,style in zip(unstacked, linestyles):
             unstack = histInfo[proc].hists[histName]
@@ -279,10 +319,9 @@ def makeStackPlotWithRatio(
                 ax=ax1,
                 alpha=0.7 if style != "None" else 1.,
                 linestyle=style,
-                binwnorm=binwnorm,
-                flow='none',
+                **opts
             )
-            if ratio_to_data and proc == "Data":
+            if ratio_to_data and proc == "Data" or not add_ratio:
                 continue
             stack_ratio = hh.divideHists(unstack, ratio_ref, cutoff=0.01, rel_unc=True, flow=False, by_ax_name=False)
             hep.histplot(stack_ratio,
@@ -293,30 +332,19 @@ def makeStackPlotWithRatio(
                 linewidth=2,
                 linestyle=style,
                 ax=ax2,
-                flow='none',
+                **opts2
             )
 
-        if fill_between:
-            fill_procs = [x for x in unstacked if x != "Data"]
-            if fill_between < 0:
-                fill_between = len(fill_procs)+1
-            logger.debug(f"Filling first {fill_between}")
-            for up,down in zip(fill_procs[:fill_between:2], fill_procs[1:fill_between:2]):
-                unstack_up = action(histInfo[up].hists[histName])*scale
-                unstack_down = action(histInfo[down].hists[histName])*scale
-                unstack_upr = hh.divideHists(unstack_up, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
-                unstack_downr = hh.divideHists(unstack_down, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
-                ax2.fill_between(unstack_up.axes[0].edges, 
-                    np.insert(unstack_upr, 0, unstack_upr[0]),
-                    np.insert(unstack_downr, 0, unstack_downr[0]),
-                    step='pre', color=histInfo[up].color, alpha=0.5)
-
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-    fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+    if add_ratio:
+        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+    else:
+        fix_axes(ax1, yscale=yscale, logy=logy)
 
     if cms_decor:
+        lumi = float(f"{lumi:.3g}") if not density else None
         scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}"), fontsize=legtext_size*scale, 
+        hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
             label=cms_decor, data="Data" in histInfo)
 
     return fig
@@ -409,6 +437,76 @@ def makePlotWithRatioToRef(
     if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     return fig
 
+def makeHistPlot2D(h2d, flow=False, **kwargs):
+    if flow:
+        xedges, yedges = extendEdgesByFlow(h2d)
+    else:
+        edges = h2d.axes.edges
+        xedges = np.reshape(edges[0], len(edges[0]))
+        yedges = edges[1][0]
+    values = h2d.values(flow=flow)
+    variances = h2d.variances(flow=flow)
+    makePlot2D(values, variances, xedges, yedges, **kwargs)
+
+def makePlot2D(values, variances=None, xedges=None, yedges=None, 
+    density=False, plot_uncertainties=False,
+    xlabel="", ylabel="", zlabel="", colormap="RdBu", plot_title=None,
+    ylim=None, xlim=None, zlim=None, zsymmetrize=None,
+    logz=False, # logy=False, logx=False, #TODO implement
+    cms_label="Work in progress", automatic_scale=False, width_scale=1.2
+):
+    if xedges is None or yedges is None:
+        xbins, ybins = values.shape
+        if xedges is None:
+            xedges = np.arange(xbins)
+        if yedges is None:
+            yedges = np.arange(ybins)
+    # if variances is None:
+    #     logger.warning("No variances given, assume")
+    #     variances = values
+
+    if density:
+        xbinwidths = np.diff(xedges)
+        ybinwidths = np.diff(yedges)
+        binwidths = np.outer(xbinwidths, ybinwidths) 
+        values /= binwidths
+        variances /= binwidths
+    elif plot_uncertainties:
+        # plot relative uncertainties instead
+        values = np.sqrt(hh.relVariance(values, variances, fillOnes=True))
+
+    if xlim is None:
+        xlim = (xedges[0],xedges[-1])
+    if ylim is None:
+        ylim = (yedges[0],yedges[-1])
+
+    fig, ax = figure(values, xlabel=xlabel, ylabel=ylabel, cms_label=cms_label, automatic_scale=automatic_scale, width_scale=width_scale, xlim=xlim, ylim=ylim)
+
+    if zlim is None:
+        if logz:
+            zmin = min(values[values>0]) # smallest value that is not 0
+        else:
+            zmin = values.min()
+        zmax = values.max()
+        zlim = (zmin,zmax)
+        
+    # make symmetric range around value of zsymmetrize
+    if zsymmetrize is not None:
+        zrange = max((zmin-zsymmetrize), (zsymmetrize-zmax))
+        zlim = [zsymmetrize-zrange, zsymmetrize+zrange]
+
+    if logz:
+        colormesh = ax.pcolormesh(xedges, yedges, values.T, cmap=getattr(mpl.cm, colormap), norm=mpl.colors.LogNorm(vmin=zlim[0], vmax=zlim[1]))
+    else:
+        colormesh = ax.pcolormesh(xedges, yedges, values.T, cmap=getattr(mpl.cm, colormap), vmin=zlim[0], vmax=zlim[1])
+    cbar = fig.colorbar(colormesh, ax=ax)
+
+    if plot_title:
+        ax.text(1.0, 1.003, plot_title, transform=ax.transAxes, fontsize=30,
+            verticalalignment='bottom', horizontalalignment="right")
+
+    return fig
+
 def extendEdgesByFlow(href, bin_flow_width=0.02):
     # add extra bin with bin wdith of a fraction of the total width
     all_edges = []
@@ -425,7 +523,7 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
     else:
         return all_edges
 
-def fix_axes(ax1, ax2, yscale=None, logy=False):
+def fix_axes(ax1, ax2=None, yscale=None, logy=False):
     #TODO: Would be good to get this working
     #ax1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
     if yscale:
@@ -433,9 +531,14 @@ def fix_axes(ax1, ax2, yscale=None, logy=False):
         ax1.set_ylim(ymin, ymax*yscale)
     if not logy:
         redo_axis_ticks(ax1, "y")
-        redo_axis_ticks(ax2, "x")
-    redo_axis_ticks(ax1, "x", True)
-    ax1.set_xticklabels([])
+        if ax2 is not None:
+            redo_axis_ticks(ax2, "x")
+    if ax2 is not None:
+        redo_axis_ticks(ax1, "x", True)
+        ax1.set_xticklabels([])
+    else:
+        redo_axis_ticks(ax1, "x", False)
+
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()

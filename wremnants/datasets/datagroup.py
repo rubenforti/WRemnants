@@ -17,7 +17,7 @@ class Datagroup_member(object):
 
 class Datagroup(object):
 
-    def __init__(self, name, members={}, scale=None, selectOp=None, selectOpArgs={}, memberOp=None, label=None, color=None):
+    def __init__(self, name, members={}, scale=None, memberOp=None, label=None, color=None):
         self.name = name
         self.scale = scale
         self.label = styles.process_labels.get(name, name) if label is None else label
@@ -27,12 +27,10 @@ class Datagroup(object):
         else:
             self.members = members
 
-        self.selectOp = selectOp            # operation that is applied on all members of the group
-        self.selectOpArgs = selectOpArgs    # argments to the selectOp
+        self.histselector = None        # selector object to perform selection operation
+        self.memberOp = memberOp        # list of operations that is applied on single members
 
-        self.memberOp = memberOp            # list of operations that is applied on single members
-
-        self.hists = {}                     # list of histograms processed from narf datasets
+        self.hists = {}                 # list of histograms processed from narf datasets
 
     def copy(self, new_name, member_filter=None):
         x = deepcopy(self)

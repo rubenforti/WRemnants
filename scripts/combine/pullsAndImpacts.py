@@ -66,18 +66,7 @@ def get_marker(filled=True, color='#377eb8', opacity=1.0):
         }
     return marker
 
-def plotImpacts(df, poi, pulls=False, normalize=False, oneSidedImpacts=False):
-    poi_type = poi.split("_")[-1] if poi else None
-
-    if poi and poi.startswith("massShift"):
-        impact_title = "Impact on mass (MeV)"
-    elif poi and poi.startswith("massDiffCharge"):
-        impact_title = "Impact on mass diff. (charge) (MeV)"
-    elif poi and poi.startswith("massDiffEta"):
-        impact_title = "$\\mathrm{Impact\\ on\\ mass\\ diff. }(\\eta)\\ (\\mathrm{MeV})$"
-    else:
-        impact_title=poi
-
+def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpacts=False):
     impacts = bool(np.count_nonzero(df['absimpact'])) and not args.noImpacts
     ncols = pulls+impacts
     fig = make_subplots(rows=1,cols=ncols,
@@ -267,7 +256,7 @@ def plotImpacts(df, poi, pulls=False, normalize=False, oneSidedImpacts=False):
 
     return fig
 
-def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=False, scale=100):    
+def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=False, scale=1):    
     impacts, labels, _ = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
     
     if (group and grouping) or args.filters:
@@ -346,7 +335,29 @@ app = dash.Dash(__name__)
     [Input("groups", "on")],
 )
 
-def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_ref=None, scale=100):
+def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_ref=None):
+    poi_type = poi.split("_")[-1] if poi else None
+
+    if poi is not None and "MeV" in poi:
+        scale = float(re.search(r'\d+(\.\d+)?', poi.split("MeV")[0].replace("p",".")).group())
+        if "Diff" in poi:
+            scale *= 2 # take diffs by 2 as up and down pull in opposite directions
+    else:
+        scale = 1
+
+    if poi and poi.startswith("massShift"):
+        impact_title = "Impact on mass (MeV)"
+    elif poi and poi.startswith("massDiff"):
+        if poi.startswith("massDiffCharge"):
+            impact_title = "Impact on mass diff. (charge) (MeV)"
+        elif poi.startswith("massDiffEta"):
+            impact_title = "$\\mathrm{Impact\\ on\\ mass\\ diff. }(\\eta)\\ (\\mathrm{MeV})$"
+        else:
+            impact_title = "Impact on mass diff. (MeV)"
+    elif poi and poi.startswith("Width"):
+        impact_title = "Impact on width (MeV)"
+    else:
+        impact_title=poi
 
     if not (group and args.output_mode == 'output'):
         df = readFitInfoFromFile(fitresult, args.inputFile, poi, False, stat=args.stat/100., normalize=normalize, scale=scale)
@@ -446,14 +457,14 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
         if args.num and args.num < df.size:
             # in case multiple extensions are given including html, don't do the skimming on html but all other formats
             if "html" in extensions and len(extensions)>1:
-                fig = plotImpacts(df, pulls=not args.noPulls and not group, poi=poi, normalize=not args.absolute, oneSidedImpacts=args.oneSidedImpacts)
+                fig = plotImpacts(df, pulls=not args.noPulls and not group, impact_title=impact_title, normalize=not args.absolute, oneSidedImpacts=args.oneSidedImpacts)
                 outfile_html = outfile.replace(outfile.split(".")[-1], "html")
                 writeOutput(fig, outfile_html, postfix=postfix)
                 extensions = [e for e in extensions if e != "html"]
                 outfile = outfile.replace(outfile.split(".")[-1], extensions[0])
             df = df[-args.num:]
 
-        fig = plotImpacts(df, pulls=not args.noPulls and not group, poi=poi, normalize=not args.absolute, oneSidedImpacts=args.oneSidedImpacts)
+        fig = plotImpacts(df, pulls=not args.noPulls and not group, impact_title=impact_title, normalize=not args.absolute, oneSidedImpacts=args.oneSidedImpacts)
         writeOutput(fig, outfile, extensions[0:], postfix=postfix, args=args, meta_info=meta)      
         if args.eoscp and output_tools.is_eosuser_path(args.outFolder):
             output_tools.copy_to_eos(args.outFolder, "")

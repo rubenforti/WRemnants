@@ -10,7 +10,7 @@
     "QCDscaleZPtChargeHelicityMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (Z)}$",
     "QCDscaleWPtChargeHelicityMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (W)}$",
     "binByBinStat": "Bin-by-bin stat.",
-    "CMS_recoil": "recoil",
+    "recoil": "recoil",
     "CMS_background": "Bkg.",
     "FakeHighMT": "FakeHighMT",
     "FakeLowMT": "FakeLowMT",
@@ -43,6 +43,12 @@
     "stat": "Data stat.",
     "lumi": "Luminosity",
     "theory_ew": "EW",
+    "FakeRate": "Fake rate factors",
+    "FakeShape": "Fake shape corrections",
+    "Fake": "Fakes",
+    "widthW": "W width", 
+    "widthZ": "Z width",
     "bcQuarkMass" : "b,c quark masses"
 }
+
 
