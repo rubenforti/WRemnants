@@ -439,7 +439,7 @@ def get_rebin_actions(axes, ax_lim=[], ax_rebin=[], ax_absval=[], rename=False):
     for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
         if absval:
             logger.info(f"Taking the absolute value of axis '{var}'")
-            actions.append(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
+            actions.append(lambda h, ax=var: makeAbsHist(h, ax, rename=rename))
             axes[i] = f"abs{var}" if rename else var
     return actions
 

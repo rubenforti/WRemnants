@@ -704,7 +704,7 @@ def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True,
 ### plot closure
 def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=False):
     h = h[{"charge":hist.sum}]
-    h = hh.rebinHist(h, "pt", [28, 30, 33, 40, 56])
+    h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
     h = hh.disableFlow(h, "pt")
 
     # smoothing_axis_name = "muonJetPt"
@@ -722,12 +722,12 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         if smoothing_axis_name == "muonJetPt":
             rebin_smoothing_axis = [26, 42, 46, 48, 54]
         elif smoothing_axis_name == "pt":
-            rebin_smoothing_axis = [28, 30, 33, 40, 56]
+            rebin_smoothing_axis = [26, 28, 30, 33, 40, 56]
     else:
         if smoothing_axis_name == "muonJetPt":
             h = hh.rebinHist(h, "muonJetPt", [26, 42, 46, 48, 54])
         if smoothing_axis_name == "pt":
-            h = hh.rebinHist(h, "pt", [28, 30, 33, 40, 56])
+            h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
         rebin_smoothing_axis=None
 
     hss=[]
@@ -791,7 +791,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # hss.append(hD_Xpol0)
         # labels.append("pol0(x)")
 
-        hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,20,40,44,49,55,62,80])
+        hSel_Xpol1 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=1, rebin_x=[0,20,40,44,49,55,62])
 
         if bootstrap:
             # throw posson toys
@@ -812,7 +812,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_Xpol1.values(flow=True)[...] = toy_mean
             hD_Xpol1.variances(flow=True)[...] = toy_var
         else:
-            hD_Xpol1 = hSel_Xpol1.get_hist(h)
+            hD_Xpol1 = hSel_Xpol1.get_hist(h, is_nominal=True)
         hss.append(hD_Xpol1)
         labels.append("pol1(x)")
 
@@ -954,15 +954,18 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     else:
         xlabel = styles.xlabels[axes[0]] if len(axes)==1 and axes in styles.xlabels else f"{'-'.join(axes)} Bin"
 
+    scales = [sum(h.values(flow=True)) for h in hss]
+    scale0 = sum(hss[0].values(flow=True))
     if normalized:
-        scales = [sum(h.values(flow=True)) for h in hss]
         print(scales)
         hss = [hh.scaleHist(h, 1./sum(h.values(flow=True))) for h in hss]
         ylabel = "a.u."
     else:
         ylabel = "Events / bin"
 
-    
+    for l, s in zip(labels, scales):
+        print(f"{l} = {s/scale0}")
+
     hs = hss
 
     ymin = 0
@@ -1024,7 +1027,11 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-
+    plot_tools.write_index_and_log(outdir, outfile, 
+        # yield_tables={"Stacked processes" : stack_yields, "Unstacked processes" : unstacked_yields},
+        # analysis_meta_info={"AnalysisOutput" : groups.getMetaInfo()},
+        args=args,
+    )
 
 if __name__ == '__main__':
     parser = common.plot_parser()
@@ -1056,7 +1063,7 @@ if __name__ == '__main__':
 
     outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
-    groups = Datagroups(args.infile, excludeGroups=None, extendedABCD=True, integrateHigh=True)
+    groups = Datagroups(args.infile, excludeGroups=None)
 
     if args.axlim or args.rebin or args.absval:
         groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval)
@@ -1078,7 +1085,7 @@ if __name__ == '__main__':
         if proc != groups.fakeName:
             plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothed=False)
             plot_closure(h, outdir, suffix=f"{proc}_normalized", proc=proc, smoothed=False, normalized=True)
-            # plot_closure(h, outdir, suffix=f"{proc}_smoothed", proc=proc, smoothed=True)
+            plot_closure(h, outdir, suffix=f"{proc}_smoothed", proc=proc, smoothed=True)
 
         continue
 
