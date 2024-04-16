@@ -325,14 +325,13 @@ def makePlotWithRatioToRef(
     hists, labels, colors, linestyles=[],
     xlabel="", ylabel="Events/bin", rlabel="x/nominal",
     rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2, binwnorm=None, alpha=1.,
-    baseline=True, data=False, autorrange=None, grid = False, extra_text=None, extra_text_loc=(0.8, 0.7),
+    baseline=True, dataIdx=None, autorrange=None, grid = False, extra_text=None, extra_text_loc=(0.8, 0.7),
     yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None,
-    logy=False, logx=False, fill_between=False, title_padding = 0, cms_label = None
+    logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, 
 ):
     if len(hists) != len(labels) or len(hists) != len(colors):
         raise ValueError(f"Number of hists ({len(hists)}), colors ({len(colors)}), and labels ({len(labels)}) must agree!")
-    # nominal is always at first, data is always at last, if included
-    ratio_hists = [hh.divideHists(h, hists[0], cutoff=1e-6, flow=False, by_ax_name=False) for h in hists[not baseline:]]
+    ratio_hists = [hh.divideHists(h, hists[0], cutoff=1e-6, flow=False, rel_unc=True, by_ax_name=False) for h in hists[not baseline:]]
     fig, ax1, ax2 = figureWithRatio(
         hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
         grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
@@ -340,14 +339,15 @@ def makePlotWithRatioToRef(
     )
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
+
+    exclude_data = lambda x,idx=dataIdx: [j for i,j in enumerate(x) if i != dataIdx]
     
-    count = len(hists)-data
     hep.histplot(
-        hists[:count],
+        exclude_data(hists),
         histtype="step",
-        color=colors[:count],
-        label=labels[:count],
-        linestyle=linestyles[:count],
+        color=exclude_data(colors),
+        label=exclude_data(labels),
+        linestyle=exclude_data(linestyles),
         stack=False,
         ax=ax1,
         yerr=yerr,
@@ -357,34 +357,31 @@ def makePlotWithRatioToRef(
     )
 
     if len(hists) > 1:
-        ratio_hists = [hh.divideHists(h, hists[0], cutoff=0.00001, flow=False, by_ax_name=False) for h in hists[not baseline:]]
-        if fill_between:
-            for up,down,color in zip(hists[1::2], hists[2::2], colors[1::2]):
-                upr = hh.divideHists(up, hists[0], 1e-6, flow=False, by_ax_name=False)
-                downr = hh.divideHists(down, hists[0], 1e-6,flow=False, by_ax_name=False)
+        ratio_hists = [hh.divideHists(h, hists[0], cutoff=0.00001, flow=False, rel_unc=True, by_ax_name=False) for h in hists]
+        if fill_between != 0:
+            for upr,downr,color in zip(ratio_hists[-fill_between::2], ratio_hists[-fill_between+1::2], colors[-fill_between::2]):
                 ax2.fill_between(upr.axes[0].edges, 
                         np.append(upr.values(), upr.values()[-1]), 
                         np.append(downr.values(), downr.values()[-1]),
                             step='post', color=color, alpha=0.5)
 
-        count = len(ratio_hists) - data if not fill_between else 1
         hep.histplot(
-            ratio_hists[(not baseline):count],
+            exclude_data(ratio_hists)[not baseline:],
             histtype="step",
-            color=colors[(not baseline):count],
-            linestyle=linestyles[(not baseline):count],
+            color=exclude_data(colors)[not baseline:],
+            linestyle=exclude_data(linestyles)[not baseline:],
             yerr=yerr,
             stack=False,
             ax=ax2,
             alpha=alpha,
             flow='none',
         )
-    if data:
+    if dataIdx is not None:
         hep.histplot(
-            hists[-1],
+            hists[dataIdx],
             histtype="errorbar",
-            color=colors[-1],
-            label=labels[-1],
+            color=colors[dataIdx],
+            label=labels[dataIdx],
             stack=False,
             ax=ax1,
             binwnorm=binwnorm,
@@ -392,9 +389,9 @@ def makePlotWithRatioToRef(
             flow='none',
         )
         hep.histplot(
-            hh.divideHists(hists[-1], hists[0], cutoff=1.e-8, flow=False, by_ax_name=False),
+            hh.divideHists(hists[dataIdx], hists[0], cutoff=1.e-8, flow=False, by_ax_name=False, rel_unc=True),
             histtype="errorbar",
-            color=colors[-1],
+            color=colors[dataIdx],
             xerr=False,
             yerr=True,
             stack=False,

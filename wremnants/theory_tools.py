@@ -315,7 +315,7 @@ def define_postfsr_vars(df, mode=None):
     if mode is not None:
         # defition of more complex postfsr object 
         # use fiducial gen met, see: https://twiki.cern.ch/twiki/bin/viewauth/CMS/ParticleLevelProducer
-        if mode in ["wlike", "dilepton"]:
+        if "mz" in mode:
             # find the leading charged lepton and antilepton idx
             df = df.Define("postfsrLep", "postfsrLeptons && (GenPart_pdgId==11 || GenPart_pdgId==13)")
             df = df.Define("postfsrAntiLep", "postfsrLeptons && (GenPart_pdgId==-11 || GenPart_pdgId==-13)")
@@ -349,7 +349,7 @@ def define_postfsr_vars(df, mode=None):
 
         df = df.Define("postfsrLep_absEta", "static_cast<double>(std::fabs(postfsrLep_eta))")
         
-        if mode in ["wmass", "wlike"]:
+        if "singlelep" in mode:
             if mode == "wlike":
                 # for wlike selection
                 df = df.Define("postfsrMET_wlike", "wrem::get_met_wlike(postfsrOtherLep_pt, postfsrOtherLep_phi, MET_fiducialGenPt, MET_fiducialGenPhi)")
@@ -363,7 +363,7 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrDeltaPhiMuonMet", "std::fabs(wrem::deltaPhi(postfsrLep_phi, postfsrMET_phi))")
 
         # definition of boson kinematics
-        if mode in ["dilepton", "wlike"]:
+        if "mz" in mode:
             # four vectors
             df = df.Define("postfsrLep_mom4", "ROOT::Math::PtEtaPhiMVector(postfsrLep_pt, postfsrLep_eta, postfsrLep_phi, postfsrLep_mass)")
             df = df.Define("postfsrAntiLep_mom4", "ROOT::Math::PtEtaPhiMVector(postfsrOtherLep_pt, postfsrOtherLep_eta, postfsrOtherLep_phi, postfsrOtherLep_mass)")
@@ -373,7 +373,7 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define('postfsrYV', 'postfsrGenV_mom4.Rapidity()')
             df = df.Define('postfsrPTV', 'postfsrGenV_mom4.pt()')
 
-        if mode == "wmass":
+        if "mw" in mode:
             df = df.Define("postfsrPTV", "wrem::pt_2(postfsrLep_pt, postfsrLep_phi, postfsrMET_pt, postfsrMET_phi)")
 
     return df

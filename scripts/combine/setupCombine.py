@@ -148,12 +148,19 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection)
 
-    wmass = datagroups.mode in ["wmass", "lowpu_w"]
+    wmass = datagroups.mode in ["wmass", "lowpu_w"] 
     wlike = datagroups.mode == "wlike"
     lowPU = "lowpu" in datagroups.mode
     # Detect lowpu dilepton
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)
     genfit = datagroups.mode == "vgen"
+
+    if genfit:
+        hasw = any("W" in x for x in args.filterProcGroups)
+        hasz = any("Z" in x for x in args.filterProcGroups)
+        if hasw and hasz:
+            raise ValueError("Only W or Z processes are permitted in the gen fit")
+        wmass = hasw
 
     simultaneousABCD = wmass and args.ABCD and not xnorm
     constrainMass = args.forceConstrainMass or genfit or (dilepton and not "mll" in fitvar) or args.fitXsec
@@ -918,7 +925,7 @@ if __name__ == "__main__":
         if len(outnames) == 1:
             outfile, outfolder = outnames[0]
         else:
-            outfile, outfolder = f"{args.outfolder}/Combination{'_statOnly' if args.doStatOnly else ''}_{args.postfix}/", "Combination"
+            outfile, outfolder = f"{args.outfolder}/Combination_{''.join([o[1] for o in outnames])}{'_statOnly' if args.doStatOnly else ''}_{args.postfix}/", "Combination"
         logger.info(f"Writing HDF5 output to {outfile}")
         writer.write(args, outfile, outfolder)
     else:
