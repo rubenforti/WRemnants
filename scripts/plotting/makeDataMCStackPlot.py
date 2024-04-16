@@ -43,7 +43,8 @@ parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", hel
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=1' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
-parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
@@ -128,15 +129,17 @@ if args.selection:
 else:
     applySelection=True
 
-groups.setNominalName(args.baseName)
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
-    groups.set_histselectors(datasets, args.baseName, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation)
+    groups.set_histselectors(datasets, args.baseName, smoothen=not args.binnedFakeEstimation, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation)
 
-nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
 if not args.nominalRef:
+    nominalName = args.baseName.rsplit("_", 1)[0]
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
+    nominalName = args.nominalRef
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
 exclude = ["Data"] 

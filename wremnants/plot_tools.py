@@ -173,7 +173,6 @@ def makeStackPlotWithRatio(
         else:
             data_hist = h
 
-
     if add_ratio:
         fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
@@ -276,18 +275,33 @@ def makeStackPlotWithRatio(
         linestyles = np.array(linestyles, dtype=object)
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
-        ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack) 
+        ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
         if baseline and add_ratio:
             hep.histplot(
                 hh.divideHists(ratio_ref, ratio_ref, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False),
                 histtype="step",
                 color="grey",
                 alpha=0.5,
-                yerr=ratio_error,
+                yerr=ratio_error if ratio_ref.storage_type == hist.storage.Weight else False,
                 ax=ax2,
                 linewidth=2,
                 **opts2
             )
+
+        if fill_between and add_ratio:
+            fill_procs = [x for x in unstacked if x != "Data"]
+            if fill_between < 0:
+                fill_between = len(fill_procs)+1
+            logger.debug(f"Filling first {fill_between}")
+            for up,down in zip(fill_procs[:fill_between:2], fill_procs[1:fill_between:2]):
+                unstack_up = action(histInfo[up].hists[histName])*scale
+                unstack_down = action(histInfo[down].hists[histName])*scale
+                unstack_upr = hh.divideHists(unstack_up, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
+                unstack_downr = hh.divideHists(unstack_down, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
+                ax2.fill_between(unstack_up.axes[0].edges, 
+                    np.insert(unstack_upr, 0, unstack_upr[0]),
+                    np.insert(unstack_downr, 0, unstack_downr[0]),
+                    step='pre', color=histInfo[up].color, alpha=0.5)
 
         for proc,style in zip(unstacked, linestyles):
             unstack = histInfo[proc].hists[histName]
@@ -320,21 +334,6 @@ def makeStackPlotWithRatio(
                 ax=ax2,
                 **opts2
             )
-
-        if fill_between and add_ratio:
-            fill_procs = [x for x in unstacked if x != "Data"]
-            if fill_between < 0:
-                fill_between = len(fill_procs)+1
-            logger.debug(f"Filling first {fill_between}")
-            for up,down in zip(fill_procs[:fill_between:2], fill_procs[1:fill_between:2]):
-                unstack_up = action(histInfo[up].hists[histName])*scale
-                unstack_down = action(histInfo[down].hists[histName])*scale
-                unstack_upr = hh.divideHists(unstack_up, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
-                unstack_downr = hh.divideHists(unstack_down, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
-                ax2.fill_between(unstack_up.axes[0].edges, 
-                    np.insert(unstack_upr, 0, unstack_upr[0]),
-                    np.insert(unstack_downr, 0, unstack_downr[0]),
-                    step='pre', color=histInfo[up].color, alpha=0.5)
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
     if add_ratio:
