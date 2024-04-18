@@ -215,9 +215,16 @@ def collapseSyst(h):
 
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
+    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+        # in case of variable bin width normalize to unit
+        binwnorm = 1.0
+        ylabel="Events/unit"
+    else:
+        binwnorm = None
+        ylabel="Events/bin"
     if len(h.split("-")) > 1:
         sp = h.split("-")
-        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=sp)
+        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])} bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
@@ -226,7 +233,7 @@ for h in args.hists:
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
-            xlabel=xlabel, ylabel="Events/bin", rrange=args.rrange, binwnorm=1.0, lumi=groups.lumi,
+            xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
             cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],

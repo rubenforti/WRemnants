@@ -26,7 +26,7 @@ parser.add_argument("inputs", nargs="+", type=str, help="Paths to fitresult file
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
-outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
+outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
 df = pd.DataFrame(args.inputs, columns=["path"])
 

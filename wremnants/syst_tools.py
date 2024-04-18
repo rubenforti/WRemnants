@@ -455,9 +455,9 @@ def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", a
             if propagateToHelicity:
 
                 pdfhelper = ROOT.wrem.makeHelicityMomentPdfTensor[npdf]()
-                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhi", f"{tensorName}", "unity"])
+                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhigen", f"{tensorName}", "unity"])
                 alphahelper = ROOT.wrem.makeHelicityMomentPdfTensor[3]()
-                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhi", f"{tensorASName}", "unity"])
+                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhigen", f"{tensorASName}", "unity"])
                 pdfHist_hel = df.HistoBoost(f"helicity_{pdfHistName}", axes, [*cols, f"helicity_moments_{tensorName}_tensor"], tensor_axes=[axis_helicity,pdf_ax], storage=storage_type)
                 alphaSHist_hel = df.HistoBoost(f"helicity_{alphaSHistName}", axes, [*cols, f"helicity_moments_{tensorASName}_tensor"], tensor_axes=[axis_helicity,as_ax], storage=storage_type)
                 results.extend([pdfHist_hel, alphaSHist_hel])
@@ -478,7 +478,7 @@ def add_qcdScale_hist(results, df, axes, cols, base_name="nominal", addhelicity=
 def add_qcdScaleByHelicityUnc_hist(results, df, helper, axes, cols, base_name="nominal", addhelicity=False, storage_type=hist.storage.Double()):
     name = Datagroups.histName(base_name, syst="qcdScaleByHelicity")
     if "helicityWeight_tensor" not in df.GetColumnNames():
-        df = df.Define("helicityWeight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight"])
+        df = df.Define("helicityWeight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
     if addhelicity:
         qcdbyHelicity, qcdbyHelicity_axes = make_qcdscale_helper_helicity(helper.tensor_axes)
         df = df.Define('scaleWeights_tensor_wnom_helicity', qcdbyHelicity, ['helicityWeight_tensor', 'helWeight_tensor'])
@@ -699,7 +699,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         )
 
     if "gen" in base_name:
-        df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhi, scaleWeights_tensor, nominal_weight)")
+        df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhigen, scaleWeights_tensor, nominal_weight)")
         helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", axes, [*cols, "helicity_moments_scale_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
         results.append(helicity_moments_scale)
 
