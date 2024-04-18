@@ -21,26 +21,32 @@ def valid_theory_corrections():
     matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
     return [m[1] for m in matches if m]+["none"]
 
-def load_corr_helpers(procs, generators, make_tensor=True):
+def valid_ew_theory_corrections():
+    corr_files = glob.glob(common.data_dir+"TheoryCorrections/*ew*Corr*.pkl.lz4")
+    matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
+    return [m[1] for m in matches if m]+["none"]
+
+def load_corr_helpers(procs, generators, make_tensor=True, base_dir=f"{common.data_dir}/TheoryCorrections/"):
     corr_helpers = {}
     for proc in procs:
         corr_helpers[proc] = {}
         for generator in generators:
-            fname = f"{common.data_dir}/TheoryCorrections/{generator}Corr{proc[0]}.pkl.lz4"
+            fname = f"{base_dir}/{generator}Corr{proc[0]}.pkl.lz4"
             if not os.path.isfile(fname):
                 logger.warning(f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!")
                 continue
             logger.debug(f"Make theory correction helper for file: {fname}")
             corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
+            corrh = postprocess_corr_hist(corrh)
             if not make_tensor:
                 corr_helpers[proc][generator] = corrh
             elif "Helicity" in generator:
                 corr_helpers[proc][generator] = makeCorrectionsTensor(corrh, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
             else:
-                corr_helpers[proc][generator] = makeCorrectionsTensor(corrh)
+                corr_helpers[proc][generator] = makeCorrectionsTensor(corrh, weighted_corr=generator in theory_tools.theory_corr_weight_map)
     for generator in generators:
         if not any([generator in corr_helpers[proc] for proc in procs]):
-            raise ValueError(f"Did not find correction for generator {generator} for any processes!")
+            logger.warning(f"Did not find correction for generator {generator} for any processes!")
     return corr_helpers
 
 def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusive_{{process}}_pT.npz", isW=True):
@@ -48,11 +54,11 @@ def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusi
         corrf_Wp = np.load(filename.format(process="Wp"), allow_pickle=True)
         corrf_Wm = np.load(filename.format(process="Wm"), allow_pickle=True)
         bins = corrf_Wp["bins"]
-        axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge")
+        axis_charge = common.axis_chargeWgen
     else:
         corrf = np.load(filename.format(process="Z"), allow_pickle=True)
         bins = corrf["bins"]
-        axis_charge = hist.axis.Regular(1, -1., 1., underflow=False, overflow=False, name = "charge")
+        axis_charge =  common.axis_chargeZgen
 
     axis_syst = hist.axis.Regular(len(bins[0]) - 1, bins[0][0], bins[0][-1], 
                     name="systIdx", overflow=False, underflow=False)
@@ -80,9 +86,106 @@ def load_corr_hist(filename, proc, histname):
         corrh = corr[proc][histname]
     return corrh
 
+def compute_envelope(h, name, entries, axis_name="vars", slice_axis = None, slice_val = None):
+
+    axis_idx = h.axes.name.index(axis_name)
+    hvars = h[{axis_name : entries}]
+
+    hvar_min = h[{axis_name : entries[0]}].copy()
+    hvar_max = h[{axis_name : entries[0]}].copy()
+
+    hvar_min.values()[...] = np.min(hvars.values(), axis=axis_idx)
+    hvar_max.values()[...] = np.max(hvars.values(), axis=axis_idx)
+
+    if slice_axis is not None:
+        s = hist.tag.Slicer()
+
+        hnom = h[{axis_name : entries[0]}]
+        slice_idx = h.axes[slice_axis].index(slice_val)
+
+        hvar_min[{slice_axis : s[:slice_idx]}] = hnom[{slice_axis : s[:slice_idx]}].view()
+        hvar_max[{slice_axis : s[:slice_idx]}] = hnom[{slice_axis : s[:slice_idx]}].view()
+
+    res = {}
+    res[f"{name}_Down"] = hvar_min
+    res[f"{name}_Up"] = hvar_max
+
+    return res
+
+def postprocess_corr_hist(corrh):
+    # extend variations with some envelopes and special kinematic slices
+
+    if "vars" not in corrh.axes.name:
+        return corrh
+
+    if type(corrh.axes["vars"]) != hist.axis.StrCategory:
+        return corrh
+
+    additional_var_hists = {}
+
+    renorm_scale_vars = ["pdf0", "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
+
+    renorm_fact_scale_vars = ['pdf0', 'kappaFO0.5-kappaf2.', 'kappaFO2.-kappaf0.5', 'mufdown', 'mufup', 'mufdown-kappaFO0.5-kappaf2.', 'mufup-kappaFO2.-kappaf0.5']
+
+    resum_scales = ["muB", "nuB", "muS", "nuS"]
+    resum_scale_vars_exclusive = [var for var in corrh.axes["vars"] if any(resum_scale in var for resum_scale in resum_scales)]
+    resum_scale_vars = ["pdf0"] + resum_scale_vars_exclusive
+
+    if len(resum_scale_vars) == 1:
+        return corrh
+
+    transition_vars_exclusive = ["transition_points0.2_0.35_1.0", "transition_points0.2_0.75_1.0"]
+
+    renorm_fact_resum_scale_vars = renorm_fact_scale_vars + resum_scale_vars_exclusive
+
+    renorm_fact_resum_transition_scale_vars = renorm_fact_resum_scale_vars + transition_vars_exclusive
+
+    if all(var in corrh.axes["vars"] for var in renorm_scale_vars):
+        additional_var_hists.update(compute_envelope(corrh, "renorm_scale_envelope", renorm_scale_vars))
+
+        # same thing but restricted to qT>20GeV to capture only the fixed order part of the variation and
+        # neglect the part at low pt which should be redundant with the TNPs
+        additional_var_hists.update(compute_envelope(corrh, "renorm_scale_pt20_envelope", renorm_scale_vars, slice_axis="qT", slice_val=20.))
+
+    if all(var in corrh.axes["vars"] for var in renorm_fact_scale_vars):
+        additional_var_hists.update(compute_envelope(corrh, "renorm_fact_scale_envelope", renorm_fact_scale_vars))
+
+        # same thing but restricted to qT>20GeV to capture only the fixed order part of the variation and
+        # neglect the part at low pt which should be redundant with the TNPs
+        additional_var_hists.update(compute_envelope(corrh, "renorm_fact_scale_pt20_envelope", renorm_fact_scale_vars, slice_axis="qT", slice_val=20.))
+
+    if all(var in corrh.axes["vars"] for var in renorm_fact_resum_scale_vars):
+        additional_var_hists.update(compute_envelope(corrh, "renorm_fact_resum_scale_envelope", renorm_fact_resum_scale_vars))
+    if all(var in corrh.axes["vars"] for var in renorm_fact_resum_transition_scale_vars):
+        additional_var_hists.update(compute_envelope(corrh, "renorm_fact_resum_transition_scale_envelope", renorm_fact_resum_transition_scale_vars))
+    if all(var in corrh.axes["vars"] for var in resum_scale_vars):
+        additional_var_hists.update(compute_envelope(corrh, "resum_scale_envelope", resum_scale_vars))
+
+
+    if not additional_var_hists:
+        return corrh
+
+    vars_out = list(corrh.axes["vars"]) + list(additional_var_hists.keys())
+
+    vars_out_axis = hist.axis.StrCategory(vars_out, name="vars")
+    corrh_tmp = hist.Hist(*corrh.axes[:-1], vars_out_axis, storage = corrh._storage_type())
+
+    for i, var in enumerate(vars_out_axis):
+        if var in corrh.axes["vars"]:
+            corrh_tmp[{"vars" : i}] = corrh[{"vars" : var}].view(flow=True)
+        else:
+            corrh_tmp[{"vars" : i}] = additional_var_hists[var].view(flow=True)
+
+    corrh = corrh_tmp
+
+    return corrh
+
+
 def get_corr_name(generator):
     # Hack for now
     label = generator.replace("1D", "")
+    if "dataPtll" in generator:
+        return "MC_data_ratio"
     return f"{label}_minnlo_ratio" if "Helicity" not in generator else f"{label.replace('Helicity', '')}_minnlo_coeffs"
 
 def rebin_corr_hists(hists, ndim=-1, binning=None):
@@ -90,16 +193,12 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
     ndims = min([x.ndim for x in hists]) if ndim < 0 else ndim
     if binning:
         try:
-            hists = [h if not h else hh.rebinHistMultiAx(h, binning) for h in hists]
+            hists = [h if not h else hh.rebinHistMultiAx(h, binning.keys(), binning.values()) for h in hists]
         except ValueError as e:
             logger.warning("Can't rebin axes to predefined binning")
         return hists
 
     for i in range(ndims):
-        # This is a workaround for now for the fact that MiNNLO has mass binning up to
-        # Inf whereas SCETlib has 13 TeV
-        if all([h.axes[i].size == 1 for h in hists if h]):
-            continue
         hists = hh.rebinHistsToCommon(hists, i)
     return hists
 
@@ -123,9 +222,7 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
-
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
-
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
@@ -172,7 +269,7 @@ def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
 
     # load moments from file
     with h5py.File(filename, "r") as h5file:
-        results = narf.ioutils.pickle_load_h5py(h5file["results"])
+        results = input_tools.load_results_h5py(h5file)
         moments = results["Z"] if is_w_like else results["W"]
 
     moments_nom = moments[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
@@ -227,7 +324,7 @@ def make_helicity_test_corrector(is_w_like = False, filename = None):
 
     # load moments from file
     with h5py.File(filename, "r") as h5file:
-        results = narf.ioutils.pickle_load_h5py(h5file["results"])
+        results = input_tools.load_results_h5py(h5file)
         moments = results["Z"] if is_w_like else results["W"]
 
     coeffs = theory_tools.moments_to_angular_coeffs(moments)
@@ -256,8 +353,6 @@ def make_helicity_test_corrector(is_w_like = False, filename = None):
     corr_coeffs.values()[..., 6, 1, 2] *= 1.7
     corr_coeffs.values()[..., 7, 1, 2] *= 1.8
     corr_coeffs.values()[..., 8, 1, 2] *= 1.9
-
-    print("corr_coeffs", corr_coeffs)
 
     helper = makeCorrectionsTensor(corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
 
@@ -288,7 +383,7 @@ def read_combined_corrs(procNames, generator, corr_files, axes=[], absy=True, re
         h = hh.makeAbsHist(h, "Y")
 
     if rebin:
-        h = hh.rebinHistMultiAx(h, rebin)
+        h = hh.rebinHistMultiAx(h, rebin.keys(), rebin.values())
 
     return h
 

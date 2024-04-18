@@ -3,6 +3,7 @@ from utilities.io_tools import input_tools
 from wremnants import syst_tools,theory_tools
 import numpy as np
 import re
+import hist
 
 logger = logging.child_logger(__name__)
 
@@ -19,9 +20,6 @@ class TheoryHelper(object):
         self.card_tool = card_tool
         corr_hists = input_tools.args_from_metadata(self.card_tool, "theoryCorr")
         self.corr_hist_name = (corr_hists[0]+"Corr") if corr_hists else None
-        # Workaround for now, in case PDF vars and scale vars are split
-        if "scetlib_dyturbo" in self.corr_hist_name and "scetlib_dyturbo" in corr_hists:
-            self.corr_hist_name = "scetlib_dyturboCorr"
         self.syst_ax = "vars"
         self.corr_hist = None
         self.resumUnc = None
@@ -42,12 +40,13 @@ class TheoryHelper(object):
         return self.card_tool.procGroups[sample_group][0][0] 
 
     def configure(self, resumUnc, np_model,
+            transitionUnc = True,
             propagate_to_fakes=True, 
             tnp_magnitude=1,
             tnp_scale=1.,
             mirror_tnp=True,
             pdf_from_corr=False,
-            pdf_action=None,
+            pdf_operation=None,
             scale_pdf_unc=1.,
             minnlo_unc='byHelicityPt'):
 
@@ -56,11 +55,12 @@ class TheoryHelper(object):
         self.set_propagate_to_fakes(propagate_to_fakes)
         self.set_minnlo_unc(minnlo_unc)
 
+        self.transitionUnc = transitionUnc
         self.tnp_magnitude = tnp_magnitude
         self.tnp_scale = tnp_scale
         self.mirror_tnp = mirror_tnp
         self.pdf_from_corr = pdf_from_corr
-        self.pdf_action = pdf_action
+        self.pdf_operation = pdf_operation
         self.scale_pdf_unc = scale_pdf_unc
         self.minnlo_unc = minnlo_unc
         self.samples = []
@@ -71,7 +71,11 @@ class TheoryHelper(object):
         self.skipFromSignal = skipFromSignal
         self.add_nonpert_unc(model=self.np_model)
         self.add_resum_unc(magnitude=self.tnp_magnitude, mirror=self.mirror_tnp, scale=self.tnp_scale)
-        self.add_pdf_uncertainty(from_corr=self.pdf_from_corr, action=self.pdf_action, scale=self.scale_pdf_unc)
+        self.add_pdf_uncertainty(from_corr=self.pdf_from_corr, operation=self.pdf_operation, scale=self.scale_pdf_unc)
+        try:
+            self.add_quark_mass_vars()
+        except ValueError as e:
+            logger.warning(e)
 
     def set_minnlo_unc(self, minnloUnc):
         self.minnlo_unc = minnloUnc
@@ -90,7 +94,7 @@ class TheoryHelper(object):
         signal_samples = self.card_tool.procGroups['signal_samples']
         self.corr_hist = self.card_tool.getHistsForProcAndSyst(signal_samples[0], self.corr_hist_name)
 
-        if resumUnc == "tnp":
+        if resumUnc.startswith("tnp"):
             self.tnp_nuisances = self.card_tool.match_str_axis_entries(self.corr_hist.axes[self.syst_ax], 
                                     ["^gamma_.*[+|-]\d+", "^b_.*[+|-]\d+", "^s[+|-]\d+", "^h_.*\d+"])
             if not self.tnp_nuisances:
@@ -103,19 +107,37 @@ class TheoryHelper(object):
     def add_resum_unc(self, magnitude=1, mirror=False, scale=1):
         if not self.resumUnc:
             logger.warning("No resummation uncertainty will be applied!")
+            return
 
-        if self.resumUnc == "tnp":
+        if self.resumUnc.startswith("tnp"):
             self.add_resum_tnp_unc(magnitude, mirror, scale)
 
+            fo_scale = self.resumUnc == "tnp"
+            self.add_transition_fo_scale_uncertainties(transition = self.transitionUnc, scale = fo_scale)
+
+            if self.resumUnc == "tnp_minnlo":
+                for sample_group in self.samples:
+                    if self.card_tool.procGroups.get(sample_group, None):
+                        # add sigma -1 uncertainty from minnlo for pt>27 GeV
+                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "highpt", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=range(0, 8), pt_min=27.)
+        elif self.resumUnc == "scale":
+            # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
+            # to avoid underestimating the correlated part of the uncertainty
+            self.add_scetlib_dyturbo_scale_uncertainty(extra_name = "fine", rebin_pt=common.ptV_binning[::2], transition = self.transitionUnc)
+            self.add_scetlib_dyturbo_scale_uncertainty(extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], transition = self.transitionUnc)
+
+
         if self.minnlo_unc and self.minnlo_unc not in ["none", None]:
+            # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
+            helicities_to_exclude = None if self.resumUnc == "minnlo" else [-1]
             for sample_group in self.samples:
                 if self.card_tool.procGroups.get(sample_group, None):
                     # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
                     # to avoid underestimating the correlated part of the uncertainty
-                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=common.ptV_binning[::2])
-                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]])
+                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=helicities_to_exclude)
+                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude)
 
-    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None):
+    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None):
         if not sample_group or sample_group not in self.card_tool.procGroups:
             logger.warning(f"Skipping QCD scale syst '{self.minnlo_unc}' for group '{sample_group}.' No process to apply it to")
             return
@@ -140,10 +162,15 @@ class TheoryHelper(object):
         base_name = f"{group_name}{extra_name}"
 
         skip_entries = []
-        action_map = {}
+        preop_map = {}
 
         # skip nominal
         skip_entries.append({"vars" : "nominal"})
+
+        if helicities_to_exclude:
+            for helicity in helicities_to_exclude:
+                skip_entries.append({"vars" : f"helicity_{helicity}_Down"})
+                skip_entries.append({"vars" : f"helicity_{helicity}_Up"})
 
         # NOTE: The map needs to be keyed on the base procs not the group names, which is
         # admittedly a bit nasty
@@ -151,8 +178,8 @@ class TheoryHelper(object):
         logger.debug(f"using {scale_hist} histogram for QCD scale systematics")
         logger.debug(f"expanded_samples: {expanded_samples}")
 
-        action_map = {}
-        action_args = {}
+        preop_map = {}
+        preop_args = {}
 
         if pt_binned:
             signal_samples = self.card_tool.procGroups['signal_samples']
@@ -165,26 +192,15 @@ class TheoryHelper(object):
                 logger.warning(f"Requested binning {binning} is not compatible with hist binning {orig_binning}. Will not rebin!")
                 binning = orig_binning
 
-            if self.resumUnc:
-            # if False:
-                pt_idx = np.argmax(binning > 25.)
-
-                if helicity:
-                    # Drop the uncertainties for low pt for sigma_-1 since this is covered by the resummation uncertainties
-                    # FIXME can't currently mix strings and complex numbers
-                    # skip_entries.extend([{"vars" : "helicity_-1_Down", pt_ax : complex(0, x)} for x in binning[:pt_idx]])
-                    # skip_entries.extend([{"vars" : "helicity_-1_Up", pt_ax : complex(0, x)} for x in binning[:pt_idx]])
-                    skip_entries.extend([{"vars" : "helicity_-1_Down", pt_ax : ibin} for ibin in range(pt_idx)])
-                    skip_entries.extend([{"vars" : "helicity_-1_Up", pt_ax : ibin} for ibin in range(pt_idx)])
-                else:
-                    # Drop the uncertainties for low pt since this is covered by the resummation uncertainties
-                    skip_entries.extend([{pt_ax : complex(0, x)} for x in binning[:pt_idx]])
+            if pt_min is not None:
+                pt_idx = np.argmax(binning >= pt_min)
+                skip_entries.extend([{pt_ax : complex(0, x)} for x in binning[:pt_idx]])
 
             func = syst_tools.hist_to_variations
-            action_map = {proc : func for proc in expanded_samples}
-            action_args["gen_axes"] = [pt_ax]
-            action_args["rebin_axes"] = [pt_ax]
-            action_args["rebin_edges"] = [binning]
+            preop_map = {proc : func for proc in expanded_samples}
+            preop_args["gen_axes"] = [pt_ax]
+            preop_args["rebin_axes"] = [pt_ax]
+            preop_args["rebin_edges"] = [binning]
 
         # Skip MiNNLO unc. 
         if self.resumUnc and not (pt_binned or helicity):
@@ -193,8 +209,9 @@ class TheoryHelper(object):
             #FIXME Maybe put W and Z nuisances in the same group
             group_name += f"MiNNLO"
             self.card_tool.addSystematic(scale_hist,
-                actionMap=action_map,
-                actionArgs=action_args,
+                preOpMap=preop_map,
+                preOpArgs=preop_args,
+                symmetrize = "quadratic",
                 processes=[sample_group],
                 group=group_name,
                 splitGroup={"QCDscale": ".*"},
@@ -205,6 +222,67 @@ class TheoryHelper(object):
                 formatWithValue=format_with_values,
                 passToFakes=self.propagate_to_fakes,
                 rename=base_name, # Needed to allow it to be called multiple times
+            )
+
+    def add_scetlib_dyturbo_scale_uncertainty(self, extra_name="", transition = True, rebin_pt=None):
+        obs = self.card_tool.fit_axes[:]
+        pt_ax = "ptVgen" if "ptVgen" not in obs else "ptVgenAlt"
+
+        binning = np.array(rebin_pt) if rebin_pt else None
+
+        signal_samples = self.card_tool.procGroups['signal_samples']
+        hscale = self.card_tool.getHistsForProcAndSyst(signal_samples[0], self.scale_hist_name)
+        # A bit janky, but refer to the original ptVgen ax since the alt hasn't been added yet
+        orig_binning = hscale.axes[pt_ax.replace("Alt", "")].edges
+        if not hh.compatibleBins(orig_binning, binning):
+            logger.warning(f"Requested binning {binning} is not compatible with hist binning {orig_binning}. Will not rebin!")
+            binning = orig_binning
+
+        for sample_group in self.samples:
+            if not self.card_tool.procGroups.get(sample_group, None):
+                continue
+
+            name_append = self.sample_label(sample_group)
+            name_append += extra_name
+
+            # skip nominal
+            skip_entries = []
+            skip_entries.append({"vars" : "pdf0"})
+
+            # choose the correct variations depending on whether transition variations are included
+            if transition:
+                sel_vars = ["renorm_fact_resum_transition_scale_envelope_Down", "renorm_fact_resum_transition_scale_envelope_Up"]
+            else:
+                sel_vars = ["renorm_fact_resum_scale_envelope_Down", "renorm_fact_resum_scale_envelope_Up"]
+
+
+            syst_axes = [pt_ax, "vars"]
+            syst_ax_labels = ["PtV", "var"]
+            format_with_values = ["edges", "center"]
+
+            def preop_func(h, *args, **kwargs):
+                hsel = h[{"vars" : ["pdf0"] + sel_vars}]
+                return syst_tools.hist_to_variations(hsel, *args, **kwargs)
+
+            preop_args = {}
+            preop_args["gen_axes"] = [pt_ax]
+            preop_args["rebin_axes"] = [pt_ax]
+            preop_args["rebin_edges"] = [binning]
+
+            self.card_tool.addSystematic(name=self.scale_hist_name,
+                processes=[sample_group],
+                group="resumTransitionFOScale",
+                splitGroup={"resum": ".*"},
+                systAxes=[pt_ax, "vars"],
+                symmetrize = "quadratic",
+                passToFakes=self.propagate_to_fakes,
+                preOp = preop_func,
+                preOpArgs = preop_args,
+                skipEntries = skip_entries,
+                labelsByAxis=syst_ax_labels,
+                baseName=name_append+"_",
+                formatWithValue=format_with_values,
+                rename=name_append, # Needed to allow it to be called multiple times
             )
 
     def set_propagate_to_fakes(self, to_fakes):
@@ -248,8 +326,7 @@ class TheoryHelper(object):
             systAxes=["vars"],
             passToFakes=self.propagate_to_fakes,
             systNameReplace=name_replace,
-            action=lambda h: h[{self.syst_ax : [central_var, *selected_tnp_nuisances]}],
-            doActionBeforeMirror=True,
+            preOp=lambda h: h[{self.syst_ax : [central_var, *selected_tnp_nuisances]}],
             mirror=mirror,
             scale=scale,
             skipEntries=[{self.syst_ax : central_var},],
@@ -279,6 +356,8 @@ class TheoryHelper(object):
         signal_samples = self.card_tool.procGroups['signal_samples']
         self.np_hist_name = self.corr_hist_name.replace("Corr", "FlavDepNP")
         self.np_hist = self.card_tool.getHistsForProcAndSyst(signal_samples[0], self.np_hist_name)
+
+        self.scale_hist_name = self.corr_hist_name.replace("Corr", "PtDepScales")
 
         var_name = model.replace("binned_", "")
 
@@ -312,7 +391,7 @@ class TheoryHelper(object):
             processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
             passToFakes=self.propagate_to_fakes,
             systAxes=[self.syst_ax],
-            action=lambda h: h[{self.syst_ax : var_vals}],
+            preOp=lambda h: h[{self.syst_ax : var_vals}],
             outNames=var_names,
             group="resumNonpert",
             splitGroup={"resum": ".*"},
@@ -336,8 +415,8 @@ class TheoryHelper(object):
             splitGroup={"resum": ".*"},
             passToFakes=to_fakes,
             skipEntries=[{syst_ax : x} for x in both_exclude+tnp_nuisances],
-            systAxes=["downUpVar"], # Is added by the actionMap
-            actionMap={s : lambda h: hh.syst_min_and_max_env_hist(h, obs, "vars", resumscale_nuisances) for s in expanded_samples},
+            systAxes=["downUpVar"], # Is added by the preOpMap
+            preOpMap={s : lambda h: hh.syst_min_and_max_env_hist(h, obs, "vars", resumscale_nuisances) for s in expanded_samples},
             outNames=[f"scetlibResumScale{name_append}Up", f"scetlibResumScale{name_append}Down"],
             rename=f"resumScale{name_append}",
             systNamePrepend=f"resumScale{name_append}_",
@@ -349,7 +428,7 @@ class TheoryHelper(object):
             splitGroup={"resum": ".*"},
             passToFakes=to_fakes,
             systAxes=["vars"],
-            actionMap={s : lambda h: h[{"vars" : ["kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5", "mufdown", "mufup",]}] for s in expanded_samples},
+            preOpMap={s : lambda h: h[{"vars" : ["kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5", "mufdown", "mufup",]}] for s in expanded_samples},
             outNames=[f"scetlib_kappa{name_append}Up", f"scetlib_kappa{name_append}Down", f"scetlib_muF{name_append}Up", f"scetlib_muF{name_append}Down"],
             rename=f"resumFOScale{name_append}",
             systNamePrepend=f"resumScale{name_append}_",
@@ -380,38 +459,40 @@ class TheoryHelper(object):
                 else:
                     raise ValueError(f"Failed to find all vars {vals} for var {label} in hist {self.np_hist_name}")
 
+
+        binned = "binned" in self.np_model
+        gen_axes = ["absYVgenNP", "chargeVgenNP"]
+        sum_axes = [] if binned else ["absYVgenNP"]
+        syst_axes = ["absYVgenNP", "chargeVgenNP", self.syst_ax] if binned else ["chargeVgenNP", self.syst_ax]
+        operation=lambda h,entries: syst_tools.hist_to_variations(h[{self.syst_ax : [central_var, *entries]}], gen_axes=gen_axes, sum_axes=sum_axes)
         for sample_group in self.samples:
             if not self.card_tool.procGroups.get(sample_group, None):
                 continue
             label = self.sample_label(sample_group)
             for nuisance,vals in np_map.items():
                 entries = [nuisance+v for v in vals]
-                binned = "binned" in self.np_model
-
-                gen_axes = ["absYVgenNP", "chargeVgenNP"]
-                sum_axes = [] if binned else ["absYVgenNP"]
-
-                action=lambda h,e=entries: syst_tools.hist_to_variations(h[{self.syst_ax : [central_var, *e]}], gen_axes=gen_axes, sum_axes=sum_axes)
-
                 rename = f"scetlibNP{label}{nuisance}"
                 self.card_tool.addSystematic(name=self.np_hist_name,
                     processes=[sample_group],
                     group="resumNonpert",
                     splitGroup={"resum": ".*"},
-                    systAxes=["chargeVgenNP", self.syst_ax] if not binned else ["absYVgenNP", "chargeVgenNP", self.syst_ax],
+                    systAxes=syst_axes,
                     passToFakes=self.propagate_to_fakes,
-                    action=action,
+                    preOp=operation,
+                    preOpArgs={"entries": entries},
                     # outNames=[f"{rename}Down", f"{rename}Up"] if not binned else None,
                     systNameReplace=[(entries[1], f"{rename}Up"), (entries[0], f"{rename}Down"), ],
                     skipEntries=[{self.syst_ax : central_var}],
                     rename=rename,
                 )
 
-    def add_pdf_uncertainty(self, action=None, from_corr=False, scale=1):
+    def add_pdf_uncertainty(self, operation=None, from_corr=False, scale=1):
         pdf = input_tools.args_from_metadata(self.card_tool, "pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
+        scale = scale if scale != 1.0 else pdfInfo["inflationFactor"]
         pdf_hist = pdfName
+        symmetrize = "quadratic"
 
         if from_corr:
             theory_unc = input_tools.args_from_metadata(self.card_tool, "theoryCorr")
@@ -423,7 +504,7 @@ class TheoryHelper(object):
                 logger.error(f"Did not find {pdf_hist} correction in file! Cannot use SCETlib+DYTurbo PDF uncertainties")
             pdf_hist += "Corr"
 
-        logger.info(f"Using PDF hist {pdf_hist}")
+        logger.info(f"Using PDF hist {pdf_hist}, apply scaling of {scale}")
 
         pdf_ax = self.syst_ax if from_corr else "pdfVar"
         symHessian = pdfInfo["combine"] == "symHessian"
@@ -433,8 +514,9 @@ class TheoryHelper(object):
             group=pdfName,
             splitGroup={f"{pdfName}NoAlphaS": '.*'},
             passToFakes=self.propagate_to_fakes,
-            actionMap=action,
+            preOpMap=operation,
             scale=pdfInfo.get("scale", 1)*scale,
+            symmetrize=symmetrize,
             systAxes=[pdf_ax],
         )
         if from_corr:
@@ -447,6 +529,19 @@ class TheoryHelper(object):
                 skipEntries=[{pdf_ax : "^pdf0[a-z]*"}],
                 **pdf_args
             )
+            if pdfName == 'pdfHERAPDF20':
+                self.card_tool.addSystematic(pdf_hist+'ext',
+                    skipEntries=[{pdf_ax : "^pdf0[a-z]*"}],
+                    processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+                    mirror=True,
+                    group=pdfName,
+                    splitGroup={f"{pdfName}NoAlphaS": '.*'},
+                    passToFakes=self.propagate_to_fakes,
+                    preOpMap=operation,
+                    scale=pdfInfo.get("scale", 1)*scale,
+                    symmetrize=symmetrize,
+                    systAxes=[pdf_ax],
+                )
 
         asRange = pdfInfo['alphasRange']
         asname = f"{pdfName}alphaS{asRange}" if not from_corr else pdf_hist.replace("Vars", "_pdfas")
@@ -457,7 +552,8 @@ class TheoryHelper(object):
             group=pdfName,
             splitGroup={f"{pdfName}AlphaS": '.*'},
             systAxes=["vars" if from_corr else "alphasVar"],
-            scale=0.75 if asRange == "002" else 1.5,
+            scale=(0.75 if asRange == "002" else 1.5)*scale,
+            symmetrize=symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
         if from_corr:
@@ -465,27 +561,77 @@ class TheoryHelper(object):
         else:
             as_args["systNameReplace"] = as_replace
             as_args['skipEntries'] = [{"alphasVar" : "as0118"}]
-            
         self.card_tool.addSystematic(**as_args)
 
-    def add_resum_transition_uncertainty(self):
+    def add_transition_fo_scale_uncertainties(self, transition = True, scale=True):
         obs = self.card_tool.fit_axes[:]
 
         for sample_group in self.samples:
-            if self.card_tool.procGroups.get(sample_group, None):
+            if not self.card_tool.procGroups.get(sample_group, None):
                 continue
-            expanded_samples = self.card_tool.getProcNames([sample_group])
+
             name_append = self.sample_label(sample_group)
+
+            sel_vars = []
+            outNames = []
+
+            if transition:
+                sel_vars.extend(["transition_points0.2_0.35_1.0", "transition_points0.2_0.75_1.0"])
+                outNames.extend([f"resumTransition{name_append}Down", f"resumTransition{name_append}Up"])
+
+            if scale:
+                sel_vars.extend(["renorm_scale_pt20_envelope_Down", "renorm_scale_pt20_envelope_Up"])
+                outNames.extend([f"resumFOScale{name_append}Down", f"resumFOScale{name_append}Up"])
+
+            if not sel_vars:
+                # nothing to do
+                continue
 
             self.card_tool.addSystematic(name=self.corr_hist_name,
                 processes=[sample_group],
-                group="resumTransition",
+                group="resumTransitionFOScale",
                 splitGroup={"resum": ".*"},
-                systAxes=["downUpVar"],
-                passToFakes=to_fakes,
-                # NOTE: I don't actually remember why this used no_flow=ptVgen previously, I don't think there's any harm in not using it...
-                actionMap={s : lambda h: hh.syst_min_and_max_env_hist(h, obs, self.syst_ax, 
-                    [x for x in h.axes["vars"] if "transition_point" in x]) for s in expanded_samples},
-                outNames=[f"resumTransition{name_append}Up", f"resumTransition{name_append}Down"],
-                rename=f"scetlibResumTransition{name_append}",
+                systAxes=["vars"],
+                symmetrize = "quadratic",
+                passToFakes=self.propagate_to_fakes,
+                preOp = lambda h: h[{"vars" : sel_vars}],
+                outNames=outNames,
+                rename=f"resumTransitionFOScale{name_append}",
             )
+
+    def add_quark_mass_vars(self, from_minnlo=True):
+        pdfs = input_tools.args_from_metadata(self.card_tool, "pdfs")
+        theory_corrs = input_tools.args_from_metadata(self.card_tool, "theoryCorr")
+
+        from_minnlo = not ("scetlib_dyturboMSHT20mcrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs and "msht20" in pdfs[0])
+
+        if from_minnlo:
+            if "msht20mbrange" in pdfs and "msht20mcrange" in pdfs and pdfs[0] not in ["msht20", "msht20mbrange", "msht20mcrange"]:
+                raise ValueError("Using the mass variation sets from MiNNLO requires MSHT20 as the central set")
+            elif "msht20mbrange_renorm" not in pdfs or "msht20mcrange_renorm" not in pdfs:
+                raise ValueError("Must include the msht20mb(c)range pdf sets to take the mass variation from MiNNLO")
+        elif not ("msht20" in pdfs[0] and "scetlib_dyturboMSHT20mbrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs):
+            raise ValueError("In order to take the mb(c) mass unc. from SCETlib+DYTurbo, you need to include those corr files and use MSHT20 as central PDF")
+            
+        bhist = "pdfMSHT20mbrange" if from_minnlo else "scetlib_dyturboMSHT20mbrangeCorr"
+        syst_ax = "pdfVar" if from_minnlo else "vars"
+
+        self.card_tool.addSystematic(name=bhist,
+            processes=self.samples,
+            systAxes=[syst_ax],
+            symmetrize = "quadratic",
+            group="bcQuarkMass",
+            passToFakes=self.propagate_to_fakes,
+            outNames=["", "pdfMSHT20mbrangeDown",]+[""]*4+["pdfMSHT20mbrangeUp"],
+        )
+        
+        self.card_tool.addSystematic(name=bhist.replace("brange", "crange"),
+            processes=self.samples,
+            systAxes=[syst_ax],
+            symmetrize = "quadratic",
+            group="bcQuarkMass",
+            passToFakes=self.propagate_to_fakes,
+            outNames=["", "pdfMSHT20mcrangeDown",]+[""]*6+["pdfMSHT20mcrangeUp"],
+        )
+
+

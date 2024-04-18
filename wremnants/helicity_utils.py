@@ -8,9 +8,10 @@ import hist
 import pickle
 import lz4.frame
 from .correctionsTensor_helper import makeCorrectionsTensor
-from .theory_tools import axis_helicity, moments_to_angular_coeffs
+from .theory_tools import moments_to_angular_coeffs
 from utilities import common, logging
 from utilities import boostHistHelpers as hh
+from utilities.io_tools import input_tools
 import numpy as np
 import h5py
 import hdf5plugin
@@ -23,6 +24,7 @@ narf.clingutils.Declare('#include "syst_helicity_utils.h"')
 data_dir = f"{pathlib.Path(__file__).parent}/data/"
 
 #UL, A0...A4
+axis_helicity = hist.axis.Integer(-1, 8, name="helicity", overflow=False, underflow=False)
 axis_helicity_multidim = hist.axis.Integer(-1, 8, name="helicitySig", overflow=False, underflow=False)
 
 #creates the helicity weight tensor
@@ -30,7 +32,7 @@ def makehelicityWeightHelper(is_w_like = False, filename=None):
     if filename is None:
         filename = f"{common.data_dir}/angularCoefficients/w_z_moments_theoryAgnosticBinning.hdf5"
     with h5py.File(filename, "r") as ff:
-        out = narf.ioutils.pickle_load_h5py(ff["results"])
+        out = input_tools.load_results_h5py(ff)
 
     moments = out["Z"] if is_w_like else out["W"]
 

@@ -14,24 +14,26 @@ using namespace ROOT;
 namespace wrem {
 
 // pdg value
+constexpr double electron_mass = 5.110e-04;
 constexpr double muon_mass = 0.1056583745;
+constexpr double tau_mass = 1.77682;
 
-    template <typename T>
-    ROOT::VecOps::RVec<T> absVal(const ROOT::VecOps::RVec<T> & val) {
+template <typename T>
+ROOT::VecOps::RVec<T> absVal(const ROOT::VecOps::RVec<T> & val) {
 
-        ROOT::VecOps::RVec<T> res(val.size(), 0.0); // initialize to 0
-        for (unsigned int i = 0; i < res.size(); ++i) {
-            res[i] = std::abs(val[i]);
-        }
-        return res;
-
+    ROOT::VecOps::RVec<T> res(val.size(), 0.0); // initialize to 0
+    for (unsigned int i = 0; i < res.size(); ++i) {
+        res[i] = std::abs(val[i]);
     }
+    return res;
 
-    // template <typename T>
-    // bool printVar(const T& var) {
-    //     std::cout << var << std::endl;
-    //     return 1;
-    // }
+}
+
+template <typename T>
+bool printVar(const T& var) {
+    std::cout << var << std::endl;
+    return 1;
+}
 
 float pt_2(float pt1, float phi1, float pt2, float phi2) {
 
@@ -115,15 +117,18 @@ Vec_i cleanJetsFromLeptons(const Vec_f& Jet_eta, const Vec_f& Jet_phi, const Vec
    return res;
 }
     
-    
+template <Era era>
 Vec_i goodMuonTriggerCandidate(const Vec_i& TrigObj_id, const Vec_f& TrigObj_pt, const Vec_f& TrigObj_l1pt, const Vec_f& TrigObj_l2pt, const Vec_i& TrigObj_filterBits) {
-
    Vec_i res(TrigObj_id.size(), 0); // initialize to 0
    for (unsigned int i = 0; i < res.size(); ++i) {
        if (TrigObj_id[i]  != 13 ) continue;
        if (TrigObj_pt[i]   < 24.) continue;
        if (TrigObj_l1pt[i] < 22.) continue;
-       if (! (( TrigObj_filterBits[i] & 8) || (TrigObj_l2pt[i] > 10. && (TrigObj_filterBits[i] & 2) )) ) continue;
+       if constexpr (era == Era::Era_2016PostVFP){
+	 if (! (( TrigObj_filterBits[i] & 8) || (TrigObj_l2pt[i] > 10. && (TrigObj_filterBits[i] & 2) ))) continue;
+       } else {
+	 if (! (TrigObj_l2pt[i] > 10. && (TrigObj_filterBits[i] & 2) )) continue;
+       }
        res[i] = 1;
    }
    // res will be goodTrigObjs in RDF
@@ -132,12 +137,16 @@ Vec_i goodMuonTriggerCandidate(const Vec_i& TrigObj_id, const Vec_f& TrigObj_pt,
 }
 
 // new overloaded function to be used with new ntuples having additional trigger bits
+template <Era era>
 Vec_i goodMuonTriggerCandidate(const Vec_i& TrigObj_id, const Vec_i& TrigObj_filterBits) {
-
-    Vec_i res(TrigObj_id.size(), 0); // initialize to 0
-    for (unsigned int i = 0; i < res.size(); ++i) {
+  Vec_i res(TrigObj_id.size(), 0); // initialize to 0
+  for (unsigned int i = 0; i < res.size(); ++i) {
         if (TrigObj_id[i]  != 13 ) continue;
-        if (! ( (TrigObj_filterBits[i] & 16) || (TrigObj_filterBits[i] & 32) ) ) continue;
+	if constexpr (era == Era::Era_2016PostVFP){
+	  if (! ( (TrigObj_filterBits[i] & 16) || (TrigObj_filterBits[i] & 32) ))  continue;
+	} else {
+	  if (! (TrigObj_filterBits[i] & 4096) )  continue;//add 8192 later?
+	}
         res[i] = 1;
     }
     return res;
@@ -177,6 +186,19 @@ bool hasMatchDR2(const float& eta, const float& phi, const Vec_f& vec_eta, const
   }
   return false;
 
+}
+
+RVec<Int_t> hasMatchDR2collWithSingle(const Vec_f &coll1_eta, const Vec_f &coll1_phi,
+                                      const Float_t &eta, const Float_t &phi,
+                                      const Float_t dr2 = 0.09)
+{
+    Vec_i resDR(coll1_eta.size(), 0);
+    float tmp_dr = 999.;
+    for(int ic1 = 0; ic1 < coll1_eta.size(); ic1++){
+        tmp_dr = deltaR2(coll1_eta.at(ic1), coll1_phi.at(ic1), eta, phi);
+        if (tmp_dr < dr2) resDR[ic1] = 1;
+    }
+    return resDR;
 }
 
 RVec<int> postFSRLeptonsIdx(RVec<bool> postFSRleptons) {
@@ -500,6 +522,39 @@ Vec_f breitWignerWeights(double massVgen, int type=0) {
 
     return res;
 }
+
+// take elements from a 1d tensor by index
+template<typename tensor_t, std::size_t N>
+class index_taker {
+public:
+    using idxs_type = std::array<std::ptrdiff_t, N>;
+    using out_tensor_t = Eigen::TensorFixedSize<typename tensor_t::Scalar, Eigen::Sizes<N>>;
+
+    index_taker(const idxs_type &idxs) : idxs_(idxs) {}
+
+    index_taker(const std::vector<std::ptrdiff_t> &idxs) {
+        if (idxs.size() != N) {
+            throw std::runtime_error("Mismatched indexes size");
+        }
+
+        for (std::size_t i = 0; i < N; ++i) {
+            idxs_[i] = idxs[i];
+        }
+    }
+
+    out_tensor_t operator() (const tensor_t &tensor) const {
+        out_tensor_t res;
+
+        for (std::size_t i = 0; i < N; ++i) {
+            res(i) = tensor(idxs_[i]);
+        }
+
+        return res;
+
+    }
+private:
+    idxs_type idxs_;
+};
 
 }
 

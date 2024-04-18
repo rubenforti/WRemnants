@@ -49,17 +49,20 @@ def writeMetaInfoToRootFile(rtfile, exclude_diff='notebooks', args=None):
         out = ROOT.TNamed(str(key), str(value))
         out.Write()
 
-def write_analysis_output(results, outfile, args, update_name=True):
+def write_analysis_output(results, outfile, args):
     analysis_debug_output(results)
-    results.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})
 
     to_append = []
     if args.theoryCorr and not args.theoryCorrAltOnly:
         to_append.append(args.theoryCorr[0]+"Corr")
     if args.maxFiles is not None:
         to_append.append(f"maxFiles_{args.maxFiles}".replace("-","m"))
+    if len(args.pdfs)>=1 and args.pdfs[0] != "ct18z": 
+        to_append.append(args.pdfs[0])
+    if hasattr(args, "ptqVgen") and args.ptqVgen:
+        to_append.append("vars_qtbyQ")
 
-    if to_append and update_name:
+    if to_append and not args.forceDefaultName:
         outfile = outfile.replace(".hdf5", f"_{'_'.join(to_append)}.hdf5")
 
     if args.postfix:
@@ -71,9 +74,27 @@ def write_analysis_output(results, outfile, args, update_name=True):
             os.makedirs(args.outfolder)
         outfile = os.path.join(args.outfolder, outfile)
 
+    if args.appendOutputFile:
+        outfile = args.appendOutputFile
+        if os.path.isfile(outfile):
+            logger.info(f"Analysis output will be appended to file {outfile}")
+            open_as="a"
+        else:
+            logger.warning(f"Analysis output requested to be appended to file {outfile}, but the file does not exist yet, it will be created instead")
+            open_as="w"
+    else:
+        if os.path.isfile(outfile):
+            logger.warning(f"Output file {outfile} exists already, it will be overwritten")
+        open_as="w"
+
     time0 = time.time()
-    with h5py.File(outfile, 'w') as f:
-        narf.ioutils.pickle_dump_h5py("results", results, f)
+    with h5py.File(outfile, open_as) as f:
+        for k, v in results.items():
+            logger.debug(f"Pickle and dump {k}")
+            narf.ioutils.pickle_dump_h5py(k, v, f)
+
+        if "meta_info" not in f.keys():
+            narf.ioutils.pickle_dump_h5py("meta_info", narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir), f)
 
     logger.info(f"Writing output: {time.time()-time0}")
     logger.info(f"Output saved in {outfile}")
@@ -84,9 +105,9 @@ def is_eosuser_path(path):
     path = os.path.realpath(path)
     return path.startswith("/eos/user") or path.startswith("/eos/home-")
 
-def make_plot_dir(outpath, outfolder=None, eoscp=False):
+def make_plot_dir(outpath, outfolder=None, eoscp=False, tmpFolder="temp", allowCreateLocalFolder=False):
     if eoscp and is_eosuser_path(outpath):
-        outpath = os.path.join("temp", split_eos_path(outpath)[1])
+        outpath = os.path.join(tmpFolder, split_eos_path(outpath)[1])
         if not os.path.isdir(outpath):
             logger.info(f"Making temporary directory {outpath}")
             os.makedirs(outpath)
@@ -94,9 +115,17 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False):
     full_outpath = outpath
     if outfolder:
         full_outpath = os.path.join(outpath, outfolder)
+    if not full_outpath.endswith("/"):
+        full_outpath += "/"
     if outpath and not os.path.isdir(outpath):
-        raise IOError(f"The path {outpath} doesn't not exist. You should create it (and possibly link it to your web area)")
-        
+        # instead of raising, create folder to deal with cases where nested folders are created during code execution
+        # (this would happen when outpath is already a path to a local subfolder not created in the very beginning)
+        if allowCreateLocalFolder:
+            logger.debug(f"Creating new directory {outpath}")
+            os.makedirs(outpath)
+        else:
+            raise IOError(f"The path {outpath} doesn't not exist. You should create it (and possibly link it to your web area)")
+
     if full_outpath and not os.path.isdir(full_outpath):
         try:
             os.makedirs(full_outpath)
@@ -107,30 +136,34 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False):
 
     return full_outpath
 
-def copy_to_eos(outpath, outfolder=None):
+def copy_to_eos(outpath, outfolder=None, tmpFolder="temp", deleteFullTmp=False):
     eospath, outpath = split_eos_path(outpath)
     fullpath = outpath
     if outfolder:
         fullpath = os.path.join(outpath, outfolder)
-        logger.info(f"Copying {outpath} to {eospath}")
+    logger.info(f"Copying {fullpath} to {eospath}")
 
-    tmppath = os.path.join("temp", fullpath)
+    tmppath = os.path.join(tmpFolder, fullpath)
 
     for f in glob.glob(tmppath+"/*"):
-        if os.path.isfile(f):
-            command = ["xrdcp", "-f", f, "/".join(["root://eosuser.cern.ch", eospath, f.replace("temp/", "")])]
+        if not (os.path.isfile(f) or os.path.isdir(f)):
+            continue
+        outPathForCopy = "/".join(["root://eosuser.cern.ch", eospath, f.replace(f"{tmpFolder}/", "")])
+        if os.path.isdir(f):
+            # remove last folder to do "xrdcp -fr /path/to/folder/ root://eosuser.cern.ch//eos/cms/path/to/"
+            # in this way one can copy the whole subfolder through xrdcp without first creating the structure
+            outPathForCopy = os.path.dirname(outPathForCopy.rstrip("/"))
+        command = ["xrdcp", "-fr", f, outPathForCopy]
 
-            logger.debug(f"Executing {' '.join(command)}")
-            if subprocess.call(command):
-                raise IOError("Failed to copy the files to eos! Perhaps you are missing a kerberos ticket and need to run kinit <user>@CERN.CH?"
-                    " from lxplus you can run without eoscp and take your luck with the mount.")
+        logger.debug(f"Executing {' '.join(command)}")
+        if subprocess.call(command):
+            raise IOError("Failed to copy the files to eos! Perhaps you are missing a kerberos ticket and need to run kinit <user>@CERN.CH?"
+                " from lxplus you can run without eoscp and take your luck with the mount.")
 
-    shutil.rmtree(tmppath) 
+    shutil.rmtree(f"{tmpFolder}/" if deleteFullTmp else tmppath)
 
 def write_theory_corr_hist(output_name, process, output_dict, args=None, file_meta_data=None): 
     outname = output_name
-    if args is not None and args.postfix is not None:
-        outname += f"_{args.postfix}"
     output_filename = f"{outname}Corr{process}.pkl.lz4"
     logger.info(f"Write correction file {output_filename}")
     result_dict = {process : output_dict, "meta_data" : narf.ioutils.make_meta_info_dict(args, wd=common.base_dir)}

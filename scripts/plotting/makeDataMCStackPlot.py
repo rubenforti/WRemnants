@@ -1,5 +1,4 @@
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
 from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh,common
 from utilities.styles import styles
@@ -9,40 +8,45 @@ from matplotlib import colormaps
 import argparse
 import os
 import shutil
-from wremnants import logging
+from wremnants import logging, common
 import pathlib
 import hist
 import re
 import numpy as np
 
-parser = argparse.ArgumentParser()
-parser.add_argument("infile", help="Output file of the analysis stage, containing ND boost histogrdams")
+parser = common.plot_parser()
+parser.add_argument("infile", help="Output file of the analysis stage, containing ND boost histograms")
 parser.add_argument("--ratioToData", action='store_true', help="Use data as denominator in ratio")
 parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
-parser.add_argument("--nominalRef", type=str, help="Specify the nominal his if baseName is a variation hist (for plotting alt hists)")
+parser.add_argument("--nominalRef", type=str, help="Specify the nominal hist if baseName is a variation hist (for plotting alt hists)")
 parser.add_argument("--hists", type=str, nargs='+', required=True, help="List of histograms to plot")
 parser.add_argument("-c", "--channel", type=str, choices=["plus", "minus", "all"], default="all", help="Select channel to plot")
-parser.add_argument("-p", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
-parser.add_argument("-f", "--outfolder", type=str, default="test", help="Subfolder for output")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
-parser.add_argument("--rebin", type=int, default=1, help="Rebin (for now must be an int)")
+parser.add_argument("--rebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
+parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
+parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
+parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
-parser.add_argument("-a", "--name_append", default="", type=str, help="Name to append to file name")
-parser.add_argument("--cmsDecor", default="Preliminary", type=str, help="CMS label")
-parser.add_argument("--debug", action='store_true', help="Print debug output")
 parser.add_argument("--procFilters", type=str, nargs="*", help="Filter to plot (default no filter, only specify if you want a subset")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
-parser.add_argument("--noFill", action='store_true', help="Don't fill stack")
-parser.add_argument("--scaleleg", type=float, default=1.0, help="Scale legend text")
+parser.add_argument("--noFill", action='store_true', help="Don't fill")
+parser.add_argument("--noStack", action='store_true', help="Don't stack")
+parser.add_argument("--noRatio", action='store_true', help="Don't make ratio plot")
+parser.add_argument("--density", action='store_true', help="Normalize each process to unity, only works with '--noStack'")
+parser.add_argument("--flow", type=str, choices=["show", "sum", "hint", "none"], default="none", help="Whether plot the under/overflow bin")
 parser.add_argument("--fitresult", type=str, help="Specify a fitresult root file to draw the postfit distributions with uncertainty bands")
 parser.add_argument("--prefit", action='store_true', help="Use the prefit uncertainty from the fitresult root file, instead of the postfit. (--fitresult has to be given)")
-parser.add_argument("--eoscp", action='store_true', help="Use of xrdcp for eos output rather than the mount")
 parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", help="Don't show stat unc in ratio")
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=1' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
+parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
+parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
+parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
+parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser("variation", help="Arguments for adding variation hists")
@@ -57,7 +61,7 @@ variation.add_argument("--fillBetween", type=int, help="Fill between first n var
 
 args = parser.parse_args()
 
-logger = logging.setup_logger("makeDataMCStackPlot", 4 if args.debug else 3)
+logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 def padArray(ref, matchLength):
     return ref+ref[-1:]*(len(matchLength)-len(ref))
@@ -83,6 +87,13 @@ outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eos
 
 groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=None if args.procFilters else ['QCD'])
 
+if not args.fineGroups:
+    if groups.mode in styles.process_supergroups:
+        for new_name, old_groups in styles.process_supergroups[groups.mode].items():
+            groups.mergeGroups(old_groups, new_name)
+    else:
+        logger.warning(f"No supergroups found for input file with mode {groups.mode}, proceed without merging groups")
+
 # There is probably a better way to do this but I don't want to deal with it
 datasets = groups.getNames()
 logger.info(f"Will plot datasets {datasets}")
@@ -105,6 +116,10 @@ if len(args.presel):
             presel[ps] = s[::hist.sum]
     groups.setGlobalAction(lambda h: h[presel])
 
+if args.axlim or args.rebin or args.absval:
+    logger.info("Rebin")
+    groups.set_rebin_action(args.hists[0].split("-"), args.axlim, args.rebin, args.absval, args.rebinBeforeSelection)
+
 if args.selection:
     applySelection=False
     if args.selection != "none":
@@ -114,18 +129,18 @@ if args.selection:
 else:
     applySelection=True
 
-fake_int_axes = list(set([x for h in args.hists for x in h.split("-") if x not in ["pt", "eta", "charge"]]))
+groups.fakerate_axes=args.fakerateAxes
+if applySelection:
+    groups.set_histselectors(datasets, args.baseName, smoothen=not args.binnedFakeEstimation, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation)
 
 if not args.nominalRef:
     nominalName = args.baseName.rsplit("_", 1)[0]
     groups.setNominalName(nominalName)
-    groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection, 
-        fakerateIntegrationAxes=fake_int_axes)
+    groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
     nominalName = args.nominalRef
     groups.setNominalName(nominalName)
-    groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection,
-        fakerateIntegrationAxes=fake_int_axes)
+    groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
 exclude = ["Data"] 
 unstack = exclude[:]
@@ -147,6 +162,7 @@ if addVariation:
         name = name if name != "" else nominalName
         load_op = {}
         action=None
+        requiresNominal = False
 
         if entry and entry.isdigit():
             entry = int(entry)
@@ -154,15 +170,19 @@ if addVariation:
         if args.selectAxis or do_transform:
             transform_procs = groups.getProcNames(exclude_group=exclude)
             if do_transform:
-                action = transforms[entry]["action"]
+                tmap = transforms[entry]
+                action = tmap["action"]
                 if "procs" in transforms[entry]:
-                    transform_procs = transforms[entry]["procs"]
+                    transform_procs = tmap["procs"]
                 varname = entry
+                requiresNominal = tmap.get("requiresNominal", False)
             else:
                 ax = axes[i]
                 action = lambda x: x[{ax : entry}] if ax in x.axes.name else x
                 varname = name+str(entry)
-            load_op = {p : action for p in transform_procs}
+
+            if not requiresNominal:
+                load_op = {p : action for p in transform_procs}
         else:
             varname = name
 
@@ -172,8 +192,8 @@ if addVariation:
         if load_op and reload:
             action = None
         groups.addSummedProc(nominalName, relabel=args.baseName, name=name, label=label, exclude=exclude,
-            color=color, reload=reload, rename=varname, procsToRead=datasets,
-            preOpMap=load_op, action=action, forceNonzero=True, fakerateIntegrationAxes=fake_int_axes)
+            color=color, reload=reload, rename=varname, procsToRead=datasets, actionRequiresRef=requiresNominal,
+            preOpMap=load_op, action=action, forceNonzero=False, applySelection=applySelection)
 
         exclude.append(varname)
         unstack.append(varname)
@@ -182,32 +202,42 @@ groups.sortByYields(args.baseName, nominalName=nominalName)
 histInfo = groups.getDatagroups()
 
 logger.info(f"Unstacked processes are {exclude}")
-prednames = list(reversed(groups.getNames([d for d in datasets if d not in exclude], exclude=False)))
+prednames = list(reversed(groups.getNames([d for d in datasets if d not in exclude], exclude=False, match_exact=True)))
 logger.info(f"Stacked processes are {prednames}")
 
 def collapseSyst(h):
     if type(h.axes[-1]) == hist.axis.StrCategory:
         return h[...,0]
-    for ax in ["systIdx", "tensor_axis_0", "vars"]:
+    for ax in ["systIdx", "tensor_axis_0", "vars", "pdfVar"]:
         if ax in h.axes.name:
             return h[{ax : 0}].copy()
     return h
 
-overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen"]
+overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
+    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+        # in case of variable bin width normalize to unit
+        binwnorm = 1.0
+        ylabel="Events/unit"
+    else:
+        binwnorm = None
+        ylabel="Events/bin"
     if len(h.split("-")) > 1:
-        action = lambda x: sel.unrolledHist(collapseSyst(x[select]), obs=h.split("-"))
+        sp = h.split("-")
+        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
+        xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])} bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
+        xlabel=styles.xlabels.get(h,h)
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
-            xlabel=styles.xlabels.get(h,h), ylabel="Events/bin", rrange=args.rrange, binwnorm=1.0, lumi=groups.lumi,
+            xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
-            xlim=args.xlim, no_fill=args.noFill, cms_decor=args.cmsDecor,
-            legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
-            ratio_error=args.ratioError)
+            xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
+            cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            ratio_error=args.ratioError, normalize_to_data=args.normToData)
 
     fitresultstring=""
     if args.fitresult:
@@ -217,7 +247,7 @@ for h in args.hists:
         var_arg = args.varName[0]
         if "selectEntries" in args and args.selectEntries:
             var_arg = args.selectEntries[0] if not args.selectEntries[0].isdigit() else (var_arg+args.selectEntries[0])
-    to_join = [f"{h.replace('-','_')}"]+[var_arg]+[fitresultstring, args.name_append]+[args.channel.replace("all", "")]
+    to_join = [f"{h.replace('-','_')}"]+[var_arg]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
     outfile = "_".join(filter(lambda x: x, to_join))
 
     plot_tools.save_pdf_and_png(outdir, outfile)

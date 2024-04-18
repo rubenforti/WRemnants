@@ -84,6 +84,7 @@ def build_graph(df, dataset):
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
 
     weightsum = df.SumAndCount("weight")
+    df = df.Define("isEvenEvent", "event % 2 == 0")
 
     if dataset.is_data:
         df = df.DefinePerSample("nominal_weight", "1.0")
@@ -180,5 +181,5 @@ def build_graph(df, dataset):
 
 resultdict = narf.build_and_run(datasets, build_graph)
 
-output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args, update_name=not args.forceDefaultName)
+output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args)
 

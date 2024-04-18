@@ -3,6 +3,7 @@
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -22,16 +23,15 @@ sys.path.append(os.getcwd())
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("outputfolder", type=str, nargs=1)
     parser.add_argument("--file", dest="inputfile",   type=str, nargs="+", help="Input files")
     parser.add_argument("--hname",       type=str, nargs="+", help="Histogram name to pick from each file")
     parser.add_argument("--legendEntry", type=str, nargs="+", help="Legend entry")
-    #parser.add_argument("--hname", default=None, required=True, type=str, nargs=2, help="Name of histograms to get from the input files")
-    parser.add_argument("-x", "--x-axis-name", dest="xAxisName", default="Invariant mass (GeV) ", help="x axis name")
-    parser.add_argument(     "--rebin-x", dest="rebinX", default=1, type=int, help="To rebin x axis (mass)")
-    parser.add_argument(     "--rebin-y", dest="rebinY", default=1, type=int, help="To rebin y axis (pt)")
-    parser.add_argument(     "--rebin-z", dest="rebinZ", default=1, type=int, help="To rebin z axis (eta)")
+    parser.add_argument("-x", "--xAxisName", default="Invariant mass (GeV) ", help="x axis name")
+    parser.add_argument(     "--rebinx", dest="rebinX", default=1, type=int, help="To rebin x axis (mass)")
+    parser.add_argument(     "--rebiny", dest="rebinY", default=1, type=int, help="To rebin y axis (pt)")
+    parser.add_argument(     "--rebinz", dest="rebinZ", default=1, type=int, help="To rebin z axis (eta)")
     parser.add_argument(     "--ybin", type=int, nargs=2, default=[0, 0], help="Bins for y axis to plot, default is to do all")
     parser.add_argument(     "--zbin", type=int, nargs=2, default=[0, 0], help="Bins for z axis to plot, default is to do all")
     parser.add_argument(     '--norm', dest='normalize', action='store_true',
@@ -39,13 +39,15 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--postfix", type=str, default="", help="Postfix for output plots")
     args = parser.parse_args()
 
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
     ROOT.TH1.SetDefaultSumw2()
 
-    outdir = args.outputfolder[0]
-    createPlotDirAndCopyPhp(outdir)
+    outdir_original = args.outputfolder[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     if len(args.inputfile) != len(args.hname) or len(args.inputfile) != len(args.legendEntry):
-        print("Error: different number of input options for histograms")
+        logger.error("Different number of input options for histograms")
         quit()
         
     hists3D = []
@@ -68,8 +70,8 @@ if __name__ == "__main__":
     canvas.SetRightMargin(0.04)
     canvas.cd()
 
-    print(f"{hists3D[0].GetNbinsZ()} eta bins")
-    print(f"{hists3D[0].GetNbinsY()} pt  bins")
+    logger.info(f"{hists3D[0].GetNbinsZ()} eta bins")
+    logger.info(f"{hists3D[0].GetNbinsY()} pt  bins")
 
     iymin = 1
     iymax = hists3D[0].GetNbinsY()
@@ -144,3 +146,5 @@ if __name__ == "__main__":
             canvas.RedrawAxis("sameaxis")
             for ext in ["png","pdf"]:
                 canvas.SaveAs(f"{outdir}/{canvasName}.{ext}")
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

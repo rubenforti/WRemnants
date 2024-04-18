@@ -4,11 +4,15 @@ from utilities.io_tools import output_tools
 
 parser,initargs = common.common_parser()
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
+parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen"])
 args = parser.parse_args()
+isUnfolding = args.analysisMode == "unfolding"
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
+args = parser.parse_args()
 
 import narf
 import wremnants
@@ -20,19 +24,19 @@ import hist
 import ROOT
 import wremnants.lowpu as lowpu
 
-
 ###################################
 flavor = args.flavor # mu, e
 if flavor == "mu":
-    sigProcs = ["WminusJetsToMuNu", "WplusJetsToMuNu"]
+    sigProcs = ["Wminusmunu", "Wplusmunu"]
     base_group = "Wmunu"
 else:
-    sigProcs = ["WminusJetsToENu", "WplusJetsToENu"]
+    sigProcs = ["Wminusenu", "Wplusenu"]
     base_group = "Wenu"
 
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="e" else ["singleelectron"])),
+                        base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
                         mode="lowpu")
 
@@ -42,24 +46,17 @@ for d in datasets: logger.info(f"Dataset {d.name}")
 
 mtw_min=40 # for Wmass (roughly half the boson mass)
 
-
-
 # axes used in fakerate calculation
-axis_fakerate_pt = hist.axis.Variable([26., 27., 28., 29., 30., 32., 34., 37., 40., 44., 49., 56.], name = "pt", underflow=False)
-axis_fakerate_eta = hist.axis.Regular(12, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(args.pt[1], args.pt[2]), name = "pt", underflow=False)
+axis_fakes_eta = hist.axis.Regular(int((args.eta[2]-args.eta[1])*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 # standard regular axes
 axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
-axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False)
-axis_phi = hist.axis.Regular(50, -4, 4, name = "phi")
-axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge")
+axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
+axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "iso")
 
-axis_passMT = hist.axis.Boolean(name = "passMT")
-axis_passIso = hist.axis.Boolean(name = "passIso")
 axis_lin = hist.axis.Regular(5, 0, 5, name = "lin")
-
-
 
 qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity()
 axis_ptVgen = qcdScaleByHelicity_helper.hist.axes["ptVgen"]
@@ -71,29 +68,29 @@ gen_axes = {
 
 groups_to_aggregate = args.aggregateGroups
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
-    groups_to_aggregate.append(f"Bkg{base_group}")
+    groups_to_aggregate.append(f"{base_group}OOA")
 
 # axes for final cards/fitting
 nominal_axes = [
-    axis_fakerate_pt, axis_fakerate_eta, axis_charge, 
+    axis_fakes_pt, axis_fakes_eta, common.axis_charge, 
     hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptW", underflow=False, overflow=True),    
-    axis_passIso, axis_passMT]
+    common.axis_passIso, common.axis_passMT]
 
 # corresponding columns
 nominal_cols = ["lep_pt", "lep_eta", "lep_charge", "ptW", "passIso",  "passMT"]
 
 # mt final cards/fitting
-axis_mT = hist.axis.Variable([0] + list(range(40, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
+axis_mT = hist.axis.Variable([0] + list(range(mtw_min, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
 # axis_mT = hist.axis.Regular(100, 0, 200, name = "mt", underflow=False)
 
-axes_mT = [axis_fakerate_pt, axis_fakerate_eta, axis_charge, axis_mT, axis_passIso]
+axes_mT = [axis_fakes_pt, axis_fakes_eta, common.axis_charge, axis_mT, common.axis_passIso]
 cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
 
-# reco_mT_axes = [common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, axis_charge, axis_passMT, axis_passIso]
-# gen_reco_mT_axes = [common.axis_recoil_gen_ptW_lowpu, common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, axis_charge, axis_passMT, axis_passIso]
+# reco_mT_axes = [common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, common.axis_charge, common.axis_passMT, common.axis_passIso]
+# gen_reco_mT_axes = [common.axis_recoil_gen_ptW_lowpu, common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, axis_charge, common.axis_passMT, common.axis_passIso]
 
 # # corresponding columns
 # gen_reco_mT_cols = ["ptVgen", "recoil_corr_rec_magn", "mt", "lep_charge", "passMT", "passIso"]
@@ -101,10 +98,10 @@ cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
     
 
 # extra axes which can be used to label tensor_axes
-down_up_axis = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "downUpVar")
 axis_cutFlow = hist.axis.Regular(1, 0, 1, name = "cutFlow")
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], theory_corrs)
 
 # recoil initialization
 args.noRecoil = True
@@ -114,17 +111,18 @@ if not args.noRecoil:
 
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
-
     results = []
+    isQCDMC = dataset.group == "QCD"
 
     if dataset.is_data: df = df.DefinePerSample("weight", "1.0")
     else: df = df.Define("weight", "std::copysign(1.0, genWeight)")
     weightsum = df.SumAndCount("weight")
+    df = df.Define("isEvenEvent", "event % 2 == 0")
 
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name in sigProcs:
+    if isUnfolding and dataset.name in sigProcs:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -248,6 +246,12 @@ def build_graph(df, dataset):
     else:
         df = df.DefinePerSample("nominal_weight", "1.0")
 
+    # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays
+    if not dataset.is_data and not isQCDMC and not args.noGenMatchMC:
+        df = theory_tools.define_postfsr_vars(df)
+        postFSRLeps = "postfsrMuons" if flavor == "mu" else "postfsrElectrons"
+        df = df.Filter(f"wrem::hasMatchDR2(lep_eta,lep_phi,GenPart_eta[{postFSRLeps}],GenPart_phi[{postFSRLeps}],0.09)")
+
     df = df.Define("noTrigMatch", "Sum(trigMatch)")
     results.append(df.HistoBoost("noTrigMatch", [axis_lin], ["noTrigMatch", "nominal_weight"]))
 
@@ -263,12 +267,10 @@ def build_graph(df, dataset):
     df = df.Alias("transverseMass", "mT_corr_rec")
     df = df.Define("passMT", f"transverseMass > {mtw_min}")
 
-    results.append(df.HistoBoost("lep_pt", [axis_pt, axis_charge, axis_passMT, axis_passIso], ["lep_pt", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_eta", [axis_eta, axis_charge, axis_passMT, axis_passIso], ["lep_eta", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_phi", [axis_phi, axis_charge, axis_passMT, axis_passIso], ["lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
+    results.append(df.HistoBoost("lep_pt_eta_phi", [axis_pt, axis_eta, axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_eta", "lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
     results.append(df.HistoBoost("lep_iso", [axis_iso], ["lep_iso", "nominal_weight"]))
    
-    # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))  
+    # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, common.axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))  
 
     df = df.Define("ptW", "wrem::pt_2(lep_pt, lep_phi, MET_corr_rec_pt, MET_corr_rec_phi)")
 
@@ -321,12 +323,12 @@ def build_graph(df, dataset):
         # mag = 1.e-4
         # df = df.Define(f"muonScaleDummy{netabins}Bins", f"wrem::dummyScaleFromMassWeights<{netabins}, {nweights}>(nominal_weight, massWeight_tensor_unscaled, Lep_abs_eta, {mag})")
         # scale_etabins_axis = hist.axis.Regular(netabins, -2.4, 2.4, name="scaleEtaSlice", underflow=False, overflow=False)
-        # dummyMuonScaleSyst = df.HistoBoost("mT_corr_rec_muonScaleSyst", [*axes_mT, axis_charge, axis_passMT, axis_passIso], [cols_mT, "Lep_charge", "passMT", "passIso", f"muonScaleDummy{netabins}Bins"], tensor_axes=[down_up_axis, scale_etabins_axis])
+        # dummyMuonScaleSyst = df.HistoBoost("mT_corr_rec_muonScaleSyst", [*axes_mT, common.axis_charge, common.axis_passMT, common.axis_passIso], [cols_mT, "Lep_charge", "passMT", "passIso", f"muonScaleDummy{netabins}Bins"], tensor_axes=[common.down_up_axis, scale_etabins_axis])
         # results.append(dummyMuonScaleSyst)
 
     if hasattr(dataset, "out_of_acceptance"):
         # Rename dataset to not overwrite the original one
-        dataset.name = "Bkg"+dataset.name
+        dataset.name = dataset.name+"OOA"
      
     return results, weightsum
 
@@ -474,4 +476,4 @@ if not args.noScaleToData:
     scale_to_data(resultdict)
     aggregate_groups(datasets, resultdict, groups_to_aggregate)
 
-output_tools.write_analysis_output(resultdict, f"mw_lowPU_{flavor}.hdf5", args, update_name=not args.forceDefaultName)
+output_tools.write_analysis_output(resultdict, f"mw_lowPU_{flavor}.hdf5", args)

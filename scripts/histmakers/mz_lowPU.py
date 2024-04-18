@@ -5,9 +5,14 @@ from utilities.io_tools import output_tools
 parser,initargs = common.common_parser()
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
 
-parser = common.set_parser_default(parser, "genVars", ["ptVGen"])
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
+
+args = parser.parse_args()
+isUnfolding = args.analysisMode == "unfolding"
+
+if isUnfolding:
+    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -33,6 +38,7 @@ mass_max = 120
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="ee" else ["singleelectron"])),
+                        base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
                         mode="lowpu"
                         )
@@ -46,7 +52,6 @@ for d in datasets: logger.info(f"Dataset {d.name}")
 # standard regular axes
 axis_eta = hist.axis.Regular(48, -2.4, 2.4, name = "eta")
 axis_pt = hist.axis.Regular(29, 26., 55., name = "pt")
-axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge")
 #axis_mll = hist.axis.Regular(60, 60., 120., underflow=False, overflow=False, name = "mll")
 axis_yll = hist.axis.Regular(50, -2.5, 2.5, name = "yll")
 axis_ptll = hist.axis.Regular(300, 0, 300,  name = "ptll")
@@ -68,15 +73,15 @@ gen_axes = {
     "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),  
 }
 
-if args.unfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genVars, gen_axes)
+if isUnfolding:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
     
 # axes for final cards/fitting
 nominal_axes = [
     hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptll", underflow=False, overflow=True),
     hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=True, underflow=True), 
-    axis_charge]
+    common.axis_charge]
 
 # corresponding columns
 nominal_cols = ["ptll", "yll", "TrigLep_charge"]
@@ -85,7 +90,8 @@ axis_mt = hist.axis.Regular(200, 0., 200., name = "mt", underflow=False)
 axes_mT = [axis_mt]
 cols_mT = ["transverseMass"]
 
-corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], args.theoryCorr)
+theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
+corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs_lowpu], theory_corrs)
 
 # recoil initialization
 args.noRecoil = True
@@ -104,13 +110,14 @@ def build_graph(df, dataset):
 
     if dataset.is_data: df = df.DefinePerSample("weight", "1.0")
     else: df = df.Define("weight", "std::copysign(1.0, genWeight)")
-  
+    df = df.Define("isEvenEvent", "event % 2 == 0")
+
     weightsum = df.SumAndCount("weight")
 
     axes = nominal_axes
     cols = nominal_cols
 
-    if args.unfolding and dataset.name in sigProcs:
+    if isUnfolding and dataset.name in sigProcs:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -126,7 +133,7 @@ def build_graph(df, dataset):
             axes = [*axes, *unfolding_axes] 
             cols = [*cols, *unfolding_cols]
 
-    df = df.Define("TrigLep_charge", "event % 2 == 0 ? -1 : 1") # wlike charge
+    df = df.Define("TrigLep_charge", "isEvenEvent ? -1 : 1") # wlike charge
  
     if flavor == "mumu":
     
@@ -274,7 +281,7 @@ def build_graph(df, dataset):
     results.append(df.HistoBoost("noTrigMatch", [axis_lin], ["noTrigMatch", "nominal_weight"]))
 
     # W-like
-    #df = df.Define("TrigLep_charge", "event % 2 == 0 ? -1 : 1")
+    #df = df.Define("TrigLep_charge", "isEvenEvent ? -1 : 1")
     df = df.Define("NonTrigLep_charge", "-TrigLep_charge")
     df = df.Define("trigLeps", "Lep_charge == TrigLep_charge")
     df = df.Define("nonTrigLeps", "Lep_charge == NonTrigLep_charge")
@@ -343,7 +350,7 @@ def build_graph(df, dataset):
 
     if hasattr(dataset, "out_of_acceptance"):
         # Rename dataset to not overwrite the original one
-        dataset.name = "Bkg"+dataset.name
+        dataset.name = dataset.name+"OOA"
 
     return results, weightsum
 
@@ -353,4 +360,4 @@ if not args.noScaleToData:
     scale_to_data(resultdict)
     aggregate_groups(datasets, resultdict, args.aggregateGroups)
 
-output_tools.write_analysis_output(resultdict, f"mz_lowPU_{flavor}.hdf5", args, update_name=not args.forceDefaultName)
+output_tools.write_analysis_output(resultdict, f"mz_lowPU_{flavor}.hdf5", args)

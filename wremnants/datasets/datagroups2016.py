@@ -1,30 +1,22 @@
 from utilities import boostHistHelpers as hh, logging
-from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
     
-def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelection=True, excludeGroups=None, filterGroups=None):
+def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGroups=None, filterGroups=None):
     # reset datagroups
     dg.groups = {}
 
-    if dg.mode == "wmass" and applySelection:
-        sigOp = sel.signalHistWmass
-        fakeOp = sel.fakeHistABCD
-    else:
-        sigOp = None
-        fakeOp = None
-
     dg.addGroup("Data",
-        members = dg.getSafeListFromDataset(["dataPostVFP"]),
-        selectOp = sigOp,
+        members = dg.get_members_from_results(is_data=True),
     )
     dg.addGroup("Zmumu",
-        members = list(filter(lambda y: y.group == "Zmumu", dg.datasets.values())),
-        selectOp = sigOp,
+        members = dg.get_members_from_results(startswith=["Zmumu"]),
     ) 
     dg.addGroup("Ztautau",
-        members = list(filter(lambda y: y.group == "Ztautau", dg.datasets.values())),
-        selectOp = sigOp,
+        members = dg.get_members_from_results(startswith=["Ztautau"]),
+    )
+    dg.addGroup("PhotonInduced",
+        members = dg.get_members_from_results(startswith=["GG", "QG"]),
     )
 
     if pseudodata_pdfset and dg.combine:
@@ -34,32 +26,26 @@ def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelec
         )
     if dg.mode in ["vgen", "wmass"]:
         dg.addGroup("Wmunu",
-            members = list(filter(lambda y: y.group == "Wmunu", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["Wplusmunu", "Wminusmunu", "Wmunu"]),
         )
         dg.addGroup("Wtaunu",
-            members = list(filter(lambda y: y.group == "Wtaunu", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["Wplustaunu", "Wminustaunu"]),
         )
         dg.addGroup("DYlowMass",
-            members = list(filter(lambda y: y.group == "DYlowMass", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["DYlowMass", "DYJetsToMuMuMass10to50"]),
         )
         dg.addGroup("Top",
-            members = list(filter(lambda y: y.group == "Top", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["Top", "SingleT", "TT"]),
         )
         dg.addGroup("Diboson",
-            members = list(filter(lambda y: y.group == "Diboson", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["Diboson", "WW", "WZ", "ZZ"]),
         )
         dg.addGroup("QCD",
-            members = list(filter(lambda y: y.group == "QCD", dg.datasets.values())),
-            selectOp = sigOp,
+            members = dg.get_members_from_results(startswith=["QCD"]),
         )   
     else:
         dg.addGroup("Other",
-            members = [x for x in dg.datasets.values() if not x.is_data and x.group not in ["Zmumu", "Ztautau"] and x.group != "QCD"],
+            members = dg.get_members_from_results(not_startswith=["Zmumu", "Ztautau", "QCD", "GG", "QG"]),
         )
 
     dg.filterGroups(filterGroups)
@@ -70,7 +56,6 @@ def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, applySelec
         dg.addGroup("Fake",
             members = [member for sublist in [v.members for k, v in dg.groups.items() if k != "QCD"] for member in sublist],
             scale = lambda x: 1. if x.is_data else -1,
-            selectOp = fakeOp,
         )
         dg.filterGroups(filterGroups)
         dg.excludeGroups(excludeGroups)

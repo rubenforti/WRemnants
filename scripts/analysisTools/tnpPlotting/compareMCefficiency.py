@@ -3,6 +3,7 @@
 import os, re, array, math
 import time
 import argparse
+from utilities import logging
 
 ## safe batch mode                                 
 import sys
@@ -23,28 +24,24 @@ sys.path.append(os.getcwd())
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument("outputfolder", type=str, nargs=1)
     parser.add_argument("inputfileMC",   type=str, nargs=2, help="Input files for MC")
     parser.add_argument("labels",   type=str, nargs=2, help="Labels for efficiency plots")
-    parser.add_argument(     "--rebin-y", dest="rebinY", default=1, type=int, help="To rebin y axis (pt)")
-    parser.add_argument(     "--rebin-z", dest="rebinZ", default=1, type=int, help="To rebin z axis (eta)")
-    parser.add_argument(     '--nContours', dest='nContours', default=51, type=int,
-                             help='Number of contours in palette. Default is 51')
-    parser.add_argument(     '--palette'  , dest='palette',   default=87, type=int,
-                             help='Set palette: default is a built-in one, 55 is kRainbow')
-    parser.add_argument(     '--invertPalette', dest='invertePalette', action='store_true',
-                             help='Inverte color ordering in palette')
+    parser.add_argument(     "--rebiny", dest="rebinY", default=1, type=int, help="To rebin y axis (pt)")
+    parser.add_argument(     "--rebinz", dest="rebinZ", default=1, type=int, help="To rebin z axis (eta)")
     args = parser.parse_args()
+
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
     for il,l in enumerate(args.labels):
         args.labels[il] = l.replace(" ", "_") # safety thing since it is also used to name output files
 
     ROOT.TH1.SetDefaultSumw2()
 
-    outdir = args.outputfolder[0]
-    createPlotDirAndCopyPhp(outdir)
-    
+    outdir_original = args.outputfolder[0]
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
     f = safeOpenFile(args.inputfileMC[0])
     hmcfail3D = safeGetObject(f, "fail_mu_DY_postVFP")
     hmcpass3D = safeGetObject(f, "pass_mu_DY_postVFP")
@@ -63,8 +60,8 @@ if __name__ == "__main__":
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 800, 800)
 
-    print(f"{hmcpass3D.GetNbinsZ()} eta bins")
-    print(f"{hmcpass3D.GetNbinsY()} pt  bins")
+    logger.info(f"{hmcpass3D.GetNbinsZ()} eta bins")
+    logger.info(f"{hmcpass3D.GetNbinsY()} pt  bins")
     
     hmcpass2D = hmcpass3D.Project3D("yze") # do y versus z which is pt versus eta 
     hmcpass2D.SetName("hmcpass2D")
@@ -89,13 +86,13 @@ if __name__ == "__main__":
                         f"effMC_{args.labels[0]}", plotLabel="ForceTitle", outdir=outdir,
                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
     drawCorrelationPlot(effMCtest, "muon #eta", "muon p_{T} (GeV)", f"MC efficiency",
                         f"effMC_{args.labels[1]}", plotLabel="ForceTitle", outdir=outdir,
                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
     effMC.Divide(effMCtest)
     effMC.SetTitle(f"{args.labels[0]} / {args.labels[1]}")
@@ -103,4 +100,6 @@ if __name__ == "__main__":
                         f"effRatioMC_{args.labels[0]}_over_{args.labels[1]}", plotLabel="ForceTitle", outdir=outdir,
                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
-                        nContours=args.nContours, palette=args.palette, invertePalette=args.invertePalette)
+                        nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

@@ -4,6 +4,7 @@ import re, sys, os, os.path, subprocess, json, ROOT, copy, math
 import numpy as np
 from utilities import common, logging
 from functools import partial
+from utilities.io_tools import output_tools
 
 from array import array
 import shutil
@@ -16,12 +17,17 @@ logger = logging.child_logger(__name__)
 # trying to use same colors as mathplotlib in wremnants
 colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
                  "Zmumu"      : ROOT.TColor.GetColor("#87CEFA"), #lightskyblue, #ADD8E6 is lightblue #ROOT.kAzure+2,
+                 "ZmumuVeto"  : ROOT.TColor.GetColor("#ADD8E6"),
                  "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"), #deepskyblue,
+                 "DYlowMassVeto" : ROOT.TColor.GetColor("#00FFFF"), # cyan
                  "Wtau"       : ROOT.TColor.GetColor("#FFA500"), #ROOT.kCyan+1, #backward compatibility
                  "Wtaunu"     : ROOT.TColor.GetColor("#FFA500"), # orange, use #FF8C00 for darkOrange #ROOT.kCyan+1,
-                 "Ztautau"    : ROOT.TColor.GetColor("#00008B"), #ROOT.kSpring+9,
+                 "WmunuOOA"   : ROOT.TColor.GetColor("#FF8C00"), # dark orange
+                 "Ztautau"    : ROOT.TColor.GetColor("#00008B"), #green
+                 "ZtautauVeto" : ROOT.TColor.GetColor("#90EE90"), #lightgreen
                  "Top"        : ROOT.TColor.GetColor("#008000"), #ROOT.kGreen+2,
                  "Diboson"    : ROOT.TColor.GetColor("#FFC0CB"), #ROOT.kViolet,
+                 "PhotonInduced" : ROOT.TColor.GetColor("#FFFF99"),
                  "Fake"       : ROOT.TColor.GetColor("#D3D3D3"), # dimgray is "#696969" #ROOT.kGray,
                  "QCD"        : ROOT.TColor.GetColor("#D3D3D3"), # light grey #ROOT.kGray,
                  "Other"      : ROOT.TColor.GetColor("#808080"), # grey #ROOT.kGray}
@@ -29,15 +35,30 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
 
 legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "Zmumu"      : "Z#rightarrow#mu#mu",
-                     "DYlowMass"  : "Z#rightarrow#mu#mu 10<m<50 GeV",
+                     "ZmumuVeto"  : "veto Z#rightarrow#mu#mu",
+                     "DYlowMass"  : "Z#rightarrow#mu#mu 10<m<50",
+                     "DYlowMassVeto" : "veto Z#rightarrow#mu#mu 10<m<50",
                      "Wtau"       : "W#rightarrow#tau#nu", #backward compatibility
                      "Wtaunu"     : "W#rightarrow#tau#nu",
+                     "WmunuOOA"   : "W#rightarrow#mu#nu OOA",
                      "Ztautau"    : "Z#rightarrow#tau#tau",
+                     "ZtautauVeto": "veto Z#rightarrow#tau#tau",
                      "Top"        : "t quark",
                      "Diboson"    : "Diboson",
+                     "PhotonInduced" : "Photon-induced",
                      "Fake"       : "Nonprompt", # or "Multijet"
                      "QCD"        : "QCD MC",
                      "Other"      : "Other"}   
+
+#########################################################################
+
+def common_plot_parser():
+    parser = common.base_parser()
+    parser.add_argument('--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
+    parser.add_argument('--palette'  , default=112, type=int, help='Set palette: 55 is kRainbow, 112 is kViridis, 87 is kLightTemperature')
+    parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
+    parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
+    return parser
 
 #########################################################################
 
@@ -539,12 +560,29 @@ def getTH2morePtBins(h2, newname, nPt):
             
 #########################################################################
 
-def createPlotDirAndCopyPhp(outdir):
+def createPlotDirAndCopyPhp(outdir, eoscp=True):
+    # when passing an eos path it will create a temporary local folder, to avoid exploiting the mount
+    outdir = os.path.realpath(outdir)
+    #logger.warning(f"Real output path is {outdir}")
+    outdir = output_tools.make_plot_dir(outdir, outfolder=None, eoscp=eoscp, allowCreateLocalFolder=True)
+    if not outdir.endswith("/"):
+        outdir += "/"
     if outdir and not os.path.exists(outdir):
         os.makedirs(outdir)
     htmlpath = f"{os.environ['WREM_BASE']}/scripts/analysisTools/templates/index.php"
     shutil.copy(htmlpath, outdir)
+    #logger.warning(f"exiting createPlotDirAndCopyPhp: outdir = {outdir}")
+    return outdir
 
+def copyOutputToEos(eosPathToCopy, eoscp=True, deleteFullTmp=True):
+    # this part copies the plots to eos in the path specified by eosPathToCopy
+    # and then delete the local folder that was automatially created by output_tools.make_plot_dir in createPlotDirAndCopyPhp
+    # unless deleteFullTmp=False, in which case the local folder is kept
+    # When the output path was a local folder (without exploiting the eos mount), this function does not have to do anything
+    if output_tools.is_eosuser_path(eosPathToCopy) and eoscp:
+        output_tools.copy_to_eos(eosPathToCopy, deleteFullTmp=deleteFullTmp)
+    else:
+        pass
 
 #########################################################################
 
@@ -608,7 +646,7 @@ def drawTH1(htmp,
 
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     labelX,setXAxisRangeFromUser,xmin,xmax = getAxisRangeFromUser(labelXtmp)
     labelY,setYAxisRangeFromUser,ymin,ymax = getAxisRangeFromUser(labelYtmp)
@@ -716,7 +754,7 @@ def drawCorrelationPlot(h2D_tmp,
                         rightMargin=0.20,
                         nContours=51,
                         palette=55,
-                        invertePalette=False,
+                        invertPalette=False,
                         canvasSize="700,625",
                         passCanvas=None,
                         bottomMargin=0.1,
@@ -772,7 +810,7 @@ def drawCorrelationPlot(h2D_tmp,
     if palette > 0:
         ROOT.gStyle.SetPalette(palette)  # 55:raibow palette ; 57: kBird (blue to yellow, default) ; 107 kVisibleSpectrum ; 77 kDarkRainBow 
     ROOT.gStyle.SetNumberContours(nContours) # default is 20 
-    if invertePalette:
+    if invertPalette:
         ROOT.TColor.InvertPalette()
 
     labelX,setXAxisRangeFromUser,xmin,xmax = getAxisRangeFromUser(labelXtmp)
@@ -790,7 +828,7 @@ def drawCorrelationPlot(h2D_tmp,
     canvas.cd()
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
     # normalize to 1
     if (scaleToUnitArea): h2D.Scale(1./h2D.Integral())
 
@@ -937,7 +975,7 @@ def drawSingleTH1(h1,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.5
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -1254,7 +1292,7 @@ def drawSingleTH1withFit(h1,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -1574,8 +1612,7 @@ def drawNTH1(hists=[],
 
     adjustSettings_CMS_lumi()
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
-    
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -1743,19 +1780,6 @@ def drawNTH1(hists=[],
             for i in range(0,len(textForLines)):
                 ytext = ymax - ytextOffsetFromTop*(ymax - ymin)
                 bintext.DrawLatex(etarange*i + etarange/sliceLabelOffset, ytext, textForLines[i])
-    
-    # if len(drawVertLines):
-    #     nLines = len(drawVertLines)
-    #     sliceLabelOffset = 10.
-    #     for i in range(nLines):
-    #         vertline.DrawLine(float(drawVertLines[i]), 0.0, float(drawVertLines[i]), ymax)
-    #     if len(textForLines):
-    #         for i in range(len(textForLines)): # we need nLines
-    #             ytext = (1.1)*ymax/2.
-    #             if i == 0:
-    #                 bintext.DrawLatex(h1.GetXaxis().GetBinLowEdge(0) + sliceLabelOffset, ytext, textForLines[i])
-    #             else:                    
-    #                 bintext.DrawLatex(drawVertLines[i-1] + sliceLabelOffset, ytext, textForLines[i])
 
     # redraw legend, or vertical lines appear on top of it
     leg.Draw("same")
@@ -2012,7 +2036,7 @@ def drawDataAndMC(h1, h2,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -2405,7 +2429,7 @@ def drawTH1dataMCstack(h1, thestack,
     canvas.cd()
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     dataNorm = h1.Integral()
     stackNorm = 0.0
@@ -2757,7 +2781,7 @@ def drawCheckTheoryBand(h1, h2, h3,
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -3178,7 +3202,7 @@ def drawXsecAndTheoryband(h1, h2,  # h1 is data, h2 is total uncertainty band
     yAxisTitleOffset = 1.45 if leftMargin > 0.1 else 0.6
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
-    createPlotDirAndCopyPhp(outdir)
+    outdir = createPlotDirAndCopyPhp(outdir)
 
     cw,ch = canvasSize.split(',')
     #canvas = ROOT.TCanvas("canvas",h2D.GetTitle() if plotLabel == "ForceTitle" else "",700,625)
@@ -3843,7 +3867,14 @@ def drawGraphCMS(grList,
     etabin.SetTextFont(42)
     etabin.SetTextColor(ROOT.kBlack)
     if etabinText:
-        etabin.DrawLatex(0.15,0.15,etabinText)
+        etabinText_x = 0.15
+        etabinText_y = 0.15
+        if "::" in etabinText:
+            etabinText_x,etabinText_y = etabinText.split("::")[1].split(",")
+            etabinText_text = etabinText.split("::")[0]
+        else:
+            etabinText_text = etabinText
+        etabin.DrawLatex(float(etabinText_x), float(etabinText_y), etabinText_text)
 
     canvas.RedrawAxis("sameaxis")
     leg.Draw("same")

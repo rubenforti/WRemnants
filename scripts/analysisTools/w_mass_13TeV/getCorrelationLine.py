@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
-
 # python w-helicity-13TeV/getCorrelationLine.py cards/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/fit/hessian/fitresults_123456789_Asimov_combinedLep_bbb1_cxs1.root -o plots/diffXsecAnalysis/muon/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/getCorrelationLine/ -p CMS_Wmu_sig_lepeff -m sumpoisnorm -n 50
-
 
 import os, re, operator, math
 import argparse
 import datetime
 
 from array import array
-
 
 #from subMatrix import niceName # skip for now, have to adapt the script
 from operator import itemgetter
@@ -37,13 +34,13 @@ if __name__ == "__main__":
 
     #date = datetime.date.today().isoformat()
 
-    parser = argparse.ArgumentParser()
+    parser = common_plot_parser()
     parser.add_argument('fitresult', type=str, nargs=1, help="fitresult.root file from combinetf")
-    parser.add_argument('-o','--outdir', default='', type=str, help='outdput directory to save the matrix')
+    parser.add_argument('-o','--outdir', default=None, type=str, help='outdput directory to save the plot')
     parser.add_argument('-p','--param',  default='', type=str, help='parameter for which you want to show the correlation matrix. Must be a single object')
     parser.add_argument('-t','--type',   default='hessian', type=str, choices=['toys', 'hessian'], help='which type of input file: toys or hessian (default)')
     parser.add_argument('-m','--matrix', default='', type=str, help='matrix to be used (name is correlation_matrix_channel<matrix>)')
-    parser.add_argument(     '--suffix', default='', type=str, help='suffix for the plotted correlation matrix')
+    parser.add_argument(     '--postfix', default='', type=str, help='Postfix for the plotted correlation matrix')
     parser.add_argument(     '--vertical-labels-X', dest='verticalLabelsX', action='store_true', help='Set labels on X axis vertically (sometimes they overlap if rotated)')
     parser.add_argument(     '--title',  default='', type=str, help='Title for matrix. Use 0 to remove title. By default, string passed to option -p is used')
     parser.add_argument('-n','--show-N' , dest='showN',    default=10, type=int, help='Show the N nuisances more correlated (in absolute value) with the parameter given with --param.')
@@ -59,7 +56,6 @@ if __name__ == "__main__":
                                       array ("d", [0.82, 1.00, 0.00]),
                                       255,  0.95)
 
-
     if not args.matrix:
         print("Need to specify which matrix with option -m (e.g. -m 'channelnone')")
         quit()
@@ -68,12 +64,13 @@ if __name__ == "__main__":
         print("Need to specify a parameter with option -p")
         quit()
 
-    if args.outdir:
-        createPlotDirAndCopyPhp(args.outdir)
+    outdir_original = args.outdir
+    outdir = None
+    if outdir_original:
+        outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     param = args.param
     print(f"Will do parameter with the following name: {param}")
-    
 
     corr = {}
     sign = {}
@@ -93,7 +90,7 @@ if __name__ == "__main__":
                 ## store mean and rms into the dictionaries from before
                 ## also keep a list of the parameter names, for sorting
                 index = ib
-            
+
     ## construct the covariances and the correlations in one go.
     for bin in range(1+corrmatrix.GetNbinsX()+1):
         label = corrmatrix.GetXaxis().GetBinLabel(bin)
@@ -103,17 +100,17 @@ if __name__ == "__main__":
         corr[label] = abs(bincontent)
         sign[label] = -1 if bincontent < 0 else 1
 
-    #sorted_keys = sorted(corr.items(), key=itemgetter(1), reverse=True)
     sorted_keys = sorted(corr.items(), key=itemgetter(1), reverse=True)
     inum = 1
-    hist = ROOT.TH1D("hist", "", args.showN, 0, args.showN)
+    nToShow = args.showN if args.showN > 0 else len(corr.keys())
+    hist = ROOT.TH1D("hist", "", nToShow, 0, nToShow)
     for key, val in sorted_keys:
         print("%s   %s" % (key, val*sign[key]))
         #hist.GetXaxis().SetBinLabel(inum,niceName(key))
         hist.GetXaxis().SetBinLabel(inum, key)
         hist.SetBinContent(inum, val*sign[key])
         inum += 1        
-        if inum > args.showN: break
+        if inum > nToShow: break
 
     c = ROOT.TCanvas("c","",1200,800)
     c.SetTickx(1)
@@ -149,10 +146,8 @@ if __name__ == "__main__":
     c.SetGridy(1)
     c.RedrawAxis("sameaxis")
 
-    if args.outdir:
+    if outdir:
         for i in ['pdf', 'png']:
-            suff = '' if not args.suffix else '_'+args.suffix
-            c.SaveAs(args.outdir+'/corrLine{suff}_{pn}_{ch}.{i}'.format(suff=suff,i=i,pn=param, ch=args.matrix.replace("channel","")))
-        os.system('cp {pf} {od}'.format(pf='templates/index.php',od=args.outdir))
-
-
+            pf = '' if not args.postfix else '_'+args.postfix
+            c.SaveAs(outdir+'/corrLine{pf}_{pn}_{ch}.{i}'.format(pf=pf, i=i, pn=param, ch=args.matrix.replace("channel","")))
+    copyOutputToEos(outdir_original, eoscp=args.eoscp)

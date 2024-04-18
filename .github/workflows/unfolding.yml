@@ -22,6 +22,7 @@ env:
   OUTFILE_WMASS: "mw_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_WLIKE: "mz_wlike_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_DILEPTON: "mz_dilepton_unfolding.hdf5"
+  DATAPATH: "/scratch/shared/NanoAOD/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -38,7 +39,7 @@ jobs:
       LUMI_SCALE: ${{steps.export.outputs.LUMI_SCALE}}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -119,7 +120,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -134,16 +135,16 @@ jobs:
         # run with a reduced binning
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
-          --pt 6 26 58 --eta 6 -2.4 2.4 --genBins 4 3
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding 
+          --pt 8 26 58 --eta 6 -2.4 2.4 --genBins 4 3
 
       - name: wmass analysis
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_with_mu_eta_pt.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding
 
   w-unfolding:
     # The type of runner that the job will run on
@@ -163,7 +164,7 @@ jobs:
           echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
           echo "LUMI_SCALE=${LUMI_SCALE}" >> $GITHUB_ENV
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -175,26 +176,30 @@ jobs:
 
       - name: wmass combine setup
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE --unfold --ABCD --hdf5 --sparse --addTauToSignal -o $WREMNANTS_OUTDIR --postfix unfolding
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
         run: >-
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ WMass.hdf5
 
+      - name: wmass combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          --expected ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ --outputFile results_unfolded
+
       - name: wmass combine unfolding plot pulls 
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py 
-          -f $WREMNANTS_OUTDIR/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -m ungrouped --sortDescending -s constraint 
+          -f ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -m ungrouped --sortDescending -s constraint 
           --debug --grouping max -t utilities/styles/nuisance_translate.json 
           output --outFolder $WEB_DIR/$PLOT_DIR -o pulls_unfolding_mw.html -n 50 --otherExtensions png pdf
           
-
       - name: wmass combine unfolding plot xsec 
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
-          --fitresult $WREMNANTS_OUTDIR/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR --debug --rrange 0.9 1.1 --logy
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5
+          --histfile $HIST_FILE --varNames uncorr --varLabels MiNNLO -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy
           -t 'utilities/styles/nuisance_translate.json' --grouping max
 
   w-theoryfit:
@@ -213,7 +218,7 @@ jobs:
           echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
           echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -222,7 +227,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE 
           --fitresult ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 --fitvar qGen-ptGen-absEtaGen 
-          --hdf5 --addTauToSignal -o $WREMNANTS_OUTDIR --postfix theoryfit
+          --hdf5 -o $WREMNANTS_OUTDIR --postfix theoryfit
 
       - name: wmass theoryfit combine fit 
         run: >-
@@ -238,13 +243,13 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_plots.py 
           $HIST_FILE --fitresult $WREMNANTS_OUTDIR/WMass_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR 
-          -n xnorm --plots prefit postfit --addTauToSignal --debug --rrange 0.9 1.1 --lumi=$LUMI_SCALE
+          -n xnorm --plots prefit postfit -v 4 --rrange 0.9 1.1 --lumi=$LUMI_SCALE
 
 
   wlike-analysis:
     # The type of runner that the job will run on
     runs-on: [self-hosted, linux, x64]
-    needs: [setenv, w-analysis]
+    needs: [setenv , w-analysis]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -261,7 +266,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WLIKE}" >> $GITHUB_ENV
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -275,16 +280,16 @@ jobs:
         # run with a reduced binning
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding 
-          --pt 10 26 58 --eta 24 -2.4 2.4 --genBins 4 3
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding 
+          --pt 8 26 58 --eta 12 -2.4 2.4 --genBins 4 3
 
       - name: wlike analysis
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding --unfolding
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --postfix unfolding
 
 
   wlike-unfolding:
@@ -305,7 +310,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WLIKE}" >> $GITHUB_ENV
           echo "LUMI_SCALE=$LUMI_SCALE" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -318,19 +323,23 @@ jobs:
       - name: wlike combine unfolding setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wlike combine unfolding fit 
         run: >-
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ ZMassWLike.hdf5
 
+      - name: wlike combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          --expected $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
+
       - name: wlike combine unfolding plot xsec 
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py 
-          $HIST_FILE --fitresult $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 
-          -o $WEB_DIR -f $PLOT_DIR --debug --rrange 0.9 1.1
-          -t 'utilities/styles/nuisance_translate.json' --grouping min
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 
+          --histfile $HIST_FILE --varNames uncorr --varLabels MiNNLO 
+          -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 -t 'utilities/styles/nuisance_translate.json' --grouping min
 
 
   wlike-theoryfit:
@@ -352,7 +361,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WLIKE}" >> $GITHUB_ENV
           echo "LUMI_SCALE=$LUMI_SCALE" >> $GITHUB_ENV
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -377,7 +386,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_plots.py 
           $HIST_FILE --fitresult $WREMNANTS_OUTDIR/ZMassWLike_qGen_ptGen_absEtaGen_theoryfit/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR 
-          -n xnorm --plots prefit postfit --debug --rrange 0.9 1.1 --lumi=$LUMI_SCALE
+          -n xnorm --plots prefit postfit -v 4 --rrange 0.9 1.1 --lumi=$LUMI_SCALE
 
   dilepton:
     # The type of runner that the job will run on
@@ -399,7 +408,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_DILEPTON}" >> $GITHUB_ENV
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -413,15 +422,15 @@ jobs:
         # run with a reduced binning
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --unfolding --genVars ptVGen
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --genAxes ptVGen
 
       - name: dilepton analysis
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py 
-          -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --unfolding
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
+          --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding
 
 
   dilepton-unfolding:
@@ -444,7 +453,7 @@ jobs:
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_DILEPTON}" >> $GITHUB_ENV
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
           lfs: 'true'
@@ -462,19 +471,24 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding setup
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --unfolding --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding fit
         run: >- 
           cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
           unfolding $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ ZMassDilepton.hdf5
+
+      - name: dilepton combine unfolding result to hist
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
+          --expected $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
 
       - name: dilepton combine unfolding plot pulls 
         run: >-
@@ -484,9 +498,9 @@ jobs:
 
       - name: dilepton combine unfolding plot xsec 
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $HIST_FILE 
-          --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WEB_DIR -f $PLOT_DIR --debug --rrange 0.9 1.1 --logy
-          -t 'utilities/styles/nuisance_translate.json' --grouping max
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/unfolding_xsec.py $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 
+          --histfile $HIST_FILE --varNames scetlib_dyturboCorr --varLabels SCETLib $Omega_\nu=0.5$ --selectAxis vars --selectEntries 'omega_nu0.5'
+          -o $WEB_DIR -f $PLOT_DIR -v 4 --rrange 0.9 1.1 --logy -t 'utilities/styles/nuisance_translate.json' --grouping max
 
   copy-clean:
     runs-on: [self-hosted, linux, x64]
