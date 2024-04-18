@@ -1,7 +1,7 @@
 import os
 
 # for setup and fit
-skipSetup = 1
+skipSetup = 0
 skipFit = 1
 # for plots
 skipImpacts = 1
@@ -9,7 +9,7 @@ skipCorrelation = 1
 skipCorrLine = 1
 skipDiffnuis = 1
 skipCompareDiffnuis = 1
-skipTemplates = 0 # check settings
+skipTemplates = 1 # check settings
 #
 justPrint = 1
 
@@ -25,7 +25,7 @@ onlySignalAndOOA = False # (requires onlySignal=True to be effective) signal onl
 doStatOnly = False
 noFake = False # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False # irrelevant when doStatOnly=True
-tag = "x0p30_y3p00_V7"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
+tag = "x0p30_y3p00_V9"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
 oneMCfileEveryN = 1
 testFolder = f"oneMCfileEvery{oneMCfileEveryN}" if oneMCfileEveryN > 1 else "fullStat"
 projectToNewLumi = -1.0 # set negative to skip it.
@@ -58,9 +58,9 @@ else:
 baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
 basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/pdfCT18Z_April2024/"
 
-inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_{tag}.hdf5"
+inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}.hdf5"
 if oneMCfileEveryN > 1:
-    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_testTApolvar_{tag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
+    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
 
 if noPDFandQCDtheorySystOnSignal and not doStatOnly:
     testFolder += "/noPDFandQCDtheorySystOnSignal/"
@@ -69,7 +69,7 @@ procFolder = "onlySignal" if onlySignal else "allProcsNoFake" if noFake else "al
 if onlySignal and onlySignalAndOOA:
     procFolder = "onlySignalAndOOA"
     
-outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
+    outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
 
 theoryAgnosticOptions = " --analysisMode theoryAgnosticPolVar --poiAsNoi"
 
