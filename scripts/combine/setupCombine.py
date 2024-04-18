@@ -653,11 +653,13 @@ def setup(args, inputFile, fitvar, xnorm=False):
         minnlo_unc=args.minnloScaleUnc,
     )
 
-    theorySystSamples = ["signal_samples_inctau", "single_v_nonsig_samples"]
+    theorySystSamples = ["signal_samples_inctau"]
+    if wmass:
+        if args.noPDFandQCDtheorySystOnSignal:
+            theorySystSamples = ["wtau_samples"]
+        theorySystSamples.append("single_v_nonsig_samples")
     if xnorm:
         theorySystSamples = ["signal_samples"]
-    if args.noPDFandQCDtheorySystOnSignal:
-        theorySystSamples = ["wtau_samples", "single_v_nonsig_samples"]
 
     theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
 

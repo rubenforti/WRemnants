@@ -10,8 +10,6 @@ import pandas as pd
 import hist
 import json
 
-from narf import ioutils
-
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.styles import styles
 from utilities.io_tools import input_tools, output_tools
@@ -60,9 +58,9 @@ if args.infile.endswith(".root"):
 if args.reference is not None and args.reference.endswith(".root"):
     args.reference = args.reference.replace(".root", ".hdf5")
 
-result, meta = fitresult_pois_to_hist(args.infile, args.poiTypes, uncertainties=None)
+result, meta = fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False)
 if args.reference:
-    result_ref, meta_ref = fitresult_pois_to_hist(args.reference, args.poiTypes, uncertainties=None)
+    result_ref, meta_ref = fitresult_pois_to_hist(args.reference, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False)
 
 grouping = styles.nuisance_groupings.get(args.grouping, None)
 
@@ -71,7 +69,7 @@ if args.translate:
     with open(args.translate) as f:
         translate_label = json.load(f)    
 
-outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
+outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
 if args.histfile:
     groups = Datagroups(args.histfile)

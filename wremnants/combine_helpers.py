@@ -56,7 +56,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                 card_tool.addSystematic(f"{ewUnc}Corr", **info, 
                     processes=z_samples,
                     labelsByAxis=[f"{ewUnc}Corr"],
-                    scale=2,
+                    scale=1,
                     skipEntries=[(1, -1), (2, -1)],
                 )                
             if w_samples:
@@ -64,7 +64,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                 card_tool.addSystematic(f"winhacnloewCorr", **info, 
                     processes=w_samples,
                     labelsByAxis=[f"winhacnloewCorr"],
-                    scale=2,
+                    scale=1,
                     skipEntries=[(0, -1), (2, -1)],
                 )                     
         else:
@@ -73,8 +73,10 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     logger.warning("ISR/FSR EW uncertainties are not implemented for electrons, proceed w/o")
                     continue
                 scale=1
-            else:
+            if "ISR" in ewUnc:
                 scale=2
+            else:
+                scale=1
 
             if "winhac" in ewUnc:
                 if not w_samples:

@@ -52,7 +52,8 @@ mass_min = 60
 mass_max = 120
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
-dilepton_ptV_binning = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not args.finePtBinning else range(60)
+
+dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 # available axes for dilepton validation plots
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -100,16 +101,10 @@ nominal_axes = [all_axes[a] for a in nominal_cols]
 
 inclusive = hasattr(args, "inclusive") and args.inclusive
 
-gen_axes = {
-    "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=isPoiAsNoi or inclusive),
-    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=isPoiAsNoi or inclusive),  
-}
-
 if isUnfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes, add_out_of_acceptance_axis=isPoiAsNoi)
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning, inclusive), add_out_of_acceptance_axis=isPoiAsNoi)
     if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
-
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -256,9 +251,9 @@ def build_graph(df, dataset):
     df = df.Define("etaSum", "muonsPlus_eta0 + muonsMinus_eta0") 
     df = df.Define("etaDiff", "muonsPlus_eta0 - muonsMinus_eta0") # plus - minus 
 
-    #df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mom4, muonsMinus_mom4)")
-    #df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
-    #df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
+    df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mom4, muonsMinus_mom4)")
+    df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
+    df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
 
     # TODO might need to add an explicit cut on trigMuons_pt0 in case nominal pt range
     # extends below 26 GeV e.g. for calibration test purposes

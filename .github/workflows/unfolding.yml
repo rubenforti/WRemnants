@@ -187,7 +187,7 @@ jobs:
       - name: wmass combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ --outputFile results_unfolded
+          --expected ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ --outputFile results_unfolded
 
       - name: wmass combine unfolding plot pulls 
         run: >-
@@ -333,7 +333,7 @@ jobs:
       - name: wlike combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
+          --expected $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
 
       - name: wlike combine unfolding plot xsec 
         run: >-
@@ -488,7 +488,7 @@ jobs:
       - name: dilepton combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
+          --expected $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
 
       - name: dilepton combine unfolding plot pulls 
         run: >-

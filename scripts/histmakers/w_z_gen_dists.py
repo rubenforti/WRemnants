@@ -97,6 +97,9 @@ axis_chargeZgen = hist.axis.Integer(
 axis_abseta_gen = hist.axis.Regular(24, 0, 2.4, name = "abseta")
 axis_l_pt_gen = hist.axis.Regular(34, 26., 60., name = "pt")
 
+# dilepton gen axes used in unfolding
+gen_axes = common.get_gen_axes(flow=False)
+
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
 
@@ -171,7 +174,7 @@ def build_graph(df, dataset):
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
         axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
-        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "dilepton")
+        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "wlike")
         results.append(df.HistoBoost("dressed_MllPTll", [axis_ewMll, axis_ewPtll], ["dressed_MV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllPTll", [axis_ewAbsYll, axis_ewPtll], ["dressed_absYV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllMll", [axis_ewAbsYll, axis_ewMll], ["dressed_absYV", "dressed_MV", "nominal_weight"], storage=hist.storage.Weight()))
