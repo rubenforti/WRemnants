@@ -379,11 +379,6 @@ class TheoryHelper(object):
         var_vals = gamma_vals
         var_names = [f"{gamma_nuisance_name}Down", f"{gamma_nuisance_name}Up"]
 
-        if "Lambda" in self.np_model:
-            Lambda4_nuisance_name = "scetlibNPLambda4"
-            var_vals.extend(["Lambda4.01", "Lambda4.16"])
-            var_names.extend([f"{Lambda4_nuisance_name}Down", f"{Lambda4_nuisance_name}Up"])
-
         logger.debug(f"Adding gamma uncertainties from syst entries {gamma_vals}")
 
 
@@ -437,7 +432,8 @@ class TheoryHelper(object):
     def add_uncorrelated_np_uncertainties(self):
         np_map = {
             "Lambda2" : ["-0.25", "0.25",],
-            "Delta_Lambda2" : ["-0.02", "0.02",]
+            "Delta_Lambda2" : ["-0.02", "0.02",],
+            "Lambda4" : [".01", ".16"],
         } if "Lambda" in self.np_model else {
             "Omega" : ["0.", "0.8"],
             "Delta_Omega" : ["-0.02", "0.02"],
