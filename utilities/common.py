@@ -124,12 +124,14 @@ def get_binning_fakes_mt(mt_cut=40):
 def get_dilepton_ptV_binning(fine=False):
     return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
 
-def get_gen_axes(flow=False, dilepton_ptV_binning=None):
+def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
     if dilepton_ptV_binning is None:
         dilepton_ptV_binning = get_dilepton_ptV_binning()
+
+    ybins,ymax = (20,5.) if inclusive else (10,2.5)
     gen_axes = {
         "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
-        "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow),  
+        "absYVGen": hist.axis.Regular(ybins, 0, ymax, name = "absYVGen", underflow=False, overflow=flow),  
     }
     return gen_axes
 

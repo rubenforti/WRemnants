@@ -79,20 +79,20 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
 
     return df
 
-def get_fiducial_args(mode, pt_min=28, pt_max=60, abseta_max=2.4):
+def get_fiducial_args(mode, mt_min=40, pt_min=28, pt_max=60, abseta_max=2.4):
     fidargs = {}
-    if "inclusive" in mode or mode == "mz_masswindow":
+    if "inclusive" in mode or "masswindow" in mode:
         fidargs = {"abseta_max" : 100.}
-        if mode == "mz_inclusive":
+        if "masswindow" in mode:
             fidargs.update({"mass_min" : 60, "mass_max" : 120})
         return fidargs
 
-    fidargs.update({"mtw_min" : 40 if "mw" in mode or "singlelep" in mode else 0,
+    fidargs.update({"mtw_min" : mt_min if mode[0] == "w" or "wlike" in mode else 0,
                     "pt_min" : pt_min, "pt_max" : pt_max, "abseta_max" : abseta_max})
 
     return fidargs
 
-def select_fiducial_space(df, select=True, accept=True, mode="mw", pt_min=0, pt_max=1300, abseta_max=2.4, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
+def select_fiducial_space(df, select=True, accept=True, mode="mw", pt_min=0, pt_max=13000, abseta_max=2.4, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
     # accept = False: reject events in fiducial pahse space

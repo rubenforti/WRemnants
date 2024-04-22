@@ -45,6 +45,8 @@ isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
 isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
 isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+
 if isUnfolding or isTheoryAgnostic:
     parser = common.set_parser_default(parser, "excludeFlow", True)
     if isTheoryAgnostic:
@@ -288,14 +290,21 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isWmunu:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        fidmode = analysis_label
+        if args.inclusive:
+            fidmod += "_inclusive"
+
+        pt_min, pt_max = (0, 13000) if inclusive else (min_pt, max_pt)
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=fidmode)
+        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=pt_min, pt_max=pt_max)
+
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode=analysis_label, accept=False)
         else:
             if not isPoiAsNoi:
                 logger.debug("Select events in fiducial phase space")
-                df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=True)
+                df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode=analysis_label, accept=True)
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
             

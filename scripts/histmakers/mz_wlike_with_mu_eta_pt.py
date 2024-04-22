@@ -35,6 +35,7 @@ else:
 
 args = parser.parse_args()
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 era = args.era
 
@@ -146,9 +147,13 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isZ:
-        fidmode = "mz_wlike_inclusive" if args.inclusive else "mz_wlike"
+        fidmode = analysis_label
+        if args.inclusive:
+            fidmod += "_inclusive"
+
+        pt_min, pt_max = (0, 13000) if inclusive else (min_pt, max_pt)
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=fidmode)
-        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=args.pt[1], pt_max=pt_min[2])
+        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=pt_min, pt_max=pt_max)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")

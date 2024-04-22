@@ -157,8 +157,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection, rename=False)
 
-    wmass = datagroups.mode in ["wmass", "lowpu_w"] 
-    wlike = datagroups.mode == "wlike"
+    wmass = datagroups.mode[0] == "w"
+    wlike = "wlike" in datagroups.mode 
     lowPU = "lowpu" in datagroups.mode
     # Detect lowpu dilepton
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)

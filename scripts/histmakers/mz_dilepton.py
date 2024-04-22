@@ -28,6 +28,7 @@ parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
 if isUnfolding:
@@ -173,16 +174,20 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
-        fidmode = "mz_window" if inclusive else "mz_dilepton"
+        fidmode = analysis_label
+        if args.inclusive:
+            fidmod += "_masswindow"
+
+        pt_min, pt_max = (0, 13000) if inclusive else (min_pt, max_pt)
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=fidmode)
-        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=args.pt[1], pt_max=args.pt[2])
+        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=pt_min, pt_max=pt_max)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
             df = unfolding_tools.select_fiducial_space(df, mode=fidmode, selections=[], accept=False, **fidargs)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="mz_dilepton", selections=[], select=not isPoiAsNoi, accept=True, **fidargs)
+            df = unfolding_tools.select_fiducial_space(df, mode=fidmode, selections=[], select=not isPoiAsNoi, accept=True, **fidargs)
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
