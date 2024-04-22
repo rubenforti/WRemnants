@@ -763,6 +763,21 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale=scale,
                     splitGroup=splitGroupDict,
                 )
+                if name=="effSystTnP":
+                    cardTool.addSystematic(
+                        "effSystTnP_altBkg", 
+                        mirror=mirror,
+                        mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
+                        group="muon_eff_syst_altBkg",
+                        systAxes = ["reco-tracking-idip-trigger-iso", "n_syst_variations"],
+                        labelsByAxis = ["WPSYST", "_altBkg_etaDecorr"],
+                        baseName=name+"_",
+                        processes=['MCnoQCD'],
+                        passToFakes=passSystToFakes,
+                        systNameReplace=nameReplace,
+                        scale=scale,
+                        splitGroup=splitGroupDict,
+                        )
         else:
             if datagroups.flavor in ["mu", "mumu"]:
                 lepEffs = ["muSF_HLT_DATA_stat", "muSF_HLT_DATA_syst", "muSF_HLT_MC_stat", "muSF_HLT_MC_syst", "muSF_ISO_stat", "muSF_ISO_DATA_syst", "muSF_ISO_MC_syst", "muSF_IDIP_stat", "muSF_IDIP_DATA_syst", "muSF_IDIP_MC_syst"]

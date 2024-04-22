@@ -35,6 +35,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                                         what_analysis = ROOT.wrem.AnalysisType.Wmass,
                                         max_pt = np.inf,
                                         isoEfficiencySmoothing = False,
+                                        isAltBkg = False,
                                         smooth3D=False,
                                         isoDefinition="iso04vtxAgn"):
     
@@ -111,6 +112,9 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             nameTag = "nomiAndAlt_onlyDataVar" if (isoEfficiencySmoothing and any(x in eff_type for x in ["iso", "antiiso"])) else "nomiAndAlt"
             chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
             hist_name = f"SF_{nameTag}_{eratag}_{eff_type}_{chargeTag}"
+            
+            if isAltBkg is True: hist_name = hist_name+"_altBkg"
+            
             ## temporary patch for some missing SF histograms relevant only for dilepton (no warning needed otherwise)
             if isoDefinition != "iso04vtxAgn":
                 if eff_type == "antitrigger":
@@ -121,13 +125,21 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                     hist_name = hist_name.replace("isoantitrig", "isonotrig")
                     if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
                         logger.warning(f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'")
-            hist_root = input_tools.safeGetRootObject(fin, hist_name)
+            
+            if isAltBkg is True:
+                try:
+                    hist_root = input_tools.safeGetRootObject(fin, hist_name)
+                except:
+                    continue
+            else:    
+                hist_root = input_tools.safeGetRootObject(fin, hist_name)
+            
             #logger.debug(f"syst: {eff_type} -> {hist_name}")
 
             hist_hist = narf.root_to_hist(hist_root, axis_names = ["SF eta", "SF pt", "nomi-statUpDown-syst"])
             # the following axis might change for different histograms, because of a different number of effStat variations
             axis_nomiAlt_eff = hist_hist.axes[2]
-            if eff_type not in axis_eff_type_2D:
+            if (eff_type not in axis_eff_type_2D):
                 key = f"{eff_type}_{chargeTag}"
                 if key not in sf_syst_from2D_for3D.keys():
                     # take syst/nomi histogram ratio in 2D (eta-pt)
@@ -189,6 +201,9 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                 ## Note: must call sf_syst_3D with flow=False because it has overflow bins but hist_hist does not (it was made without them in 4D)
                 nominalLayer = hist_hist.view(flow=False)[:,:,:,0]
                 sf_syst_3D.view(flow=False)[:, :, axis_charge.index(charge), axis_eff_type_3D.index(eff_type), 0, :] = nominalLayer #hist_hist.view(flow=False)[:,:,:,0]
+                
+                if isAltBkg is True: continue
+                
                 # take syst/nomi histogram ratio in 2D (eta-pt), and broadcast into eta-pt-ut)
                 chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
                 syst_view_etaPt = sf_syst_from2D_for3D[f"{eff_type}_{chargeTag}"].values(flow=False) #only need values
@@ -316,6 +331,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                                            "is3D": False}
         
     for effStatKey in effStat_manager.keys():
+        if isAltBkg is True: continue
         nom_up_effStat_axis = None
         axis_eff_type = None
         axis_charge_def = None
@@ -354,6 +370,8 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                             hist_name = hist_name.replace("isoantitrig", "isonotrig")
                             if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
                                 logger.warning(f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'")
+                    
+                    
                     hist_root = input_tools.safeGetRootObject(fin, hist_name)
 
                     # logger.info(f"stat: {effStatKey}|{eff_type} -> {hist_name}")

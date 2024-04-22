@@ -180,7 +180,10 @@ elif args.binnedScaleFactors:
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_binned(filename = data_dir + "/muonSF/allSmooth_GtoH3D.root", era = era, max_pt = axis_pt.edges[-1], usePseudoSmoothing=True)
 else:
     logger.info("Using smoothed scale factors and uncertainties")
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, 
+        what_analysis=thisAnalysis, max_pt=axis_pt.edges[-1], isoEfficiencySmoothing=args.isoEfficiencySmoothing, isAltBkg=False, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
+    _, muon_efficiency_helper_syst_altBkg, _ = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile.replace(".root","_altBkg.root"), era = era, 
+        what_analysis=thisAnalysis, max_pt=axis_pt.edges[-1], isoEfficiencySmoothing=args.isoEfficiencySmoothing, isAltBkg=True, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
 
 logger.info(f"SF file: {args.sfFile}")
 
@@ -552,6 +555,8 @@ def build_graph(df, dataset):
         if not args.onlyTheorySyst:
             if not isQCDMC and not args.noScaleFactors:
                 df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
+                    what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+                df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg, axes, cols, 
                     what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
