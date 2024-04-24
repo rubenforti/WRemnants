@@ -28,6 +28,8 @@ def make_muon_calibration_helpers(args,
 
     if era == "2018":
         data_filename=data_dir+"/calibration/correctionResults_lbl2018_recjpsidata.root"
+    elif era == "2017":
+        data_filename=data_dir+"/calibration/correctionResults_lbl2017_recjpsidata.root"
 
     if args.muonCorrMC in ["trackfit_only", "lbl", "lbl_massfit"]:
         raise NotImplementedError(f"Muon calibrations for non-ideal geometry are currently not available! (needed for --muonCorrMC {args.muonCorrMC})")
