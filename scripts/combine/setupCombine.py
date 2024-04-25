@@ -231,6 +231,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
         datagroups.setGenAxes(args.genAxes)
+        logger.info(f"GEN axes are {args.genAxes}")
         if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
@@ -932,16 +933,16 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
 def analysis_label(card_tool):
     analysis_name_map = {
-        "wmass" : "WMass",
+        "w_mass" : "WMass",
         "vgen" : "ZGen" if len(card_tool.getProcesses()) > 0 and card_tool.getProcesses()[0][0] == "Z" else "WGen",
-        "wlike" : "ZMassWLike", 
-        "dilepton" : "ZMassDilepton",
-        "lowpu_w" : "WMass_lowPU",
-        "lowpu_z" : "ZMass_lowPU",
+        "z_wlike" : "ZMassWLike", 
+        "z_dilepton" : "ZMassDilepton",
+        "w_lowpu" : "WMass_lowPU",
+        "z_lowpu" : "ZMass_lowPU",
     }
 
     if card_tool.datagroups.mode not in analysis_name_map:
-        raise ValueError(f"Invalid datagroups mode {datagroups.mode}")
+        raise ValueError(f"Invalid datagroups mode {card_tool.datagroups.mode}")
 
     return analysis_name_map[card_tool.datagroups.mode]
 

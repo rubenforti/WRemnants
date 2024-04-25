@@ -12,7 +12,7 @@ import math
 import os
 import numpy as np
 from utilities.differential import get_theoryAgnostic_axes
-
+from wremnants.datasets.datagroups import Datagroups
 
 parser.add_argument("--skipAngularCoeffs", action='store_true', help="Skip the conversion of helicity moments to angular coeff fractions")
 parser.add_argument("--propagatePDFstoHelicity", action='store_true', help="Propagate PDF uncertainties to helicity moments")
@@ -21,7 +21,7 @@ parser.add_argument("--singleLeptonHists", action='store_true', help="Also store
 parser.add_argument("--photonHists", action='store_true', help="Also store photon kinematics")
 parser.add_argument("--skipEWHists", action='store_true', help="Also store histograms for EW reweighting. Use with --filter horace")
 parser.add_argument("--signedY", action='store_true', help="use signed Y")
-parser.add_argument("--fiducial", choices=["inclusive", "masswindow", "dilepton", "singlelep"], help="Apply selection on leptons")
+parser.add_argument("--fiducial", choices=["masswindow", "dilepton", "singlelep"], help="Apply selection on leptons (No argument for inclusive)")
 parser.add_argument("--auxiliaryHistograms", action="store_true", help="Safe auxiliary histograms (mainly for ew analysis)")
 parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q variable instead of ptVgen, GEN only ", default=None)
 parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHelicity hist")
@@ -34,13 +34,14 @@ parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 
 args = parser.parse_args()
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=args.excludeProcs,
                         extended = "msht20an3lo" not in args.pdfs,
-                        nanoVersion="v9", base_path=args.dataPath, mode='gen')
+                        nanoVersion="v9", base_path=args.dataPath, mode=analysis_label)
 
 logger.debug(f"Will process samples {[d.name for d in datasets]}")
 
@@ -97,9 +98,6 @@ axis_chargeZgen = hist.axis.Integer(
 axis_abseta_gen = hist.axis.Regular(24, 0, 2.4, name = "abseta")
 axis_l_pt_gen = hist.axis.Regular(34, 26., 60., name = "pt")
 
-# dilepton gen axes used in unfolding
-gen_axes = common.get_gen_axes(flow=False)
-
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
 
@@ -139,11 +137,12 @@ def build_graph(df, dataset):
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 
     if args.fiducial is not None:
-        fidmode = f"{'mz' if isZ else 'mw'}_{args.fiducial if args.fiducial else 'inclusive'}"
-        df = unfolding_tools.define_gen_level(df, "preFSR", dataset.name, mode=fidmode)
+        mode = f'{"z" if isZ else "w"}_{analysis_label}'
+        if isZ and args.fiducial == "singlelep":
+            mode += "_wlike"
 
-        fidargs = unfolding_tools.get_fiducial_args(fidmode)
-        df = unfolding_tools.select_fiducial_space(df, mode=fidmode, **fidargs)
+        df = unfolding_tools.define_gen_level(df, "preFSR", dataset.name, mode=mode)
+        df = unfolding_tools.select_fiducial_space(df, mode=mode, fiducial=args.fiducial, unfolding=True)
 
     if args.singleLeptonHists and (isW or isZ):
         results.append(df.HistoBoost("nominal_genlep", lep_axes, [*lep_cols, "nominal_weight"], storage=hist.storage.Weight()))
@@ -174,7 +173,7 @@ def build_graph(df, dataset):
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
         axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
-        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "wlike")
+        df = theory_tools.define_dressed_vars(df, mode=mode)
         results.append(df.HistoBoost("dressed_MllPTll", [axis_ewMll, axis_ewPtll], ["dressed_MV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllPTll", [axis_ewAbsYll, axis_ewPtll], ["dressed_absYV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllMll", [axis_ewAbsYll, axis_ewMll], ["dressed_absYV", "dressed_MV", "nominal_weight"], storage=hist.storage.Weight()))

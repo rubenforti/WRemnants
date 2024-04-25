@@ -17,12 +17,14 @@ import hist
 import lz4.frame
 import math
 import time
-from utilities import boostHistHelpers as hh
+from utilities import common,boostHistHelpers as hh
 import pathlib
 import os
 import numpy as np
 
 data_dir = common.data_dir
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--halfStat", action='store_true', help="Test half data and MC stat, selecting odd events, just for tests")
@@ -30,7 +32,7 @@ parser.add_argument("--makeMCefficiency", action="store_true", help="Save yields
 parser.add_argument("--onlyTheorySyst", action="store_true", help="Keep only theory systematic variations, mainly for tests")
 parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC file every N, where N is given by this option. Mainly for tests")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
-parser.add_argument("--mtCut", type=int, default=40, help="Value for the transverse mass cut in the event selection")
+parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 #
@@ -45,8 +47,6 @@ isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
 isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
 isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
 
-analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
-
 if isUnfolding or isTheoryAgnostic:
     parser = common.set_parser_default(parser, "excludeFlow", True)
     if isTheoryAgnostic:
@@ -56,7 +56,7 @@ if isUnfolding or isTheoryAgnostic:
         logger.warning("Running theory agnostic with only nominal and mass weight histograms for now.")
         parser = common.set_parser_default(parser, "onlyMainHistograms", True)
     if isUnfolding:
-        parser = common.set_parser_default(parser, "pt", [32,26.,58.])
+        parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label, unfolding=True))
         
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
@@ -290,21 +290,16 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isWmunu:
-        fidmode = analysis_label
-        if args.inclusive:
-            fidmod += "_inclusive"
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
-        pt_min, pt_max = (0, 13000) if inclusive else (min_pt, max_pt)
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=fidmode)
-        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=pt_min, pt_max=pt_max)
-
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta}
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode=analysis_label, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False. **cutsmap)
         else:
             if not isPoiAsNoi:
                 logger.debug("Select events in fiducial phase space")
-                df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode=analysis_label, accept=True)
+                df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=True, **cutsmap)
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
             

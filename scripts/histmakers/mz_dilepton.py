@@ -49,8 +49,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era = era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
 
@@ -174,20 +173,19 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
-        fidmode = analysis_label
-        if args.inclusive:
-            fidmod += "_masswindow"
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : args.pt[1], "pt_max" : args.pt[2], "abseta_max" : args.eta[2], 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
 
-        pt_min, pt_max = (0, 13000) if inclusive else (min_pt, max_pt)
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=fidmode)
-        fidargs = unfolding_tools.get_fiducial_args(fidmode, pt_min=pt_min, pt_max=pt_max)
+        if inclusive:
+            cutsmap = {"fiducial" : "masswindow"}
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode=fidmode, selections=[], accept=False, **fidargs)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], accept=False, **cutsmap)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode=fidmode, selections=[], select=not isPoiAsNoi, accept=True, **fidargs)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], select=not isPoiAsNoi, accept=True, **cutsmap)
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 

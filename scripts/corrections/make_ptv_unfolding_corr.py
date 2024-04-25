@@ -21,7 +21,7 @@ logger = logging.setup_logger("make_ptv_unfolding_corr", 4 if args.debug else 3)
 genh = input_tools.read_and_scale(args.genFile, "ZmumuPostVFP", "nominal_gen")
 
 unfolded_res = pickle.load(open(args.unfoldingFile, "rb"))
-unfolded_datah = unfolded_res["results"]["pmaskedexp"]["chan_13TeV"]["Z"]["_".join(["hist", *[x.replace("gen", "Gen") for x in args.axes]])]
+unfolded_datah = unfolded_res["results"]["xsec"]["chan_13TeV"]["Z"]["_".join(["hist", *[x.replace("gen", "Gen") for x in args.axes]])]
 
 axes = {"massVgen" : hist.axis.Regular(1, 0, 13000, name="massVgen", flow=False), 
         "absYVgen" : hist.axis.Regular(1, 0, 10, name="absYVgen", underflow=False, overflow=True), 
@@ -34,15 +34,22 @@ axes = {"massVgen" : hist.axis.Regular(1, 0, 13000, name="massVgen", flow=False)
 for ax in unfolded_datah.axes:
     gen_name = ax.name.replace("Gen", "gen")
     ax._ax.metadata["name"] = gen_name
-    datah, genh = hh.rebinHistsToCommon([h.project(*args.axes) for h in [unfolded_datah, genh]], gen_name)
+
+datah, genh = (h.project(*args.axes) for h in (unfolded_datah, genh))
+
+for ax_name in unfolded_datah.axes.name:
+    datah, genh = hh.rebinHistsToCommon([h.project(*args.axes) for h in [unfolded_datah, genh]], ax_name)
     # Use the gen axis because you need the overflow for the ratio
-    axes[gen_name] = genh.axes[gen_name]
+    axes[ax_name] = genh.axes[ax_name]
+
+print("Now shape is", datah.shape, genh.shape)
 
 ratio = hh.divideHists(datah, genh, flow=False)
 indices = tuple(slice(None) if ax in args.axes else None for ax in axes.keys())
 
 corrh = hist.Hist(*axes.values())
-corrh[...] = ratio.values(flow=True)[indices]
+# Transpose because the order is different...
+corrh[...] = ratio.values(flow=True).T[indices]
 corrh = theory_corrections.set_corr_ratio_flow(corrh)
 
 output_dict = {

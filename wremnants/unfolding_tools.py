@@ -1,4 +1,4 @@
-from utilities import differential
+from utilities import differential,common
 from wremnants import syst_tools, theory_tools, logging
 from copy import deepcopy
 import hist
@@ -26,14 +26,14 @@ def add_out_of_acceptance(datasets, group, newGroupName=None):
 
     return datasets + datasets_ooa
 
-def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
+def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
     # gen level definitions
     gen_levels = ["preFSR", "postFSR"]
     if gen_level not in gen_levels:
         raise ValueError(f"Unknown gen level '{gen_level}'! Supported gen level definitions are '{gen_levels}'.")
 
     logger.info(f"Using {gen_level} leptons")
-    mz = "mz" in mode
+    singlelep = mode[0] == "w" or "wlike" in mode
 
     if gen_level == "preFSR":
         df = theory_tools.define_prefsr_vars(df, mode=mode)
@@ -43,14 +43,13 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         df = df.Alias("ptVGen", "ptVgen")
         df = df.Alias("absYVGen", "absYVgen")
 
-        if "mw" in mode or "singlelep" in mode:
+        if singlelep:
             df = df.Alias("mTVGen", "mTVgen")   
 
-        if "mw" in mode:
+        if mode[0] == "w":
             df = df.Define("ptGen", "chargeVgen < 0 ? genl.pt() : genlanti.pt()")   
             df = df.Define("absEtaGen", "chargeVgen < 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
-
-        if mz:
+        else:
             df = df.Define("ptGen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
             df = df.Define("absEtaGen", "event % 2 == 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
             df = df.Define("ptOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
@@ -62,10 +61,10 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         df = df.Alias("ptGen", f"postfsrLep_pt")
         df = df.Alias("absEtaGen", f"postfsrLep_absEta")           
 
-        if "mw" in mode or "singlelep" in mode:
+        if singlelep:
             df = df.Alias("mTWGen", "postfsrMT")   
    
-        if mz:
+        if mode[0] == "z":
             df = df.Alias("ptOtherGen", "postfsrOtherLep_pt")
             df = df.Alias("absEtaOtherGen", f"postfsrOtherLep_absEta")                
 
@@ -79,52 +78,74 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
 
     return df
 
-def get_fiducial_args(mode, mt_min=40, pt_min=28, pt_max=60, abseta_max=2.4):
+def get_default_fiducial_args(analysis, fiducial):
     fidargs = {}
-    if "inclusive" in mode or "masswindow" in mode:
-        fidargs = {"abseta_max" : 100.}
+    if fiducial in ["inclusive", "masswindow"]:
+        fidargs["abseta_max"] = 100.
         if "masswindow" in mode:
             fidargs.update({"mass_min" : 60, "mass_max" : 120})
         return fidargs
 
-    fidargs.update({"mtw_min" : mt_min if mode[0] == "w" or "wlike" in mode else 0,
+    fidargs.update({"mtw_min" : mt_min if (analysis[0] == "w" or "wlike" in analysis) else 0,
                     "pt_min" : pt_min, "pt_max" : pt_max, "abseta_max" : abseta_max})
 
     return fidargs
 
-def select_fiducial_space(df, select=True, accept=True, mode="mw", pt_min=0, pt_max=13000, abseta_max=2.4, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
+def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
     # accept = False: reject events in fiducial pahse space
-    
-    if "mw" in mode:
-        selection = f"(absEtaGen < {abseta_max})"        
-    elif "singlelep" in mode:
-        selection = f"""
-            (absEtaGen < {abseta_max}) && (absEtaOtherGen < {abseta_max}) 
-            && (ptOtherGen > {pt_min}) && (ptOtherGen < {pt_max})
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
-    elif "mz" in mode:
-        selection = f"""
-            (absEtaGen < {abseta_max}) && (absEtaOtherGen < {abseta_max}) 
-            && (ptGen > {pt_min}) && (ptOtherGen > {pt_min})
-            && (ptGen < {pt_max}) && (ptOtherGen < {pt_max})
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-        """
+    fiducial = kwargs.get("fiducial")
+    selmap = {x : None for x in ["pt_min", "pt_max", "abseta_max", "mass_min", "mass_max", "mtw_min",]}
+
+    selections = kwargs.get('selections', [])
+    if fiducial:
+        logger.info(f"Using default fiducial settings for selection {fiducial} for analysis {mode}")
+        if fiducial not in ["inclusive", "masswindow"]:
+            # Use unfolding values in gen script
+            selmap['pt_min'], selmap['pt_max'] = common.get_default_ptbins(mode, unfolding="vgen" in mode)[1:]
+            selmap['abseta_max'] = common.get_default_etabins(mode)[-1]
+            if mode[0] == "w" or "wlike" in mode:
+                selmap['mtw_min'] = common.get_default_mtcut(mode)
+        elif fiducial == "masswindow" and mode[0] == "z":
+            selmap['mass_min'], selmap['mass_max'] = common.get_default_mz_window()
     else:
-        raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
+        for k,v in selmap.items():
+            v = kwargs.get(k)
+    
+    if selmap['abseta_max'] is not None:
+        selections.append(f"absEtaGen < {selmap['abseta_max']}")
+        if mode[0] == 'z':
+            selections.append(f"absEtaOtherGen < {selmap['abseta_max']}")
 
-    if mtw_min > 0:
-        selection += f" && (mTVGen > {mtw_min})"
+    if selmap['pt_min'] is not None:
+        selections.append(f"ptGen > {selmap['pt_min']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen > {selmap['pt_min']}")
 
-    for sel in selections:
-        logger.debug(f"Add selection {sel} for fiducial phase space")
-        selection += f" && ({sel})"
+    if selmap['pt_max'] is not None:
+        if "gen" in mode or "dilepton" in mode:
+            # Don't place explicit cut on lepton pT for unfolding of W/W-like, but do for gen selection
+            selections.append(f"ptGen < {selmap['pt_max']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen < {selmap['pt_max']}")
 
-    logger.info(f"Applying fiducial selection {selection}")
+    if selmap['mass_min'] is not None:
+        selections.append(f"massVGen > {selmap['mass_min']}")
 
-    df = df.Define("acceptance", selection)
+    if selmap['mass_max'] is not None:
+        selections.append(f"massVGen < {selmap['mass_max']}")
+
+    if selmap['mtw_min'] is not None:
+        selections.append(f"mTVGen > {selmap['mtw_min']}")
+    
+    selection = " && ".join(selections)
+
+    if selection:
+        df = df.Define("acceptance", selection)
+        logger.info(f"Applying fiducial selection '{selection}'")
+    else:
+        df = df.DefinePerSample("acceptance", "true")
 
     if select and accept:
         df = df.Filter("acceptance")
