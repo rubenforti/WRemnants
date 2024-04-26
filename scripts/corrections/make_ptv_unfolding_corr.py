@@ -42,8 +42,6 @@ for ax_name in unfolded_datah.axes.name:
     # Use the gen axis because you need the overflow for the ratio
     axes[ax_name] = genh.axes[ax_name]
 
-print("Now shape is", datah.shape, genh.shape)
-
 ratio = hh.divideHists(datah, genh, flow=False)
 indices = tuple(slice(None) if ax in args.axes else None for ax in axes.keys())
 

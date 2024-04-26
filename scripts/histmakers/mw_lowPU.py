@@ -1,6 +1,7 @@
 import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
 
 parser,initargs = common.common_parser()
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
@@ -12,6 +13,7 @@ isUnfolding = args.analysisMode == "unfolding"
 if isUnfolding:
     parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 args = parser.parse_args()
 
 import narf
@@ -123,7 +125,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name in sigProcs:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")

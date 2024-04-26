@@ -1,6 +1,7 @@
 import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
 
 parser,initargs = common.common_parser()
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
@@ -8,6 +9,7 @@ parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 
@@ -118,7 +120,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name in sigProcs:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")

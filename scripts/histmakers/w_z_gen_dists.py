@@ -136,8 +136,8 @@ def build_graph(df, dataset):
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 
+    mode = f'{"z" if isZ else "w"}_{analysis_label}'
     if args.fiducial is not None:
-        mode = f'{"z" if isZ else "w"}_{analysis_label}'
         if isZ and args.fiducial == "singlelep":
             mode += "_wlike"
 

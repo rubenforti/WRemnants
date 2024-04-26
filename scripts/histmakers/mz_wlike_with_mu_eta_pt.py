@@ -9,6 +9,7 @@ import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
+from wremnants.datasets.datagroups import Datagroups
 import hist
 import lz4.frame
 import math

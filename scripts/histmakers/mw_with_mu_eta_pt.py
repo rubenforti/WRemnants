@@ -295,7 +295,7 @@ def build_graph(df, dataset):
         cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta}
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False. **cutsmap)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
         else:
             if not isPoiAsNoi:
                 logger.debug("Select events in fiducial phase space")
