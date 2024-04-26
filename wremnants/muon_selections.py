@@ -10,6 +10,10 @@ def apply_met_filters(df):
 
     return df
 
+def select_good_secondary_vertices(df, dlenSig=4.0, ntracks=0):
+    df = df.Define(f"goodSV", f"SV_dlenSig > {dlenSig} && SV_ntracks >= {ntracks}")
+    return df
+
 def select_veto_muons(df, nMuons=1, condition="==", ptCut=10.0, etaCut=2.4):
 
     # n.b. charge = -99 is a placeholder for invalid track refit/corrections (mostly just from tracks below

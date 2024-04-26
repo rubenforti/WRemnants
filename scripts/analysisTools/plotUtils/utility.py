@@ -15,22 +15,39 @@ logger = logging.child_logger(__name__)
 
 #########################################################################
 # trying to use same colors as mathplotlib in wremnants
-colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
-                 "Zmumu"      : ROOT.TColor.GetColor("#87CEFA"), #lightskyblue, #ADD8E6 is lightblue #ROOT.kAzure+2,
-                 "ZmumuVeto"  : ROOT.TColor.GetColor("#ADD8E6"),
-                 "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"), #deepskyblue,
-                 "DYlowMassVeto" : ROOT.TColor.GetColor("#00FFFF"), # cyan
-                 "Wtau"       : ROOT.TColor.GetColor("#FFA500"), #ROOT.kCyan+1, #backward compatibility
-                 "Wtaunu"     : ROOT.TColor.GetColor("#FFA500"), # orange, use #FF8C00 for darkOrange #ROOT.kCyan+1,
-                 "WmunuOOA"   : ROOT.TColor.GetColor("#FF8C00"), # dark orange
-                 "Ztautau"    : ROOT.TColor.GetColor("#00008B"), #green
-                 "ZtautauVeto" : ROOT.TColor.GetColor("#90EE90"), #lightgreen
-                 "Top"        : ROOT.TColor.GetColor("#008000"), #ROOT.kGreen+2,
-                 "Diboson"    : ROOT.TColor.GetColor("#FFC0CB"), #ROOT.kViolet,
+# colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#8B0000"), #ROOT.kRed+2,
+#                  "Zmumu"      : ROOT.TColor.GetColor("#87CEFA"), #lightskyblue, #ADD8E6 is lightblue #ROOT.kAzure+2,
+#                  "ZmumuVeto"  : ROOT.TColor.GetColor("#ADD8E6"),
+#                  "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"), #deepskyblue,
+#                  "DYlowMassVeto" : ROOT.TColor.GetColor("#00FFFF"), # cyan
+#                  "Wtau"       : ROOT.TColor.GetColor("#FFA500"), #ROOT.kCyan+1, #backward compatibility
+#                  "Wtaunu"     : ROOT.TColor.GetColor("#FFA500"), # orange, use #FF8C00 for darkOrange #ROOT.kCyan+1,
+#                  "WmunuOOA"   : ROOT.TColor.GetColor("#FF8C00"), # dark orange
+#                  "Ztautau"    : ROOT.TColor.GetColor("#00008B"), #green
+#                  "ZtautauVeto" : ROOT.TColor.GetColor("#90EE90"), #lightgreen
+#                  "Top"        : ROOT.TColor.GetColor("#008000"), #ROOT.kGreen+2,
+#                  "Diboson"    : ROOT.TColor.GetColor("#FFC0CB"), #ROOT.kViolet,
+#                  "PhotonInduced" : ROOT.TColor.GetColor("#FFFF99"),
+#                  "Fake"       : ROOT.TColor.GetColor("#D3D3D3"), # dimgray is "#696969" #ROOT.kGray,
+#                  "QCD"        : ROOT.TColor.GetColor("#D3D3D3"), # light grey #ROOT.kGray,
+#                  "Other"      : ROOT.TColor.GetColor("#808080"), # grey #ROOT.kGray}
+# }
+colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
+                 "Zmumu"      : ROOT.TColor.GetColor("#5790fc"),
+                 "ZmumuVeto"  : ROOT.TColor.GetColor("#5790fc"),
+                 "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"),
+                 "DYlowMassVeto" : ROOT.TColor.GetColor("#00FFFF"),
+                 "Wtau"       : ROOT.TColor.GetColor("#f89c20"),
+                 "Wtaunu"     : ROOT.TColor.GetColor("#f89c20"),
+                 "WmunuOOA"   : ROOT.TColor.GetColor("#FF8C00"),
+                 "Ztautau"    : ROOT.TColor.GetColor("#7a21dd"),
+                 "ZtautauVeto" : ROOT.TColor.GetColor("#7a21dd"),
+                 "Top"        : ROOT.TColor.GetColor("#008000"),
+                 "Diboson"    : ROOT.TColor.GetColor("#964a8b"),
                  "PhotonInduced" : ROOT.TColor.GetColor("#FFFF99"),
-                 "Fake"       : ROOT.TColor.GetColor("#D3D3D3"), # dimgray is "#696969" #ROOT.kGray,
-                 "QCD"        : ROOT.TColor.GetColor("#D3D3D3"), # light grey #ROOT.kGray,
-                 "Other"      : ROOT.TColor.GetColor("#808080"), # grey #ROOT.kGray}
+                 "Fake"       : ROOT.TColor.GetColor("#9c9ca1"),
+                 "QCD"        : ROOT.TColor.GetColor("#9c9ca1"),
+                 "Other"      : ROOT.TColor.GetColor("#808080"),
 }
 
 legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
@@ -43,9 +60,9 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "WmunuOOA"   : "W#rightarrow#mu#nu OOA",
                      "Ztautau"    : "Z#rightarrow#tau#tau",
                      "ZtautauVeto": "veto Z#rightarrow#tau#tau",
-                     "Top"        : "t quark",
+                     "Top"        : "Top",
                      "Diboson"    : "Diboson",
-                     "PhotonInduced" : "Photon-induced",
+                     "PhotonInduced" : "#gamma-induced",
                      "Fake"       : "Nonprompt", # or "Multijet"
                      "QCD"        : "QCD MC",
                      "Other"      : "Other"}   
@@ -55,7 +72,7 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
 def common_plot_parser():
     parser = common.base_parser()
     parser.add_argument('--nContours', default=51, type=int, help='Number of contours in palette. Default is 51')
-    parser.add_argument('--palette'  , default=112, type=int, help='Set palette: 55 is kRainbow, 112 is kViridis, 87 is kLightTemperature')
+    parser.add_argument('--palette'  , default=112, type=int, help='Set palette: 55 is kRainbow, 112 is kViridis, 113 is kCividis, 87 is kLightTemperature')
     parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
     return parser
@@ -1776,10 +1793,12 @@ def drawNTH1(hists=[],
         sliceLabelOffset = 6. if "#eta" in textForLines[0] else 6.
         for i in range(1,nptBins): # do not need line at canvas borders 
             vertline.DrawLine(etarange*i-offsetXaxisHist,ymin,etarange*i-offsetXaxisHist,ymax)
-        if len(textForLines):
-            for i in range(0,len(textForLines)):
-                ytext = ymax - ytextOffsetFromTop*(ymax - ymin)
-                bintext.DrawLatex(etarange*i + etarange/sliceLabelOffset, ytext, textForLines[i])
+        nLines = len(textForLines)
+        if nLines:
+            for i in range(0,nLines):
+                if nLines < 31 or not (i % 5): # only print 5 labels                                    
+                    ytext = ymax - ytextOffsetFromTop*(ymax - ymin)
+                    bintext.DrawLatex(etarange*i + etarange/sliceLabelOffset, ytext, textForLines[i])
 
     # redraw legend, or vertical lines appear on top of it
     leg.Draw("same")
@@ -2515,10 +2534,12 @@ def drawTH1dataMCstack(h1, thestack,
         for i in range(1,nptBins): # do not need line at canvas borders
             #vertline.DrawLine(etarange*i,0,etarange*i,canvas.GetUymax())
             vertline.DrawLine(etarange*i,0,etarange*i,ymaxBackup)
-        if len(textForLines):
+        nLines = len(textForLines)
+        if nLines:
             offsetText = etarange / (6. if len(textForLines) > 15 else 4.)
-            for i in range(0,len(textForLines)): # we need nptBins texts
-                bintext.DrawLatex(etarange*i + offsetText, textYheightOffset*ymaxBackup, textForLines[i])
+            for i in range(0,nLines): # we need nptBins texts
+                if nLines < 31 or not (i % 5): # only print 5 labels                                    
+                    bintext.DrawLatex(etarange*i + offsetText, textYheightOffset*ymaxBackup, textForLines[i])
 
     # legend.SetFillColor(0)
     # legend.SetFillStyle(0)

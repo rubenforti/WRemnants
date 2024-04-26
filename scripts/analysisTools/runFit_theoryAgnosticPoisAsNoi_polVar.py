@@ -33,6 +33,7 @@ lumiScaleVarianceLinearly = ["Data"] # [], ["Data", "MC"], use in conjunction wi
 
 splitOOAtag = ""
 setupLumiOption = ""
+setupFakeOption = " --fakeEstimation simple --binnedFakeEstimation"
 if splitOOA:
     splitOOAtag = "_splitOOA"
     testFolder = f"{testFolder}{splitOOAtag}"
@@ -69,11 +70,11 @@ procFolder = "onlySignal" if onlySignal else "allProcsNoFake" if noFake else "al
 if onlySignal and onlySignalAndOOA:
     procFolder = "onlySignalAndOOA"
     
-    outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
+outdir = f"{baseOutdir}/{testFolder}/{procFolder}/"
 
 theoryAgnosticOptions = " --analysisMode theoryAgnosticPolVar --poiAsNoi"
 
-setupCombineOptions = setupLumiOption
+setupCombineOptions = setupLumiOption + setupFakeOption
 if doStatOnly:
     setupCombineOptions += " --doStatOnly"
 elif noPDFandQCDtheorySystOnSignal:
@@ -86,15 +87,16 @@ if onlySignal:
 elif noFake:
     setupCombineOptions += " --excludeProcGroups Fake"
 
+setupCombineOptionsTraditional = setupCombineOptions
 setupCombineOptions += f" {theoryAgnosticOptions}"
-    
+
 baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]
 #coeffs = [x for x in baseCoeffs]
 #coeffs = ["UL"]
 #coeffs = [f"ULand{a}" for a in ["A0", "A1", "A2", "A3", "A4"]]
 #coeffs = [f"ULandA0andA4and{a}" for a in ["A1", "A2", "A3"]]
 #coeffs = ["and".join(x for x in baseCoeffs), "and".join(x for x in baseCoeffs if x != "A3")]
-coeffs = ["UL", "ULandA4", "ULandA0andA4", "and".join(x for x in baseCoeffs if x not in ["A1", "A2"]), "and".join(x for x in baseCoeffs)]
+coeffs = ["traditional", "UL", "ULandA4", "ULandA0andA4", "and".join(x for x in baseCoeffs if x not in ["A1", "A2"]), "and".join(x for x in baseCoeffs)]
 #coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A3"])]
 #coeffs = ["and".join(x for x in baseCoeffs)]
 #coeffs = ["and".join(x for x in baseCoeffs if x not in ["A1", "A2"])]
@@ -117,7 +119,10 @@ def safeSystem(cmd, dryRun=False, quitOnFail=True):
 
 for c in coeffs:
 
-    if "and" in c:
+    if c == "traditional":
+        subFolder = "traditionalFit"
+        toReject = None
+    elif "and" in c:
         if all(x in c for x in baseCoeffs):
             subFolder = "allCoeff"
             toReject = None
@@ -144,14 +149,15 @@ for c in coeffs:
     if customOptExclude is None or customOptExclude == "":
         customOpt = ""
 
-    if foldEtaIntoAbsEta:
+    if foldEtaIntoAbsEta and c != "traditional":
         #customOpt += " --foldEtaIntoAbsEta"
         #subFolder += "_absEta"
         customOpt += " --absval 1"
         
     mainOutputFolder = f"{outdir}/{subFolder}"
 
-    cmdCard = f"/usr/bin/time -v python scripts/combine/setupCombine.py -i {inputFileHDF5} -o {mainOutputFolder}/ --absolutePathInCard {setupCombineOptions} {customOpt}"
+    setupCombineOpts = setupCombineOptionsTraditional if c == "traditional" else setupCombineOptions
+    cmdCard = f"/usr/bin/time -v python scripts/combine/setupCombine.py -i {inputFileHDF5} -o {mainOutputFolder}/ --absolutePathInCard {setupCombineOpts} {customOpt}"
 
     #etaVar = "abseta" if foldEtaIntoAbsEta else "eta"
     etaVar = "eta" #patch, it seems the folder name stays eta also with --absval 1
@@ -214,10 +220,10 @@ for c in coeffs:
 
         systToPlot = {"resumAndSCETlib" : " --pois '.*resum|.*scetlib' ",
                       "PDFandAlphaS"         : " --pois '.*pdf' ",
-                      "QCDscaleW"            : " --pois '.*QCDscaleW.*helicity_[0-4]+' --bm 0.45 "
+                      #"QCDscaleW"            : " --pois '.*QCDscaleW.*helicity_[0-4]+' --bm 0.45 "
                       }
-        for hel in range(5):
-            systToPlot[f"QCDscaleW_A{hel}"] = f" --pois '.*QCDscaleW.*helicity_{hel}_' --bm 0.45 "
+        #for hel in range(5):
+        #    systToPlot[f"QCDscaleW_A{hel}"] = f" --pois '.*QCDscaleW.*helicity_{hel}_' --bm 0.45 "
             
         for s in systToPlot.keys():
             expr = systToPlot[s]

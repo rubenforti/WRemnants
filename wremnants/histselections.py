@@ -357,7 +357,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
         smooth_fakerate=False, 
-        smoothing_order_fakerate=1, 
+        smoothing_order_fakerate=1,
         polynomial="bernstein", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
@@ -380,6 +380,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # fakerate factor
         self.smooth_fakerate = smooth_fakerate
         self.smoothing_order_fakerate = smoothing_order_fakerate
+        if self.smooth_fakerate:
+            logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
         if self.polynomial=="bernstein":
