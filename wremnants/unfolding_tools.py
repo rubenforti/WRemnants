@@ -37,7 +37,7 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         raise ValueError(f"Unknown mode '{mode}'! Supported modes are '{modes}'.")
 
     if gen_level == "preFSR":
-        df = theory_tools.define_prefsr_vars(df)
+        df = theory_tools.define_prefsr_vars(df, mode=mode)
 
         # needed for fiducial phase space definition
         df = df.Alias("massVGen", "massVgen")
@@ -45,17 +45,17 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         df = df.Alias("absYVGen", "absYVgen")
 
         if mode in ["wmass", "wlike"]:
-            df = df.Define("mTWGen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
+            df = df.Alias("mTVGen", "mTVgen")   
 
         if mode == "wmass":
             df = df.Define("ptGen", "chargeVgen < 0 ? genl.pt() : genlanti.pt()")   
-            df = df.Define("absEtaGen", "chargeVgen < 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
+            df = df.Define("absEtaGen", "chargeVgen < 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
 
         if mode in ["wlike", "dilepton"]:
             df = df.Define("ptGen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
-            df = df.Define("absEtaGen", "event % 2 == 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
+            df = df.Define("absEtaGen", "event % 2 == 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
             df = df.Define("ptOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
-            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? fabs(genlanti.eta()) : fabs(genl.eta())")
+            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? std::fabs(genlanti.eta()) : std::fabs(genl.eta())")
 
     elif gen_level == "postFSR":
         df = theory_tools.define_postfsr_vars(df, mode=mode)
@@ -64,14 +64,14 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         df = df.Alias("absEtaGen", f"postfsrLep_absEta")           
 
         if mode in ["wmass", "wlike"]:
-            df = df.Alias("mTWGen", "postfsrMT")   
+            df = df.Alias("mTVGen", "postfsrMT")   
    
         if mode in ["wlike", "dilepton"]:
             df = df.Alias("ptOtherGen", "postfsrOtherLep_pt")
             df = df.Alias("absEtaOtherGen", f"postfsrOtherLep_absEta")                
 
             df = df.Alias("massVGen", "postfsrMV")
-            df = df.Define("absYVGen", "fabs(postfsrYV)")  
+            df = df.Define("absYVGen", "postfsrabsYV")  
 
         df = df.Alias("ptVGen", "postfsrPTV")      
 
@@ -104,7 +104,7 @@ def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=Non
         raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
 
     if mtw_min > 0:
-        selection += f" && (mTWGen > {mtw_min})"
+        selection += f" && (mTVGen > {mtw_min})"
 
     for sel in selections:
         logger.debug(f"Add selection {sel} for fiducial phase space")

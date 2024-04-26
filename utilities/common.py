@@ -121,6 +121,18 @@ def get_binning_fakes_mt(mt_cut=40):
     edges = np.append(edges, [e for e in [30,32,34,36,38,40,44,49,55,62] if e>mt_cut])
     return edges
 
+def get_dilepton_ptV_binning(fine=False):
+    return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
+
+def get_gen_axes(flow=False, dilepton_ptV_binning=None):
+    if dilepton_ptV_binning is None:
+        dilepton_ptV_binning = get_dilepton_ptV_binning()
+    gen_axes = {
+        "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
+        "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow),  
+    }
+    return gen_axes
+
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)

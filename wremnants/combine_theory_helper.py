@@ -379,11 +379,6 @@ class TheoryHelper(object):
         var_vals = gamma_vals
         var_names = [f"{gamma_nuisance_name}Down", f"{gamma_nuisance_name}Up"]
 
-        if "Lambda" in self.np_model:
-            Lambda4_nuisance_name = "scetlibNPLambda4"
-            var_vals.extend(["Lambda4.01", "Lambda4.16"])
-            var_names.extend([f"{Lambda4_nuisance_name}Down", f"{Lambda4_nuisance_name}Up"])
-
         logger.debug(f"Adding gamma uncertainties from syst entries {gamma_vals}")
 
 
@@ -437,7 +432,8 @@ class TheoryHelper(object):
     def add_uncorrelated_np_uncertainties(self):
         np_map = {
             "Lambda2" : ["-0.25", "0.25",],
-            "Delta_Lambda2" : ["-0.02", "0.02",]
+            "Delta_Lambda2" : ["-0.02", "0.02",],
+            "Lambda4" : [".01", ".16"],
         } if "Lambda" in self.np_model else {
             "Omega" : ["0.", "0.8"],
             "Delta_Omega" : ["-0.02", "0.02"],
@@ -599,21 +595,19 @@ class TheoryHelper(object):
                 rename=f"resumTransitionFOScale{name_append}",
             )
 
-    def add_quark_mass_vars(self, from_minnlo=False):
+    def add_quark_mass_vars(self, from_minnlo=True):
         pdfs = input_tools.args_from_metadata(self.card_tool, "pdfs")
         theory_corrs = input_tools.args_from_metadata(self.card_tool, "theoryCorr")
 
-        from_minnlo = "scetlib_dyturboMSHT20mcrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs and "msht20" in pdfs[0]
+        from_minnlo = not ("scetlib_dyturboMSHT20mcrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs and "msht20" in pdfs[0])
 
-        if not (from_minnlo and ("msht20mbrange" in pdfs and "msht20mcrange" in pdfs) or \
-                ("scetlib_dyturboMSHT20mcrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs)):
-            raise ValueError("Neither PDFs nor SCETlib corrections were found for msht20mbrange and msht20mcrange. " \
-                            "The uncertainty will not be included.")
-
-            if not ("msht20mbrange" in pdfs and "msht20mcrange" in pdfs):
-                raise ValueError("The PDFS msht20mbrange and msht20mcrange must be included to add quark mass variations from MiNNLO")
-            if pdfs[0] not in ["msht20", "msht20mbrange", "msht20mcrange"]:
+        if from_minnlo:
+            if "msht20mbrange" in pdfs and "msht20mcrange" in pdfs and pdfs[0] not in ["msht20", "msht20mbrange", "msht20mcrange"]:
                 raise ValueError("Using the mass variation sets from MiNNLO requires MSHT20 as the central set")
+            elif "msht20mbrange_renorm" not in pdfs or "msht20mcrange_renorm" not in pdfs:
+                raise ValueError("Must include the msht20mb(c)range pdf sets to take the mass variation from MiNNLO")
+        elif not ("msht20" in pdfs[0] and "scetlib_dyturboMSHT20mbrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs):
+            raise ValueError("In order to take the mb(c) mass unc. from SCETlib+DYTurbo, you need to include those corr files and use MSHT20 as central PDF")
             
         bhist = "pdfMSHT20mbrange" if from_minnlo else "scetlib_dyturboMSHT20mbrangeCorr"
         syst_ax = "pdfVar" if from_minnlo else "vars"

@@ -502,7 +502,7 @@ def build_graph(df, dataset):
             logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for theory agnostic to treat POIs as NOIs")
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *theoryAgnostic_axes], [*nominal_cols, *theoryAgnostic_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))
             if isTheoryAgnosticPolVar:
-                theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight"]
+                theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
                 # assume to have same coeffs for plus and minus (no reason for it not to be the case)
                 for genVcharge in ["minus", "plus"]:
                     for coeffKey in theoryAgnostic_helpers_minus.keys():
