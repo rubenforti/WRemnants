@@ -223,8 +223,8 @@ def makeStackPlotWithRatio(
                 step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
     
     opts=dict(stack=not no_stack, flow=flow)
-    opts2=opts.copy() # no binwnorm for ratio axis
-    opts2["density"]=density
+    optsr=opts.copy() # no binwnorm for ratio axis
+    optsr["density"]=density
     if density:
         opts["density"]=True
     else:
@@ -255,14 +255,14 @@ def makeStackPlotWithRatio(
     
     if "Data" in histInfo and ratio_to_data and add_ratio:
         hep.histplot(
-            hh.divideHists(hh.sumHists(stack), data_hist, cutoff=0.01, by_ax_name=False),
+            hh.divideHists(hh.sumHists(stack), data_hist, cutoff=1e-6, by_ax_name=False),
             histtype="step",
             color=histInfo[stackedProcs[-1]].color,
             label=histInfo[stackedProcs[-1]].label,
             yerr=False,
             ax=ax2,
             zorder=3,
-            **opts
+            #**optsr
         )
 
     if unstacked:
@@ -278,14 +278,14 @@ def makeStackPlotWithRatio(
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
         if baseline and add_ratio:
             hep.histplot(
-                hh.divideHists(ratio_ref, ratio_ref, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False),
+                hh.divideHists(ratio_ref, ratio_ref, cutoff=1e-6, rel_unc=True, flow=False, by_ax_name=False),
                 histtype="step",
                 color="grey",
                 alpha=0.5,
                 yerr=ratio_error if ratio_ref.storage_type == hist.storage.Weight else False,
                 ax=ax2,
                 linewidth=2,
-                **opts2
+                **optsr
             )
 
         if fill_between and add_ratio:
@@ -323,7 +323,7 @@ def makeStackPlotWithRatio(
             )
             if ratio_to_data and proc == "Data" or not add_ratio:
                 continue
-            stack_ratio = hh.divideHists(unstack, ratio_ref, cutoff=0.01, rel_unc=True, flow=False, by_ax_name=False)
+            stack_ratio = hh.divideHists(unstack, ratio_ref, cutoff=1e-6, rel_unc=True, flow=False, by_ax_name=False)
             hep.histplot(stack_ratio,
                 histtype="errorbar" if style == "None" else "step",
                 color=histInfo[proc].color,
@@ -332,7 +332,7 @@ def makeStackPlotWithRatio(
                 linewidth=2,
                 linestyle=style,
                 ax=ax2,
-                **opts2
+                **optsr
             )
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
@@ -385,7 +385,7 @@ def makePlotWithRatioToRef(
     )
 
     if len(hists) > 1:
-        ratio_hists = [hh.divideHists(h, hists[0], cutoff=0.00001, flow=False, rel_unc=True, by_ax_name=False) for h in hists]
+        ratio_hists = [hh.divideHists(h, hists[0], cutoff=cutoff, flow=False, rel_unc=True, by_ax_name=False) for h in hists]
         if fill_between != 0:
             for upr,downr,color in zip(ratio_hists[-fill_between::2], ratio_hists[-fill_between+1::2], colors[-fill_between::2]):
                 ax2.fill_between(upr.axes[0].edges, 

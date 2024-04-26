@@ -70,9 +70,7 @@ col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
 if not args.useTheoryAgnosticBinning:
     axis_ptVgen = hist.axis.Variable(
-    #list(range(0,151))+[160., 190.0, 220.0, 250.0, 300.0, 400.0, 500.0, 800.0, 13000.0], 
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100],
-    #common.ptV_binning,
+    (*common.get_dilepton_ptV_binning(fine=False), 13000.),
     name = "ptVgen", underflow=False,
 )
 else:

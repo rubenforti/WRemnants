@@ -2,6 +2,7 @@ import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
+import os
 
 parser,initargs = common.common_parser()
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)

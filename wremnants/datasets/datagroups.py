@@ -199,7 +199,7 @@ class Datagroups(object):
         group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
     ):
         logger.info(f"Set histselector")
-        if self.mode not in ["wmass", "lowpu_w"]:
+        if self.mode[0] != "w":
             return # histselectors only implemented for single lepton (with fakes)
         auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
         signalselector = sel.SignalSelectorABCD
@@ -559,7 +559,7 @@ class Datagroups(object):
 
         self.all_gen_axes = args.get("genAxes", [])
 
-        if self.mode in ["wmass", "lowpu_w"]:
+        if self.mode[0] == "w":
             self.all_gen_axes = ["qGen", *self.all_gen_axes]
 
         self.gen_axes_names = list(gen_axes_names) if gen_axes_names != None else self.all_gen_axes

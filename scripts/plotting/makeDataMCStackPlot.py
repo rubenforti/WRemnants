@@ -89,6 +89,7 @@ groups = Datagroups(args.infile, filterGroups=args.procFilters, excludeGroups=No
 
 if not args.fineGroups:
     if groups.mode in styles.process_supergroups:
+        print("The groups are", styles.process_supergroups)
         for new_name, old_groups in styles.process_supergroups[groups.mode].items():
             groups.mergeGroups(old_groups, new_name)
     else:
