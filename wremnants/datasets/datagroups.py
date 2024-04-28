@@ -198,7 +198,7 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-                          group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, smoothingOrderFakerate=1, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
+                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothen=False, smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
