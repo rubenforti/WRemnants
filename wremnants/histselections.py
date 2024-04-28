@@ -356,8 +356,8 @@ class SignalSelectorABCD(HistselectorABCD):
 class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
-        smooth_fakerate=False, 
-        smoothing_order_fakerate=1, 
+        smooth_fakerate=True, 
+        smoothing_order_fakerate=2,
         polynomial="bernstein", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
@@ -380,6 +380,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # fakerate factor
         self.smooth_fakerate = smooth_fakerate
         self.smoothing_order_fakerate = smoothing_order_fakerate
+        if self.smooth_fakerate:
+            logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
         if self.polynomial=="bernstein":
@@ -612,9 +614,9 @@ class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
         return h
 
 class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
-    # extrapolate the fakerate in the abcd x axis by finding a analytic description in the dx region
+    # extrapolate the fakerate in the abcd x axis by finding an analytic description in the dx region
     def __init__(self, h, *args, 
-        smooth_fakerate=False,
+        smooth_fakerate=True,
         polynomial="power",
         extrapolation_order=1,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
@@ -654,7 +656,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             logger.debug("Integrate abcd x-axis, treat uncertainty as bin by bin stat")
             y_frf, y_frf_variation = self.compute_fakeratefactor(h, syst_variations=is_nominal)
             d = c * y_frf
-            # sum up abcd-x axis (sum up variatoins to treat uncertainty fully correlated across abcd-x axis bins)
+            # sum up abcd-x axis (sum up variations to treat uncertainty fully correlated across abcd-x axis bins)
             idx_x = h[{self.name_y: self.sel_dy}].axes.name.index(self.name_x)
             d = d.sum(axis=idx_x)
             if is_nominal:

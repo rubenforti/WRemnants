@@ -105,6 +105,9 @@ if __name__ == "__main__":
     parser.add_argument('-l','--lumi', default=16.8, type=float, help='Integrated luminosity to print in the plot')
     parser.add_argument('--fp','--filter-processes', dest="filterProcesses", default="", type=str, help='If given, regexp to filter some processes')
     parser.add_argument('--dt','--data-title', dest="dataTitle", default="Data", type=str, help='Title for data in legend (usually Data but could be Pseudodata)')
+    parser.add_argument("--rrPre", dest="ratioRangePrefit", default=(0.9,1.1), type=float, nargs=2, help="Range for ratio plot prefit")
+    parser.add_argument("--rrPost", dest="ratioRangePostfit", default=(0.99,1.01), type=float, nargs=2, help="Range for ratio plot postfit")
+    parser.add_argument(     '--unrolledRatioRangeAsPrefit', action='store_true', help="For unrolled stack plot use same ratio range as prefit also in the postfit")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -183,6 +186,10 @@ if __name__ == "__main__":
         #ptBinRanges.append("p_{{T}} #in [{ptmin:3g}, {ptmax:.3g}]".format(ptmin=recoBins.ptBins[ipt], ptmax=recoBins.ptBins[ipt+1]))
         ptBinRanges.append("#splitline{{[{ptmin},{ptmax}]}}{{GeV}}".format(ptmin=int(recoBins.ptBins[ipt]), ptmax=int(recoBins.ptBins[ipt+1])))
 
+    etaBinRanges = []
+    for ieta in range(0,recoBins.Neta):
+        etaBinRanges.append("[{etamin},{etamax}]".format(etamin=round(recoBins.etaBins[ieta],1), etamax=round(recoBins.etaBins[ieta+1],1)))
+        
 
     for charge in charges:
         binshift = shifts[charge]
@@ -195,6 +202,11 @@ if __name__ == "__main__":
         ratios_unrolled = {}
         ratios_unc_unrolled = {}
         unc_unrolled = {}
+        #
+        all_procs_unrolled_y = {}
+        ratios_unrolled_y = {}
+        ratios_unc_unrolled_y = {}
+        unc_unrolled_y = {}
 
         # keep this order
         for prepost in ['postfit', 'prefit']:
@@ -224,13 +236,17 @@ if __name__ == "__main__":
                 h2_backrolled = dressed2DfromFit(h1_1, binning, pname, titles[i], binshift, nMaskedCha=nMaskedChanPerCharge,
                                                    nRecoBins=nRecoBins)
                 h1_unrolled = unroll2Dto1D(h2_backrolled, newname=f"unroll_{pname}", cropNegativeBins=False)
+                h1_unrolled_y = unroll2Dto1D(h2_backrolled, newname=f"unroll_y_{pname}", cropNegativeBins=False, invertUnroll=True)
 
                 if args.normWidth:
-                    normalizeTH1unrolledSingleChargebyBinWidth(h1_unrolled, h2_backrolled)
-                all_procs[keyplot] = h2_backrolled;  
+                    normalizeTH1unrolledSingleChargebyBinWidth(h1_unrolled, h2_backrolled, unrollAlongX=True)
+                    normalizeTH1unrolledSingleChargebyBinWidth(h1_unrolled_y, h2_backrolled, unrollAlongX=False)
+                all_procs[keyplot] = h2_backrolled;
                 all_procs_unrolled[keyplot] = h1_unrolled
+                all_procs_unrolled_y[keyplot] = h1_unrolled_y
                 all_procs[keyplot].SetDirectory(0); 
                 all_procs_unrolled[keyplot].SetDirectory(0)
+                all_procs_unrolled_y[keyplot].SetDirectory(0)
                 if prepost == 'prefit' and p != 'obs':
                     postfitkey = keyplot.replace("prefit", "postfit")
                     if all_procs_unrolled[postfitkey] != None and all_procs_unrolled[keyplot] != None:
@@ -240,9 +256,18 @@ if __name__ == "__main__":
                         ratios_unrolled[keyratio].SetDirectory(0)
                         ratios_unrolled[keyratio].Divide(all_procs_unrolled[keyplot])
                         ratios_unrolled[keyratio].SetFillColor(process_features[p]["color"])
+                        #
+                        ratios_unrolled_y[keyratio] = copy.deepcopy(all_procs_unrolled_y[postfitkey].Clone(keyratio+"_y"))
+                        ratios_unrolled_y[keyratio].SetDirectory(0)
+                        ratios_unrolled_y[keyratio].Divide(all_procs_unrolled_y[keyplot])
+                        ratios_unrolled_y[keyratio].SetFillColor(process_features[p]["color"])
+
                         for ibin in range(1,ratios_unrolled[keyratio].GetNbinsX()+1):
                             unc = 0.0 if all_procs_unrolled[keyplot].GetBinContent(ibin) == 0.0 else (all_procs_unrolled[postfitkey].GetBinError(ibin) / all_procs_unrolled[keyplot].GetBinContent(ibin))
                             ratios_unrolled[keyratio].SetBinError(ibin, unc)
+                            #
+                            unc = 0.0 if all_procs_unrolled_y[keyplot].GetBinContent(ibin) == 0.0 else (all_procs_unrolled_y[postfitkey].GetBinError(ibin) / all_procs_unrolled_y[keyplot].GetBinContent(ibin))
+                            ratios_unrolled_y[keyratio].SetBinError(ibin, unc)
                         # uncertainties
                         ratios_unc_unrolled[keyratio] = copy.deepcopy(all_procs_unrolled[postfitkey].Clone(keyratio+"_unc"))
                         ratios_unc_unrolled[keyratio].SetDirectory(0)
@@ -251,22 +276,49 @@ if __name__ == "__main__":
                         unc_unrolled[keyplot] = copy.deepcopy(all_procs_unrolled[keyplot].Clone(keyplot+"_unc"))
                         unc_unrolled[postfitkey].Reset("ICESM")
                         unc_unrolled[keyplot].Reset("ICESM")
+                        #
+                        ratios_unc_unrolled_y[keyratio] = copy.deepcopy(all_procs_unrolled_y[postfitkey].Clone(keyratio+"_unc_y"))
+                        ratios_unc_unrolled_y[keyratio].SetDirectory(0)
+                        ratios_unc_unrolled_y[keyratio].SetFillColor(process_features[p]["color"])
+                        unc_unrolled_y[postfitkey] = copy.deepcopy(all_procs_unrolled_y[postfitkey].Clone(postfitkey+"_unc_y"))
+                        unc_unrolled_y[keyplot] = copy.deepcopy(all_procs_unrolled_y[keyplot].Clone(keyplot+"_unc_y"))
+                        unc_unrolled_y[postfitkey].Reset("ICESM")
+                        unc_unrolled_y[keyplot].Reset("ICESM")
+
                         for ibin in range(1,ratios_unc_unrolled[keyratio].GetNbinsX()+1):
                             val = 0.0 if all_procs_unrolled[keyplot].GetBinError(ibin) == 0.0 else (all_procs_unrolled[postfitkey].GetBinError(ibin) / all_procs_unrolled[keyplot].GetBinError(ibin))
                             ratios_unc_unrolled[keyratio].SetBinContent(ibin, val)
                             ratios_unc_unrolled[keyratio].SetBinError(ibin, 0.0)
                             unc_unrolled[postfitkey].SetBinContent(ibin, all_procs_unrolled[postfitkey].GetBinError(ibin))
                             unc_unrolled[keyplot].SetBinContent(ibin, all_procs_unrolled[keyplot].GetBinError(ibin))
+                            #
+                            val = 0.0 if all_procs_unrolled_y[keyplot].GetBinError(ibin) == 0.0 else (all_procs_unrolled_y[postfitkey].GetBinError(ibin) / all_procs_unrolled_y[keyplot].GetBinError(ibin))
+                            ratios_unc_unrolled_y[keyratio].SetBinContent(ibin, val)
+                            ratios_unc_unrolled_y[keyratio].SetBinError(ibin, 0.0)
+                            unc_unrolled_y[postfitkey].SetBinContent(ibin, all_procs_unrolled_y[postfitkey].GetBinError(ibin))
+                            unc_unrolled_y[keyplot].SetBinContent(ibin, all_procs_unrolled_y[keyplot].GetBinError(ibin))
+
                         # try plotting both
                         hists = [copy.deepcopy(all_procs_unrolled[postfitkey].Clone(f"postfit_{chfl}_{p}")),
                                  copy.deepcopy(all_procs_unrolled[keyplot].Clone(f"prefit_{chfl}_{p}"))]
                         vertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta)
                         legs = ["postfit","prefit"]
                         # yields
-                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Events", f"postfitAndprefit_yields_chan{chfl}_{p}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit::0.8,1.2", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=ptBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055")
+                        unrollPfx = ""
+                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Events", f"postfitAndprefit_yields_chan{chfl}_{p}{unrollPfx}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit::0.8,1.2", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=ptBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055")
                         # uncertainties
                         hists = [unc_unrolled[postfitkey], unc_unrolled[keyplot]]
-                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Uncertainty", f"postfitAndprefit_uncertainty_chan{chfl}_{p}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=ptBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055", setRatioRangeFromHisto=True, setOnlyLineRatio=True)
+                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Uncertainty", f"postfitAndprefit_uncertainty_chan{chfl}_{p}{unrollPfx}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=ptBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055", setRatioRangeFromHisto=True, setOnlyLineRatio=True)
+                        #
+                        hists = [copy.deepcopy(all_procs_unrolled_y[postfitkey].Clone(f"postfit_{chfl}_{p}_y")),
+                                 copy.deepcopy(all_procs_unrolled_y[keyplot].Clone(f"prefit_{chfl}_{p}_y"))]
+                        unrollPfx = "_unrollY"
+                        vertLines="{a},{b}".format(a=recoBins.Neta,b=recoBins.Npt)
+                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Events", f"postfitAndprefit_yields_chan{chfl}_{p}{unrollPfx}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit::0.8,1.2", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=etaBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055")
+                        # uncertainties
+                        hists = [unc_unrolled_y[postfitkey], unc_unrolled_y[keyplot]]
+                        drawNTH1(hists, legs, "unrolled lepton (#eta, p_{T}) bin", "Uncertainty", f"postfitAndprefit_uncertainty_chan{chfl}_{p}{unrollPfx}", outdirsub, leftMargin=0.06, rightMargin=0.02, labelRatioTmp="postfit/prefit", legendCoords="0.45,0.8,0.92,1.0;2", passCanvas=cwide, drawLumiLatex=True, lumi=args.lumi, drawVertLines=vertLines, textForLines=etaBinRanges, yAxisExtendConstant=1.25, markerStyleFirstHistogram=1, fillStyleSecondHistogram=1001, colorVec=[ROOT.kGray], moreTextLatex=f"{process_features[p]['title']}::0.3,0.95,0.08,0.055", setRatioRangeFromHisto=True, setOnlyLineRatio=True)
+
 
 
                     else:
@@ -290,11 +342,13 @@ if __name__ == "__main__":
                                                      nMaskedCha=nMaskedChanPerCharge,
                                                      nRecoBins=nRecoBins)
             h1_expfull_unrolled = unroll2Dto1D(h2_expfull_backrolled, newname=f"unroll_{expfullName2D}", cropNegativeBins=False)
+            h1_expfull_unrolled_y = unroll2Dto1D(h2_expfull_backrolled, newname=f"unroll_y_{expfullName2D}", cropNegativeBins=False, invertUnroll=True)
 
             h2_expfull_backrolled.Write(f"expfull_{prepost}_{charge}")
             # can normalize the unrolled, not the 2D
             if args.normWidth:
-                normalizeTH1unrolledSingleChargebyBinWidth(h1_expfull_unrolled, h2_expfull_backrolled)
+                normalizeTH1unrolledSingleChargebyBinWidth(h1_expfull_unrolled, h2_expfull_backrolled, unrollAlongX=True)
+                normalizeTH1unrolledSingleChargebyBinWidth(h1_expfull_unrolled_y, h2_expfull_backrolled, unrollAlongX=False)
 
             for projection in ['X', 'Y']:
                 if projection=='X':
@@ -348,7 +402,7 @@ if __name__ == "__main__":
 
                 xaxisProj = xaxisname2D if projection == "X" else yaxisname2D
                 cnameProj = f"projection{projection}_{chfl}{suffix}"
-                ratioYlabel = "data/pred::" + ("0.9,1.1" if prepost == "prefit" else "0.99,1.01")
+                ratioYlabel = "data/pred::" + (f"{args.ratioRangePrefit[0]},{args.ratioRangePrefit[1]}" if prepost == "prefit" else f"{args.ratioRangePostfit[0]},{args.ratioRangePostfit[1]}")
                 verticalAxisNameProj = verticalAxisNameProjX if projection == "X" else verticalAxisNameProjY
                 drawTH1dataMCstack(hdata, stack, xaxisProj, verticalAxisNameProj, cnameProj, outdir, leg, ratioYlabel,
                                    1, passCanvas=cnarrow, hErrStack=hexpfull, lumi=args.lumi)
@@ -362,16 +416,23 @@ if __name__ == "__main__":
                                                   nMaskedCha=nMaskedChanPerCharge,
                                                   nRecoBins=nRecoBins)
             hdata_unrolled = unroll2Dto1D(h2_data_backrolled, newname=f"unrolled_{charge}_data", cropNegativeBins=False)
-
+            hdata_unrolled_y = unroll2Dto1D(h2_data_backrolled, newname=f"unrolled_{charge}_data", cropNegativeBins=False, invertUnroll=True)
 
             if args.normWidth:
-                normalizeTH1unrolledSingleChargebyBinWidth(hdata_unrolled, h2_data_backrolled)
+                normalizeTH1unrolledSingleChargebyBinWidth(hdata_unrolled, h2_data_backrolled, unrollAlongX=True)
+                normalizeTH1unrolledSingleChargebyBinWidth(hdata_unrolled_y, h2_data_backrolled, unrollAlongX=False)
             hdata_unrolled.SetDirectory(0)
             htot_unrolled  = hdata_unrolled.Clone(f"unrolled_{charge}_full")
             htot_unrolled.Reset("ICES")
             htot_unrolled.Sumw2()
             htot_unrolled.SetDirectory(0)
+            hdata_unrolled_y.SetDirectory(0)
+            htot_unrolled_y  = hdata_unrolled_y.Clone(f"unrolled_y_{charge}_full")
+            htot_unrolled_y.Reset("ICES")
+            htot_unrolled_y.Sumw2()
+            htot_unrolled_y.SetDirectory(0)
             stack_unrolled = ROOT.THStack(f"stack_unrolled_{prepost}_{charge}", "")
+            stack_unrolled_y = ROOT.THStack(f"stack_unrolled_y_{prepost}_{charge}", "")
             leg_unrolled = prepareLegend(0.08, 0.81, 0.95, 0.90, textSize=0.045, nColumns=min(9, len(predictedProcessNames)+1))
             listOfProj = []
             for key in sortedKeys:
@@ -386,24 +447,37 @@ if __name__ == "__main__":
                 stack_unrolled.Add(proc_unrolled)
                 htot_unrolled.Add(proc_unrolled)
                 listOfProj.append([proc_unrolled, procsAndTitles[keycolor]])
+                #
+                proc_unrolled_y = all_procs_unrolled_y[key]
+                proc_unrolled_y.SetFillColor(process_features[keycolor]["color"])
+                stack_unrolled_y.Add(proc_unrolled_y)
+                htot_unrolled_y.Add(proc_unrolled_y)
 
+                
             leg_unrolled.AddEntry(hdata_unrolled, args.dataTitle, 'PE')
             for pair in reversed(listOfProj):
                 leg_unrolled.AddEntry(pair[0], pair[1], 'F')
 
-            #print("Integral data  = " + str(hdata_unrolled.Integral()))
-            #print("Integral stack = " + str(stack_unrolled.GetStack().Last().Integral()))
-            #print("Integral htot  = " + str(htot_unrolled.Integral()))
-
+            YlabelUnroll = verticalAxisName + "::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
+            # for unrolled may use always the prefit ratio for better comparison
+            ratioYlabel = "data/pred::" + (f"{args.ratioRangePrefit[0]},{args.ratioRangePrefit[1]}" if prepost == "prefit" or args.unrolledRatioRangeAsPrefit else f"{args.ratioRangePostfit[0]},{args.ratioRangePostfit[1]}")
+            
             cnameUnroll = f"unrolled_{chfl}{suffix}"
             XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
-            YlabelUnroll = verticalAxisName + "::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
-            ratioYlabel = "data/pred::" + ("0.9,1.1" if prepost == "prefit" else "0.99,1.01")
             drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll, outdir,
                                leg_unrolled, ratioYlabel, 1, passCanvas=cwide, hErrStack=h1_expfull_unrolled, lumi=args.lumi,
                                wideCanvas=True, leftMargin=0.05,rightMargin=0.02, 
                                drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
                                textForLines=ptBinRanges, etaptbinning=binning,
+                               textSize=0.04, textAngle=0, textYheightOffset=0.65)
+            #
+            cnameUnroll = f"unrolled_{chfl}{suffix}_unrollY"
+            XlabelUnroll = "unrolled template along p_{T}:  p_{T} #in [%.1f, %.1f]" % (recoBins.ptBins[0], recoBins.ptBins[-1])
+            drawTH1dataMCstack(hdata_unrolled_y, stack_unrolled_y, XlabelUnroll, YlabelUnroll, cnameUnroll, outdir,
+                               leg_unrolled, ratioYlabel, 1, passCanvas=cwide, hErrStack=h1_expfull_unrolled_y, lumi=args.lumi,
+                               wideCanvas=True, leftMargin=0.05,rightMargin=0.02, 
+                               drawVertLines="{a},{b}".format(a=recoBins.Neta,b=recoBins.Npt),
+                               textForLines=etaBinRanges, etaptbinning=binning,
                                textSize=0.04, textAngle=0, textYheightOffset=0.65)
 
     outfile.Close()

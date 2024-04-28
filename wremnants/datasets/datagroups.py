@@ -198,7 +198,7 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
+                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothen=True, smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode not in ["wmass", "lowpu_w"]:
@@ -222,6 +222,8 @@ class Datagroups(object):
                 fakeselector = sel.FakeSelectorSimpleABCD
         else:
             raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
+        if forceGlobalScaleFakes is not None:
+            scale = forceGlobalScaleFakes
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
             members = self.groups[g].members[:]
@@ -230,7 +232,7 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
 

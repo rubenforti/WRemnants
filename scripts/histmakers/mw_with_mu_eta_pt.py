@@ -33,6 +33,7 @@ parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove
 parser.add_argument("--mtCut", type=int, default=40, help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
+parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 #
 
 args = parser.parse_args()
@@ -343,6 +344,11 @@ def build_graph(df, dataset):
 
     df = muon_selections.veto_electrons(df)
     df = muon_selections.apply_met_filters(df)
+
+    if args.selectNonPromptFromSV:
+        df = muon_selections.select_good_secondary_vertices(df)
+        df = df.Filter("Muon_sip3d[goodMuons][0] > 4.0 && wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,SV_eta[goodSV],SV_phi[goodSV], 0.01)")
+
     if args.makeMCefficiency:
         df = df.Define("GoodTrigObjs", f"wrem::goodMuonTriggerCandidate<wrem::Era::Era_{era}>(TrigObj_id,TrigObj_filterBits)")
         hltString = muon_selections.hlt_string(era)
