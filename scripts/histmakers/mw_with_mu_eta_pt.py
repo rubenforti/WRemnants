@@ -34,11 +34,15 @@ parser.add_argument("--mtCut", type=int, default=40, help="Value for the transve
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
+parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 #
 
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
+    raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
 
 isUnfolding = args.analysisMode == "unfolding"
 isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -56,7 +60,7 @@ if isUnfolding or isTheoryAgnostic:
         parser = common.set_parser_default(parser, "onlyMainHistograms", True)
     if isUnfolding:
         parser = common.set_parser_default(parser, "pt", [32,26.,58.])
-        
+
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
 axis_pt_eff = hist.axis.Variable(axis_pt_eff_list, name = "pt", overflow=not args.excludeFlow, underflow=not args.excludeFlow)
@@ -335,7 +339,10 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=1)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1, use_trackerMuons=args.trackerMuons, use_isolation=False)
+    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
+                                           use_trackerMuons=args.trackerMuons, use_isolation=False,
+                                           nonPromptFromSV=args.selectNonPromptFromSV,
+                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLighMesonDecay)
 
     # the corrected RECO muon kinematics, which is intended to be used as the nominal
     df = muon_calibration.define_corrected_reco_muon_kinematics(df)
@@ -344,10 +351,6 @@ def build_graph(df, dataset):
 
     df = muon_selections.veto_electrons(df)
     df = muon_selections.apply_met_filters(df)
-
-    if args.selectNonPromptFromSV:
-        df = muon_selections.select_good_secondary_vertices(df)
-        df = df.Filter("Muon_sip3d[goodMuons][0] > 4.0 && wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,SV_eta[goodSV],SV_phi[goodSV], 0.01)")
 
     if args.makeMCefficiency:
         df = df.Define("GoodTrigObjs", f"wrem::goodMuonTriggerCandidate<wrem::Era::Era_{era}>(TrigObj_id,TrigObj_filterBits)")
