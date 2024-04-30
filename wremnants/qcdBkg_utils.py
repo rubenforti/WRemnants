@@ -1,5 +1,6 @@
 import ROOT
 from utilities import common, logging
+import hist
 
 logger = logging.child_logger(__name__)
 
