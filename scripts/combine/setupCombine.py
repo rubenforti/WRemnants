@@ -1017,7 +1017,8 @@ if __name__ == "__main__":
             outfolder, outfile = outnames[0]
         else:
             dir_append = '_'.join(['', *filter(lambda x: x, ['statOnly' if args.doStatOnly else '', args.postfix])])
-            outfolder = f"{args.outfolder}/Combination_{''.join(set([o[1] for o in outnames]))}{dir_append}/"
+            unique_names = list(dict.fromkeys([o[1] for o in outnames]))
+            outfolder = f"{args.outfolder}/Combination_{''.join(unique_names)}{dir_append}/"
             outfile = "Combination"
         logger.info(f"Writing HDF5 output to {outfile}")
         writer.write(args, outfolder, outfile)

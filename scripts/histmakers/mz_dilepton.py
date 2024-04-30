@@ -25,6 +25,7 @@ parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label))
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
