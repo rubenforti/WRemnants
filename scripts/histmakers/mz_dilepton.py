@@ -16,6 +16,8 @@ import math
 import time
 import os
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
 parser.add_argument("--finePtBinning", action='store_true', help="Use fine binning for ptll")
@@ -29,7 +31,6 @@ parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analy
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
-analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
 if isUnfolding:

@@ -262,7 +262,7 @@ def makeStackPlotWithRatio(
             yerr=False,
             ax=ax2,
             zorder=3,
-            #**optsr
+            **optsr
         )
 
     if unstacked:
@@ -368,7 +368,7 @@ def makePlotWithRatioToRef(
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
 
-    exclude_data = lambda x,idx=dataIdx: [j for i,j in enumerate(x) if i != dataIdx]
+    exclude_data = lambda x: [j for i,j in enumerate(x) if i != dataIdx]
     
     hep.histplot(
         exclude_data(hists),

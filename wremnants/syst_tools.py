@@ -179,8 +179,7 @@ def syst_transform_map(base_hist, hist_name):
     return transforms
 
 def gen_scale_helicity_hist_to_variations(scale_hist, gen_obs, sum_axes=[], pt_ax="ptVgen", gen_axes=["ptVgen", "chargeVgen", "helicity"], rebinPtV=None):
-    for obs in gen_obs:
-        scale_hist = hh.expand_hist_by_duplicate_axis(scale_hist, obs, obs+"Alt", swap_axes=True)
+    scale_hist = hh.expand_hist_by_duplicate_axes(hist_in, gen_obs, [a+"Alt" for a in gen_obs], swap_axes=True)
 
     return scale_helicity_hist_to_variations(scale_hist, sum_axes, pt_ax, gen_axes, rebinPtV)
 
