@@ -78,19 +78,6 @@ def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
 
     return df
 
-def get_default_fiducial_args(analysis, fiducial):
-    fidargs = {}
-    if fiducial in ["inclusive", "masswindow"]:
-        fidargs["abseta_max"] = 100.
-        if "masswindow" in mode:
-            fidargs.update({"mass_min" : 60, "mass_max" : 120})
-        return fidargs
-
-    fidargs.update({"mtw_min" : mt_min if (analysis[0] == "w" or "wlike" in analysis) else 0,
-                    "pt_min" : pt_min, "pt_max" : pt_max, "abseta_max" : abseta_max})
-
-    return fidargs
-
 def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
@@ -103,7 +90,7 @@ def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs)
         logger.info(f"Using default fiducial settings for selection {fiducial} for analysis {mode}")
         if fiducial not in ["inclusive", "masswindow"]:
             # Use unfolding values in gen script
-            selmap['pt_min'], selmap['pt_max'] = common.get_default_ptbins(mode, unfolding="vgen" in mode)[1:]
+            selmap['pt_min'], selmap['pt_max'] = common.get_default_ptbins(mode, gen="vgen" in mode)[1:]
             selmap['abseta_max'] = common.get_default_etabins(mode)[-1]
             if mode[0] == "w" or "wlike" in mode:
                 selmap['mtw_min'] = common.get_default_mtcut(mode)

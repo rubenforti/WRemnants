@@ -4,7 +4,6 @@ import narf
 
 from utilities import common, logging
 from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
-from utilities.io_tools import output_tools
 
 import pdb
 

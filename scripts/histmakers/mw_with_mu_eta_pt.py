@@ -101,7 +101,7 @@ axis_muonJetPt = hist.axis.Regular(50, 26, 76, name = "muonJetPt", underflow=Fal
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable((*np.arange(0, mtw_min, 2), *np.arange(mtw_min+5, 95, 5), 100, 120), name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable((*np.arange(0, mtw_min+2, 2), *np.arange(mtw_min+5, 95, 5), 100, 120), name = "mt", underflow=False, overflow=True)
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)

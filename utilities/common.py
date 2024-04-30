@@ -137,11 +137,17 @@ def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
         gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
     return gen_axes
 
-def get_default_ptbins(analysis_mode, unfolding=False):
-    vals = [30,26.,56.] if analysis_mode[0] == "w" else [36,26.,62.]
+def get_default_ptbins(analysis_mode, unfolding=False, gen=False):
+    vals = [30,26.,56.] if analysis_mode[0] == "w" else [34,26.,60.]
+    if unfolding and gen:
+        raise ValueError("Inconsistent arguments for 'unfolding' and 'gen.' Must be unique")
+
     if unfolding:
-        vals[0] -= 2
-        vals[1] += 2
+        vals[0] += 2
+        vals[2] += 2
+    elif gen:
+        values[0] -= 2
+        values[1] += 2
     return vals
 
 def get_default_etabins(analysis_mode=None):

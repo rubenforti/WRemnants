@@ -29,8 +29,6 @@ parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHeli
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = common.set_parser_default(parser, "theoryCorr", [])
 parser = common.set_parser_default(parser, "ewTheoryCorr", [])
-parser = common.set_parser_default(parser, "pt", [34,26.,60.])
-parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 
 args = parser.parse_args()
 
@@ -93,8 +91,8 @@ axis_chargeZgen = hist.axis.Integer(
     0, 1, name="chargeVgen", underflow=False, overflow=False
 )
 
-axis_abseta_gen = hist.axis.Regular(24, 0, 2.4, name = "abseta")
-axis_l_pt_gen = hist.axis.Regular(34, 26., 60., name = "pt")
+axis_absetal_gen = hist.axis.Regular(24, 0, 2.4, name = "abseta")
+axis_ptl_gen = hist.axis.Regular(34, 26., 60., name = "pt")
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
@@ -127,10 +125,10 @@ def build_graph(df, dataset):
 
     if isZ:
         nominal_axes = [axis_massZgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeZgen]
-        lep_axes = [axis_abseta_gen, axis_l_pt_gen, axis_chargeZgen]
+        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeZgen]
     else:
         nominal_axes = [axis_massWgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeWgen]
-        lep_axes = [axis_abseta_gen, axis_l_pt_gen, axis_chargeWgen]
+        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeWgen]
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 

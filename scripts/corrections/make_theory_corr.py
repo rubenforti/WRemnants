@@ -114,8 +114,7 @@ if args.axlim:
     axes = [f"abs{x}" if x.lower() == "y" else x for x in args.axes]
     if len(args.axlim) % 2:
         raise ValueError("axlim must be in pairs of 2 (low limit, high limit)")
-    lim = {ax : hist.tag.Slicer()[complex(0, l):complex(0,h)] for ax,l,h in zip(axes, args.axlim[::2], args.axlim[1::2])}
-    numh = numh[lim]
+    numh = hh.rebinHistMultiAx(numh, axes, numh.axes.edges, args.axlim[::2], args.axlim[1::2]) 
 
 if numh.ndim-1 < minnloh.ndim:
     axes = []
