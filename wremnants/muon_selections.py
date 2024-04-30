@@ -35,7 +35,7 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
 
     if nonPromptFromSV:
         # medium ID added afterwards
-        df = muon_selections.select_good_secondary_vertices(df)
+        df = select_good_secondary_vertices(df)
         goodMuonsSelection += " && Muon_sip3d > 4.0 && wrem::hasMatchDR2(Muon_correctedEta,Muon_correctedPhi,SV_eta[goodSV],SV_phi[goodSV], 0.01)"
 
     if nonPromptFromLighMesonDecay:
