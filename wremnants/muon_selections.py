@@ -24,14 +24,26 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=10.0, etaCut=2.4):
 
     return df
 
-def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15, condition="=="):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False):
 
     if use_trackerMuons:
         df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
     else:
         df = df.Define("Muon_category", "Muon_isGlobal && Muon_highPurity")
 
-    goodMuonsSelection = f"Muon_correctedPt > {ptLow} && Muon_correctedPt < {ptHigh} && vetoMuons && Muon_mediumId && Muon_category"
+    goodMuonsSelection = f"Muon_correctedPt > {ptLow} && Muon_correctedPt < {ptHigh} && vetoMuons && Muon_category"
+
+    if nonPromptFromSV:
+        # medium ID added afterwards
+        df = select_good_secondary_vertices(df)
+        goodMuonsSelection += " && Muon_sip3d > 4.0 && wrem::hasMatchDR2(Muon_correctedEta,Muon_correctedPhi,SV_eta[goodSV],SV_phi[goodSV], 0.01)"
+
+    if nonPromptFromLighMesonDecay:
+        # looseID should be part of veto, but just in case, the global condition should also already exist
+        goodMuonsSelection += " && Muon_looseId && Muon_isGlobal && not Muon_mediumId"
+    else:
+        goodMuonsSelection += " && Muon_mediumId"
+
     if use_isolation:
         # for w like we directly require isolated muons, for w we need non-isolated for qcd estimation
         if isoDefinition == "iso04":
