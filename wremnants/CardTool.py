@@ -762,14 +762,16 @@ class CardTool(object):
         hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
 
         # now load the nominal histograms
-        self.datagroups.loadHistsForDatagroups(
-            baseName=self.nominalName, syst=self.nominalName,
-            procsToRead=self.datagroups.groups.keys(),
-            label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale,
-            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
-            forceNonzero=forceNonzero,
-            sumFakesPartial=not self.simultaneousABCD)
+        # only load nominal histograms that are not already loaded
+        processesFromNomiToLoad = [proc for proc in self.datagroups.groups.keys() if self.nominalName not in procDictFromNomi[proc].hists]
+        if len(processesFromNomiToLoad):
+            self.datagroups.loadHistsForDatagroups(
+                baseName=self.nominalName, syst=self.nominalName,
+                procsToRead=processesFromNomiToLoad,
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                forceNonzero=forceNonzero,
+                sumFakesPartial=not self.simultaneousABCD)
         procDictFromNomi = self.datagroups.getDatagroups()
 
         if "QCD" not in procDict:
@@ -842,18 +844,20 @@ class CardTool(object):
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
             if len(processesFromNomi):
+                # only load nominal histograms that are not already loaded
+                processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
                 logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
                 datagroupsFromNomi = self.datagroups
-                datagroupsFromNomi.loadHistsForDatagroups(
-                    baseName=self.nominalName, syst=self.nominalName,
-                    procsToRead=processesFromNomi, 
-                    label=pseudoData,
-                    scaleToNewLumi=self.lumiScale,
-                    lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
-                    forceNonzero=forceNonzero,
-                    sumFakesPartial=not self.simultaneousABCD)
+                if len(processesFromNomiToLoad):
+                    datagroupsFromNomi.loadHistsForDatagroups(
+                        baseName=self.nominalName, syst=self.nominalName,
+                        procsToRead=processesFromNomiToLoad, 
+                        scaleToNewLumi=self.lumiScale,
+                        lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                        forceNonzero=forceNonzero,
+                        sumFakesPartial=not self.simultaneousABCD)
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
-                hists.extend([procDictFromNomi[proc].hists[pseudoData] for proc in processesFromNomi])
+                hists.extend([procDictFromNomi[proc].hists[self.nominalName] for proc in processesFromNomi])
             # done, now sum all histograms
             hdata = hh.sumHists(hists)
             if self.pseudoDataAxes[idx] is None:
