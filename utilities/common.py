@@ -195,11 +195,11 @@ def set_subparsers(subparser, name, analysis_label):
         # specific for unfolding
         axmap = {
             "w_lowpu" : ["ptVGen"],
-            "w_mass" : ["qGen", "ptGen", "absEtaGen"],
+            "w_mass" : ["ptGen", "absEtaGen"],
             "z_dilepton" : ["ptVGen", "absYVGen"],
         }
         axmap["z_lowpu"] = axmap["w_lowpu"]
-        axmap["z_wlike"] = axmap["z_lowpu"]
+        axmap["z_wlike"] = ["qGen", *axmap["w_mass"]]
         if analysis_label not in axmap:
             raise ValueError(f"Unknown analysis {analysis_label}!")
         subparser.add_argument("--genAxes", type=str, nargs="+", 

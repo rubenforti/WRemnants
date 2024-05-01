@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import narf
 import wremnants
@@ -9,10 +12,8 @@ from wremnants import theory_tools,syst_tools,theory_corrections,unfolding_tools
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
 import math
-import os
 import numpy as np
 from utilities.differential import get_theoryAgnostic_axes
-from wremnants.datasets.datagroups import Datagroups
 
 parser.add_argument("--skipAngularCoeffs", action='store_true', help="Skip the conversion of helicity moments to angular coeff fractions")
 parser.add_argument("--propagatePDFstoHelicity", action='store_true', help="Propagate PDF uncertainties to helicity moments")
@@ -32,7 +33,6 @@ parser = common.set_parser_default(parser, "ewTheoryCorr", [])
 
 args = parser.parse_args()
 
-analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 datasets = getDatasets(maxFiles=args.maxFiles,
