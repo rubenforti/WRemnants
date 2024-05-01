@@ -62,7 +62,7 @@ def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
         df = df.Alias("absEtaGen", f"postfsrLep_absEta")           
 
         if singlelep:
-            df = df.Alias("mTWGen", "postfsrMT")   
+            df = df.Alias("mTVGen", "postfsrMT")   
    
         if mode[0] == "z":
             df = df.Alias("ptOtherGen", "postfsrOtherLep_pt")
@@ -97,8 +97,8 @@ def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs)
         elif fiducial == "masswindow" and mode[0] == "z":
             selmap['mass_min'], selmap['mass_max'] = common.get_default_mz_window()
     else:
-        for k,v in selmap.items():
-            v = kwargs.get(k)
+        for k in selmap.keys():
+            selmap[k] = kwargs.get(k)
     
     if selmap['abseta_max'] is not None:
         selections.append(f"absEtaGen < {selmap['abseta_max']}")

@@ -4,7 +4,8 @@ from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
 import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
 
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])

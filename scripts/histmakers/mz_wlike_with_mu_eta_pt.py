@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -9,29 +12,22 @@ import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.datasets.datagroups import Datagroups
 import hist
 import lz4.frame
 import math
 import time
-import os
 import numpy as np
 
-analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 
-args = parser.parse_args()
-logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+initargs,_ = parser.parse_known_args()
+logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
-isUnfolding = args.analysisMode == "unfolding"
+isUnfolding = initargs.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
-parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label, unfolding=isUnfolding))
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
-    parser = common.set_parser_default(parser, "genBins", [18, 0])
 
 args = parser.parse_args()
 

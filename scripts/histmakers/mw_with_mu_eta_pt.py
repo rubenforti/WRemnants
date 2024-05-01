@@ -1,10 +1,12 @@
 import argparse
 from utilities import common, rdf_tools, logging, differential
 from utilities.io_tools import output_tools
-from utilities.common import background_MCprocs as bkgMCprocs
+from utilities.common import background_MCprocs as bkgMCprocs,data_dir
 from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -19,11 +21,7 @@ import math
 import time
 from utilities import common,boostHistHelpers as hh
 import pathlib
-import os
 import numpy as np
-
-data_dir = common.data_dir
-analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")

@@ -137,8 +137,8 @@ def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
         gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
     return gen_axes
 
-def get_default_ptbins(analysis_mode, unfolding=False, gen=False):
-    vals = [30,26.,56.] if analysis_mode[0] == "w" else [34,26.,60.]
+def get_default_ptbins(analysis_label, unfolding=False, gen=False):
+    vals = [30,26.,56.] if analysis_label[0] == "w" else [34,26.,60.]
     if unfolding and gen:
         raise ValueError("Inconsistent arguments for 'unfolding' and 'gen.' Must be unique")
 
@@ -150,11 +150,11 @@ def get_default_ptbins(analysis_mode, unfolding=False, gen=False):
         values[1] += 2
     return vals
 
-def get_default_etabins(analysis_mode=None):
+def get_default_etabins(analysis_label=None):
     return (48,-2.4,2.4)
 
-def get_default_mtcut(analysis_mode=None):
-    return 40. if analysis_mode[0] == "w" else 45.
+def get_default_mtcut(analysis_label=None):
+    return 40. if analysis_label[0] == "w" else 45.
 
 def get_default_mz_window():
     return 60, 120
@@ -182,7 +182,7 @@ def set_parser_default(parser, argument, newDefault):
         logger.warning(f" Parser argument {argument} not found!")
     return parser
 
-def set_subparsers(subparser, name):
+def set_subparsers(subparser, name, analysis_label):
 
     if name is None:
         return subparser
@@ -193,11 +193,21 @@ def set_subparsers(subparser, name):
 
     if name == "unfolding":
         # specific for unfolding
-        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"],
+        axmap = {
+            "w_lowpu" : ["ptVGen"],
+            "w_mass" : ["qGen", "ptGen", "absEtaGen"],
+            "z_dilepton" : ["ptVGen", "absYVGen"],
+        }
+        axmap["z_lowpu"] = axmap["w_lowpu"]
+        axmap["z_wlike"] = axmap["z_lowpu"]
+        if analysis_label not in axmap:
+            raise ValueError(f"Unknown analysis {analysis_label}!")
+        subparser.add_argument("--genAxes", type=str, nargs="+", 
+                               default=axmap[analysis_label], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"],
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
                                help="Generator level definition for unfolding")
-        subparser.add_argument("--genBins", type=int, nargs="+", default=[16, 0],
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label[0] else [16, 0],
                                help="Number of generator level bins")
         subparser.add_argument("--inclusive", action='store_true', help="No fiducial selection (mass window only)")
     elif "theoryAgnostic" in name:
@@ -220,14 +230,17 @@ def set_subparsers(subparser, name):
 
     return subparser
 
-def common_histmaker_subparsers(parser):
+def common_histmaker_subparsers(parser, analysis_label):
 
     parser.add_argument("--analysisMode", type=str, default=None,
                         choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
                         help="Select analysis mode to run. Default is the traditional analysis")
     
     tmpKnownArgs,_ = parser.parse_known_args()
-    parser = set_subparsers(parser, tmpKnownArgs.analysisMode)
+    unfolding = tmpKnownArgs.analysisMode == "unfolding"
+    parser.add_argument("--eta", nargs=3, type=float, help="Eta binning as 'nbins min max' (only uniform for now)", default=get_default_etabins(analysis_label))
+    parser.add_argument("--pt", nargs=3, type=float, help="Pt binning as 'nbins,min,max' (only uniform for now)", default=get_default_ptbins(analysis_label, unfolding=unfolding))
+    parser = set_subparsers(parser, tmpKnownArgs.analysisMode, analysis_label)
 
     return parser
 
@@ -238,7 +251,8 @@ def base_parser():
     parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
     return parser
 
-def common_parser(for_reco_highPU=False):
+def common_parser(analysis_label=""):
+    for_reco_highPU = "gen" not in analysis_label and "lowpu" not in analysis_label
     parser = base_parser()
     parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     initargs,_ = parser.parse_known_args()
@@ -283,8 +297,6 @@ def common_parser(for_reco_highPU=False):
         default=["winhacnloew", "virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR", ],
         help="Add EW theory corrections without modifying the default theoryCorr list. Will be appended to args.theoryCorr")
     parser.add_argument("--skipHelicity", action='store_true', help="Skip the qcdScaleByHelicity histogram (it can be huge)")
-    parser.add_argument("--eta", nargs=3, type=float, help="Eta binning as 'nbins min max' (only uniform for now)", default=get_default_etabins())
-    parser.add_argument("--pt", nargs=3, type=float, help="Pt binning as 'nbins,min,max' (only uniform for now)", default=get_default_ptbins("w_mass"))
     parser.add_argument("--noRecoil", action='store_true', help="Don't apply recoild correction")
     parser.add_argument("--recoilHists", action='store_true', help="Save all recoil related histograms for calibration and validation")
     parser.add_argument("--recoilUnc", action='store_true', help="Run the recoil calibration with uncertainties (slower)")
@@ -353,7 +365,7 @@ def common_parser(for_reco_highPU=False):
         sfFile = ""
 
     parser.add_argument("--sfFile", type=str, help="File with muon scale factors", default=sfFile)
-    parser = common_histmaker_subparsers(parser)
+    parser = common_histmaker_subparsers(parser, analysis_label)
 
     class PrintParserAction(argparse.Action):                                            
         def __init__(self, option_strings, dest, nargs=0, **kwargs):
