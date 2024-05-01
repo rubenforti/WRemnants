@@ -621,7 +621,8 @@ def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_cen
             return var_label.startswith("Omega") \
                     or var_label.startswith("Delta_Omega") \
                     or var_label.startswith("Lambda2") \
-                    or var_label.startswith("Delta_Lambda2")
+                    or var_label.startswith("Delta_Lambda2") \
+                    or var_label.startswith("Lambda4")
 
         # special treatment for Lambda2/Omega since they need to be decorrelated in charge and possibly rapidity
         if isinstance(var_axis, hist.axis.StrCategory) and any(is_flavor_dependent_np(var_label) for var_label in var_axis):

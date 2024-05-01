@@ -240,12 +240,13 @@ if __name__ == "__main__":
     # defaultProcs = ["Zmumu", "Ztautau", "Other"] if commonargs.isWlike else ["Wmunu", "Wtaunu", "Zmumu", "DYlowMass", "Ztautau", "Fake", "Top", "Diboson", "PhotonInduced", "ZmumuVeto", "DYlowMassVeto", "ZtautauVeto"]
 
     defaultProcs = []
-    fname = args.rootfile[0]
+    fname = commonargs.rootfile[0]
     tmpf = safeOpenFile(fname)
     for k in tmpf.GetListOfKeys():
         name = k.GetName()
-        if k.ClassName() == "TDirectoryFile" and name not in ["Data", "meta_info"]
-        defaultProcs.append(name)
+        # print(f"{name}   {k.ClassName()}")
+        if name not in ["Data", "meta_info"]:
+            defaultProcs.append(name)
     tmpf.Close()
 
     parser.add_argument("--pp", "--predicted-processes", dest="predictedProcesses", type=str, nargs="*", help="Use these names for predicted processes to make plots", default=defaultProcs)
@@ -253,6 +254,8 @@ if __name__ == "__main__":
     parser.add_argument('-c','--charges', dest='charges', choices=['plus', 'minus', 'both'], default='both', type=str, help='Charges to process')
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.92,1.08), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
+
+    print(f"Predicted processes = {args.predictedProcesses}")
 
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -281,7 +284,7 @@ if __name__ == "__main__":
         nomihists = {}
         infile = safeOpenFile(fname)
         for proc in processes:
-            print(f"{charge}   {proc}")
+            # print(f"{charge}   {proc}")
             nomihists[proc] = safeGetObject(infile, f"{proc}/nominal_{proc}_{charge}", detach=True) # process name as subfolder
         if args.pseudodata:
             nomihists["Data"] = safeGetObject(infile, f"Data/{args.pseudodata}_{charge}", detach=True)

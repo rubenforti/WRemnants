@@ -79,6 +79,8 @@ def make_parser(parser=None):
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
     parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
+    parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
+    parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
@@ -254,7 +256,9 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
         datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation,
-            smoothen=not args.binnedFakeEstimation, integrate_x="mt" not in fitvar, simultaneousABCD=simultaneousABCD)
+                                     smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
+                                     integrate_x="mt" not in fitvar,
+                                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
