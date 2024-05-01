@@ -239,11 +239,6 @@ class HDF5Writer(object):
 
                     # release memory
                     del chanInfo.pseudodata_datagroups
-                    for proc in chanInfo.datagroups.groups:
-                        for pseudo in chanInfo.pseudoData:
-                            if pseudo in dg.groups[proc].hists:
-                                logger.debug(f"Delete pseudodata histogram {pseudo}")
-                                del dg.groups[proc].hists[pseudo]
 
             # nominal predictions (after pseudodata because some pseudodata changes the nominal model)
             for proc in procs_chan:
