@@ -11,7 +11,7 @@ def getIsoBranchBySpec(vertexAgnostic=True, coneSize="04", charged=False):
     cone = coneSize.replace('.','')
     return f"Muon_{root}{cone}_{component}"
 
-def getIsoBranch(isoDefinition == "iso04vtxAgn"):
+def getIsoBranch(isoDefinition="iso04vtxAgn"):
     if isoDefinition == "iso04vtxAgn":
         return getIsoBranchBySpec()
     elif isoDefinition == "iso04":
