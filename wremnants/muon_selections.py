@@ -23,6 +23,16 @@ def getIsoBranch(isoDefinition == "iso04vtxAgn"):
     else:
         raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
 
+def apply_iso_muons(df, iso_first, iso_second, isoBranch, isoThreshold=0.15, name_first="trigMuons", name_second="nonTrigMuons"):
+    # iso_first/iso_second are integers with values -1/1 for fail/pass isolation, or 0 if not cut has to be applied 
+    if iso_first:
+        isoCond0 = "<" if iso_first == 1 else ">"
+        df = df.Filter(f"{isoBranch}[{name_first}][0] {isoCond0} {isoThreshold}")
+    if iso_second:
+        isoCond1 = "<" if iso_second == 1 else ">"
+        df = df.Filter(f"{isoBranch}[{name_second}][0] {isoCond1} {isoThreshold}")
+    return df
+    
 def apply_met_filters(df):
     df = df.Filter("Flag_globalSuperTightHalo2016Filter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_goodVertices && Flag_HBHENoiseIsoFilter && Flag_HBHENoiseFilter && Flag_BadPFMuonFilter")
 

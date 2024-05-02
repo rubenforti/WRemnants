@@ -387,7 +387,7 @@ def build_graph(df, dataset):
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
-    df = df.Define("passIso", "goodMuons_relIso0 < 0.15")
+    df = df.Define("passIso", f"goodMuons_relIso0 < {args.isolationThreshold}")
 
     ########################################################################
     # define event weights here since they are needed below for some helpers

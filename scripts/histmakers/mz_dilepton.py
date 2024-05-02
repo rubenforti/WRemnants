@@ -208,7 +208,7 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=2)
-    isoThreshold = 0.15
+    isoThreshold = args.isolationThreshold
     passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
     df = muon_selections.select_good_muons(df, args.pt[1], args.pt[2], dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold)
 
@@ -216,12 +216,7 @@ def build_graph(df, dataset):
 
     # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
     if not passIsoBoth:
-        if args.muonIsolation[0]:
-            isoCondTrig0 = "<" if args.muonIsolation[0] == 1 else ">"
-            df = df.Filter(f"{isoBranch}[trigMuons][0] {isoCondTrig0} {isoThreshold}")
-        if args.muonIsolation[1]:
-            isoCondTrig1 = "<" if args.muonIsolation[1] == 1 else ">"
-            df = df.Filter(f"{isoBranch}[nonTrigMuons][0] {isoCondTrig0} {isoThreshold}")
+        df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
