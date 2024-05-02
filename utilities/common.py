@@ -305,7 +305,7 @@ def common_parser(for_reco_highPU=False):
         parser.add_argument("--noSmooth3dsf", dest="smooth3dsf", action='store_false', help="If true (default) use smooth 3D scale factors instead of the original 2D ones (but eff. systs are still obtained from 2D version)")
         parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing") 
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
-        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso03chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
 
     commonargs,_ = parser.parse_known_args()
 

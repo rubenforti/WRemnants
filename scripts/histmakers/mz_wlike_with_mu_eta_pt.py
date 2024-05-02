@@ -17,6 +17,7 @@ import os
 import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=45, help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
+parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -36,6 +37,7 @@ else:
 args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
+isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
 datasets = getDatasets(maxFiles=args.maxFiles,
@@ -172,9 +174,21 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=2)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True, isoDefinition=args.isolationDefinition)
 
+    isoThreshold = 0.15
+    passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
+    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold)
+    
     df = muon_selections.define_trigger_muons(df)
+
+    # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
+    if not passIsoBoth:
+        if args.muonIsolation[0]:
+            isoCondTrig0 = "<" if args.muonIsolation[0] == 1 else ">"
+            df = df.Filter(f"{isoBranch}[trigMuons][0] {isoCondTrig0} {isoThreshold}")
+        if args.muonIsolation[1]:
+            isoCondTrig1 = "<" if args.muonIsolation[1] == 1 else ">"
+            df = df.Filter(f"{isoBranch}[nonTrigMuons][0] {isoCondTrig0} {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 

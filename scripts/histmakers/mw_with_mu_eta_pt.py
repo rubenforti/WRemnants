@@ -72,6 +72,7 @@ if args.makeMCefficiency:
 args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
+isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 
 era = args.era
 
@@ -381,20 +382,8 @@ def build_graph(df, dataset):
 
     df = df.Define("goodMuons_ptJet0", "Jet_pt[Muon_jetIdx[goodMuons][0]]")
 
-    if args.isolationDefinition == "iso04":
-        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_all[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04vtxAgn":
-        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04chg":
-        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_chg[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04chgvtxAgn":
-        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
-    else:
-        raise NotImplementedError(f"Isolation definition {args.isolationDefinition} not implemented")
+    df = df.Define("goodMuons_relIso0", f"{isoBranch}[goodMuons][0]")
+    df = df.Define("goodMuons_iso0", "goodMuons_relIso0*Muon_pt[goodMuons][0]")
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")

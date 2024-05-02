@@ -21,6 +21,7 @@ parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help
 parser.add_argument("--finePtBinning", action='store_true', help="Use fine binning for ptll")
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
+parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+")
 
 parser = common.set_parser_default(parser, "pt", [34,26.,60.])
 parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
@@ -40,6 +41,7 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 
 thisAnalysis = ROOT.wrem.AnalysisType.Dilepton if args.useDileptonTriggerSelection else ROOT.wrem.AnalysisType.Wlike
+isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 datasets = getDatasets(maxFiles=args.maxFiles,
                        filt=args.filterProcs,
@@ -206,9 +208,20 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=2)
-    df = muon_selections.select_good_muons(df, args.pt[1], args.pt[2], dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True, isoDefinition=args.isolationDefinition)
+    isoThreshold = 0.15
+    passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
+    df = muon_selections.select_good_muons(df, args.pt[1], args.pt[2], dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold)
 
     df = muon_selections.define_trigger_muons(df, dilepton=args.useDileptonTriggerSelection)
+
+    # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
+    if not passIsoBoth:
+        if args.muonIsolation[0]:
+            isoCondTrig0 = "<" if args.muonIsolation[0] == 1 else ">"
+            df = df.Filter(f"{isoBranch}[trigMuons][0] {isoCondTrig0} {isoThreshold}")
+        if args.muonIsolation[1]:
+            isoCondTrig1 = "<" if args.muonIsolation[1] == 1 else ">"
+            df = df.Filter(f"{isoBranch}[nonTrigMuons][0] {isoCondTrig0} {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
