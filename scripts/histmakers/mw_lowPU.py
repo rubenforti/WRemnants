@@ -12,10 +12,7 @@ parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e o
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
-args = parser.parse_args()
 
 import narf
 import wremnants

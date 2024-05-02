@@ -12,13 +12,10 @@ parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
-
-args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 import narf

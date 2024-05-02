@@ -108,15 +108,15 @@ def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs)
     if selmap['pt_min'] is not None:
         if "gen" in mode or "dilepton" in mode:
             selections.append(f"ptGen > {selmap['pt_min']}")
-            if mode[0] == 'z':
-                selections.append(f"ptOtherGen > {selmap['pt_min']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen > {selmap['pt_min']}")
 
     if selmap['pt_max'] is not None:
         if "gen" in mode or "dilepton" in mode:
             # Don't place explicit cut on lepton pT for unfolding of W/W-like, but do for gen selection
             selections.append(f"ptGen < {selmap['pt_max']}")
-            if mode[0] == 'z':
-                selections.append(f"ptOtherGen < {selmap['pt_max']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen < {selmap['pt_max']}")
 
     if selmap['mass_min'] is not None:
         selections.append(f"massVGen > {selmap['mass_min']}")
