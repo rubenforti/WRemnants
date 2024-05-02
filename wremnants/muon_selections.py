@@ -5,7 +5,7 @@ from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 
-def getIsoBranch(vertexAgnostic=True, coneSize="04", charged=False):
+def getIsoBranchBySpec(vertexAgnostic=True, coneSize="04", charged=False):
     root = "vtxAgnPfRelIso" if vertexAgnostic else "pfRelIso"
     component = "chg" if charged else "all"
     cone = coneSize.replace('.','')
@@ -13,13 +13,13 @@ def getIsoBranch(vertexAgnostic=True, coneSize="04", charged=False):
 
 def getIsoBranch(isoDefinition == "iso04vtxAgn"):
     if isoDefinition == "iso04vtxAgn":
-        return getIsoBranch()
+        return getIsoBranchBySpec()
     elif isoDefinition == "iso04":
-        return getIsoBranch(vertexAgnostic=False)
+        return getIsoBranchBySpec(vertexAgnostic=False)
     elif isoDefinition == "iso04chg":
-        return getIsoBranch(vertexAgnostic=False, charged=True)
+        return getIsoBranchBySpec(vertexAgnostic=False, charged=True)
     elif isoDefinition == "iso04chgvtxAgn":
-        return getIsoBranch(charged=True)
+        return getIsoBranchBySpec(charged=True)
     else:
         raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
 
