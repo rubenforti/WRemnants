@@ -102,9 +102,15 @@ if args.csVarsHist:
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
 if isUnfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning), add_out_of_acceptance_axis=isPoiAsNoi)
-    if not isPoiAsNoi:
-        datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
+        args.genAxes, 
+        common.get_gen_axes(
+            flow=isPoiAsNoi or args.unfoldFullPhaseSpace, 
+            dilepton_ptV_binning=dilepton_ptV_binning
+        ), 
+        add_out_of_acceptance_axis=isPoiAsNoi)
+    if not isPoiAsNoi:# and not args.unfoldFullPhaseSpace:
+       datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -151,6 +157,34 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
+if args.fitresult:
+    # reweight based on initial fit
+    # TODO re structure, move in separate file or so
+    poi_type = "nois"
+    cme = 13
+    process = "Z"
+    expected = False
+
+    noi_axes =[a for a in unfolding_axes if a.name != "acceptance"]
+
+    histname = "hist_" + "_".join([a.name for a in noi_axes])
+    if expected:
+        histname += "_expected"
+
+    import pickle
+    with open(args.fitresult, "rb") as f:
+        r = pickle.load(f)
+        corrh = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"][process][histname]
+
+    ch = hist.Hist(*noi_axes, hist.axis.Regular(1, -1, 1, name="chargeVGen", flow=False), hist.axis.Regular(1, 0, 1, name="vars", flow=False))
+    ch.values()[...] = corrh.values()[...,None,None]
+    ch = theory_corrections.set_corr_ratio_flow(ch)
+
+    logger.debug(f"corrections from fitresult: {corrh.values(flow=True)}")
+
+    from wremnants.correctionsTensor_helper import makeCorrectionsTensor
+    unfolding_corr_helper = makeCorrectionsTensor(ch)
+
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
@@ -165,6 +199,7 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
 
+    df = df.DefinePerSample("unity", "1.0")
     df = df.Define("isEvenEvent", "event % 2 == 0")
 
     weightsum = df.SumAndCount("weight")
@@ -175,14 +210,23 @@ def build_graph(df, dataset):
     if isUnfolding and dataset.name == "ZmumuPostVFP":
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
 
+        info_fiducial = dict(
+            mode="dilepton", 
+            pt_min=args.pt[1], pt_max=args.pt[2], 
+            mass_min=mass_min, mass_max=mass_max, 
+            selections=unfolding_selections, select=not isPoiAsNoi, custom_selection=args.unfoldFullPhaseSpace
+        )
+
         if hasattr(dataset, "out_of_acceptance"):
-            logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, accept=False, **info_fiducial)
         else:
-            logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, select=not isPoiAsNoi, accept=True)
+            df = unfolding_tools.select_fiducial_space(df, accept=True, **info_fiducial)
+
+            if args.fitresult:
+                logger.debug("Apply reweighting based on unfolded result")
+                df = df.Define("unfoldingWeight_tensor", unfolding_corr_helper, [*unfolding_corr_helper.hist.axes.name[:-1], "unity"])
+                df = df.Define("extra_weight", "acceptance ? unfoldingWeight_tensor(0) : unity")
+
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 

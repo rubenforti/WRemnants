@@ -378,9 +378,12 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define('postfsrYV', 'postfsrGenV_mom4.Rapidity()')
             df = df.Define('postfsrabsYV', 'std::fabs(postfsrYV)')
             df = df.Define('postfsrPTV', 'postfsrGenV_mom4.pt()')
+            df = df.DefinePerSample('postfsrChargeV', '0')
 
         if mode == "wmass":
             df = df.Define("postfsrPTV", "wrem::pt_2(postfsrLep_pt, postfsrLep_phi, postfsrMET_pt, postfsrMET_phi)")
+            # df = df.Define('postfsrChargeV', 'postfsrLep_charge')
+            # df = df.DefinePerSample('postfsrChargeV', '0')
 
     return df
 

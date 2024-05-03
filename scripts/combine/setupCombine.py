@@ -221,15 +221,46 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     datagroups.groups[base_group].deleteMembers([m for m in datagroups.groups[base_group].members if m.name.endswith("OOA")])
             if any(x.endswith("OOA") for x in args.excludeProcGroups) and hasSeparateOutOfAcceptanceSignal:
                 datagroups.deleteGroup(f"{base_group}OOA") # remove out of acceptance signal
+
+        if isUnfolding:
+            # set gen axes to be stored in metadata for post processing
+            if wmass and "qGen" in datagroups.gen_axes_names:
+                # gen level bins, split by charge
+                if "minus" in args.recoCharge:
+                    unfolding_hist = datagroups.getHistForUnfolding(
+                        base_group, 
+                        member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
+                        histToReadAxes= args.baseName if xnorm else f"{args.baseName}_yieldsUnfolding"
+                    )
+                    datagroups.gen_axes["W_qGen0"] = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
+                if "plus" in args.recoCharge:
+                    unfolding_hist = datagroups.getHistForUnfolding(
+                        base_group, 
+                        member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
+                        histToReadAxes= args.baseName if xnorm else f"{args.baseName}_yieldsUnfolding"
+                    )
+                    datagroups.gen_axes["W_qGen1"] = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
+            else:
+                unfolding_hist = datagroups.getHistForUnfolding(base_group, member_filter=lambda x: not x.name.endswith("OOA"))
+                datagroups.gen_axes[base_group[0]] = [ax for ax in unfolding_hist.axes if ax.name in datagroups.gen_axes_names]
+
+        logger.debug(f"New gen axes are: {datagroups.gen_axes}")
+
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
         datagroups.setGenAxes(args.genAxes)
         if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen0", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(
+                    base_group, f"W_qGen0", 
+                    member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
+                    axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
             if "plus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen1", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(base_group, 
+                f"W_qGen1", 
+                member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
+                axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
         
@@ -289,7 +320,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # define sumGroups for integrated cross section
     if isFloatingPOIs:
         # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
-        if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes:
+        if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes_names:
             if "plus" in args.recoCharge:
                 cardTool.addPOISumGroups(genCharge="qGen1")
             if "minus" in args.recoCharge:
@@ -555,18 +586,21 @@ def setup(args, inputFile, fitvar, xnorm=False):
             theoryAgnostic_helper.add_theoryAgnostic_uncertainty()
 
         elif isUnfolding:
+            poi_axes = poi_axes
+            poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
             noi_args = dict(
                 group=f"normXsec{label}",
                 passToFakes=passSystToFakes,
-                name=f"yieldsUnfolding",
-                systAxes=poi_axes,
+                name=f"xnorm" if xnorm else f"yieldsUnfolding",
+                rename="yieldsUnfolding",
+                systAxes=poi_axes_syst,
                 processes=["signal_samples"],
                 noConstraint=True,
                 noi=True,
                 mirror=True,
                 scale=1 if args.priorNormXsec < 0 else args.priorNormXsec, # histogram represents an (args.priorNormXsec*100)% prior
-                systAxesFlow=[a for a in poi_axes if a in ["ptGen"]], # use underflow/overflow bins for ptGen
-                labelsByAxis=poi_axes,
+                # systAxesFlow=[a for a in poi_axes if a in ["ptGen", "ptVGen", "_ptGen", "_ptVGen"]], # axes to use underflow/overflow bins
+                labelsByAxis=[f"_{p}" if p != poi_axes[0] else p for p in poi_axes],
             )
             if wmass:
                 # add two sets of systematics, one for each charge
@@ -574,26 +608,72 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     rename=f"noiWminus",
                     baseName=f"W_qGen0",
                     preOpMap={
-                        m.name: (lambda h: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}], h, scale2=args.scaleNormXsecHistYields))
-                            if "minus" in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}])
+                        m.name: (lambda h: hh.addHists(
+                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                "acceptance": hist.tag.Slicer()[::hist.sum]}], 
+                            h[{"acceptance":True}], 
+                            scale2=args.scaleNormXsecHistYields)
+                        ) 
+                        if "minus" in m.name else (
+                            lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                "acceptance": hist.tag.Slicer()[::hist.sum]}]
+                        )
                         for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
                 )
                 cardTool.addSystematic(**noi_args,
                     rename=f"noiWplus",
                     baseName=f"W_qGen1",
                     preOpMap={
-                        m.name: (lambda h: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}], h, scale2=args.scaleNormXsecHistYields))
-                            if "plus" in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}])
+                        m.name: (lambda h: hh.addHists(
+                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                "acceptance": hist.tag.Slicer()[::hist.sum]}], 
+                            h[{"acceptance":True}], 
+                            scale2=args.scaleNormXsecHistYields)
+                        )
+                        if "plus" in m.name else (
+                            lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                "acceptance": hist.tag.Slicer()[::hist.sum]}]
+                        )
                         for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
                 )
             else:
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"{label}_",
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(
-                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, "acceptance": hist.tag.Slicer()[::hist.sum]}], h[{"acceptance":True}], scale2=args.scaleNormXsecHistYields))
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
+                if xnorm:
+                    cardTool.addSystematic(**noi_args,
+                        baseName=f"{label}_",
+                        action=lambda h: 
+                            hh.addHists(h,
+                                hh.expand_hist_by_duplicate_axes(h, poi_axes, poi_axes_syst),
+                                scale2=args.scaleNormXsecHistYields)
+                    )
+                else:
+                    cardTool.addSystematic(**noi_args,
+                        baseName=f"{label}_",
+                        preOpMap={
+                            m.name: (lambda h: hh.addHists(
+                                h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                    "acceptance": hist.tag.Slicer()[::hist.sum]}], 
+                                h[{"acceptance":True}], 
+                                scale2=args.scaleNormXsecHistYields))
+                            for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
+                    )
+                    if "ptVGen" in poi_axes:
+                        # add overflow contributions as unconstrained, but not noi
+                        noi_args["noi"] = False
+                        noi_args["rename"] = "yieldsUnfoldingO"
+                        noi_args["systAxes"] = [p for p in poi_axes if p not in ["ptVGen"]]
+                        noi_args["labelsByAxis"]=[f"_{p}" if p != noi_args["systAxes"][0] else p for p in noi_args["systAxes"]]
+                        cardTool.addSystematic(**noi_args,
+                            baseName=f"{label}_ptVGenO_",
+                            preOpMap={
+                                m.name: (lambda h: hh.addHists(
+                                    h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                        "acceptance": hist.tag.Slicer()[::hist.sum]}], 
+                                    h[{"acceptance":True, "ptVGen":hist.overflow}], 
+                                    scale2=args.scaleNormXsecHistYields))
+                                for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
+                        )
+
+
 
     if args.doStatOnly:
         # print a card with only mass weights
@@ -992,19 +1072,23 @@ if __name__ == "__main__":
     if args.hdf5: 
         writer = HDF5Writer.HDF5Writer(sparse=args.sparse)
 
+        if args.fitresult:
+            writer.set_fitresult(args.fitresult, mc_stat=not args.noMCStat)
+        elif args.baseName == "xnorm":
+            writer.theoryFit = True
+
         # loop over all files
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            cardTool = setup(args, ifile, fitvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, fitvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
-            if isFloatingPOIs:
-                cardTool = setup(args, ifile, ["count"], xnorm=True)
+            if isFloatingPOIs or isUnfolding:
+                fitvar = args.genAxes if isPoiAsNoi else ["count"] 
+                cardTool = setup(args, ifile, fitvar, xnorm=True)
                 writer.add_channel(cardTool)
-        if args.fitresult:
-            writer.set_fitresult(args.fitresult, mc_stat=not args.noMCStat)
 
         if len(outnames) == 1:
             outfile, outfolder = outnames[0]

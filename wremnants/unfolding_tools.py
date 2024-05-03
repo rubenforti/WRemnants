@@ -77,44 +77,55 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
 
     if mode == "wlike":
         df = df.Define("qGen", "event % 2 == 0 ? -1 : 1")
+    
+    df = df.Alias("chargeVGen", "postfsrChargeV")
 
     return df
 
-def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=None, pt_max=None, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
+def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=None, pt_max=None, mass_min=60, mass_max=120, mtw_min=0, selections=[], custom_selection=False):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
     # accept = False: reject events in fiducial pahse space
+    # custom_selection = True: only use custom provided selections
     
-    if mode == "wmass":
-        selection = "(absEtaGen < 2.4)"        
-    elif mode == "wlike":
-        selection = f"""
-            (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
-            && (ptOtherGen > {pt_min}) && (ptOtherGen < {pt_max})
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
-    elif mode == "dilepton":
-        selection = f"""
-            (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
-            && (ptGen > {pt_min}) && (ptOtherGen > {pt_min}) 
-            && (ptGen < {pt_max}) && (ptOtherGen < {pt_max}) 
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
+    if custom_selection:
+        if len(selections) > 0:
+            selection = " && ".join([f"({sel})" for sel in selections])
+        else:
+            raise RuntimeError("custom_selection = True but no selection is given") 
     else:
-        raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
+        if mode == "wmass":
+            selection = "(absEtaGen < 2.4)"        
+        elif mode == "wlike":
+            selection = f"""
+                (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
+                && (ptOtherGen > {pt_min}) && (ptOtherGen < {pt_max})
+                && (massVGen > {mass_min}) && (massVGen < {mass_max})
+                """
+        elif mode == "dilepton":
+            selection = f"""
+                (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
+                && (ptGen > {pt_min}) && (ptOtherGen > {pt_min}) 
+                && (ptGen < {pt_max}) && (ptOtherGen < {pt_max}) 
+                && (massVGen > {mass_min}) && (massVGen < {mass_max})
+                """
+        else:
+            raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
 
-    if mtw_min > 0:
-        selection += f" && (mTVGen > {mtw_min})"
+        if mtw_min > 0:
+            selection += f" && (mTVGen > {mtw_min})"
+        
+        if len(selections) > 0:
+            selection += " && " + " && ".join([f"({sel})" for sel in selections]) 
 
-    for sel in selections:
-        logger.debug(f"Add selection {sel} for fiducial phase space")
-        selection += f" && ({sel})"
-
+    logger.debug(f"Fiducial selections is: {selection}")
     df = df.Define("acceptance", selection)
 
     if select and accept:
+        logger.debug("Select events in fiducial phase space")        
         df = df.Filter("acceptance")
-    elif select :
+    elif select:
+        logger.debug("Reject events in fiducial phase space")
         df = df.Filter("acceptance == 0")
 
     return df

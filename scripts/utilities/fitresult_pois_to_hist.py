@@ -1,6 +1,8 @@
 import h5py
 import os
 
+from narf import ioutils
+
 from utilities import common, logging
 from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
 
@@ -9,6 +11,7 @@ import pdb
 parser = common.base_parser()
 parser.add_argument("--observed", type=str, default=None, help="fitresult file with observed results")
 parser.add_argument("--expected", type=str, default=None, help="fitresult file with expected results")
+parser.add_argument("--initial", type=str, default=None, help="fitresult file with initial results when using iterative unfolding (e.g. NOI as POI)")
 parser.add_argument("-o", "--outfolder", type=str, default="./", help="Output folder")
 parser.add_argument("--outputFile", type=str, default="results_unfolded", help="Output file name")
 parser.add_argument("--override", action="store_true", help="Override output file if it exists")
@@ -20,11 +23,11 @@ if not args.observed and not args.expected:
     raise IOError(f"Result from expected or observed fit must be specified with '--observed' or '--expected'")
 result = {}
 meta = None
-
+meta_exp = None
 if args.observed:
-    result, meta = fitresult_pois_to_hist(args.observed.replace(".root",".hdf5"), result, uncertainties=None)
+    result, meta = fitresult_pois_to_hist(args.observed.replace(".root",".hdf5"), result, uncertainties=None, initial=args.initial.replace(".root",".hdf5") if args.initial else None, flow=False)
 if args.expected:
-    result, meta_exp = fitresult_pois_to_hist(args.expected.replace(".root",".hdf5"), result, uncertainties=None, expected=True)
+    result, meta_exp = fitresult_pois_to_hist(args.expected.replace(".root",".hdf5"), result, uncertainties=None, expected=True, flow=False)
     if not args.observed:
         meta = meta_exp
         meta_exp = None
@@ -39,10 +42,10 @@ if not os.path.exists(args.outfolder):
     os.makedirs(args.outfolder)
 
 if args.h5py:
-    from narf import ioutils
     with h5py.File(outfile, "w") as f:
         logger.debug(f"Pickle and dump results")
         ioutils.pickle_dump_h5py("results", result, f)
+        ioutils.pickle_dump_h5py("meta_info", ioutils.make_meta_info_dict(args=args, wd=common.base_dir), f)
         if meta is not None:
             ioutils.pickle_dump_h5py("meta", meta, f)
         if meta_exp is not None:
@@ -55,4 +58,5 @@ else:
             meta_info["meta"] = meta
         if meta_exp is not None:
             meta_info["meta_exp"] = meta_exp
-        pickle.dump({"results": result, **meta_info}, f)
+        pickle.dump({"results": result, **meta_info}, f, protocol = pickle.HIGHEST_PROTOCOL)
+        pickle.dump({"meta_info": ioutils.make_meta_info_dict(args=args, wd=common.base_dir)}, f, protocol = pickle.HIGHEST_PROTOCOL)

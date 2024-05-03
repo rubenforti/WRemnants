@@ -173,6 +173,7 @@ def set_subparsers(subparser, name):
                                help="Generator level definition for unfolding")
         subparser.add_argument("--genBins", type=int, nargs="+", default=[16, 0],
                                help="Number of generator level bins")
+        subparser.add_argument("--fitresult", type=str, help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI unfolding)")
     elif "theoryAgnostic" in name:
         # specific for theory agnostic
         subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")

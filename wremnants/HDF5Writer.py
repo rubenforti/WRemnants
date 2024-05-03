@@ -122,7 +122,7 @@ class HDF5Writer(object):
             bkgs.update([p for p in chanInfo.predictedProcesses() if p not in chanInfo.unconstrainedProcesses])      
         return list(common.natural_sort(bkgs))
 
-    def get_flat_values(self, h, chanInfo, axes, return_variances=True):
+    def get_flat_values(self, h, chanInfo, axes, return_variances=True, flow=False):
         # check if variances are available
         if return_variances and (h.storage_type != hist.storage.Weight):
             raise RuntimeError(f"Sumw2 not filled for {h} but needed for binByBin uncertainties")
@@ -133,11 +133,11 @@ class HDF5Writer(object):
             h = h.project(*axes)
 
         if return_variances:
-            val = h.values(flow=False).flatten().astype(self.dtype)
-            var = h.variances(flow=False).flatten().astype(self.dtype)
+            val = h.values(flow=flow).flatten().astype(self.dtype)
+            var = h.variances(flow=flow).flatten().astype(self.dtype)
             return val, var
         else:
-            return h.values(flow=False).flatten().astype(self.dtype)
+            return h.values(flow=flow).flatten().astype(self.dtype)
 
     def write(self, 
         args,
@@ -168,8 +168,8 @@ class HDF5Writer(object):
             dg = chanInfo.datagroups
             if masked:
                 self.masked_channels.append(chan)
-                axes = ["count"]
-                nbinschan = 1
+                axes = chanInfo.fit_axes[:]
+                nbinschan = 1 if len(axes) == 1 and axes[0] == "count" else None
             else:
                 axes = chanInfo.fit_axes[:]
                 nbinschan = None
@@ -259,7 +259,8 @@ class HDF5Writer(object):
 
                 if nbinschan is None:
                     nbinschan = norm_proc.shape[0]
-                    nbins += nbinschan
+                    if not masked:                
+                        nbins += nbinschan
                 elif nbinschan != norm_proc.shape[0]:
                     raise Exception(f"Mismatch between number of bins in channel {chan} and process {proc} for expected ({nbinschan}) and ({norm_proc.shape[0]})")
              
@@ -280,9 +281,8 @@ class HDF5Writer(object):
 
             if not masked:                
                 # data
-                if self.theoryFit:
-                    if self.theoryFitData is None or self.theoryFitDataCov is None:
-                        raise RuntimeError("No data or covariance found to perform theory fit")
+                if self.theoryFit and self.theoryFitData is not None and self.theoryFitDataCov is not None:
+                        # raise RuntimeError("No data or covariance found to perform theory fit")
                     data_obs = self.theoryFitData[chan]
                 elif chanInfo.real_data and dg.dataName in dg.groups:
                     data_obs_hist = dg.groups[dg.dataName].hists[chanInfo.nominalName]
@@ -787,7 +787,7 @@ class HDF5Writer(object):
         nbytes += writeFlatInChunks(pseudodata, f, "hpseudodata", maxChunkBytes = self.chunkSize)
         pseudodata = None
 
-        if self.theoryFit:
+        if self.theoryFitDataCov is not None:
             data_cov = self.theoryFitDataCov
             if data_cov.shape != (nbins,nbins):
                 raise RuntimeError(f"covariance matrix has incompatible shape of {data_cov.shape}, expected is {(nbins,nbins)}!")

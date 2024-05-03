@@ -19,7 +19,7 @@ def get_fitresult(fitresult_filename):
     elif fitresult_filename.endswith(".hdf5"):
         return h5py.File(fitresult_filename, mode='r')
     else:
-        raise IOError(f"Unknown format of fitresult {fitresult}")
+        raise IOError(f"Unknown format of fitresult {fitresult_filename}")
 
 def is_root_file(fileobject):
     return isinstance(fileobject, uproot.ReadOnlyDirectory)
@@ -33,7 +33,7 @@ def get_poi_names(fitresult_file, poi_type="mu"):
     elif is_root_file(fitresult_file):
         names = get_poi_names_root(fitresult_file, poi_type)
     else:
-        raise IOError(f"Unknown format of fitresult {fitresult}")
+        raise IOError(f"Unknown format of fitresult {fitresult_file}")
 
     if len(names)==0:
         logger.warning('No free parameters found (neither signal strenght(s), nor W mass)')
@@ -211,7 +211,8 @@ def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=Fals
     mask = ~df.isna().any(axis=1)
     # select rows from base process
     if len(base_processes):
-        mask = mask & df["Name"].apply(lambda x, p=base_processes: any([x.startswith(p) for p in base_processes]))
+        mask = mask & df["Name"].apply(lambda x, b=base_processes: any([x.startswith(p) for p in b]))
+
     # remove rows that have additional axes that are not required (strip off process prefix and poi type postfix and compare length of gen axes assuming they are separated by '_')
     mask = mask & df["Name"].apply(lambda x, a=gen_axes, b=base_processes: any(len(x.replace(p,"").split("_")[1:-1])==len(a) if x.startswith(p) else False for p in b))    
     # gen bin selections
