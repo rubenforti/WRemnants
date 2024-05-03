@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -9,12 +12,10 @@ import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.datasets.datagroups import Datagroups
 import hist
 import lz4.frame
 import math
 import time
-import os
 
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
@@ -22,18 +23,15 @@ parser.add_argument("--finePtBinning", action='store_true', help="Use fine binni
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 
-parser = common.set_parser_default(parser, "pt", [34,26.,60.])
-parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label))
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen", "absYVGen"])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -50,8 +48,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era = era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
 
@@ -101,16 +98,16 @@ if args.csVarsHist:
 
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
+inclusive = hasattr(args, "inclusive") and args.inclusive
+
 if isUnfolding:
     unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
         args.genAxes, 
-        common.get_gen_axes(
-            flow=isPoiAsNoi or args.unfoldFullPhaseSpace, 
-            dilepton_ptV_binning=dilepton_ptV_binning
-        ), 
-        add_out_of_acceptance_axis=isPoiAsNoi)
-    if not isPoiAsNoi:# and not args.unfoldFullPhaseSpace:
-       datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
+        common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning, inclusive), 
+        add_out_of_acceptance_axis=isPoiAsNoi,
+    )
+    if not isPoiAsNoi:
+        datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -208,19 +205,19 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : args.pt[1], "pt_max" : args.pt[2], "abseta_max" : args.eta[2], 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
 
-        info_fiducial = dict(
-            mode="dilepton", 
-            pt_min=args.pt[1], pt_max=args.pt[2], 
-            mass_min=mass_min, mass_max=mass_max, 
-            selections=unfolding_selections, select=not isPoiAsNoi, custom_selection=args.unfoldFullPhaseSpace
-        )
+        if inclusive:
+            cutsmap = {"fiducial" : "masswindow"}
 
         if hasattr(dataset, "out_of_acceptance"):
-            df = unfolding_tools.select_fiducial_space(df, accept=False, **info_fiducial)
+            logger.debug("Reject events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], accept=False, **cutsmap)
         else:
-            df = unfolding_tools.select_fiducial_space(df, accept=True, **info_fiducial)
+            logger.debug("Select events in fiducial phase space")
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], select=not isPoiAsNoi, accept=True, **cutsmap)
 
             if args.fitresult:
                 logger.debug("Apply reweighting based on unfolded result")

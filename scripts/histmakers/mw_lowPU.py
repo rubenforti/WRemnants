@@ -1,18 +1,18 @@
 import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
-args = parser.parse_args()
 
 import narf
 import wremnants
@@ -38,7 +38,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="e" else ["singleelectron"])),
                         base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
-                        mode="lowpu")
+                        mode=analysis_label)
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -123,7 +123,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name in sigProcs:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")

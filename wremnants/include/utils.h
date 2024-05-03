@@ -187,6 +187,22 @@ bool hasMatchDR2(const float& eta, const float& phi, const Vec_f& vec_eta, const
   return false;
 
 }
+    
+RVec<Int_t> hasMatchDR2(const Vec_f& eta, const Vec_f& phi, const Vec_f& vec_eta, const Vec_f& vec_phi, const float dr2 = 0.09) {
+
+  Vec_i hasMatch(eta.size(), 0);
+  for (unsigned int ivec = 0; ivec < eta.size(); ++ivec) {
+      for (unsigned int jvec = 0; jvec < vec_eta.size(); ++jvec) {
+          if (deltaR2(eta[ivec], phi[ivec], vec_eta[jvec], vec_phi[jvec]) < dr2) {
+              // found at least one object passing condition, go to next element of first collection (saves time)
+              hasMatch[ivec] = 1;
+              continue;
+          }
+      }
+  }
+  return hasMatch;
+
+}
 
 RVec<Int_t> hasMatchDR2collWithSingle(const Vec_f &coll1_eta, const Vec_f &coll1_phi,
                                       const Float_t &eta, const Float_t &phi,

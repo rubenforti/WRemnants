@@ -145,7 +145,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                 else:
                     gen_axes_permutations = [gen_axes_proc[:],]
 
-                if channel not in result[poi_key][channel]:
+                if proc not in result[poi_key][channel]:
                     result[poi_key][channel][proc] = {}
                 for axes in gen_axes_permutations:
                     shape = [a.extent if flow else a.size for a in axes]
@@ -155,6 +155,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                     for u in filter(lambda x: x.startswith("err_"), data.keys()):
                         data.loc[:,u] = action_err(data["value"], data[u], channel_scale)
                     data.loc[:,"value"] = action_val(data["value"], channel_scale)
+                    logger.debug(f"The values for the hist in poi {poi_key} are {data['value'].values}")
 
                     if initial:
                         data_initial = combinetf_input.select_pois(df_initial, axes_names, base_processes=proc, flow=flow)
@@ -199,7 +200,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                         h_syst.values(flow=flow)[...] = systs
                         hist_name_syst = f"{hist_name}_syst"
                         if hist_name_syst in result[poi_key][channel][proc]:
-                            logger.warning(f"Histogram {hist_name_syst} already in result, it will be overridden")
+                            logger.warning(f"Histogram {hist_name_syst} already in result, it will be overwritten")
                         result[poi_key][channel][proc][hist_name_syst] = h_syst
 
     return result, meta

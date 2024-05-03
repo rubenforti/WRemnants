@@ -21,6 +21,14 @@ from wremnants import histselections as sel
 logger = logging.child_logger(__name__)
 
 class Datagroups(object):
+    mode_map = {
+        "w_z_gen_dists.py" : "vgen",
+        "mz_dilepton.py" : "z_dilepton",
+        "mz_wlike_with_mu_eta_pt.py" : "z_wlike",
+        "mw_with_mu_eta_pt.py" : "w_mass",
+        "mw_lowPU.py" : "w_lowpu",
+        "mz_lowPU.py" : "z_lowpu",
+    }
 
     def __init__(self, infile, mode=None, **kwargs):
         self.h5file = None
@@ -35,21 +43,11 @@ class Datagroups(object):
         else:
             raise ValueError(f"{infile} has unsupported file type")
 
-        mode_map = {
-            "w_z_gen_dists.py" : "vgen",
-            "mz_dilepton.py" : "dilepton",
-            "mz_wlike_with_mu_eta_pt.py" : "wlike",
-            "mw_with_mu_eta_pt.py" : "wmass",
-            "mw_lowPU.py" : "lowpu_w",
-            "mz_lowPU.py" : "lowpu_z",
-        }
         if mode == None:
             analysis_script = os.path.basename(self.getScriptCommand().split()[0])
-            if analysis_script not in mode_map:
-                raise ValueError(f"Unrecognized analysis script {analysis_script}! Expected one of {mode_map.keys()}")
-            self.mode = mode_map[analysis_script]
+            self.mode = Datagroups.analysisLabel(analysis_script)
         else:
-            if mode not in mode_map.values():
+            if mode not in self.mode_map.values():
                 raise ValueError(f"Unrecognized mode '{mode}.' Must be one of {set(mode_map.values())}")
             self.mode = mode
         logger.info(f"Set mode to {self.mode}")
@@ -198,10 +196,10 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
+                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothen=True, smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
     ):
         logger.info(f"Set histselector")
-        if self.mode not in ["wmass", "lowpu_w"]:
+        if self.mode[0] != "w":
             return # histselectors only implemented for single lepton (with fakes)
         auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
         signalselector = sel.SignalSelectorABCD
@@ -222,6 +220,8 @@ class Datagroups(object):
                 fakeselector = sel.FakeSelectorSimpleABCD
         else:
             raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
+        if forceGlobalScaleFakes is not None:
+            scale = forceGlobalScaleFakes
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
             members = self.groups[g].members[:]
@@ -230,7 +230,7 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
 
@@ -561,7 +561,7 @@ class Datagroups(object):
 
         self.all_gen_axes = args.get("genAxes", [])
 
-        if self.mode in ["wmass", "lowpu_w"]:
+        if self.mode[0] == "w":
             self.all_gen_axes = ["qGen", *self.all_gen_axes]
 
         self.gen_axes_names = list(gen_axes_names) if gen_axes_names != None else self.all_gen_axes
@@ -699,4 +699,9 @@ class Datagroups(object):
             return syst
         return "_".join([baseName,syst])
     
+    @staticmethod
+    def analysisLabel(filename):
+        if filename not in Datagroups.mode_map:
+            raise ValueError(f"Unrecognized analysis script {filename}! Expected one of {Datagroups.mode_map.keys()}")
 
+        return Datagroups.mode_map[filename]

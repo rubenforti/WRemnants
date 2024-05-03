@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python3
 
 # plot impacts on mW or mZ from groups of nuisance parameters
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1)
-    parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')    
+    parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
     parser.add_argument('-k',  '--keepNuisgroups', default=None,   type=str, help='nuis groups for which you want to show the impacts, using regular expressions')
     parser.add_argument('-x', '--excludeNuisgroups', default=None,   type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
@@ -231,17 +231,17 @@ if __name__ == "__main__":
 
     h1.SetBarWidth(0.8);
     h1.SetBarOffset(0.1);
-    h1.SetFillColor(ROOT.kGreen-5)
+    h1.SetFillColor(ROOT.TColor.GetColor("#5790fc"))   # used to be ROOT.kGreen-5
     h1.SetLineColor(ROOT.kBlack)
     #h1.SetFillStyle(3001)
-    h1.SetFillColorAlpha(ROOT.kGreen-5, 0.5)
+    #h1.SetFillColorAlpha(ROOT.TColor.GetColor("#5790fc"), 0.5)
     if compare:
         h2.SetBarWidth(0.4);
         h2.SetBarOffset(0.2);
-        h2.SetFillColor(ROOT.kPink-6)
+        h2.SetFillColor(ROOT.TColor.GetColor("#bd1f01")) # "#f89c20" is orange, used to be ROOT.kPink-6
         h2.SetLineColor(ROOT.kBlack)
         #h2.SetFillStyle(3001)
-        h2.SetFillColorAlpha(ROOT.kPink-6, 0.5)
+        h2.SetFillColorAlpha(ROOT.TColor.GetColor("#f89c20"), 0.9)
         h1.GetYaxis().SetRangeUser(0.0, 1.1* max(totalUncertainty_mW_alt, totalUncertainty_mW))
         
     cw,ch = args.canvasSize.split(',')

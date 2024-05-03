@@ -1,5 +1,6 @@
 import h5py
 import os
+import narf
 
 from narf import ioutils
 
@@ -41,22 +42,18 @@ if not os.path.exists(args.outfolder):
     logger.info(f"Creating output folder {args.outfolder}")
     os.makedirs(args.outfolder)
 
+res_dict = {
+    "results" : result,
+    "combine_meta" : meta,
+    "meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir),
+}
+
 if args.h5py:
     with h5py.File(outfile, "w") as f:
         logger.debug(f"Pickle and dump results")
-        ioutils.pickle_dump_h5py("results", result, f)
-        ioutils.pickle_dump_h5py("meta_info", ioutils.make_meta_info_dict(args=args, wd=common.base_dir), f)
-        if meta is not None:
-            ioutils.pickle_dump_h5py("meta", meta, f)
-        if meta_exp is not None:
-            ioutils.pickle_dump_h5py("meta_exp", meta_exp, f)
+        for k,v in res_dict.items():
+            ioutils.pickle_dump_h5py(k, v, f)
 else:
     import pickle
     with open(outfile, "wb") as f:
-        meta_info = {} 
-        if meta is not None:
-            meta_info["meta"] = meta
-        if meta_exp is not None:
-            meta_info["meta_exp"] = meta_exp
-        pickle.dump({"results": result, **meta_info}, f, protocol = pickle.HIGHEST_PROTOCOL)
-        pickle.dump({"meta_info": ioutils.make_meta_info_dict(args=args, wd=common.base_dir)}, f, protocol = pickle.HIGHEST_PROTOCOL)
+        pickle.dump(res_dict, f)

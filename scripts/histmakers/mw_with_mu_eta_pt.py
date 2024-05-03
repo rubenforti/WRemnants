@@ -1,10 +1,12 @@
 import argparse
 from utilities import common, rdf_tools, logging, differential
 from utilities.io_tools import output_tools
-from utilities.common import background_MCprocs as bkgMCprocs
+from utilities.common import background_MCprocs as bkgMCprocs,data_dir
 from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -17,12 +19,10 @@ import hist
 import lz4.frame
 import math
 import time
-from utilities import boostHistHelpers as hh
+from utilities import common,boostHistHelpers as hh
 import pathlib
-import os
 import numpy as np
 
-data_dir = common.data_dir
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--halfStat", action='store_true', help="Test half data and MC stat, selecting odd events, just for tests")
@@ -30,14 +30,19 @@ parser.add_argument("--makeMCefficiency", action="store_true", help="Save yields
 parser.add_argument("--onlyTheorySyst", action="store_true", help="Keep only theory systematic variations, mainly for tests")
 parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC file every N, where N is given by this option. Mainly for tests")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
-parser.add_argument("--mtCut", type=int, default=40, help="Value for the transverse mass cut in the event selection")
+parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
+parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
+parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 #
 
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
+    raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
 
 isUnfolding = args.analysisMode == "unfolding"
 isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -53,9 +58,7 @@ if isUnfolding or isTheoryAgnostic:
     if isFloatingPOIsTheoryAgnostic:
         logger.warning("Running theory agnostic with only nominal and mass weight histograms for now.")
         parser = common.set_parser_default(parser, "onlyMainHistograms", True)
-    if isUnfolding:
-        parser = common.set_parser_default(parser, "pt", [32,26.,58.])
-        
+
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
 axis_pt_eff = hist.axis.Variable(axis_pt_eff_list, name = "pt", overflow=not args.excludeFlow, underflow=not args.excludeFlow)
@@ -99,7 +102,7 @@ axis_muonJetPt = hist.axis.Regular(50, 26, 76, name = "muonJetPt", underflow=Fal
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120], name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable((*np.arange(0, mtw_min+2, 2), *np.arange(mtw_min+5, 95, 5), 100, 120), name = "mt", underflow=False, overflow=True)
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
@@ -151,18 +154,6 @@ axis_mt_fakes = hist.axis.Regular(120, 0., 120., name = "mt", underflow=False, o
 axis_dphi_fakes = hist.axis.Regular(8, 0., np.pi, name = "DphiMuonMet", underflow=False, overflow=False)
 axis_hasjet_fakes = hist.axis.Boolean(name = "hasJets") # only need case with 0 jets or > 0 for now
 mTStudyForFakes_axes = [axis_eta, axis_pt, axis_charge, axis_mt_fakes, axis_passIso, axis_hasjet_fakes, axis_dphi_fakes]
-
-## for some tests with QCD MC only
-axis_eta_coarse_fakes = hist.axis.Regular(12, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
-axis_pt_coarse_fakes = hist.axis.Regular(8, 26, 58, name = "pt", overflow=False, underflow=False)
-axis_mt_coarse_fakes = hist.axis.Regular(24, 0., 120., name = "mt", underflow=False, overflow=True)
-axis_Njets_fakes = hist.axis.Regular(5, -0.5, 4.5, name = "Njets", underflow=False, overflow=True)
-axis_leadjetPt_fakes = hist.axis.Regular(20, 0.0, 100.0, name = "leadjetPt", underflow=False, overflow=True)
-otherStudyForFakes_axes = [axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge,
-                           axis_mt_coarse_fakes, axis_passIso,
-                           axis_Njets_fakes, axis_leadjetPt_fakes,
-                           axis_dphi_fakes]
-
 
 axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overflow=True)
 axis_recoWpt = hist.axis.Regular(40, 0., 80., name = "recoWpt", underflow=False, overflow=True)
@@ -288,14 +279,16 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isWmunu:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta}
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
         else:
             if not isPoiAsNoi:
                 logger.debug("Select events in fiducial phase space")
-                df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=True)
+                df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=True, **cutsmap)
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
             
@@ -334,7 +327,10 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=1)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1, use_trackerMuons=args.trackerMuons, use_isolation=False)
+    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
+                                           use_trackerMuons=args.trackerMuons, use_isolation=False,
+                                           nonPromptFromSV=args.selectNonPromptFromSV,
+                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLighMesonDecay)
 
     # the corrected RECO muon kinematics, which is intended to be used as the nominal
     df = muon_calibration.define_corrected_reco_muon_kinematics(df)
@@ -343,6 +339,7 @@ def build_graph(df, dataset):
 
     df = muon_selections.veto_electrons(df)
     df = muon_selections.apply_met_filters(df)
+
     if args.makeMCefficiency:
         df = df.Define("GoodTrigObjs", f"wrem::goodMuonTriggerCandidate<wrem::Era::Era_{era}>(TrigObj_id,TrigObj_filterBits)")
         hltString = muon_selections.hlt_string(era)
@@ -462,10 +459,69 @@ def build_graph(df, dataset):
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
 
     df = df.Define("hasCleanJet", "Sum(goodCleanJetsNoPt && Jet_pt > 30) >= 1")
-
     df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(goodMuons_phi0,MET_corr_rec_phi))")
 
-    if auxiliary_histograms: 
+    if auxiliary_histograms:
+        # would move the following in a function but there are too many dependencies on axes defined in the main loop
+        if isQCDMC:
+            ## for some tests with QCD MC only
+            axis_eta_coarse_fakes = hist.axis.Regular(12, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
+            axis_pt_coarse_fakes = hist.axis.Regular(8, 26, 58, name = "pt", overflow=False, underflow=False)
+            axis_mt_coarse_fakes = hist.axis.Regular(24, 0., 120., name = "mt", underflow=False, overflow=True)
+            axis_Njets_fakes = hist.axis.Regular(5, -0.5, 4.5, name = "NjetsClean", underflow=False, overflow=True)
+            axis_leadjetPt_fakes = hist.axis.Regular(20, 0.0, 100.0, name = "leadjetPt", underflow=False, overflow=True)
+            otherStudyForFakes_axes = [axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge,
+                                       axis_mt_coarse_fakes, axis_passIso,
+                                       axis_Njets_fakes, axis_leadjetPt_fakes,
+                                       axis_dphi_fakes]
+            df = df.Define("goodMuons_hasJet0", "Muon_jetIdx[goodMuons][0] != -1 ")
+            df = df.Define("goodMuons_jetpt0", "goodMuons_hasJet0 ? Jet_pt[Muon_jetIdx[goodMuons][0]] : goodMuons_pt0")
+            df = df.Define("goodMuons_genPartFlav0", "Muon_genPartFlav[goodMuons][0]")
+            df = df.Define("nJetsClean", "Sum(goodCleanJetsNoPt)")
+            df = df.Define("leadjetPt", "(nJetsClean > 0) ? Jet_pt[goodCleanJetsNoPt][0] : 0.0")
+            #
+            results.append(df.HistoBoost("Muon_genPartFlav", [hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")], ["goodMuons_genPartFlav0", "nominal_weight"]))
+            #
+            otherStudyForFakes = df.HistoBoost("otherStudyForFakes", otherStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nJetsClean", "leadjetPt", "deltaPhiMuonMet", "nominal_weight"])
+            results.append(otherStudyForFakes)
+            # gen match studies
+            df = df.Define("postfsrMuonsStatus1", "GenPart_status == 1 && abs(GenPart_pdgId) == 13")
+            df = df.Define("postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && (GenPart_statusFlags & 1 || GenPart_statusFlags & (1 << 5))")
+            df = df.Define("postfsrMuonsStatus1notPrompt", "postfsrMuonsStatus1 && !(GenPart_statusFlags & 1 || GenPart_statusFlags & (1 << 5))")
+            #
+            df = df.Define("muonGenMatchStatus1", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1],GenPart_phi[postfsrMuonsStatus1])")
+            df = df.Define("muonGenMatchStatus1prompt", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1prompt],GenPart_phi[postfsrMuonsStatus1prompt])")
+            df = df.Define("muonGenMatchStatus1notPrompt", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1notPrompt],GenPart_phi[postfsrMuonsStatus1notPrompt])")
+            #
+            axis_match = hist.axis.Boolean(name = "hasMatch")
+            etaPtGenMatchStatus1 = df.HistoBoost("etaPtGenMatchStatus1", [axis_eta, axis_pt, axis_match], ["goodMuons_eta0", "goodMuons_pt0", "muonGenMatchStatus1", "nominal_weight"])
+            results.append(etaPtGenMatchStatus1)
+            etaPtGenMatchStatus1prompt = df.HistoBoost("etaPtGenMatchStatus1prompt", [axis_eta, axis_pt, axis_match], ["goodMuons_eta0", "goodMuons_pt0", "muonGenMatchStatus1prompt", "nominal_weight"])
+            results.append(etaPtGenMatchStatus1prompt)
+            etaPtGenMatchStatus1notPrompt = df.HistoBoost("etaPtGenMatchStatus1notPrompt", [axis_eta, axis_pt, axis_match], ["goodMuons_eta0", "goodMuons_pt0", "muonGenMatchStatus1notPrompt", "nominal_weight"])
+            results.append(etaPtGenMatchStatus1notPrompt)
+            ### gen mT and reco mT
+            df = df.Define("transverseMass_genMetRecoMuon", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, GenMET_pt, GenMET_phi)")
+            axis_genmt = hist.axis.Regular(120, 0., 120., name = "genMt", underflow=False, overflow=True)
+            axis_recomet = hist.axis.Regular(120, 0., 120., name = "recoMet", underflow=False, overflow=True)
+            axis_genmet = hist.axis.Regular(120, 0., 120., name = "genMet", underflow=False, overflow=True)
+            etaPtMtGenMt = df.HistoBoost("etaPtMtGenMt", [axis_eta, axis_pt, axis_mt_fakes, axis_genmt, axis_passIso], ["goodMuons_eta0", "goodMuons_pt0", "transverseMass", "transverseMass_genMetRecoMuon", "passIso", "nominal_weight"])
+            results.append(etaPtMtGenMt)
+            etaPtMetGenMet = df.HistoBoost("etaPtMetGenMet", [axis_eta, axis_pt, axis_recomet, axis_genmet, axis_passIso], ["goodMuons_eta0", "goodMuons_pt0", "MET_corr_rec_pt", "GenMET_pt", "passIso", "nominal_weight"])
+            results.append(etaPtMetGenMet)
+            #
+            muonHasJet = df.HistoBoost("muonHasJet", [hist.axis.Regular(2,-0.5,1.5,name="hasJet"), hist.axis.Regular(2,-0.5,1.5,name="passIsolation")], ["goodMuons_hasJet0", "passIso", "nominal_weight"])
+            results.append(muonHasJet)
+            # add a cut to a new branch of the dataframe
+            dfalt = df.Filter("goodMuons_hasJet0")
+            axis_jetpt = hist.axis.Regular(40,20,60, name = "jetpt", overflow=False, underflow=False)
+            axis_muonpt = hist.axis.Regular(40,20,60, name = "pt", overflow=False, underflow=False)
+            muonPtVsJetPt = dfalt.HistoBoost("muonPtVsJetPt", [axis_muonpt, axis_jetpt, axis_passIso], ["goodMuons_pt0", "goodMuons_jetpt0", "passIso", "nominal_weight"])
+            results.append(muonPtVsJetPt)
+            ##
+        # instead of passIso in mTStudyForFakes
+        # df = df.Define("passIsoAlt", "(goodMuons_pfRelIso04_all0 * Muon_pt[goodMuons][0] / goodMuons_jetpt0) < 0.12")
+        # df = df.Define("passIsoAlt", "(Muon_vtxAgnPfRelIso04_chg[goodMuons][0] * Muon_pt[goodMuons][0]) < 5.0")
         mTStudyForFakes = df.HistoBoost("mTStudyForFakes", mTStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "hasCleanJet", "deltaPhiMuonMet", "nominal_weight"])
         results.append(mTStudyForFakes)
 
