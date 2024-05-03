@@ -316,7 +316,7 @@ if __name__ == "__main__":
                                          array ("d", [1.00, 1.00, 0.00]),
                                          255,  0.95)
 
-    outdir_original = args.outdir:
+    outdir_original = args.outdir
     outdir = None
     if outdir_original:
         outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -324,7 +324,6 @@ if __name__ == "__main__":
         print("You must pass an output folder with option -o")
         quit()
 
-        
     pois_regexps = list(args.params.split(','))
     print(f"Filtering parameters with the following regex: {pois_regexps}")
 

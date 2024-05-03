@@ -9,7 +9,18 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
     met = input_tools.args_from_metadata(card_tool, "met")
     if flavor == "":
         flavor = input_tools.args_from_metadata(card_tool, "flavor")
-    if pu_type == "highPU" and (met in ["RawPFMET", "DeepMETReso"]):
+    if pu_type == "highPU" and (met in ["RawPFMET", "DeepMETReso", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"]):
+
+        '''
+        card_tool.addSystematic("recoil_syst",
+            processes=samples,
+            mirror = True,
+            group = "recoil" if group_compact else "recoil_syst",
+            splitGroup={"experimental": f".*"},
+            systAxes = ["recoil_unc"],
+            passToFakes=passSystToFakes,
+        )
+        '''
 
         card_tool.addSystematic("recoil_stat",
             processes=samples,
@@ -20,14 +31,6 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             passToFakes=passSystToFakes,
         )
 
-        card_tool.addSystematic("recoil_syst",
-            processes=samples,
-            mirror = True,
-            group = "recoil" if group_compact else "recoil_syst",
-            splitGroup={"experimental": f".*"},
-            systAxes = ["recoil_unc"],
-            passToFakes=passSystToFakes,
-        )
 
 def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_v_samples", passSystToFakes=True, wlike=False):
     info = dict(
@@ -45,7 +48,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
     for ewUnc in ewUncs:
         if ewUnc == "default":
             if z_samples:
-                if mode in ["wmass", "wlike", "lowpu_w", "vgen"]:
+                if "wlike" in mode or mode[0] == "w":
                     ewUnc = "virtual_ew_wlike"
                 else:
                     ewUnc = "virtual_ew"
@@ -53,7 +56,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                 card_tool.addSystematic(f"{ewUnc}Corr", **info, 
                     processes=z_samples,
                     labelsByAxis=[f"{ewUnc}Corr"],
-                    scale=2,
+                    scale=1,
                     skipEntries=[(1, -1), (2, -1)],
                 )                
             if w_samples:
@@ -61,7 +64,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                 card_tool.addSystematic(f"winhacnloewCorr", **info, 
                     processes=w_samples,
                     labelsByAxis=[f"winhacnloewCorr"],
-                    scale=2,
+                    scale=1,
                     skipEntries=[(0, -1), (2, -1)],
                 )                     
         else:
@@ -70,8 +73,10 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     logger.warning("ISR/FSR EW uncertainties are not implemented for electrons, proceed w/o")
                     continue
                 scale=1
-            else:
+            if "ISR" in ewUnc:
                 scale=2
+            else:
+                scale=1
 
             if "winhac" in ewUnc:
                 if not w_samples:

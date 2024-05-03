@@ -66,6 +66,7 @@ class CardTool(object):
         self.unroll = False # unroll final histogram before writing to root
         self.keepSyst = None # to override previous one with exceptions for special cases
         self.lumiScale = 1.
+        self.lumiScaleVarianceLinearly = []
         self.fit_axes = None
         self.xnorm = xnorm
         self.simultaneousABCD = simultaneousABCD
@@ -126,8 +127,9 @@ class CardTool(object):
         else:
             raise ValueError("In setNoStatUncForProcs(): expecting string or list argument")
     
-    def setLumiScale(self, lumiScale):
+    def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly=[]):
         self.lumiScale = lumiScale
+        self.lumiScaleVarianceLinearly = lumiScaleVarianceLinearly
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
@@ -375,7 +377,8 @@ class CardTool(object):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=syst, label="syst",
             procsToRead=[proc],
-            scaleToNewLumi=self.lumiScale)
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly)
         return self.datagroups.getDatagroups()[proc].hists["syst"]
 
     def getNominalHistForSignal(self):
@@ -543,6 +546,7 @@ class CardTool(object):
                     if "systNameReplace" in systInfo and systInfo["systNameReplace"]:
                         for rep in systInfo["systNameReplace"]:
                             name = name.replace(*rep)
+                            logger.debug(f"Replacement {rep} yields new name {name}")
                     if name and "systNamePrepend" in systInfo and systInfo["systNamePrepend"]:
                         name = systInfo["systNamePrepend"]+name
                     # Obviously there is a nicer way to do this...
@@ -748,7 +752,8 @@ class CardTool(object):
         datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName, label="syst",
             procsToRead=datagroups.groups.keys(),
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
             applySelection=False 
@@ -758,13 +763,16 @@ class CardTool(object):
         hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
 
         # now load the nominal histograms
-        self.datagroups.loadHistsForDatagroups(
-            baseName=self.nominalName, syst=self.nominalName,
-            procsToRead=self.datagroups.groups.keys(),
-            label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale, 
-            forceNonzero=forceNonzero,
-            sumFakesPartial=not self.simultaneousABCD)
+        # only load nominal histograms that are not already loaded
+        processesFromNomiToLoad = [proc for proc in self.datagroups.groups.keys() if self.nominalName not in procDictFromNomi[proc].hists]
+        if len(processesFromNomiToLoad):
+            self.datagroups.loadHistsForDatagroups(
+                baseName=self.nominalName, syst=self.nominalName,
+                procsToRead=processesFromNomiToLoad,
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                forceNonzero=forceNonzero,
+                sumFakesPartial=not self.simultaneousABCD)
         procDictFromNomi = self.datagroups.getDatagroups()
 
         if "QCD" not in procDict:
@@ -827,7 +835,8 @@ class CardTool(object):
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
-                scaleToNewLumi=self.lumiScale, 
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
@@ -836,17 +845,20 @@ class CardTool(object):
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
             if len(processesFromNomi):
+                # only load nominal histograms that are not already loaded
+                processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
                 logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
                 datagroupsFromNomi = self.datagroups
-                datagroupsFromNomi.loadHistsForDatagroups(
-                    baseName=self.nominalName, syst=self.nominalName,
-                    procsToRead=processesFromNomi, 
-                    label=pseudoData,
-                    scaleToNewLumi=self.lumiScale,
-                    forceNonzero=forceNonzero,
-                    sumFakesPartial=not self.simultaneousABCD)
+                if len(processesFromNomiToLoad):
+                    datagroupsFromNomi.loadHistsForDatagroups(
+                        baseName=self.nominalName, syst=self.nominalName,
+                        procsToRead=processesFromNomiToLoad, 
+                        scaleToNewLumi=self.lumiScale,
+                        lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                        forceNonzero=forceNonzero,
+                        sumFakesPartial=not self.simultaneousABCD)
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
-                hists.extend([procDictFromNomi[proc].hists[pseudoData] for proc in processesFromNomi])
+                hists.extend([procDictFromNomi[proc].hists[self.nominalName] for proc in processesFromNomi])
             # done, now sum all histograms
             hdata = hh.sumHists(hists)
             if self.pseudoDataAxes[idx] is None:
@@ -915,7 +927,8 @@ class CardTool(object):
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
             label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=not self.simultaneousABCD)
         
@@ -943,6 +956,7 @@ class CardTool(object):
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                 preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
                 scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceToNominal=forceToNominal,
                 sumFakesPartial=not self.simultaneousABCD
             )

@@ -21,6 +21,14 @@ from wremnants import histselections as sel
 logger = logging.child_logger(__name__)
 
 class Datagroups(object):
+    mode_map = {
+        "w_z_gen_dists.py" : "vgen",
+        "mz_dilepton.py" : "z_dilepton",
+        "mz_wlike_with_mu_eta_pt.py" : "z_wlike",
+        "mw_with_mu_eta_pt.py" : "w_mass",
+        "mw_lowPU.py" : "w_lowpu",
+        "mz_lowPU.py" : "z_lowpu",
+    }
 
     def __init__(self, infile, mode=None, **kwargs):
         self.h5file = None
@@ -35,21 +43,11 @@ class Datagroups(object):
         else:
             raise ValueError(f"{infile} has unsupported file type")
 
-        mode_map = {
-            "w_z_gen_dists.py" : "vgen",
-            "mz_dilepton.py" : "dilepton",
-            "mz_wlike_with_mu_eta_pt.py" : "wlike",
-            "mw_with_mu_eta_pt.py" : "wmass",
-            "mw_lowPU.py" : "lowpu_w",
-            "mz_lowPU.py" : "lowpu_z",
-        }
         if mode == None:
             analysis_script = os.path.basename(self.getScriptCommand().split()[0])
-            if analysis_script not in mode_map:
-                raise ValueError(f"Unrecognized analysis script {analysis_script}! Expected one of {mode_map.keys()}")
-            self.mode = mode_map[analysis_script]
+            self.mode = Datagroups.analysisLabel(analysis_script)
         else:
-            if mode not in mode_map.values():
+            if mode not in self.mode_map.values():
                 raise ValueError(f"Unrecognized mode '{mode}.' Must be one of {set(mode_map.values())}")
             self.mode = mode
         logger.info(f"Set mode to {self.mode}")
@@ -198,27 +196,32 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-        group_names, histToRead="nominal", fake_processes=None, mode="extended2D", smoothen=False, simultaneousABCD=False, **kwargs
+                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothen=True, smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
     ):
         logger.info(f"Set histselector")
-        if self.mode not in ["wmass", "lowpu_w"]:
+        if self.mode[0] != "w":
             return # histselectors only implemented for single lepton (with fakes)
         auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
         signalselector = sel.SignalSelectorABCD
+        scale = 1
         if mode == "extended1D":
             fakeselector = sel.FakeSelector1DExtendedABCD
+            scale = 1/1.15
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
-            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x=None))
+            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x="automatic" if smoothen else None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
+            scale = 1/1.2
             if simultaneousABCD:
                 fakeselector = sel.FakeSelectorSimultaneousABCD
             else:
                 fakeselector = sel.FakeSelectorSimpleABCD
         else:
             raise RuntimeError(f"Unknown mode {mode} for fakerate estimation")
+        if forceGlobalScaleFakes is not None:
+            scale = forceGlobalScaleFakes
         fake_processes = [self.fakeName] if fake_processes is None else fake_processes
         for i, g in enumerate(group_names):
             members = self.groups[g].members[:]
@@ -227,9 +230,9 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
             else:
-                self.groups[g].histselector = signalselector(h, fakerate_axes=self.fakerate_axes, **kwargs)
+                self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.
@@ -284,7 +287,7 @@ class Datagroups(object):
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
         applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
-        scaleToNewLumi=1, excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
+                               scaleToNewLumi=1, lumiScaleVarianceLinearly=[], excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
         logger.debug(f"The basename and syst is: {baseName}, {syst}")
@@ -382,9 +385,15 @@ class Datagroups(object):
                     h = hh.clipNegativeVals(h, createNew=False)
 
                 scale = self.processScaleFactor(member)
-                scale *= scaleToNewLumi
                 if group.scale:
                     scale *= group.scale(member)
+
+                # When scaling yields by a luminosity factor, select whether to scale the variance linearly (e.g. for extrapolation studies) or quadratically (default).
+                if not np.isclose(scaleToNewLumi, 1, rtol=0, atol=1e-6) and ((procName == self.dataName and "data" in lumiScaleVarianceLinearly) or (procName != self.dataName and "mc" in lumiScaleVarianceLinearly)):
+                        logger.warning(f"Scale {procName} hist by {scaleToNewLumi} as a multiplicative luminosity factor, with variance scaled linearly")
+                        h = hh.scaleHist(h, scaleToNewLumi, createNew=False, scaleVarianceLinearly=True)
+                else:
+                    scale *= scaleToNewLumi
 
                 if not np.isclose(scale, 1, rtol=0, atol=1e-10):
                     logger.debug(f"Scale hist with {scale}")
@@ -552,7 +561,7 @@ class Datagroups(object):
 
         self.all_gen_axes = args.get("genAxes", [])
 
-        if self.mode in ["wmass", "lowpu_w"]:
+        if self.mode[0] == "w":
             self.all_gen_axes = ["qGen", *self.all_gen_axes]
 
         self.gen_axes_names = list(gen_axes_names) if gen_axes_names != None else self.all_gen_axes
@@ -655,32 +664,10 @@ class Datagroups(object):
         return df
 
     def set_rebin_action(self, axes, ax_lim=[], ax_rebin=[], ax_absval=[], rebin_before_selection=False, rename=True):
-        if len(ax_lim) % 2 or len(ax_lim)/2 > len(axes) or len(ax_rebin) > len(axes):
-            raise ValueError("Inconsistent rebin or axlim arguments. axlim must be at most two entries per axis, and rebin at most one")
         self.rebinBeforeSelection = rebin_before_selection
 
-        for i, (var, absval) in enumerate(itertools.zip_longest(axes, ax_absval)):
-            if absval:
-                logger.info(f"Taking the absolute value of axis '{var}'")
-                self.setRebinOp(lambda h, ax=var: hh.makeAbsHist(h, ax, rename=rename))
-                axes[i] = f"abs{var}" if rename else var
-
-        def rebin(h, axes, lows=[], highs=[], rebins=[]):
-            sel = {}
-            for ax,low,high,rebin in itertools.zip_longest(axes, lows, highs, rebins):
-                if low is not None and high is not None:
-                    # in case high edge is upper edge of last bin we need to manually set the upper limit
-                    upper = hist.overflow if high==h.axes[ax].edges[-1] else complex(0, high) 
-                    logger.info(f"Restricting the axis '{ax}' to range [{low}, {high}]")
-                    sel[ax] = slice(complex(0, low), upper, hist.rebin(rebin) if rebin else None)
-                elif rebin:
-                    logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
-                    sel[ax] = slice(None,None,hist.rebin(rebin))
-            return h[sel] if len(sel)>0 else h
-
-        if len(ax_lim)>0 or len(ax_rebin)>0:
-            self.setRebinOp(lambda h,axes=axes,lows=ax_lim[::2],highs=ax_lim[1::2],rebins=ax_rebin: rebin(h, axes, lows, highs, rebins))
-
+        for a in hh.get_rebin_actions(axes, ax_lim=ax_lim, ax_rebin=ax_rebin, ax_absval=ax_absval, rename=rename):
+            self.setRebinOp(a)
 
     def readHist(self, baseName, proc, group, syst):
         output = self.results[proc.name]["output"]
@@ -708,4 +695,9 @@ class Datagroups(object):
             return syst
         return "_".join([baseName,syst])
     
+    @staticmethod
+    def analysisLabel(filename):
+        if filename not in Datagroups.mode_map:
+            raise ValueError(f"Unrecognized analysis script {filename}! Expected one of {Datagroups.mode_map.keys()}")
 
+        return Datagroups.mode_map[filename]

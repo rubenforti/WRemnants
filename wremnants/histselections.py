@@ -34,13 +34,13 @@ def get_selection_edges(axis_name, upper_bound=False):
             # low: passing, high: failing, no upper bound 
             return complex(0,ts[0]), complex(0,ts[1]), complex(0,ts[2]), (complex(0,ts[3]) if upper_bound else None)
     else:
-        raise RuntimeError(f"Can not find threshold for abcd axis {self.name_x}")
+        raise RuntimeError(f"Can not find threshold for abcd axis {axis_name}")
 
 
 # default abcd_variables to look for
 abcd_variables = (("mt", "passMT"), ("relIso", "passIso"), ("iso", "passIso"), ("relJetLeptonDiff", "passIso"), ("dxy", "passDxy"))
 
-def get_eigen_variations(params, cov, sign=1, force_positive=True):
+def get_eigen_variations(params, cov, sign=1, force_positive=False):
     # diagonalize and get eigenvalues and eigenvectors
     e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i], 
     vT = np.transpose(v, axes=(*np.arange(v.ndim-2), v.ndim-1, v.ndim-2)) # transpose v to have row eigenvectors[i, :] for easier computations
@@ -219,11 +219,19 @@ def get_rebinning(edges, axis_name):
     else:
         raise RuntimeError(f"No automatic rebinning known for axis {axis_name}")
 
-    if edges == target_edges:
+    if len(edges) == len(target_edges) and all(edges == target_edges):
         logger.debug(f"Axis has already in target edges, no rebinning needed")
         return None
 
-    rebin = [edges[0]] + [x for x in target_edges[1:-1] if x in edges[1:-1]] + [edges[-1]]
+    i=0
+    rebin = []
+    for e in edges:
+        if e >= target_edges[i]:
+            rebin.append(e)
+            i+=1
+        if i >= len(target_edges):
+            break
+
     if len(rebin) <= 2:
         logger.warning(f"No automatic rebinning possible for axis {axis_name}")
         return None
@@ -348,10 +356,11 @@ class SignalSelectorABCD(HistselectorABCD):
 class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
-        smooth_fakerate=False, 
-        smoothing_order_fakerate=1, 
+        smooth_fakerate=True, 
+        smoothing_order_fakerate=2,
         polynomial="bernstein", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
+        global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
     ):
         """
@@ -361,6 +370,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # nominal histogram to be used to transfer variances for systematic variations
         self.h_nominal = None
+        self.global_scalefactor = global_scalefactor
 
         ### interpolate/smooth in x-axis in application region
         self.polynomial = polynomial 
@@ -370,12 +380,14 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # fakerate factor
         self.smooth_fakerate = smooth_fakerate
         self.smoothing_order_fakerate = smoothing_order_fakerate
+        if self.smooth_fakerate:
+            logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
-        # if self.polynomial=="bernstein":
-        #     self.solve = solve_nonnegative_leastsquare
-        # else:
-        self.solve = solve_leastsquare
+        if self.polynomial=="bernstein":
+            self.solve = solve_nonnegative_leastsquare
+        else:
+            self.solve = solve_leastsquare
 
         # set smooth functions
         self.f_frf = None
@@ -418,6 +430,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             hSignal.values(flow=flow)[...] = d
             if hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
+
+        if self.global_scalefactor != 1:
+            hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
 
         return hSignal            
 
@@ -592,12 +607,16 @@ class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
         # set the expected values in the signal region
         slices = [self.sel_x if n==self.name_x else self.sel_y if n==self.name_y else slice(None) for n in h.axes.name]
         h.values(flow=True)[*slices] = super().get_hist(h).values(flow=True)
+
+        if self.global_scalefactor != 1:
+            h = hh.scaleHist(h, self.global_scalefactor)
+
         return h
 
 class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
-    # extrapolate the fakerate in the abcd x axis by finding a analytic description in the dx region
+    # extrapolate the fakerate in the abcd x axis by finding an analytic description in the dx region
     def __init__(self, h, *args, 
-        smooth_fakerate=False,
+        smooth_fakerate=True,
         polynomial="power",
         extrapolation_order=1,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
@@ -610,7 +629,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         if rebin_x == "automatic":
             edges = h.axes[self.name_x].edges
-            self.rebin_x = get_rebinning(edges, self.rebin_x)
+            self.rebin_x = get_rebinning(edges, self.name_x)
         else:
             self.rebin_x = rebin_x
 
@@ -630,22 +649,24 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         self.sel_dx = s[x1:x3:] if x3 is None or x3.imag > x1.imag else s[x3:x1:]
 
     def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
+        h = self.transfer_variances(h, set_nominal=is_nominal)
         c, cvar = self.get_yields_applicationregion(h)
-        if self.integrate_x and is_nominal:
+        if self.integrate_x:
             # can convert syst variations into bin by bin stat; do for the fist call (nominal histogram) 
             logger.debug("Integrate abcd x-axis, treat uncertainty as bin by bin stat")
-            y_frf, y_frf_variation = self.compute_fakeratefactor(h, syst_variations=True)
+            y_frf, y_frf_variation = self.compute_fakeratefactor(h, syst_variations=is_nominal)
             d = c * y_frf
-            d_variation = c[..., np.newaxis,np.newaxis] * y_frf_variation
-            # sum up abcd-x axis (sum up variatoins to treat uncertainty fully correlated across abcd-x axis bins)
+            # sum up abcd-x axis (sum up variations to treat uncertainty fully correlated across abcd-x axis bins)
             idx_x = h[{self.name_y: self.sel_dy}].axes.name.index(self.name_x)
             d = d.sum(axis=idx_x)
-            d_variation = d_variation.sum(axis=idx_x)
-
-            dvar = np.sum([(d_variation[...,iparam,0] - d)**2 for iparam in range(d_variation.shape[-2])], axis=0) # sum of squares of up variations
-            dvar += (y_frf**2 * cvar).sum(axis=idx_x) # add uncorrelated bin by bin uncertainty from application region
+            if is_nominal:
+                d_variation = c[..., np.newaxis,np.newaxis] * y_frf_variation
+                d_variation = d_variation.sum(axis=idx_x)
+                dvar = np.sum([(d_variation[...,iparam,0] - d)**2 for iparam in range(d_variation.shape[-2])], axis=0) # sum of squares of up variations
+                dvar += (y_frf**2 * cvar).sum(axis=idx_x) # add uncorrelated bin by bin uncertainty from application region
+            else:
+                dvar = None
         else:
-            h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
             if variations_frf:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var
@@ -661,8 +682,11 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
         else:
             hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
+            if dvar is not None and hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
+
+        if self.global_scalefactor != 1:
+            hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
 
         return hSignal
 
@@ -799,7 +823,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             d, dvar = self.calculate_fullABCD(h)
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
+        hSignal = hist.Hist(*h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
 
         if variations_frf and self.smooth_fakerate:
             hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
@@ -807,6 +831,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             hSignal.values(flow=flow)[...] = d
             if hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
+
+        if self.global_scalefactor != 1:
+            hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
 
         return hSignal
 
@@ -947,7 +974,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         if rebin_x == "automatic":
             edges = h.axes[self.name_x].edges
-            self.rebin_x = get_rebinning(h, self.rebin_x)
+            self.rebin_x = get_rebinning(edges, self.name_x)
         else:
             self.rebin_x = rebin_x
 
@@ -955,7 +982,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.axis_x_min = h[{self.name_x: self.sel_x}].axes[self.name_x].edges[0]
         if self.name_x == "mt":
             # mt does not have an upper bound, cap at 100
-            self.axis_x_max = 100
+            edges = self.rebin_x if self.rebin_x is not None else h.axes[self.name_x].edges
+            self.axis_x_max = extend_edges(h.axes[self.name_x].traits, edges)[-1]
         elif self.name_x in ["iso", "relIso", "relJetLeptonDiff", "dxy"]:
             # iso and dxy have a finite lower and upper bound in the application region
             self.axis_x_max = abcd_thresholds[self.name_x][1]
@@ -1019,7 +1047,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             d, dvar = self.calculate_fullABCD(h)            
 
         # set histogram in signal region
-        axes = [a for a in h.axes if a.name != self.name_y and (not self.integrate_x or a.name != self.name_x)]
+        axes = [a for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y]
         hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
 
         if variations_scf or variations_frf or variations_full:
@@ -1028,6 +1056,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             hSignal.values(flow=flow)[...] = d
             if hSignal.storage_type == hist.storage.Weight:
                 hSignal.variances(flow=flow)[...] = dvar
+
+        if self.global_scalefactor != 1:
+            hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
 
         return hSignal
 
@@ -1125,7 +1156,6 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             if self.smooth_shapecorrection:
                 # interpolate scf in mT and smooth in pT (i.e. 2D)
-
                 idx_ax_smoothing = hNew.axes.name.index(self.smoothing_axis_name)
                 if idx_ax_smoothing != len(axes)-2 or idx_ax_interpol != len(axes)-1:
                     y = np.moveaxis(y, (idx_ax_smoothing, idx_ax_interpol), (-2, -1))
@@ -1182,6 +1212,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 logger.warning(f"Found {np.sum(y_smooth_orig<0)} bins with negative shape correction factors")
             if y_smooth_var_orig is not None and np.sum(y_smooth_var_orig<0) > 0:
                 logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative shape correction factor variations")
+                y_smooth_var_orig[y_smooth_var_orig<0] = 0
 
             y, y_var = y_smooth_orig, y_smooth_var_orig
 

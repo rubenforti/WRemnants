@@ -1,18 +1,19 @@
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections
+from wremnants import theory_tools,syst_tools,theory_corrections,unfolding_tools
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
 import math
-import os
 import numpy as np
 from utilities.differential import get_theoryAgnostic_axes
-
 
 parser.add_argument("--skipAngularCoeffs", action='store_true', help="Skip the conversion of helicity moments to angular coeff fractions")
 parser.add_argument("--propagatePDFstoHelicity", action='store_true', help="Propagate PDF uncertainties to helicity moments")
@@ -21,9 +22,10 @@ parser.add_argument("--singleLeptonHists", action='store_true', help="Also store
 parser.add_argument("--photonHists", action='store_true', help="Also store photon kinematics")
 parser.add_argument("--skipEWHists", action='store_true', help="Also store histograms for EW reweighting. Use with --filter horace")
 parser.add_argument("--signedY", action='store_true', help="use signed Y")
-parser.add_argument("--applySelection", action='store_true', help="Apply selection on leptons")
+parser.add_argument("--fiducial", choices=["masswindow", "dilepton", "singlelep"], help="Apply selection on leptons (No argument for inclusive)")
 parser.add_argument("--auxiliaryHistograms", action="store_true", help="Safe auxiliary histograms (mainly for ew analysis)")
 parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q variable instead of ptVgen, GEN only ", default=None)
+parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHelicity hist")
 
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = common.set_parser_default(parser, "theoryCorr", [])
@@ -37,7 +39,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=args.excludeProcs,
                         extended = "msht20an3lo" not in args.pdfs,
-                        nanoVersion="v9", base_path=args.dataPath, mode='gen')
+                        nanoVersion="v9", base_path=args.dataPath, mode=analysis_label)
 
 logger.debug(f"Will process samples {[d.name for d in datasets]}")
 
@@ -66,8 +68,7 @@ col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
 if not args.useTheoryAgnosticBinning:
     axis_ptVgen = hist.axis.Variable(
-     list(range(0,151))+[160., 190.0, 220.0, 250.0, 300.0, 400.0, 500.0, 800.0, 13000.0], 
-    #common.ptV_binning,
+    (*common.get_dilepton_ptV_binning(fine=False), 13000.),
     name = "ptVgen", underflow=False,
 )
 else:
@@ -90,8 +91,8 @@ axis_chargeZgen = hist.axis.Integer(
     0, 1, name="chargeVgen", underflow=False, overflow=False
 )
 
-axis_l_eta_gen = hist.axis.Regular(48, -2.4, 2.4, name = "eta")
-axis_l_pt_gen = hist.axis.Regular(29, 26., 55., name = "pt")
+axis_absetal_gen = hist.axis.Regular(24, 0, 2.4, name = "abseta")
+axis_ptl_gen = hist.axis.Regular(34, 26., 60., name = "pt")
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
@@ -124,20 +125,22 @@ def build_graph(df, dataset):
 
     if isZ:
         nominal_axes = [axis_massZgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeZgen]
-        lep_axes = [axis_l_eta_gen, axis_l_pt_gen, axis_chargeZgen]
+        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeZgen]
     else:
         nominal_axes = [axis_massWgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeWgen]
-        lep_axes = [axis_l_eta_gen, axis_l_pt_gen, axis_chargeWgen]
+        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeWgen]
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
-    lep_cols = ["etaPrefsrLep", "ptPrefsrLep", "chargeVgen"]
+    lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
+
+    mode = f'{"z" if isZ else "w"}_{analysis_label}'
+    if args.fiducial is not None:
+        if isZ and args.fiducial == "singlelep":
+            mode += "_wlike"
+
+        df = unfolding_tools.define_gen_level(df, "preFSR", dataset.name, mode=mode)
+        df = unfolding_tools.select_fiducial_space(df, mode=mode, fiducial=args.fiducial, unfolding=True)
 
     if args.singleLeptonHists and (isW or isZ):
-        if isW:
-            df = df.Define('ptPrefsrLep', 'genl.pt()')
-            df = df.Define('etaPrefsrLep', 'genl.eta()')
-        else:
-            df = df.Define('ptPrefsrLep', 'genlanti.pt()')
-            df = df.Define('etaPrefsrLep', 'genlanti.eta()')
         results.append(df.HistoBoost("nominal_genlep", lep_axes, [*lep_cols, "nominal_weight"], storage=hist.storage.Weight()))
 
     if not args.skipEWHists and (isW or isZ):
@@ -166,7 +169,7 @@ def build_graph(df, dataset):
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
         axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
-        df = theory_tools.define_dressed_vars(df, mode="wmass" if isW else "dilepton")
+        df = theory_tools.define_dressed_vars(df, mode=mode)
         results.append(df.HistoBoost("dressed_MllPTll", [axis_ewMll, axis_ewPtll], ["dressed_MV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllPTll", [axis_ewAbsYll, axis_ewPtll], ["dressed_absYV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("dressed_YllMll", [axis_ewAbsYll, axis_ewMll], ["dressed_absYV", "dressed_MV", "nominal_weight"], storage=hist.storage.Weight()))
@@ -230,27 +233,6 @@ def build_graph(df, dataset):
                 results.append(df.HistoBoost("nominal_sublPhoton", [axis_photonPt, axis_photonEta], ["sublPhotonPt", "sublPhotonEta", "nominal_weight"], storage=hist.storage.Weight()))
                 results.append(df.HistoBoost("nominal_trailPhoton", [axis_photonPt, axis_photonEta], ["trailPhotonPt", "trailPhotonEta", "nominal_weight"], storage=hist.storage.Weight()))
 
-            if args.applySelection:
-                # for fiducial EW corrections
-                # apply acceptance cuts on post FSR objects
-                if isZ:
-                    # mz_wlike_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wlike")
-                    df_fiducial = df.Filter(f"""
-                        postfsrOtherLep_pt>26 && postfsrOtherLep_pt<60 
-                        && postfsrOtherLep_absEta<2.5
-                        && postfsrMV > 60 && postfsrMV < 120
-                        && postfsrMT > 45
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
-                        """)
-                elif isW:
-                    # mw_with_mu_eta_pt.py selection, don't cut on chosen lepton pt,eta as this will be used in binning
-                    df = theory_tools.define_postfsr_vars(df, mode="wmass")
-                    df_fiducial = df.Filter(f"""
-                        postfsrMT > 40
-                        && postfsrDeltaPhiMuonMet > {np.pi/4.}
-                        """)
-
                 # postfsr definition
                 axis_eta = hist.axis.Regular(25, 0, 2.5, name = "postfsrLep_absEta", overflow=True, underflow=False)
                 axis_pt = hist.axis.Regular(50, 20, 70, name = "postfsrLep_pt", overflow=True, underflow=True)
@@ -264,7 +246,10 @@ def build_graph(df, dataset):
 
     if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
             "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames():
-        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, None, nominal_axes, nominal_cols, base_name="nominal_gen")
+
+        qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
+
+        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen")
 
     return results, weightsum
 

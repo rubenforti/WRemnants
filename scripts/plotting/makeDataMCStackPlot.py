@@ -43,7 +43,10 @@ parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", hel
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=1' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
-parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="simple", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
+parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
+parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
+parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
@@ -128,15 +131,17 @@ if args.selection:
 else:
     applySelection=True
 
-groups.setNominalName(args.baseName)
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
-    groups.set_histselectors(datasets, args.baseName, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation)
+    groups.set_histselectors(datasets, args.baseName, smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
 
-nominalName = args.baseName.rsplit("_", 1)[0] if not args.nominalRef else args.nominalRef
 if not args.nominalRef:
+    nominalName = args.baseName.rsplit("_", 1)[0]
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(args.baseName, syst="", procsToRead=datasets, applySelection=applySelection)
 else:
+    nominalName = args.nominalRef
+    groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
 exclude = ["Data"] 
@@ -212,9 +217,16 @@ def collapseSyst(h):
 
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
+    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+        # in case of variable bin width normalize to unit
+        binwnorm = 1.0
+        ylabel="Events/unit"
+    else:
+        binwnorm = None
+        ylabel="Events/bin"
     if len(h.split("-")) > 1:
         sp = h.split("-")
-        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=1, obs=sp)
+        action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])} bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
@@ -223,7 +235,7 @@ for h in args.hists:
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
-            xlabel=xlabel, ylabel="Events/bin", rrange=args.rrange, binwnorm=1.0, lumi=groups.lumi,
+            xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
             cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],

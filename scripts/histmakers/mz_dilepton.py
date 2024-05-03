@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -9,12 +12,10 @@ import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.datasets.datagroups import Datagroups
 import hist
 import lz4.frame
 import math
 import time
-import os
 
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
@@ -22,18 +23,15 @@ parser.add_argument("--finePtBinning", action='store_true', help="Use fine binni
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 
-parser = common.set_parser_default(parser, "pt", [34,26.,60.])
-parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label))
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen", "absYVGen"])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -50,11 +48,11 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era = era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
-dilepton_ptV_binning = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not args.finePtBinning else range(60)
+
+dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 # available axes for dilepton validation plots
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -100,16 +98,12 @@ if args.csVarsHist:
 
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
-gen_axes = {
-    "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=isPoiAsNoi),
-    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=isPoiAsNoi),  
-}
+inclusive = hasattr(args, "inclusive") and args.inclusive
 
 if isUnfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes, add_out_of_acceptance_axis=isPoiAsNoi)
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning, inclusive), add_out_of_acceptance_axis=isPoiAsNoi)
     if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
-
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -178,16 +172,19 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : args.pt[1], "pt_max" : args.pt[2], "abseta_max" : args.eta[2], 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
+
+        if inclusive:
+            cutsmap = {"fiducial" : "masswindow"}
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], accept=False, **cutsmap)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, select=not isPoiAsNoi, accept=True)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], select=not isPoiAsNoi, accept=True, **cutsmap)
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
@@ -226,8 +223,8 @@ def build_graph(df, dataset):
         df = df.Alias("muonsPlus_pt0", "nonTrigMuons_pt0")
         df = df.Alias("muonsMinus_eta0", "trigMuons_eta0")
         df = df.Alias("muonsPlus_eta0", "nonTrigMuons_eta0")
-        df = df.Alias("muonsMinus_mon4", "trigMuons_mom4")
-        df = df.Alias("muonsPlus_mon4", "nonTrigMuons_mom4")
+        df = df.Alias("muonsMinus_mom4", "trigMuons_mom4")
+        df = df.Alias("muonsPlus_mom4", "nonTrigMuons_mom4")
     else:
         df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons", era=era)
         df = df.Define("trigMuon_isNegative",  "trigMuons_charge0 == -1")
@@ -235,8 +232,8 @@ def build_graph(df, dataset):
         df = df.Define("muonsPlus_pt0",   "trigMuon_isNegative ? nonTrigMuons_pt0 : trigMuons_pt0")
         df = df.Define("muonsMinus_eta0", "trigMuon_isNegative ? trigMuons_eta0 : nonTrigMuons_eta0")
         df = df.Define("muonsPlus_eta0",  "trigMuon_isNegative ? nonTrigMuons_eta0 : trigMuons_eta0")
-        df = df.Define("muonsMinus_mon4", "trigMuon_isNegative ? trigMuons_mom4 : nonTrigMuons_mom4")
-        df = df.Define("muonsPlus_mon4",  "trigMuon_isNegative ? nonTrigMuons_mom4 : trigMuons_mom4")
+        df = df.Define("muonsMinus_mom4", "trigMuon_isNegative ? trigMuons_mom4 : nonTrigMuons_mom4")
+        df = df.Define("muonsPlus_mom4",  "trigMuon_isNegative ? nonTrigMuons_mom4 : trigMuons_mom4")
     
     df = df.Define("ptll", "ll_mom4.pt()")
     df = df.Define("yll", "ll_mom4.Rapidity()")
@@ -256,7 +253,7 @@ def build_graph(df, dataset):
     df = df.Define("etaSum", "muonsPlus_eta0 + muonsMinus_eta0") 
     df = df.Define("etaDiff", "muonsPlus_eta0 - muonsMinus_eta0") # plus - minus 
 
-    df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mon4, muonsMinus_mon4)")
+    df = df.Define("csSineCosThetaPhill", "wrem::csSineCosThetaPhi(muonsPlus_mom4, muonsMinus_mom4)")
     df = df.Define("cosThetaStarll", "csSineCosThetaPhill.costheta")
     df = df.Define("phiStarll", "std::atan2(csSineCosThetaPhill.sinphi, csSineCosThetaPhill.cosphi)")
 

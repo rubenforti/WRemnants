@@ -1,4 +1,4 @@
-from utilities import differential
+from utilities import differential,common
 from wremnants import syst_tools, theory_tools, logging
 from copy import deepcopy
 import hist
@@ -26,36 +26,34 @@ def add_out_of_acceptance(datasets, group, newGroupName=None):
 
     return datasets + datasets_ooa
 
-def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
+def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
     # gen level definitions
     gen_levels = ["preFSR", "postFSR"]
     if gen_level not in gen_levels:
         raise ValueError(f"Unknown gen level '{gen_level}'! Supported gen level definitions are '{gen_levels}'.")
 
-    modes = ["wmass", "wlike", "dilepton"]
-    if mode not in modes:
-        raise ValueError(f"Unknown mode '{mode}'! Supported modes are '{modes}'.")
+    logger.info(f"Using {gen_level} leptons")
+    singlelep = mode[0] == "w" or "wlike" in mode
 
     if gen_level == "preFSR":
-        df = theory_tools.define_prefsr_vars(df)
+        df = theory_tools.define_prefsr_vars(df, mode=mode)
 
         # needed for fiducial phase space definition
         df = df.Alias("massVGen", "massVgen")
         df = df.Alias("ptVGen", "ptVgen")
         df = df.Alias("absYVGen", "absYVgen")
 
-        if mode in ["wmass", "wlike"]:
-            df = df.Define("mTWGen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
+        if singlelep:
+            df = df.Alias("mTVGen", "mTVgen")   
 
-        if mode == "wmass":
+        if mode[0] == "w":
             df = df.Define("ptGen", "chargeVgen < 0 ? genl.pt() : genlanti.pt()")   
-            df = df.Define("absEtaGen", "chargeVgen < 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
-
-        if mode in ["wlike", "dilepton"]:
+            df = df.Define("absEtaGen", "chargeVgen < 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
+        else:
             df = df.Define("ptGen", "event % 2 == 0 ? genl.pt() : genlanti.pt()")
-            df = df.Define("absEtaGen", "event % 2 == 0 ? fabs(genl.eta()) : fabs(genlanti.eta())")
+            df = df.Define("absEtaGen", "event % 2 == 0 ? std::fabs(genl.eta()) : std::fabs(genlanti.eta())")
             df = df.Define("ptOtherGen", "event % 2 == 0 ? genlanti.pt() : genl.pt()")
-            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? fabs(genlanti.eta()) : fabs(genl.eta())")
+            df = df.Define("absEtaOtherGen", "event % 2 == 0 ? std::fabs(genlanti.eta()) : std::fabs(genl.eta())")
 
     elif gen_level == "postFSR":
         df = theory_tools.define_postfsr_vars(df, mode=mode)
@@ -63,54 +61,79 @@ def define_gen_level(df, gen_level, dataset_name, mode="wmass"):
         df = df.Alias("ptGen", f"postfsrLep_pt")
         df = df.Alias("absEtaGen", f"postfsrLep_absEta")           
 
-        if mode in ["wmass", "wlike"]:
-            df = df.Alias("mTWGen", "postfsrMT")   
+        if singlelep:
+            df = df.Alias("mTVGen", "postfsrMT")   
    
-        if mode in ["wlike", "dilepton"]:
+        if mode[0] == "z":
             df = df.Alias("ptOtherGen", "postfsrOtherLep_pt")
             df = df.Alias("absEtaOtherGen", f"postfsrOtherLep_absEta")                
 
             df = df.Alias("massVGen", "postfsrMV")
-            df = df.Define("absYVGen", "fabs(postfsrYV)")  
+            df = df.Define("absYVGen", "postfsrabsYV")  
 
         df = df.Alias("ptVGen", "postfsrPTV")      
 
-    if mode == "wlike":
+    if "wlike" in mode:
         df = df.Define("qGen", "event % 2 == 0 ? -1 : 1")
 
     return df
 
-def select_fiducial_space(df, select=True, accept=True, mode="wmass", pt_min=None, pt_max=None, mass_min=60, mass_max=120, mtw_min=0, selections=[]):
+def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs):
     # Define a fiducial phase space and if select=True, either select events inside/outside
     # accept = True: select events in fiducial phase space 
     # accept = False: reject events in fiducial pahse space
-    
-    if mode == "wmass":
-        selection = "(absEtaGen < 2.4)"        
-    elif mode == "wlike":
-        selection = f"""
-            (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
-            && (ptOtherGen > {pt_min}) && (ptOtherGen < {pt_max})
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
-    elif mode == "dilepton":
-        selection = f"""
-            (absEtaGen < 2.4) && (absEtaOtherGen < 2.4) 
-            && (ptGen > {pt_min}) && (ptOtherGen > {pt_min}) 
-            && (ptGen < {pt_max}) && (ptOtherGen < {pt_max}) 
-            && (massVGen > {mass_min}) && (massVGen < {mass_max})
-            """
+    fiducial = kwargs.get("fiducial")
+    selmap = {x : None for x in ["pt_min", "pt_max", "abseta_max", "mass_min", "mass_max", "mtw_min",]}
+
+    selections = kwargs.get('selections', [])
+    if fiducial:
+        logger.info(f"Using default fiducial settings for selection {fiducial} for analysis {mode}")
+        if fiducial not in ["inclusive", "masswindow"]:
+            # Use unfolding values in gen script
+            selmap['pt_min'], selmap['pt_max'] = common.get_default_ptbins(mode, gen="vgen" in mode)[1:]
+            selmap['abseta_max'] = common.get_default_etabins(mode)[-1]
+            if mode[0] == "w" or "wlike" in mode:
+                selmap['mtw_min'] = common.get_default_mtcut(mode)
+        elif fiducial == "masswindow" and mode[0] == "z":
+            selmap['mass_min'], selmap['mass_max'] = common.get_default_mz_window()
     else:
-        raise NotImplementedError(f"No fiducial phase space definiton found for mode '{mode}'!") 
+        for k in selmap.keys():
+            selmap[k] = kwargs.get(k)
+    
+    if selmap['abseta_max'] is not None:
+        selections.append(f"absEtaGen < {selmap['abseta_max']}")
+        if mode[0] == 'z':
+            selections.append(f"absEtaOtherGen < {selmap['abseta_max']}")
 
-    if mtw_min > 0:
-        selection += f" && (mTWGen > {mtw_min})"
+    if selmap['pt_min'] is not None:
+        if "gen" in mode or "dilepton" in mode:
+            selections.append(f"ptGen > {selmap['pt_min']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen > {selmap['pt_min']}")
 
-    for sel in selections:
-        logger.debug(f"Add selection {sel} for fiducial phase space")
-        selection += f" && ({sel})"
+    if selmap['pt_max'] is not None:
+        if "gen" in mode or "dilepton" in mode:
+            # Don't place explicit cut on lepton pT for unfolding of W/W-like, but do for gen selection
+            selections.append(f"ptGen < {selmap['pt_max']}")
+        if mode[0] == 'z':
+            selections.append(f"ptOtherGen < {selmap['pt_max']}")
 
-    df = df.Define("acceptance", selection)
+    if selmap['mass_min'] is not None:
+        selections.append(f"massVGen > {selmap['mass_min']}")
+
+    if selmap['mass_max'] is not None:
+        selections.append(f"massVGen < {selmap['mass_max']}")
+
+    if selmap['mtw_min'] is not None:
+        selections.append(f"mTVGen > {selmap['mtw_min']}")
+    
+    selection = " && ".join(selections)
+
+    if selection:
+        df = df.Define("acceptance", selection)
+        logger.info(f"Applying fiducial selection '{selection}'")
+    else:
+        df = df.DefinePerSample("acceptance", "true")
 
     if select and accept:
         df = df.Filter("acceptance")

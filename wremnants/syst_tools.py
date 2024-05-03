@@ -66,6 +66,10 @@ def syst_transform_map(base_hist, hist_name):
         return hname.split("-")
 
     resum_tnps = ['pdf0', 'gamma_cusp+1', 'gamma_mu_q+1', 'gamma_nu+1', 'h_qqV-0.5', 's+1', 'b_qqV+1', 'b_qqbarV+1', 'b_qqS+1', 'b_qqDS+1', 'b_qg+1']
+    resum_tnpsXp1_up = ['pdf0', 'gamma_cusp1.', 'gamma_mu_q1.', 'gamma_nu1.', 's1.', 'b_qqV0.5', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
+    resum_tnpsXp1_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-2.5', 'b_qqV-2.5', 'b_qqbarV-2.5', 'b_qqS-2.5', 'b_qqDS-2.5', 'b_qg-2.5']
+    resum_tnpsXp0_up = ['pdf0', 'gamma_cusp1.', 'gamma_mu_q1.', 'gamma_nu1.', 's1.', 'b_qqV0.5', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
+    resum_tnpsXp0_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-0.5', 'b_qqV-0.5', 'b_qqbarV-0.5', 'b_qqS-0.5', 'b_qqDS-0.5', 'b_qg-0.5']
 
     transforms.update({
         "resumFOScaleUp" : {
@@ -86,11 +90,17 @@ def syst_transform_map(base_hist, hist_name):
                 ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7", 
                 "transition_points0.2_0.45_0.7", "transition_points0.4_0.75_1.1", ],
                  no_flow=["ptVgen"], do_min=True)},
-       "resumTNPUp" : {
-           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars")[0]
+       "resumTNPXp1Up" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp0_up}], "vars")[0]
         },
-       "resumTNPDown" : {
-           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars")[1]
+       "resumTNPXp0Down" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp0_down}], "vars")[1]
+        },
+       "resumTNPXp0Up" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp1_up}], "vars")[0]
+        },
+       "resumTNPXp1Down" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp1_down}], "vars")[1]
         },
        "resumTNPx5Up" : {
            "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars", scale=5)[0]
@@ -169,8 +179,7 @@ def syst_transform_map(base_hist, hist_name):
     return transforms
 
 def gen_scale_helicity_hist_to_variations(scale_hist, gen_obs, sum_axes=[], pt_ax="ptVgen", gen_axes=["ptVgen", "chargeVgen", "helicity"], rebinPtV=None):
-    for obs in gen_obs:
-        scale_hist = hh.expand_hist_by_duplicate_axis(scale_hist, obs, obs+"Alt", swap_axes=True)
+    scale_hist = hh.expand_hist_by_duplicate_axes(hist_in, gen_obs, [a+"Alt" for a in gen_obs], swap_axes=True)
 
     return scale_helicity_hist_to_variations(scale_hist, sum_axes, pt_ax, gen_axes, rebinPtV)
 
@@ -229,57 +238,42 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", g
 
     return scale_variation_hist
 
-def decorrelateByAxis(hvar, hnom, axisToDecorrName, decorrEdges, newDecorrAxisName=None):
+def decorrelateByAxis(hvar, hnom, axisToDecorrName, newDecorrAxisName=None, axlim=[], rebin=[], absval=False):
+    return decorrelateByAxes(hvar, hnom, axesToDecorrNames=[axisToDecorrName], newDecorrAxesNames=[newDecorrAxisName], axlim=[axlim], rebin=[rebin], absval=[absval])
 
-    commonMessage = f"Requested to decorrelate uncertainty in histogram {hvar.name} by {axisToDecorrName} axis"
-    if axisToDecorrName not in hnom.axes.name:
-        raise ValueError(f"{commonMessage}, but available axes for nominal histogram are {hnom.axes.name}")
-    
-    # for convenience, broadcast the nominal into the same shape as hvar
-    # hvar may often have the same dimension as hnom, but sometimes it might have been mirrored and thus have at least the mirror axis
-    hnomAsVar = hh.broadcastSystHist(hnom, hvar)
+def decorrelateByAxes(hvar, hnom, axesToDecorrNames, newDecorrAxesNames=[], axlim=[], rebin=[], absval=[]):
 
-    ax = hnomAsVar.axes[axisToDecorrName]
-    axisToDecorrIndex = list(hnomAsVar.axes).index(ax)
-    logger.debug(f"Decorrelating versus axis {axisToDecorrName} with index {axisToDecorrIndex}")
+    commonMessage = f"Requested to decorrelate uncertainty in histogram {hvar.name} by {axesToDecorrNames} axes"
+    if any(a not in hvar.axes.name for a in axesToDecorrNames):
+        raise ValueError(f"{commonMessage}, but available axes for histogram are {hvar.axes.name}")
 
-    if len(decorrEdges):
-        if len(decorrEdges) < 3:
-            raise ValueError(f"{commonMessage}, but less than 3 edges (thus 2 bins) were specified.")
-        # check that the edges in decorrEdges correspond to a subset of the edges of axis names axisToDecorrName
-        badEdges = []
-        for edge in decorrEdges:
-            if all(not np.isclose(edge, j, atol=0.0001) for j in ax.edges):
-                badEdges.append(edge)
-        if len(badEdges):
-            raise ValueError(f"Inconsistent edges specified to decorrelate uncertainty versus axis {axisToDecorrName}\n"
-                             f"Original axis edges: {ax.edges}\n"
-                             f"Decorrelation edges: {decorrEdges}\n"
-                             f"Inconsistent edges:  {badEdges}")
-    else:
-        # empty array automatically uses all edges of the chosen axis
-        decorrEdges = [x for x in ax.edges]
+    if len(newDecorrAxesNames)==0:
+        newDecorrAxesNames = [f"{n}_decorr" for n in axesToDecorrNames]
+    elif len(axesToDecorrNames) != len(newDecorrAxesNames):
+        raise ValueError(f"If newDecorrAxisName are specified, they must have the same length than axisToDecorrName, but they are {newDecorrAxisName} and {axisToDecorrName}.")
 
-    # add new axis to the broadcasted nominal (then we will copy the syst in the relevant bins)
-    axis_decorr_name = newDecorrAxisName if newDecorrAxisName != None else f"{axisToDecorrName}_decorr"
-    axis_decorr = hist.axis.Variable(decorrEdges, underflow=False, overflow=False, name=axis_decorr_name)
-    hvarnew = hh.addGenericAxis(hnomAsVar, axis_decorr)
+    # subtract nominal hist to get variation only
+    hvar = hh.addHists(hvar, hnom, scale2=-1)
+    # expand edges for variations on diagonal elements
+    hvar = hh.expand_hist_by_duplicate_axes(hvar, axesToDecorrNames, newDecorrAxesNames, put_trailing=True)
+    # add back nominal histogram while broadcasting
+    hvar = hh.addHists(hvar, hnom)
+    if len(axlim) or len(rebin):
+        hvar = hh.rebinHistMultiAx(hvar, newDecorrAxesNames, rebin, axlim[::2], axlim[1::2])
 
-    for isyst in range(len(decorrEdges)-1):
-        indexLow = ax.index(decorrEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge (note that the second bin index is excluded from the slice selection below)
-        # for the upper edge add an additional protection for the very last edge in case the axis doesn't have the overflow bin, since the edge lookup might be undefined in that case
-        # since the upper edge is no longer associated to the following bin, which would be the overflow bin, but to the inner bin (adding epsilon seems to work nonetheless, but it is probably by chance)
-        indexHigh = ax.index(decorrEdges[isyst+1] + 0.001) if decorrEdges[isyst+1] < ax.edges[-1] else ax.size # it seems hist.overflow doesn't work inside slice()
-        slices = [slice(None) if n != axisToDecorrIndex else slice(indexLow,indexHigh) for n in range(len(hnomAsVar.axes.name))]
-        hvarnew.values(flow=False)[*slices, isyst] = hvar.values(flow=False)[*slices] # use values instead of view, because hvar has storage=Double(), while hnom (and hence hvarnew) has storage=Weight
+
+    for ax, absval in zip(newDecorrAxesNames, absval):
+        if absval:
+            logger.info(f"Taking the absolute value of axis '{ax}'")
+            hvar = hh.makeAbsHist(hvar, ax, rename=False)
 
     # if there is a mirror axis, put it at the end, since CardTool.py requires it like that
-    if "mirror" in hvarnew.axes.name:
-        sortedAxes = [n for n in hvarnew.axes.name if n != "mirror"]
+    if "mirror" in hvar.axes.name and hvar.axes.name.index("mirror") != len(hvar.shape)-1:
+        sortedAxes = [n for n in hvar.axes.name if n != "mirror"]
         sortedAxes.append("mirror")
-        hvarnew = hvarnew.project(*sortedAxes)
+        hvar = hvar.project(*sortedAxes)
 
-    return hvarnew
+    return hvar
 
 def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_fakerate=0.5, flow=False):
     # 1) calculate fakerate in bins of fakerate axes
@@ -317,6 +311,12 @@ def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_f
 
     # 5) add back to the nominal histogram and broadcase the nominal histogram
     return hh.addHists(href, hsyst)
+
+def gen_hist_to_variations(hist_in, gen_obs, gen_axes=["ptVgen", "chargeVgen", "helicity"], sum_axes=[], rebin_axes=[], rebin_edges=[]):
+    for obs in gen_obs:
+        hist_in = hh.expand_hist_by_duplicate_axis(hist_in, obs, obs+"Alt", swap_axes=True)
+
+    return hist_to_variations(hist_in, gen_axes, sum_axes, rebin_axes, rebin_edges)
 
 def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], rebin_edges=[]):
 
@@ -470,9 +470,9 @@ def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", a
             if propagateToHelicity:
 
                 pdfhelper = ROOT.wrem.makeHelicityMomentPdfTensor[npdf]()
-                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhi", f"{tensorName}", "unity"])
+                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhigen", f"{tensorName}", "unity"])
                 alphahelper = ROOT.wrem.makeHelicityMomentPdfTensor[3]()
-                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhi", f"{tensorASName}", "unity"])
+                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhigen", f"{tensorASName}", "unity"])
                 pdfHist_hel = df.HistoBoost(f"helicity_{pdfHistName}", axes, [*cols, f"helicity_moments_{tensorName}_tensor"], tensor_axes=[axis_helicity,pdf_ax], storage=storage_type)
                 alphaSHist_hel = df.HistoBoost(f"helicity_{alphaSHistName}", axes, [*cols, f"helicity_moments_{tensorASName}_tensor"], tensor_axes=[axis_helicity,as_ax], storage=storage_type)
                 results.extend([pdfHist_hel, alphaSHist_hel])
@@ -493,7 +493,7 @@ def add_qcdScale_hist(results, df, axes, cols, base_name="nominal", addhelicity=
 def add_qcdScaleByHelicityUnc_hist(results, df, helper, axes, cols, base_name="nominal", addhelicity=False, storage_type=hist.storage.Double()):
     name = Datagroups.histName(base_name, syst="qcdScaleByHelicity")
     if "helicityWeight_tensor" not in df.GetColumnNames():
-        df = df.Define("helicityWeight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight"])
+        df = df.Define("helicityWeight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
     if addhelicity:
         qcdbyHelicity, qcdbyHelicity_axes = make_qcdscale_helper_helicity(helper.tensor_axes)
         df = df.Define('scaleWeights_tensor_wnom_helicity', qcdbyHelicity, ['helicityWeight_tensor', 'helWeight_tensor'])
@@ -600,14 +600,14 @@ def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, ax
     muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
     muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
             
-    df = df.Define("effStatTnP_newveto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effStatTnP_newveto_sf")
-    effStatTnP = df.HistoBoost(name, axes, [*cols, "effStatTnP_newveto_tensor"], tensor_axes = helper_stat.tensor_axes, storage=storage_type)
+    df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
+    effStatTnP = df.HistoBoost(name, axes, [*cols, "effStatTnP_veto_tensor"], tensor_axes = helper_stat.tensor_axes, storage=storage_type)
     results.append(effStatTnP)
     
-    df = df.Define("effSystTnP_newveto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effSystTnP_newveto")
-    effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_newveto_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
+    df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst="effSystTnP_veto")
+    effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_veto_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
     results.append(effSystTnP)
     
     return df
@@ -731,7 +731,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         )
 
     if "gen" in base_name:
-        df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhi, scaleWeights_tensor, nominal_weight)")
+        df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhigen, scaleWeights_tensor, nominal_weight)")
         helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", axes, [*cols, "helicity_moments_scale_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
         results.append(helicity_moments_scale)
 

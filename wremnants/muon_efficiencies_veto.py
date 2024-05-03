@@ -72,7 +72,7 @@ def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smooth
                                                                                                                            helper
                                                                                                                        )
 
-    axis_all = hist.axis.Integer(0, Steps, underflow = False, overflow = False, name = "newveto_reco-newveto_tracking-newveto_idip")
+    axis_all = hist.axis.Integer(0, Steps, underflow = False, overflow = False, name = "veto_reco-veto_tracking-veto_idip")
     axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
 
     helper_syst.tensor_axes = [axis_all, axis_nsyst]

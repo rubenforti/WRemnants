@@ -176,7 +176,7 @@ jobs:
 
       - name: wmass combine setup
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py
           --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
@@ -187,7 +187,7 @@ jobs:
       - name: wmass combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ --outputFile results_unfolded
+          --expected ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/ --outputFile results_unfolded
 
       - name: wmass combine unfolding plot pulls 
         run: >-
@@ -315,7 +315,7 @@ jobs:
           submodules: 'recursive'
           lfs: 'true'
 
-      - name: wmass plot response matrix
+      - name: wlike plot response matrix
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
           --axes "pt-ptGen" "abs(eta)-absEtaGen" --procFilters Zmumu -p mz_wlike -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
@@ -333,7 +333,7 @@ jobs:
       - name: wlike combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
+          --expected $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge_unfolding/ --outputFile results_unfolded
 
       - name: wlike combine unfolding plot xsec 
         run: >-
@@ -488,7 +488,7 @@ jobs:
       - name: dilepton combine unfolding result to hist
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/utilities/fitresult_pois_to_hist.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
+          --expected $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ --outputFile results_unfolded
 
       - name: dilepton combine unfolding plot pulls 
         run: >-
