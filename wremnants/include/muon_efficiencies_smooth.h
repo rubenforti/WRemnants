@@ -1171,6 +1171,203 @@ namespace wrem {
 
     };
 
+    ///////////
+    // ADDITIONAL UTILITY HELPERS TO MANAGE A SINGLE EFFICIENCY STEP
+    // originally conceived to deal with additional systematic uncertainties on the tracking step
+    // the "nominal" helper is also implemented so one can add special additional scale factors if ever useful
+    ///////////
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_base_oneStep {
+    public:
+
+        muon_efficiency_smooth_helper_base_oneStep(HIST_SF &&sf_type) :
+            sf_type_(std::make_shared<const HIST_SF>(std::move(sf_type))) {
+        }
+
+        double scale_factor(float pt, float eta, int charge, int idx_nom_alt) const {
+
+            auto const eta_idx = sf_type_->template axis<0>().index(eta);
+            auto const pt_idx = sf_type_->template axis<1>().index(pt);
+            auto const charge_idx = sf_type_->template axis<2>().index(charge);
+            const double sf = sf_type_->at(eta_idx, pt_idx, charge_idx, idx_nom_alt);
+            // std::cout << "Scale factor " << sf << std::endl;
+            return sf;
+
+        }
+
+        using syst_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<NSysts>>;
+
+        syst_tensor_t sf_syst_var(float pt, float eta, int charge) const {
+
+            syst_tensor_t res;
+
+            auto const eta_idx =     sf_type_->template axis<0>().index(eta);
+            auto const pt_idx =      sf_type_->template axis<1>().index(pt);
+            auto const charge_idx =  sf_type_->template axis<2>().index(charge);
+
+            double sf_nomi = scale_factor(pt_idx, eta_idx, charge_idx, idx_nom_);
+
+            for(int ns = 0; ns < NSysts; ns++) {
+                
+                double sf_alt  = scale_factor(pt_idx, eta_idx, charge_idx, sf_type_->template axis<3>().index(ns+1) ); // 0 is the nominal, systs starts from 1
+                res(ns) = sf_alt / sf_nomi; 
+
+            }
+
+            return res;
+
+        }
+
+    protected:
+
+        std::shared_ptr<const HIST_SF> sf_type_;
+        // cache the bin indices since the string category lookup is slow
+        int idx_nom_ = sf_type_->template axis<3>().index(0); // input effStat axis is organized as nomi - UpVar, with nomi centered at 0
+
+    };
+
+    // base template for one-lepton case
+    template<AnalysisType analysisType, int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep:
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+        
+        double operator() (float pt, float eta, int charge) {
+            return base_t::scale_factor(pt, eta, charge, base_t::idx_nom_);
+        }
+
+    };
+
+    // specialization for two-lepton case Wlike
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep<AnalysisType::Wlike, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+
+        double operator() (float trig_pt,    float trig_eta,    int trig_charge,
+                           float nontrig_pt, float nontrig_eta, int nontrig_charge) {
+            const double sftrig    = base_t::scale_factor(   trig_pt,    trig_eta,    trig_charge, base_t::idx_nom_);
+            const double sfnontrig = base_t::scale_factor(nontrig_pt, nontrig_eta, nontrig_charge, base_t::idx_nom_);
+            return sftrig*sfnontrig;
+        }
+
+    };
+
+    // specialization for two-lepton case Dilepton
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep<AnalysisType::Dilepton, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+
+        // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
+        // keeping both flags is redundant but more flexible since there is no assumption on the sorting
+        double operator() (float first_pt, float first_eta, int first_charge,
+                           float second_pt, float second_eta, int second_charge) {
+            const double sftrig = base_t::scale_factor(first_pt, first_eta, first_charge, base_t::idx_nom_);
+            const double sfnontrig = base_t::scale_factor(second_pt, second_eta, second_charge, base_t::idx_nom_);
+            return sftrig*sfnontrig;
+        }
+
+    };
+
+    // Now the syst, which is similar to the nominal
+    //
+    // base template for one lepton case
+    template<AnalysisType analysisType, int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+        
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+        
+        tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
+            return nominal_weight*base_t::sf_syst_var(pt, eta, charge);
+        }
+
+    };
+
+    // specialization for two-lepton case Wlike
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep<AnalysisType::Wlike, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+
+        tensor_t operator() (float trig_pt,    float trig_eta,    int trig_charge,
+                             float nontrig_pt, float nontrig_eta, int nontrig_charge,
+                             double nominal_weight = 1.0) {
+            const tensor_t variation_trig = base_t::sf_syst_var(trig_pt, trig_eta, trig_charge);
+            const tensor_t variation_nontrig = base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_charge);
+            return nominal_weight * variation_trig * variation_nontrig;
+        }
+
+    };
+    
+    // specialization for two-lepton case Dilepton
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep<AnalysisType::Dilepton, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+
+        // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
+        // keeping both flags is redundant but more flexible since there is no assumption on the sorting
+        tensor_t operator() (float first_pt, float first_eta, int first_charge,
+                             float second_pt, float second_eta, int second_charge,
+                             double nominal_weight = 1.0) {
+            constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
+            constexpr bool pass_iso = true;
+            const tensor_t variation_trig = base_t::sf_syst_var(first_pt, first_eta, first_charge);
+            const tensor_t variation_nontrig = base_t::sf_syst_var(second_pt, second_eta, second_charge);
+            return nominal_weight * variation_trig * variation_nontrig;
+        }
+
+    };
+
 
 }
 
