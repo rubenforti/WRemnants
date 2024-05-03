@@ -11,7 +11,7 @@ dataDictV9_2018 = {
     'dataPostVFP' : { 
         'filepaths' : [ "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018A_{NANO_PROD_TAG}",
                         "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018B_{NANO_PROD_TAG}",
-                        "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018B_{NANO_PROD_TAG}",
+                        "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018C_{NANO_PROD_TAG}",
                         "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018D_{NANO_PROD_TAG}",                          
                     ],
         'group': "Data",
