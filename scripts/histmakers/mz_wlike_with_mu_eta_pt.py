@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -13,25 +16,18 @@ import hist
 import lz4.frame
 import math
 import time
-import os
 import numpy as np
 
-parser.add_argument("--mtCut", type=int, default=45, help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
+parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 
-args = parser.parse_args()
-logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+initargs,_ = parser.parse_known_args()
+logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
-isUnfolding = args.analysisMode == "unfolding"
+isUnfolding = initargs.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
-    parser = common.set_parser_default(parser, "genBins", [18, 0])
-    parser = common.set_parser_default(parser, "pt", [36,26.,62.])
-else:
-    parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 
 args = parser.parse_args()
 
@@ -46,8 +42,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era=era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 # transverse boson mass cut
 mtw_min=args.mtCut 
@@ -154,16 +149,16 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isZ:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta, 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, 
-                mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, 
-                mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=True)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=True, **cutsmap)
 
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             axes = [*nominal_axes, *unfolding_axes] 

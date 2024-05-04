@@ -66,6 +66,10 @@ def syst_transform_map(base_hist, hist_name):
         return hname.split("-")
 
     resum_tnps = ['pdf0', 'gamma_cusp+1', 'gamma_mu_q+1', 'gamma_nu+1', 'h_qqV-0.5', 's+1', 'b_qqV+1', 'b_qqbarV+1', 'b_qqS+1', 'b_qqDS+1', 'b_qg+1']
+    resum_tnpsXp1_up = ['pdf0', 'gamma_cusp1.', 'gamma_mu_q1.', 'gamma_nu1.', 's1.', 'b_qqV0.5', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
+    resum_tnpsXp1_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-2.5', 'b_qqV-2.5', 'b_qqbarV-2.5', 'b_qqS-2.5', 'b_qqDS-2.5', 'b_qg-2.5']
+    resum_tnpsXp0_up = ['pdf0', 'gamma_cusp1.', 'gamma_mu_q1.', 'gamma_nu1.', 's1.', 'b_qqV0.5', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
+    resum_tnpsXp0_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-0.5', 'b_qqV-0.5', 'b_qqbarV-0.5', 'b_qqS-0.5', 'b_qqDS-0.5', 'b_qg-0.5']
 
     transforms.update({
         "resumFOScaleUp" : {
@@ -86,11 +90,17 @@ def syst_transform_map(base_hist, hist_name):
                 ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7", 
                 "transition_points0.2_0.45_0.7", "transition_points0.4_0.75_1.1", ],
                  no_flow=["ptVgen"], do_min=True)},
-       "resumTNPUp" : {
-           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars")[0]
+       "resumTNPXp1Up" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp0_up}], "vars")[0]
         },
-       "resumTNPDown" : {
-           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars")[1]
+       "resumTNPXp0Down" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp0_down}], "vars")[1]
+        },
+       "resumTNPXp0Up" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp1_up}], "vars")[0]
+        },
+       "resumTNPXp1Down" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp1_down}], "vars")[1]
         },
        "resumTNPx5Up" : {
            "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnps}], "vars", scale=5)[0]
@@ -169,8 +179,7 @@ def syst_transform_map(base_hist, hist_name):
     return transforms
 
 def gen_scale_helicity_hist_to_variations(scale_hist, gen_obs, sum_axes=[], pt_ax="ptVgen", gen_axes=["ptVgen", "chargeVgen", "helicity"], rebinPtV=None):
-    for obs in gen_obs:
-        scale_hist = hh.expand_hist_by_duplicate_axis(scale_hist, obs, obs+"Alt", swap_axes=True)
+    scale_hist = hh.expand_hist_by_duplicate_axes(hist_in, gen_obs, [a+"Alt" for a in gen_obs], swap_axes=True)
 
     return scale_helicity_hist_to_variations(scale_hist, sum_axes, pt_ax, gen_axes, rebinPtV)
 
@@ -302,6 +311,12 @@ def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_f
 
     # 5) add back to the nominal histogram and broadcase the nominal histogram
     return hh.addHists(href, hsyst)
+
+def gen_hist_to_variations(hist_in, gen_obs, gen_axes=["ptVgen", "chargeVgen", "helicity"], sum_axes=[], rebin_axes=[], rebin_edges=[]):
+    for obs in gen_obs:
+        hist_in = hh.expand_hist_by_duplicate_axis(hist_in, obs, obs+"Alt", swap_axes=True)
+
+    return hist_to_variations(hist_in, gen_axes, sum_axes, rebin_axes, rebin_edges)
 
 def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], rebin_edges=[]):
 
@@ -600,6 +615,20 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
     df = df.Define(f"effSystTnP_altBkg_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
     name = Datagroups.histName(base_name, syst=f"effSystTnP_altBkg_{step}")
     effSystTnP = df.HistoBoost(name, axes, [*cols, f"effSystTnP_altBkg_{step}_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
+
+def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", storage_type=hist.storage.Double()):
+    # TODO: update for dilepton
+    muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
+    muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
+            
+    df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
+    effStatTnP = df.HistoBoost(name, axes, [*cols, "effStatTnP_veto_tensor"], tensor_axes = helper_stat.tensor_axes, storage=storage_type)
+    results.append(effStatTnP)
+    
+    df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst="effSystTnP_veto")
+    effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_veto_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
     results.append(effSystTnP)
     
     return df

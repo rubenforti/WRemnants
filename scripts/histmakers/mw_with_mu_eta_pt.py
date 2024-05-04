@@ -1,10 +1,12 @@
 import argparse
 from utilities import common, rdf_tools, logging, differential
 from utilities.io_tools import output_tools
-from utilities.common import background_MCprocs as bkgMCprocs
+from utilities.common import background_MCprocs as bkgMCprocs,data_dir
 from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -17,12 +19,10 @@ import hist
 import lz4.frame
 import math
 import time
-from utilities import boostHistHelpers as hh
+from utilities import common,boostHistHelpers as hh
 import pathlib
-import os
 import numpy as np
 
-data_dir = common.data_dir
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--halfStat", action='store_true', help="Test half data and MC stat, selecting odd events, just for tests")
@@ -30,7 +30,7 @@ parser.add_argument("--makeMCefficiency", action="store_true", help="Save yields
 parser.add_argument("--onlyTheorySyst", action="store_true", help="Keep only theory systematic variations, mainly for tests")
 parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC file every N, where N is given by this option. Mainly for tests")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
-parser.add_argument("--mtCut", type=int, default=40, help="Value for the transverse mass cut in the event selection")
+parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
@@ -58,8 +58,6 @@ if isUnfolding or isTheoryAgnostic:
     if isFloatingPOIsTheoryAgnostic:
         logger.warning("Running theory agnostic with only nominal and mass weight histograms for now.")
         parser = common.set_parser_default(parser, "onlyMainHistograms", True)
-    if isUnfolding:
-        parser = common.set_parser_default(parser, "pt", [32,26.,58.])
 
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
@@ -104,7 +102,7 @@ axis_muonJetPt = hist.axis.Regular(50, 26, 76, name = "muonJetPt", underflow=Fal
 axis_charge = common.axis_charge
 axis_passIso = common.axis_passIso
 axis_passMT = common.axis_passMT
-axis_mt = hist.axis.Variable([0,int(mtw_min/2.),mtw_min] + list(range(mtw_min+5, 95, 5)) + [100, 120], name = "mt", underflow=False, overflow=True)
+axis_mt = hist.axis.Variable((*np.arange(0, mtw_min+2, 2), *np.arange(mtw_min+5, 95, 5), 100, 120), name = "mt", underflow=False, overflow=True)
 axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overflow=True)
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
@@ -174,6 +172,7 @@ elif args.binnedScaleFactors:
 else:
     logger.info("Using smoothed scale factors and uncertainties")
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
+    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(era = era)
 
 logger.info(f"SF file: {args.sfFile}")
 
@@ -289,14 +288,16 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isWmunu:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta}
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
         else:
             if not isPoiAsNoi:
                 logger.debug("Select events in fiducial phase space")
-                df = unfolding_tools.select_fiducial_space(df, mtw_min=args.mtCut, mode="wmass", accept=True)
+                df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=True, **cutsmap)
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
             
@@ -409,6 +410,17 @@ def build_graph(df, dataset):
     df = df.Define("passIso", "goodMuons_relIso0 < 0.15")
 
     ########################################################################
+    # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays (defined here because needed for veto SF)
+    if not dataset.is_data and not isQCDMC and not args.noGenMatchMC:
+        df = theory_tools.define_postfsr_vars(df)
+        df = df.Filter("wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09)")
+        df = df.Define("postfsrMuons_inAcc", f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}")
+        df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
+        df = df.Define("unmatched_postfsrMuon_pt","wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
+        df = df.Define("unmatched_postfsrMuon_eta","wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
+        df = df.Define("GenPart_charge","-GenPart_pdgId[postfsrMuons_inAcc]/abs(GenPart_pdgId[postfsrMuons_inAcc])")
+        df = df.Define("unmatched_postfsrMuon_charge","wrem::unmatched_postfsrMuon_charge(GenPart_charge,GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
+    ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
         df = df.DefinePerSample("nominal_weight", "1.0")            
@@ -435,7 +447,11 @@ def build_graph(df, dataset):
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
-
+            
+            if isZveto and not args.noGenMatchMC:
+                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
+                weight_expr += "*weight_vetoSF_nominal"
+            
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
@@ -444,7 +460,7 @@ def build_graph(df, dataset):
             df = theoryAgnostic_tools.define_helicity_weights(df)
 
     ########################################################################
-
+    '''
     # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays
     if not dataset.is_data and not isQCDMC and not args.noGenMatchMC:
         df = theory_tools.define_postfsr_vars(df)
@@ -453,6 +469,7 @@ def build_graph(df, dataset):
     if isZveto:
         df = df.Define("postfsrMuons_inAcc", f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}")
         df = df.Define("ZvetoCondition", "Sum(postfsrMuons_inAcc) >= 2")
+    '''
 
     if not args.noRecoil:
         leps_uncorr = ["Muon_pt[goodMuons][0]", "Muon_eta[goodMuons][0]", "Muon_phi[goodMuons][0]", "Muon_charge[goodMuons][0]"]
@@ -620,11 +637,16 @@ def build_graph(df, dataset):
                 for es in common.muonEfficiency_altBkgSyst_effSteps:
                     df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
                                                                          what_analysis=thisAnalysis, step=es, storage_type=storage_type)
+                if isZveto and not args.noGenMatchMC:
+                    df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
+
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
             df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
+            '''
             if isZveto:
                 df = syst_tools.add_scaledByCondition_unc_hists(results, df, args, axes, cols, "weight_ZmuonVeto", "ZmuonVeto", "ZvetoCondition", 2.0, storage_type=storage_type)
+            '''
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
