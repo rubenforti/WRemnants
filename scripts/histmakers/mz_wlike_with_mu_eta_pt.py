@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -13,26 +16,19 @@ import hist
 import lz4.frame
 import math
 import time
-import os
 import numpy as np
 
-parser.add_argument("--mtCut", type=int, default=45, help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
+parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
 
-args = parser.parse_args()
-logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+initargs,_ = parser.parse_known_args()
+logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
-isUnfolding = args.analysisMode == "unfolding"
+isUnfolding = initargs.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["qGen", "ptGen", "absEtaGen"])
-    parser = common.set_parser_default(parser, "genBins", [18, 0])
-    parser = common.set_parser_default(parser, "pt", [36,26.,62.])
-else:
-    parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 
 args = parser.parse_args()
 
@@ -48,8 +44,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era=era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 # transverse boson mass cut
 mtw_min=args.mtCut 
@@ -148,16 +143,16 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and isZ:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta, 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, 
-                mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, 
-                mode="wlike", pt_min=args.pt[1], pt_max=args.pt[2], mass_min=mass_min, mass_max=mass_max, mtw_min=mtw_min, accept=True)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=True, **cutsmap)
 
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             axes = [*nominal_axes, *unfolding_axes] 
@@ -185,6 +180,9 @@ def build_graph(df, dataset):
     if not passIsoBoth:
         df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
 
+    df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
+    df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
+
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
     df = muon_selections.select_standalone_muons(df, dataset, args.trackerMuons, "trigMuons")
@@ -207,8 +205,9 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"            
 
-        columnsForSF = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_uT0", "trigMuons_charge0",
-                        "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_uT0", "nonTrigMuons_charge0"]
+        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+        columnsForSF = [f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF]
+
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons")
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons")
         if not args.smooth3dsf:

@@ -1,7 +1,10 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
@@ -9,12 +12,10 @@ import wremnants
 from wremnants import theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.datasets.datagroups import Datagroups
 import hist
 import lz4.frame
 import math
 import time
-import os
 
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
@@ -23,18 +24,15 @@ parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+")
 
-parser = common.set_parser_default(parser, "pt", [34,26.,60.])
-parser = common.set_parser_default(parser, "eta", [48,-2.4,2.4])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label))
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen", "absYVGen"])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -52,8 +50,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
                        era = era)
 
 # dilepton invariant mass cuts
-mass_min = 60
-mass_max = 120
+mass_min, mass_max = common.get_default_mz_window()
 
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
 
@@ -103,8 +100,10 @@ if args.csVarsHist:
 
 nominal_axes = [all_axes[a] for a in nominal_cols] 
 
+inclusive = hasattr(args, "inclusive") and args.inclusive
+
 if isUnfolding:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning), add_out_of_acceptance_axis=isPoiAsNoi)
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning, inclusive), add_out_of_acceptance_axis=isPoiAsNoi)
     if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
 
@@ -175,16 +174,19 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="dilepton")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
+        cutsmap = {"pt_min" : args.pt[1], "pt_max" : args.pt[2], "abseta_max" : args.eta[2], 
+                   "mass_min" : mass_min, "mass_max" : mass_max}
+
+        if inclusive:
+            cutsmap = {"fiducial" : "masswindow"}
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=False)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], accept=False, **cutsmap)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="dilepton", pt_min=args.pt[1], pt_max=args.pt[2], 
-                mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, select=not isPoiAsNoi, accept=True)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], select=not isPoiAsNoi, accept=True, **cutsmap)
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
@@ -217,6 +219,9 @@ def build_graph(df, dataset):
     # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
     if not passIsoBoth:
         df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
+
+    df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
+    df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
@@ -284,9 +289,9 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"            
 
-        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0"]
+        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
         if args.useDileptonTriggerSelection:
-            muonVarsForSF.append("passTrigger0")            
+            muonVarsForSF.append("passTrigger0")
         # careful, first all trig variables, then all nonTrig
         columnsForSF = [f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF]
 
