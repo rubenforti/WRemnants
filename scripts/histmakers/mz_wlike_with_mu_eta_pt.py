@@ -275,7 +275,7 @@ def build_graph(df, dataset):
         df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
         for es in common.muonEfficiency_altBkgSyst_effSteps:
             df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
-                                                                 what_analysis=thisAnalysis, step=es, storage_type=storage_type)
+                                                                 what_analysis=thisAnalysis, step=es)
 
         df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
 

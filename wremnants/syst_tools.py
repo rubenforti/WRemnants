@@ -616,6 +616,8 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
     name = Datagroups.histName(base_name, syst=f"effSystTnP_altBkg_{step}")
     effSystTnP = df.HistoBoost(name, axes, [*cols, f"effSystTnP_altBkg_{step}_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
 
+    return df
+
 def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", storage_type=hist.storage.Double()):
     # TODO: update for dilepton
     muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
