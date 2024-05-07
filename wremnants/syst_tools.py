@@ -540,14 +540,15 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
                              "goodMuons_uT0", "goodMuons_charge0",
                              "passIso"]
     else:
-        muvars_stat = ["pt0", "eta0", "uT0", "charge0"]
+        muvars_stat = ["pt0", "eta0", "uT0", "charge0"] # passIso0 required only for iso stat variations, added later
         muon_columns_stat_trig    = [f"trigMuons_{v}" for v in muvars_stat]
         muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
-        muvars_syst = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0"]
+        muvars_syst = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
         muon_columns_syst_trig    = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
-        
+
+        # muon_columns_stat in the following does not include passIso yet, added later for iso helper
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_stat = [*muon_columns_stat_trig, *muon_columns_stat_nonTrig]
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
@@ -568,8 +569,16 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
     for key,helper in helper_stat.items():
         if "tracking" in key:
             muon_columns_stat_step = muon_columns_stat_tracking
-        elif "iso" in key and what_analysis == ROOT.wrem.AnalysisType.Wmass:
-            muon_columns_stat_step = muon_columns_stat + ["passIso"]
+        elif "iso" in key:
+            if what_analysis == ROOT.wrem.AnalysisType.Wmass:
+                 # iso variable called passIso rather than goodMuons_passIso0 in W histmaker
+                muon_columns_stat_step = [*muon_columns_stat, "passIso"]
+            elif what_analysis == ROOT.wrem.AnalysisType.Wlike:
+                muon_columns_stat_step = [*muon_columns_stat_trig, "trigMuons_passIso0",
+                                          *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0"]
+            elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
+                muon_columns_stat_step = [*muon_columns_stat_trig, "trigMuons_passIso0", "trigMuons_passTrigger0",
+                                          *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0", "nonTrigMuons_passTrigger0"]
         else:
             muon_columns_stat_step = muon_columns_stat
             

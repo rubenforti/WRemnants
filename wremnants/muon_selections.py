@@ -5,6 +5,34 @@ from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 
+def getIsoBranchBySpec(vertexAgnostic=True, coneSize="04", charged=False):
+    root = "vtxAgnPfRelIso" if vertexAgnostic else "pfRelIso"
+    component = "chg" if charged else "all"
+    cone = coneSize.replace('.','')
+    return f"Muon_{root}{cone}_{component}"
+
+def getIsoBranch(isoDefinition="iso04vtxAgn"):
+    if isoDefinition == "iso04vtxAgn":
+        return getIsoBranchBySpec()
+    elif isoDefinition == "iso04":
+        return getIsoBranchBySpec(vertexAgnostic=False)
+    elif isoDefinition == "iso04chg":
+        return getIsoBranchBySpec(vertexAgnostic=False, charged=True)
+    elif isoDefinition == "iso04chgvtxAgn":
+        return getIsoBranchBySpec(charged=True)
+    else:
+        raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
+
+def apply_iso_muons(df, iso_first, iso_second, isoBranch, isoThreshold=0.15, name_first="trigMuons", name_second="nonTrigMuons"):
+    # iso_first/iso_second are integers with values -1/1 for fail/pass isolation, or 0 if not cut has to be applied 
+    if iso_first:
+        isoCond0 = "<" if iso_first == 1 else ">"
+        df = df.Filter(f"{isoBranch}[{name_first}][0] {isoCond0} {isoThreshold}")
+    if iso_second:
+        isoCond1 = "<" if iso_second == 1 else ">"
+        df = df.Filter(f"{isoBranch}[{name_second}][0] {isoCond1} {isoThreshold}")
+    return df
+    
 def apply_met_filters(df):
     df = df.Filter("Flag_globalSuperTightHalo2016Filter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_goodVertices && Flag_HBHENoiseIsoFilter && Flag_HBHENoiseFilter && Flag_BadPFMuonFilter")
 
@@ -39,7 +67,7 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, etaCut=2.4):
 
     return df
 
-def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoDefinition="iso04", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoBranch="Muon_vtxAgnPfRelIso04_all", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False):
 
     if use_trackerMuons:
         df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
@@ -60,13 +88,6 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
         goodMuonsSelection += " && Muon_mediumId"
 
     if use_isolation:
-        # for w like we directly require isolated muons, for w we need non-isolated for qcd estimation
-        if isoDefinition == "iso04":
-            isoBranch = "Muon_pfRelIso04_all"
-        elif isoDefinition == "iso04vtxAgn":
-            isoBranch = "Muon_vtxAgnPfRelIso04_all"
-        else:
-            raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
         goodMuonsSelection += f" && {isoBranch} < {isoThreshold}"
 
     df = df.Define("goodMuons", goodMuonsSelection) 

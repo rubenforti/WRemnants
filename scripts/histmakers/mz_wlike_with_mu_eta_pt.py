@@ -19,6 +19,7 @@ import time
 import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
+parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
@@ -32,6 +33,7 @@ parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
+isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
 datasets = getDatasets(maxFiles=args.maxFiles,
@@ -175,9 +177,19 @@ def build_graph(df, dataset):
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
     df = muon_selections.select_veto_muons(df, nMuons=2)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=True, isoDefinition=args.isolationDefinition)
 
+    isoThreshold = args.isolationThreshold
+    passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
+    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold)
+    
     df = muon_selections.define_trigger_muons(df)
+
+    # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
+    if not passIsoBoth:
+        df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
+
+    df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
+    df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
@@ -201,8 +213,9 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"            
 
-        columnsForSF = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_SApt0", "trigMuons_SAeta0", "trigMuons_uT0", "trigMuons_charge0",
-                        "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_SApt0", "nonTrigMuons_SAeta0", "nonTrigMuons_uT0", "nonTrigMuons_charge0"]
+        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+        columnsForSF = [f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF]
+
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons")
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons")
         if not args.smooth3dsf:
