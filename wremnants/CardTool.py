@@ -987,7 +987,9 @@ class CardTool(object):
         else:
             self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
 
-    def addPOISumGroups(self, gen_axes=None, additional_axes=None, genCharge=None):
+    def addSumGroups(self, gen_axes=None, additional_axes=None, genCharge=None, all_poi_names=None):
+        if all_poi_names is None:
+            all_poi_names = self.unconstrainedProcesses
         if gen_axes is None:
             gen_axes = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
@@ -1006,12 +1008,12 @@ class CardTool(object):
             if isinstance(axes, str):
                 axes = [axes]
 
-            pois_axis = [x for x in self.unconstrainedProcesses if all([a in x for a in axes])]
+            pois_names = [x for x in all_poi_names if all([a in x for a in axes])]
 
             # in case of multiple base processes (e.g. in simultaneous unfoldings) loop over all base processes
-            base_processes = set(map(lambda x: x.split("_")[0], pois_axis))
+            base_processes = set(map(lambda x: x.split("_")[0], pois_names))
             for base_process in base_processes:
-                pois = [x for x in pois_axis if base_process in x.split("_")]
+                pois = [x for x in pois_names if base_process in x.split("_")]
 
                 sum_groups = set(["_".join([a + p.split(a)[1].split("_")[0] for a in axes]) for p in pois])
 
@@ -1022,9 +1024,9 @@ class CardTool(object):
                         membersList = list(filter(lambda x: genCharge in x, membersList))
                         sum_group_name += f"_{genCharge}"
                     if len(membersList):                            
-                        self.addPOISumGroup(sum_group_name, membersList)
+                        self.addSumGroup(sum_group_name, membersList)
                         
-    def addPOISumGroup(self, groupName, members):
+    def addSumGroup(self, groupName, members):
         if groupName in self.cardSumGroups:
             self.cardSumGroups[groupName].append(members)
         else:

@@ -26,8 +26,29 @@ def transform_poi(poi_type, meta):
         err = lambda poi, err, scale: err * scale
         return val, err
 
+def expand_flow(val, axes, flow_axes, var=None):                          
+    # expand val and var arrays by ones for specified flow_axes in order to broadcast them into the histogram
+    for a in axes: 
+        if a.name not in flow_axes:
+            if a.traits.underflow:
+                s_ = [s for s in val.shape]
+                s_[axes.index(a)] = 1
+                val = np.append(np.ones(s_), val, axis=axes.index(a))
+                if var is not None:
+                    var = np.append(np.ones(s_), var, axis=axes.index(a))
+            if a.traits.overflow:
+                s_ = [s for s in val.shape]
+                s_[axes.index(a)] = 1
+                val = np.append(val, np.ones(s_), axis=axes.index(a))
+                if var is not None:
+                    var = np.append(var, np.ones(s_), axis=axes.index(a))
+    if var is None:
+        return val
+    else:
+        return val, var
+
 def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_types=True,
-    merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, flow=True,
+    merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, flow_axes=[],
 ):
     # convert POIs in fitresult into histograms
     # uncertainties, use None to get all, use [] to get none
@@ -148,17 +169,17 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                 if proc not in result[poi_key][channel]:
                     result[poi_key][channel][proc] = {}
                 for axes in gen_axes_permutations:
-                    shape = [a.extent if flow else a.size for a in axes]
+                    shape = [a.extent if a.name in flow_axes else a.size for a in axes]
                     axes_names = [a.name for a in axes]
 
-                    data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=flow)
+                    data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=True)
                     for u in filter(lambda x: x.startswith("err_"), data.keys()):
                         data.loc[:,u] = action_err(data["value"], data[u], channel_scale)
                     data.loc[:,"value"] = action_val(data["value"], channel_scale)
                     logger.debug(f"The values for the hist in poi {poi_key} are {data['value'].values}")
 
                     if initial:
-                        data_initial = combinetf_input.select_pois(df_initial, axes_names, base_processes=proc, flow=flow)
+                        data_initial = combinetf_input.select_pois(df_initial, axes_names, base_processes=proc, flow=True)
                         values_initial = action_val_initial(data_initial["value"].values, channel_scale_initial)
                         data.loc[:,"value"] = data["value"] * values_initial 
                         for u in filter(lambda x: x.startswith("err_"), data.keys()):
@@ -166,10 +187,11 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
                     values = np.reshape(data["value"].values, shape)
                     variances = np.reshape(data["err_total"].values**2, shape)
+                    values, variances = expand_flow(values, axes, flow_axes, variances)
 
                     # save nominal histogram with total uncertainty
                     h_ = hist.Hist(*axes, storage=hist.storage.Weight())
-                    h_.view(flow=flow)[...] = np.stack([values, variances], axis=-1)
+                    h_.view(flow=True)[...] = np.stack([values, variances], axis=-1)
 
                     hist_name = "hist_" + "_".join(axes_names)
                     if expected:
@@ -181,9 +203,10 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
                     # save nominal histogram with stat uncertainty
                     if "err_stat" in data.keys():
-                        variances = np.reshape( (data["err_stat"].values)**2, shape)
+                        variances = np.reshape(data["err_stat"].values, shape)**2
+                        variances = expand_flow(variances, axes, flow_axes)
                         h_stat = hist.Hist(*axes, storage=hist.storage.Weight())
-                        h_stat.view(flow=flow)[...] = np.stack([values, variances], axis=-1)
+                        h_stat.view(flow=True)[...] = np.stack([values, variances], axis=-1)
                         hist_name_stat = f"{hist_name}_stat"
                         if hist_name_stat in result[poi_key][channel][proc]:
                             logger.warning(f"Histogram {hist_name_stat} already in result, it will be overridden")
@@ -192,12 +215,15 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                     # save other systematic uncertainties as separately varied histograms
                     labels = [u.replace("err_","") for u in filter(lambda x: x.startswith("err_") and x not in ["err_total", "err_stat"], data.keys())]
                     if labels:
-                        # string category always has an overflow bin, we set it to 0
-                        systs = np.stack([values, *[values + np.reshape(data[f"err_{u}"].values, shape) for u in labels]], axis=-1)
-                        if flow:
-                            systs = np.stack([systs, np.zeros_like(values)], axis=-1) # overflow axis can't be disabled in StrCategory
+                        errs = []
+                        for u in labels:
+                            err = np.reshape(data[f"err_{u}"].values, shape)
+                            err = expand_flow(err, axes, flow_axes)
+                            errs.append(values + err)
+                        systs = np.stack([values, *errs], axis=-1)
+                        systs = np.append(systs, np.zeros_like(values)[...,None], axis=-1) # overflow axis can't be disabled in StrCategory
                         h_syst = hist.Hist(*axes, hist.axis.StrCategory(["nominal", *labels], name="syst"), storage=hist.storage.Double())
-                        h_syst.values(flow=flow)[...] = systs
+                        h_syst.values(flow=True)[...] = systs
                         hist_name_syst = f"{hist_name}_syst"
                         if hist_name_syst in result[poi_key][channel][proc]:
                             logger.warning(f"Histogram {hist_name_syst} already in result, it will be overwritten")

@@ -30,6 +30,7 @@ parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for 
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
+parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
 parser.add_argument("--selectionAxes", type=str, default=["qGen", ], 
     help="List of axes where for each bin a seperate plot is created")
@@ -39,7 +40,7 @@ parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "s
 # specify a reference unfolding
 parser.add_argument("--reference",  type=str, default=None, help="Optional combine fitresult file from an reference fit for comparison")
 parser.add_argument("--refName",  type=str, default="Reference model", help="Name for reference source")
-parser.add_argument("--poiTypeReference", type=str, default="mu", help="POI types used for the plotting of the reference",
+parser.add_argument("--poiTypeReference", type=str, default=None, help="POI types used for the plotting of the reference",
     choices=["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", ])
 
 parser.add_argument("--grouping", type=str, default=None, help="Select nuisances by a predefined grouping", choices=styles.nuisance_groupings.keys())
@@ -64,10 +65,14 @@ if args.infile.endswith(".root"):
 if args.reference is not None and args.reference.endswith(".root"):
     args.reference = args.reference.replace(".root", ".hdf5")
 
-result, meta = fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, initial=args.initialFit, flow=False)    
+result, meta = fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, initial=args.initialFit)    
 
 if args.reference:
-    result_ref, meta_ref = fitresult_pois_to_hist(args.reference, poi_types=[args.poiTypeReference,], uncertainties=None, translate_poi_types=False, flow=False)
+    if args.poiTypeReference is None:
+        poi_types_ref = args.poiTypes
+    else:
+        poi_types_ref = [args.poiTypeReference,]
+    result_ref, meta_ref = fitresult_pois_to_hist(args.reference, poi_types=poi_types_ref, uncertainties=None, translate_poi_types=False)
 
 grouping = styles.nuisance_groupings.get(args.grouping, None)
 
@@ -122,7 +127,7 @@ def make_yields_df(hists, procs, signal=None, per_bin=False, yield_only=False, p
     return pd.DataFrame(entries, columns=columns)
 
 def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="mu", channel="ch0", proc="W",
-    hist_others=[], label_others=[], color_others=[], lumi=None
+    hist_others=[], label_others=[], color_others=[], lumi=None, pulls=False
 ):
     # ratio to data if there is no other histogram to make a ratio from
     ratioToData = not args.ratioToPred or len(hist_others) == 0
@@ -154,7 +159,10 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     # else:
     #     rlabel=f"Data/{label_others[0]}"
 
-    rlabel=f"{args.refName}/{args.name}"
+    if pulls:
+        rlabel=f"Pulls"
+    else:
+        rlabel=f"{args.refName}/{args.name}"
 
     rrange = args.rrange
 
@@ -187,14 +195,17 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
 
     centers = hist_xsec.axes.centers[0]
 
-    if ratioToData:
+    if ratioToData and not pulls:
         unc_ratio = np.sqrt(hist_xsec.variances()) /hist_xsec.values() 
         ax2.bar(centers, height=2*unc_ratio, bottom=1-unc_ratio, width=edges[1:] - edges[:-1], color="silver", label="Total")
         if hist_xsec_stat is not None:
             unc_ratio_stat = np.sqrt(hist_xsec_stat.variances()) / hist_xsec_stat.values() 
             ax2.bar(centers, height=2*unc_ratio_stat, bottom=1-unc_ratio_stat, width=edges[1:] - edges[:-1], color="gold", label="Stat")
 
-    ax2.plot([min(edges), max(edges)], [1,1], color="black", linestyle="-")
+    if pulls:
+        ax2.plot([min(edges), max(edges)], [0, 0], color="black", linestyle="-")
+    else:
+        ax2.plot([min(edges), max(edges)], [1, 1], color="black", linestyle="-")
 
     if ratioToData:
         hden=hist_xsec
@@ -216,28 +227,27 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
             binwnorm=binwnorm
         )            
 
-        if i==0 and not ratioToData:
-            hden=h
+        if not pulls:
+            if i==0 and not ratioToData:
+                hden=h
+                hep.histplot(
+                    hh.divideHists(h, hden, cutoff=0, rel_unc=True),
+                    yerr=True,
+                    histtype="errorbar",
+                    color="black",
+                    ax=ax2,
+                    zorder=2,
+                ) 
+                continue
+
             hep.histplot(
                 hh.divideHists(h, hden, cutoff=0, rel_unc=True),
-                yerr=True,
-                histtype="errorbar",
-                color="black",
+                yerr=False,
+                histtype="step",
+                color=c,
                 ax=ax2,
                 zorder=2,
-                binwnorm=binwnorm
-            ) 
-            continue
-
-        hep.histplot(
-            hh.divideHists(h, hden, cutoff=0, rel_unc=True),
-            yerr=False,
-            histtype="step",
-            color=c,
-            ax=ax2,
-            zorder=2,
-            binwnorm=binwnorm
-        )            
+            )            
 
     if hist_ref is not None:
         hep.histplot(
@@ -252,15 +262,31 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
             binwnorm=binwnorm
         ) 
 
-        hep.histplot(
-            hh.divideHists(hist_ref, hden, cutoff=0, rel_unc=True),
-            yerr=False,
-            histtype="step",
-            color="blue",
-            # label="Model",
-            ax=ax2,
-            binwnorm=binwnorm
-        )
+        if pulls:
+            hdiff = hh.addHists(hist_ref, hden, scale2=-1.)
+            pull_values = hdiff.values() / np.sqrt(hden.variances())
+            hdiff.values()[...] = pull_values
+
+            logger.info(f"Min/Max pull value is {pull_values.min()}/{pull_values.max()}")
+
+            hep.histplot(
+                hdiff,
+                yerr=False,
+                histtype="errorbar",
+                color="black",
+                # label="Model",
+                ax=ax2,
+            )
+        else:
+            hr = hh.divideHists(hist_ref, hden, cutoff=0, rel_unc=True)
+            hep.histplot(
+                hr,
+                yerr=False,
+                histtype="step",
+                color="blue",
+                # label="Model",
+                ax=ax2,
+            )
 
     plot_tools.addLegend(ax1, ncols=2, text_size=15*args.scaleleg)
     plot_tools.addLegend(ax2, ncols=2, text_size=15*args.scaleleg)
@@ -275,6 +301,8 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     outfile += "_"+"_".join(axes_names)
     outfile += (f"_{channel}" if channel else "")
     outfile += (f"_{args.postfix}" if args.postfix else "")
+    if pulls:
+        outfile += "_pulls"
     plot_tools.save_pdf_and_png(outdir, outfile)
 
     if hist_ref is not None:
@@ -679,9 +707,16 @@ for poi_type, poi_result in result.items():
                 hist_stat = result[poi_type][channel][proc][f"{hist_name}_stat"]
                 # reference model
                 if args.reference:
-                    hist_ref = result_ref[args.poiTypeReference][channel][proc][hist_name]
-                    hist_ref_stat = result_ref[args.poiTypeReference][channel][proc][f"{hist_name}_stat"]
-                
+                    poi_type_ref = poi_type if args.poiTypeReference is None else args.poiTypeReference
+                    # hist_ref = result_ref[poi_type_ref][channel][proc][hist_name]
+                    # hist_ref_stat = result_ref[poi_type_ref][channel][proc][f"{hist_name}_stat"]
+
+                    # copy to remove overflow
+                    hist_ref = hist_nominal.copy()
+                    hist_ref.view()[...] = result_ref[poi_type_ref][channel][proc][hist_name].view()
+                    hist_ref_stat = hist_nominal.copy()
+                    hist_ref_stat.view()[...] = result_ref[poi_type_ref][channel][proc][f"{hist_name}_stat"].view()
+
                 if args.selectAxis and args.selectEntries:
                     histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]                
 
@@ -727,7 +762,8 @@ for poi_type, poi_result in result.items():
                         plot_xsec_unfolded(h_nominal, h_stat, h_ref, poi_type=poi_type, channel=suffix, proc=proc, lumi=lumi,
                             hist_others=h_others, 
                             label_others=args.varLabels, 
-                            color_others=args.colors
+                            color_others=args.colors,
+                            pulls=args.pulls
                         )
 
                     if "uncertainties" in args.plots:
@@ -741,12 +777,13 @@ for poi_type, poi_result in result.items():
                             logy=args.logy)
 
                     if "ratio" in args.plots:
-                        h_ref_systs = result_ref[args.poiTypeReference][channel][proc][f"{hist_name}_syst"]
+                        poi_type_ref = poi_type if args.poiTypeReference is None else args.poiTypeReference
+                        h_ref_systs = result_ref[poi_type_ref][channel][proc][f"{hist_name}_syst"]
                         if bins != None:
                             h_ref_systs = h_ref_systs[{**idxs, "syst": slice(None)}]
 
                         plot_uncertainties_with_ratio(h_nominal, h_ref, 
-                            poi_type=poi_type, poi_type_ref=args.poiTypeReference, 
+                            poi_type=poi_type, poi_type_ref=poi_type_ref, 
                             hist_stat=h_stat, hist_stat_ref=h_ref_stat,
                             # hist_syst=h_syst, hist_syst_ref=h_ref_syst,
                             channel=channel,

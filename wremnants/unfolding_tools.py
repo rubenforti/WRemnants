@@ -1,5 +1,5 @@
-from utilities import differential,common
-from wremnants import syst_tools, theory_tools, logging
+from utilities import differential, common, logging
+from wremnants import syst_tools, theory_tools, theory_corrections
 from copy import deepcopy
 import hist
 import numpy as np
@@ -164,3 +164,29 @@ def add_xnorm_histograms(results, df, args, dataset_name, corr_helpers, qcdScale
 
     syst_tools.add_theory_hists(results, df_xnorm, args, dataset_name, corr_helpers, qcdScaleByHelicity_helper, xnorm_axes, xnorm_cols, base_name="xnorm")
 
+def reweight_to_fitresult(fitresult, axes, poi_type = "nois", cme = 13, process = "Z", expected = False, flow=True):
+    # requires fitresult generated from 'fitresult_pois_to_hist.py'
+    histname = "hist_" + "_".join([a.name for a in axes])
+    if expected:
+        histname += "_expected"
+
+    import pickle
+    with open(fitresult, "rb") as f:
+        r = pickle.load(f)
+        corrh = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"][process][histname]
+
+    slices = [slice(None) for i in range(len(axes))]
+
+    if "qGen" not in [a.name for a in axes] and process == "Z":
+        axes.append(hist.axis.Regular(1, -1, 1, name="chargeVGen", flow=False)) # CorrectionsTensor needs charge axis
+        slices.append(np.newaxis)
+
+    ch = hist.Hist(*axes, hist.axis.Regular(1, 0, 1, name="vars", flow=False))
+    slices.append(np.newaxis)
+    ch = theory_corrections.set_corr_ratio_flow(ch)
+    ch.values(flow=flow)[...] = corrh.values(flow=flow)[*slices]
+
+    logger.debug(f"corrections from fitresult: {corrh.values(flow=True)}")
+
+    from wremnants.correctionsTensor_helper import makeCorrectionsTensor
+    return makeCorrectionsTensor(ch)

@@ -32,8 +32,6 @@ args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
-args = parser.parse_args()
-
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 
@@ -103,7 +101,7 @@ inclusive = hasattr(args, "inclusive") and args.inclusive
 if isUnfolding:
     unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
         args.genAxes, 
-        common.get_gen_axes(isPoiAsNoi, dilepton_ptV_binning, inclusive), 
+        common.get_gen_axes(dilepton_ptV_binning, inclusive, flow=isPoiAsNoi), 
         add_out_of_acceptance_axis=isPoiAsNoi,
     )
     if not isPoiAsNoi:
@@ -154,33 +152,10 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
+
 if args.fitresult:
-    # reweight based on initial fit
-    # TODO re structure, move in separate file or so
-    poi_type = "nois"
-    cme = 13
-    process = "Z"
-    expected = False
-
-    noi_axes =[a for a in unfolding_axes if a.name != "acceptance"]
-
-    histname = "hist_" + "_".join([a.name for a in noi_axes])
-    if expected:
-        histname += "_expected"
-
-    import pickle
-    with open(args.fitresult, "rb") as f:
-        r = pickle.load(f)
-        corrh = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"][process][histname]
-
-    ch = hist.Hist(*noi_axes, hist.axis.Regular(1, -1, 1, name="chargeVGen", flow=False), hist.axis.Regular(1, 0, 1, name="vars", flow=False))
-    ch.values()[...] = corrh.values()[...,None,None]
-    ch = theory_corrections.set_corr_ratio_flow(ch)
-
-    logger.debug(f"corrections from fitresult: {corrh.values(flow=True)}")
-
-    from wremnants.correctionsTensor_helper import makeCorrectionsTensor
-    unfolding_corr_helper = makeCorrectionsTensor(ch)
+    noi_axes = [a for a in unfolding_axes if a.name != "acceptance"]
+    unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult, noi_axes, process = "Z", poi_type = "nois")
 
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
@@ -213,18 +188,21 @@ def build_graph(df, dataset):
             cutsmap = {"fiducial" : "masswindow"}
 
         if hasattr(dataset, "out_of_acceptance"):
-            logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], accept=False, **cutsmap)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=unfolding_selections, accept=False, **cutsmap)
         else:
-            logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=[], select=not isPoiAsNoi, accept=True, **cutsmap)
+            df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, selections=unfolding_selections, select=not isPoiAsNoi, accept=True, **cutsmap)
 
             if args.fitresult:
                 logger.debug("Apply reweighting based on unfolded result")
                 df = df.Define("unfoldingWeight_tensor", unfolding_corr_helper, [*unfolding_corr_helper.hist.axes.name[:-1], "unity"])
-                df = df.Define("extra_weight", "acceptance ? unfoldingWeight_tensor(0) : unity")
+                df = df.Define("central_weight", "acceptance ? unfoldingWeight_tensor(0) : unity")
 
-            unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
+            if isPoiAsNoi:
+                df_xnorm = df.Filter("acceptance")
+            else:
+                df_xnorm = df
+
+            unfolding_tools.add_xnorm_histograms(results, df_xnorm, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]

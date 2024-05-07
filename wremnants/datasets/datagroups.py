@@ -595,6 +595,25 @@ class Datagroups(object):
         nominal_hist = self.results[base_members[0].name]["output"][histToReadAxes].get()
         return nominal_hist
 
+    def getPOINames(self, gen_bin_indices, axes, base_name, flow=True):
+        poi_names = []
+        for indices in itertools.product(*gen_bin_indices):
+            poi_name = base_name
+            for idx, var in zip(indices, axes):
+                if idx in [hist.overflow, hist.underflow] and not flow:
+                    break
+                elif idx == hist.underflow:
+                    idx_str = "U"
+                elif idx == hist.overflow:
+                    idx_str = "O"
+                else:
+                    idx_str = str(idx)
+                poi_name += f"_{var}{idx_str}"
+            else:
+                poi_names.append(poi_name)
+        
+        return poi_names
+
     def defineSignalBinsUnfolding(self, group_name, new_name=None, member_filter=None, histToReadAxes="xnorm", axesToRead=None):
         nominal_hist = self.getHistForUnfolding(group_name, member_filter, histToReadAxes)
         if axesToRead is None:
@@ -605,19 +624,10 @@ class Datagroups(object):
 
         gen_bin_indices = self.getGenBinIndices(nominal_hist, axesToRead=axesToRead)
 
-        for indices in itertools.product(*gen_bin_indices):
-
-            proc_name = group_name if new_name is None else new_name
-            for idx, var in zip(indices, axesToRead):
-                if idx == hist.underflow:
-                    idx_str = "U"
-                elif idx == hist.overflow:
-                    idx_str = "O"
-                else:
-                    idx_str = str(idx)
-                proc_name += f"_{var}{idx_str}"
-
-
+        for indices, proc_name in zip(
+            itertools.product(*gen_bin_indices), 
+            self.getPOINames(gen_bin_indices, axesToRead, base_name=group_name if new_name is None else new_name)
+        ):
             self.copyGroup(group_name, proc_name, member_filter=member_filter)
 
             memberOp = lambda x, indices=indices, genvars=axesToRead: x[{var : i for var, i in zip(genvars, indices)}]

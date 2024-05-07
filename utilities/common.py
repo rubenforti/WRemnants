@@ -124,7 +124,7 @@ def get_binning_fakes_mt(mt_cut=40):
 def get_dilepton_ptV_binning(fine=False):
     return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
 
-def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
+def get_gen_axes(dilepton_ptV_binning=None, inclusive=False, flow=False):
     if dilepton_ptV_binning is None:
         dilepton_ptV_binning = get_dilepton_ptV_binning()
 
@@ -207,7 +207,7 @@ def set_subparsers(subparser, name, analysis_label):
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
                                help="Generator level definition for unfolding")
-        subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label[0] else [16, 0],
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label else [16, 0],
                                help="Number of generator level bins")
         subparser.add_argument("--fitresult", type=str, help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI unfolding)")
         subparser.add_argument("--inclusive", action='store_true', help="No fiducial selection (mass window only)")
