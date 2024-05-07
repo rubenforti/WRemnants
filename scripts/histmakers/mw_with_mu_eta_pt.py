@@ -70,6 +70,7 @@ if args.makeMCefficiency:
 args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
+isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 
 era = args.era
 
@@ -183,8 +184,17 @@ elif args.binnedScaleFactors:
 else:
     logger.info("Using smoothed scale factors and uncertainties")
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
+    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(era = era)
 
 logger.info(f"SF file: {args.sfFile}")
+
+muon_efficiency_helper_syst_altBkg = {}
+for es in common.muonEfficiency_altBkgSyst_effSteps:
+    altSFfile = args.sfFile.replace(".root", "_altBkg.root")
+    logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
+    muon_efficiency_helper_syst_altBkg[es] = wremnants.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
+                                                                                                   what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
+                                                                                                   effStep=es)
 
 pileup_helper = wremnants.make_pileup_helper(era = era)
 vertex_helper = wremnants.make_vertex_helper(era = era)
@@ -405,25 +415,24 @@ def build_graph(df, dataset):
 
     df = df.Define("goodMuons_ptJet0", "Jet_pt[Muon_jetIdx[goodMuons][0]]")
 
-    if args.isolationDefinition == "iso04":
-        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_all[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04vtxAgn":
-        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_all[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04chg":
-        df = df.Define("goodMuons_relIso0", "Muon_pfRelIso04_chg[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_pfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
-    elif args.isolationDefinition == "iso04chgvtxAgn":
-        df = df.Define("goodMuons_relIso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]")
-        df = df.Define("goodMuons_iso0", "Muon_vtxAgnPfRelIso04_chg[goodMuons][0]*Muon_pt[goodMuons][0]")
-    else:
-        raise NotImplementedError(f"Isolation definition {args.isolationDefinition} not implemented")
+    df = df.Define("goodMuons_relIso0", f"{isoBranch}[goodMuons][0]")
+    df = df.Define("goodMuons_iso0", "goodMuons_relIso0*Muon_pt[goodMuons][0]")
 
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
-    df = df.Define("passIso", "goodMuons_relIso0 < 0.15")
+    df = df.Define("passIso", f"goodMuons_relIso0 < {args.isolationThreshold}")
 
+    ########################################################################
+    # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays (defined here because needed for veto SF)
+    if not dataset.is_data and not isQCDMC and not args.noGenMatchMC:
+        df = theory_tools.define_postfsr_vars(df)
+        df = df.Filter("wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09)")
+        df = df.Define("postfsrMuons_inAcc", f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}")
+        df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
+        df = df.Define("unmatched_postfsrMuon_pt","wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
+        df = df.Define("unmatched_postfsrMuon_eta","wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
+        df = df.Define("GenPart_charge","-GenPart_pdgId[postfsrMuons_inAcc]/abs(GenPart_pdgId[postfsrMuons_inAcc])")
+        df = df.Define("unmatched_postfsrMuon_charge","wrem::unmatched_postfsrMuon_charge(GenPart_charge,GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
@@ -451,7 +460,11 @@ def build_graph(df, dataset):
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
-
+            
+            if isZveto and not args.noGenMatchMC:
+                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
+                weight_expr += "*weight_vetoSF_nominal"
+            
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
@@ -460,7 +473,7 @@ def build_graph(df, dataset):
             df = theoryAgnostic_tools.define_helicity_weights(df)
 
     ########################################################################
-
+    '''
     # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays
     if not dataset.is_data and not isQCDMC and not args.noGenMatchMC:
         df = theory_tools.define_postfsr_vars(df)
@@ -469,6 +482,7 @@ def build_graph(df, dataset):
     if isZveto:
         df = df.Define("postfsrMuons_inAcc", f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}")
         df = df.Define("ZvetoCondition", "Sum(postfsrMuons_inAcc) >= 2")
+    '''
 
     if not args.noRecoil:
         leps_uncorr = ["Muon_pt[goodMuons][0]", "Muon_eta[goodMuons][0]", "Muon_phi[goodMuons][0]", "Muon_charge[goodMuons][0]"]
@@ -632,12 +646,20 @@ def build_graph(df, dataset):
         if not args.onlyTheorySyst:
             if not isQCDMC and not args.noScaleFactors:
                 df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
-                    what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+                                                              what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+                for es in common.muonEfficiency_altBkgSyst_effSteps:
+                    df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
+                                                                         what_analysis=thisAnalysis, step=es, storage_type=storage_type)
+                if isZveto and not args.noGenMatchMC:
+                    df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
+
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
             df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
+            '''
             if isZveto:
                 df = syst_tools.add_scaledByCondition_unc_hists(results, df, args, axes, cols, "weight_ZmuonVeto", "ZmuonVeto", "ZvetoCondition", 2.0, storage_type=storage_type)
+            '''
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)

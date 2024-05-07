@@ -162,6 +162,7 @@ def get_default_mz_window():
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)
+muonEfficiency_altBkgSyst_effSteps = ["tracking"]
 muonEfficiency_standaloneNumberOfValidHits = 1 # to use as "var >= this" (if this=0 the define for the cut is not used at all)
 
 def getIsoMtRegionID(passIso=True, passMT=True):
@@ -345,7 +346,8 @@ def common_parser(analysis_label=""):
         parser.add_argument("--noSmooth3dsf", dest="smooth3dsf", action='store_false', help="If true (default) use smooth 3D scale factors instead of the original 2D ones (but eff. systs are still obtained from 2D version)")
         parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing") 
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
-        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso03chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationThreshold", default=0.15, type=float, help="Threshold for isolation cut")
 
     commonargs,_ = parser.parse_known_args()
 
