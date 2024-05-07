@@ -777,6 +777,23 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale=scale,
                     splitGroup=splitGroupDict,
                 )
+                # now add other systematics if present
+                if name=="effSystTnP":
+                    for es in common.muonEfficiency_altBkgSyst_effSteps:
+                        cardTool.addSystematic(
+                            f"effSystTnP_altBkg_{es}",
+                            mirror=mirror,
+                            mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
+                            group=f"muon_eff_syst_{es}_altBkg",
+                            systAxes = ["n_syst_variations"],
+                            labelsByAxis = [f"{es}_altBkg_etaDecorr"],
+                            baseName=name+"_",
+                            processes=['MCnoQCD'],
+                            passToFakes=passSystToFakes,
+                            systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
+                            scale=scale,
+                            splitGroup={groupName: ".*"},
+                        )
 
             if wmass:
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]

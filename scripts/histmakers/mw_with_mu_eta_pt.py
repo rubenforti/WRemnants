@@ -176,6 +176,14 @@ else:
 
 logger.info(f"SF file: {args.sfFile}")
 
+muon_efficiency_helper_syst_altBkg = {}
+for es in common.muonEfficiency_altBkgSyst_effSteps:
+    altSFfile = args.sfFile.replace(".root", "_altBkg.root")
+    logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
+    muon_efficiency_helper_syst_altBkg[es] = wremnants.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
+                                                                                                   what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
+                                                                                                   effStep=es)
+
 pileup_helper = wremnants.make_pileup_helper(era = era)
 vertex_helper = wremnants.make_vertex_helper(era = era)
 
@@ -625,9 +633,13 @@ def build_graph(df, dataset):
         if not args.onlyTheorySyst:
             if not isQCDMC and not args.noScaleFactors:
                 df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
-                    what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+                                                              what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
+                for es in common.muonEfficiency_altBkgSyst_effSteps:
+                    df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
+                                                                         what_analysis=thisAnalysis, step=es, storage_type=storage_type)
                 if isZveto and not args.noGenMatchMC:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
+
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
             df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
