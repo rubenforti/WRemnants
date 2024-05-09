@@ -173,7 +173,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     )
 
     ratio2D.SetTitle(f"{dataTitle} / (signal + background)")
-    drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred",
+    drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred{ratioRangeStr}",
                         f"muon_eta_pt_dataMCratio", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True)
     drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred. statistical uncertainty",
