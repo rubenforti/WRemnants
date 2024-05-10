@@ -27,7 +27,8 @@ env:
   OUTFILE_LOWPU_MU: "mw_lowPU_mu.hdf5"
   OUTFILE_LOWPU_EE: "mz_lowPU_ee.hdf5"
   OUTFILE_LOWPU_MUMU: "mz_lowPU_mumu.hdf5"
-  DATAPATH: "/scratch/shared/NanoAOD/"
+  # DATAPATH: "/scratch/shared/NanoAOD/"
+  DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
   DATAPATH_LOWPU: "/scratch/shared/NanoAOD/LowPU/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
