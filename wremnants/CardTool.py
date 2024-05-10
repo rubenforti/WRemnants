@@ -935,7 +935,7 @@ class CardTool(object):
         self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
 
-        if not self.real_data and not self.xnorm:
+        if not self.pseudoData and not self.real_data and not self.xnorm:
             # If real data is not explicitly requested, use pseudodata instead (but still store read data in root writer)
             self.setPseudodata([self.nominalName])
         if self.pseudoData and not self.xnorm:
