@@ -360,7 +360,20 @@ def common_parser(analysis_label=""):
             # since the dataAltSig tag-and-probe fits were not run in 3D (it is assumed for simplicity that the syst/nomi ratio is independent from uT)
             #
             # 2D SF without ut-dependence, still needed to compute systematics when uing 3D SF
-            sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            if commonargs.era == "2016PostVFP":
+                sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            elif commonargs.era == "2018":
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2018_vtxAgnIso.root"
+            elif commonargs.era == "2017": 
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2017_vtxAgnIso.root"
+            else:
+                raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
 
         sfFile = f"{data_dir}/muonSF/{sfFile}"
     else:

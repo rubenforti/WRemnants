@@ -85,6 +85,8 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
 
     dict_SF3D = None
     if len(eff_types_3D):
+        if era == "2018" or era == "2017":
+            raise NotImplementedError(f"3D Efficiency SFs not implemented for {era}")
         if isoDefinition == "iso04vtxAgn":
             fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
         elif isoDefinition == "iso04":
@@ -112,7 +114,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
             hist_name = f"SF_{nameTag}_{eratag}_{eff_type}_{chargeTag}"
             ## temporary patch for some missing SF histograms relevant only for dilepton (no warning needed otherwise)
-            if isoDefinition != "iso04vtxAgn":
+            if isoDefinition != "iso04vtxAgn" or era != "2016PostVFP":
                 if eff_type == "antitrigger":
                     hist_name = hist_name.replace("antitrigger", "trigger")
                     if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
@@ -345,7 +347,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
 
                     # temporary patch for some missing SF histograms in 2D (for the 3D case we have everything)
                     # only relevant for dilepton (no warning needed otherwise)
-                    if isoDefinition != "iso04vtxAgn":
+                    if isoDefinition != "iso04vtxAgn" or era!="2016PostVFP":
                         if eff_type == "antitrigger":
                             hist_name = hist_name.replace("antitrigger", "trigger")
                             if templateAnalysisArg == "wrem::AnalysisType::Dilepton":

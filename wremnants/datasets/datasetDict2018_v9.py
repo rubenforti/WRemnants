@@ -31,15 +31,13 @@ dataDictV9_2018 = {
         'group': "DYlowMass",
         "das_name" : "/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1*v1/NANOAODSIM"
     },
-    #'ZtautauPostVFP' : { #this sample needs to be produced
-    #    'filepaths' : ["{BASE_PATH}/../y2018/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NANOAODSIM/106X_upgrade2018_realistic_v16_L1v1-v2/*/*.root"],
+    'ZtautauPostVFP' : { #this sample needs to be produced using old Mass fix one
+        'filepaths' : ["{BASE_PATH}/../y2018//DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
     # At least one tau->e or mu decay, so everything that's not all other decays
-    #   'xsec' : common.xsec_ZmmPostVFP*common.Z_TAU_TO_LEP_RATIO,
-    #'group': "Ztautau",
-    #  'group': "DYlowMass",
-    #  "das_name" : "/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
-    #},
-
+       'xsec' : common.xsec_ZmmPostVFP*common.Z_TAU_TO_LEP_RATIO,
+       'group': "Ztautau",
+      "das_name" : "/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
+    },
     'WplusmunuPostVFP' : { 
         'filepaths' : ["{BASE_PATH}/../y2018/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
         'xsec' : common.xsec_WpmunuPostVFP,
@@ -165,10 +163,10 @@ dataDictV9_2018 = {
         'group' : "Diboson",
         "das_name" : "/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
     },
-    #'QCDmuEnrichPt15PostVFP' : { #Not copied
-    #    'filepaths' : ["{BASE_PATH}/../y2018/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"],
-    #    'xsec' : 238800,
-    #    'group' : "QCD",
-    #    "das_name" : "/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
-    #}
+    'QCDmuEnrichPt15PostVFP' : { #Not copied
+        'filepaths' : ["{BASE_PATH}/../y2018/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"],
+        'xsec' : 238800,
+        'group' : "QCD",
+        "das_name" : "/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
+    }
 }
