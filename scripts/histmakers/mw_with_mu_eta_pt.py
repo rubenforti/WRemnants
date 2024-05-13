@@ -305,7 +305,6 @@ def build_graph(df, dataset):
         cutsmap = {
             "pt_min" : template_minpt, 
             "pt_max" : template_maxpt, 
-            "mtw_min" : args.mtCut, 
             "abseta_max" : template_maxeta
             }
         if hasattr(dataset, "out_of_acceptance"):

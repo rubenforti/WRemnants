@@ -154,7 +154,7 @@ def get_default_etabins(analysis_label=None):
     return (48,-2.4,2.4)
 
 def get_default_mtcut(analysis_label=None):
-    return 40. if analysis_label[0] == "w" else 45.
+    return None if analysis_label[0] == "w" else 45.
 
 def get_default_mz_window():
     return 60, 120
