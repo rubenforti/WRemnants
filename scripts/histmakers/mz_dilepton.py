@@ -108,6 +108,10 @@ if isUnfolding:
     )
     if not isPoiAsNoi:
         datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
+        
+    if args.fitresult:
+        noi_axes = [a for a in unfolding_axes if a.name != "acceptance"]
+        unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult, noi_axes, process = "Z", poi_type = "nois")
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
@@ -161,11 +165,6 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
-
-
-if args.fitresult:
-    noi_axes = [a for a in unfolding_axes if a.name != "acceptance"]
-    unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult, noi_axes, process = "Z", poi_type = "nois")
 
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")

@@ -305,7 +305,8 @@ def build_graph(df, dataset):
         cutsmap = {
             "pt_min" : template_minpt, 
             "pt_max" : template_maxpt, 
-            "abseta_max" : template_maxeta
+            "abseta_max" : template_maxeta, 
+            "mtw_min" : None
             }
         if hasattr(dataset, "out_of_acceptance"):
             df = unfolding_tools.select_fiducial_space(df, mode=analysis_label, accept=False, **cutsmap)
