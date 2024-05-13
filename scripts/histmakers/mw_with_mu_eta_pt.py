@@ -305,7 +305,7 @@ def build_graph(df, dataset):
         cutsmap = {
             "pt_min" : template_minpt, 
             "pt_max" : template_maxpt, 
-            "mtw_min" : None, #args.mtCut, 
+            "mtw_min" : args.mtCut, 
             "abseta_max" : template_maxeta
             }
         if hasattr(dataset, "out_of_acceptance"):
@@ -600,7 +600,7 @@ def build_graph(df, dataset):
                         noiAsPoiWithPolHistName = Datagroups.histName("nominal", syst=f"theoryAgnosticWithPol_{coeffKey}_{genVcharge}")
                         results.append(df.HistoBoost(noiAsPoiWithPolHistName, nominal_axes, [*nominal_cols, f"theoryAgnostic_{coeffKey}_{genVcharge}_tensor"], tensor_axes=helperQ.tensor_axes, storage=hist.storage.Double()))
 
-        if isUnfolding  and isWmunu:
+        if isUnfolding and isWmunu:
             noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
             logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))       

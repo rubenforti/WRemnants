@@ -173,20 +173,32 @@ def reweight_to_fitresult(fitresult, axes, poi_type = "nois", cme = 13, process 
     import pickle
     with open(fitresult, "rb") as f:
         r = pickle.load(f)
-        corrh = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"][process][histname]
+        if process == "W":
+            corrh_0 = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"]["W_qGen0"][histname]
+            corrh_1 = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"]["W_qGen1"][histname]
+        else:
+            corrh = r["results"][poi_type][f"chan_{str(cme).replace('.','p')}TeV"][process][histname]
 
     slices = [slice(None) for i in range(len(axes))]
 
-    if "qGen" not in [a.name for a in axes] and process == "Z":
-        axes.append(hist.axis.Regular(1, -1, 1, name="chargeVGen", flow=False)) # CorrectionsTensor needs charge axis
-        slices.append(np.newaxis)
+    if "qGen" not in [a.name for a in axes]:
+        # CorrectionsTensor needs charge axis
+        if process == "Z":
+            axes.append(hist.axis.Regular(1, -1, 1, name="chargeVGen", flow=False)) 
+            slices.append(np.newaxis)
+            values = corrh.values(flow=flow)
+        elif process == "W":
+            axes.append(hist.axis.Regular(2, -2, 2, name="chargeVGen", flow=False))
+            slices.append(slice(None))    
+            values = np.stack([corrh_0.values(flow=flow), corrh_1.values(flow=flow)], axis=-1)
 
     ch = hist.Hist(*axes, hist.axis.Regular(1, 0, 1, name="vars", flow=False))
     slices.append(np.newaxis)
-    ch = theory_corrections.set_corr_ratio_flow(ch)
-    ch.values(flow=flow)[...] = corrh.values(flow=flow)[*slices]
 
-    logger.debug(f"corrections from fitresult: {corrh.values(flow=True)}")
+    ch = theory_corrections.set_corr_ratio_flow(ch)
+    ch.values(flow=flow)[...] = values[*slices]
+
+    logger.debug(f"corrections from fitresult: {values}")
 
     from wremnants.correctionsTensor_helper import makeCorrectionsTensor
     return makeCorrectionsTensor(ch)

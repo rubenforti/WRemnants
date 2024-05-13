@@ -147,8 +147,8 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             logger.debug(f"Now at channel {channel}")
 
             if poi_type in ["pmaskedexp", "sumpois"]:
-                channel_scale = info["lumi"]/1000
-                channel_scale_initial = info["lumi"]/1000
+                channel_scale = 1./(info["lumi"]*1000)
+                channel_scale_initial = 1./(info["lumi"]*1000)
             else:
                 channel_scale = 1
                 channel_scale_initial = 1

@@ -28,6 +28,7 @@ def make_subparsers(parser):
     parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
     parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
+    parser.add_argument("--correlateMCstat", action='store_true', help="When unfolding, correlate bin by bin statistical uncertainty in reco bins with masked channel; Introduces one nuisance parameter per reco bin")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
@@ -367,6 +368,11 @@ def setup(args, inputFile, fitvar, xnorm=False):
         if args.pseudoDataFile:
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
             pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup)
+            pseudodataGroups.set_histselectors(
+                pseudodataGroups.getNames(), args.baseName, mode=args.fakeEstimation,
+                smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
+                integrate_x="mt" not in fitvar,
+                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
             if not xnorm and (args.axlim or args.rebin or args.absval):
                 pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
             cardTool.setPseudodataDatagroups(pseudodataGroups)
@@ -637,40 +643,24 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
                 noi_args["labelsByAxis"] = [f"_{p}" if p != poi_axes[0] else p for p in poi_axes]
                 noi_args["systAxes"] = poi_axes_syst
-                noi_args["rename"] = "noiWminus"
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"W_qGen0_",
-                    systAxesFlow=[n for n in poi_axes if n in ["ptGen",]],
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(
-                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                "acceptance": hist.tag.Slicer()[::hist.sum]}], 
-                            h[{"acceptance":True}], 
-                            scale2=args.scaleNormXsecHistYields)
-                        ) 
-                        if "minus" in m.name else (
-                            lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                "acceptance": hist.tag.Slicer()[::hist.sum]}]
-                        )
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
-                noi_args["rename"] = "noiWplus"
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"W_qGen1_",
-                    systAxesFlow=[n for n in poi_axes if n in ["ptGen",]],
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(
-                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                "acceptance": hist.tag.Slicer()[::hist.sum]}], 
-                            h[{"acceptance":True}], 
-                            scale2=args.scaleNormXsecHistYields)
-                        )
-                        if "plus" in m.name else (
-                            lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                "acceptance": hist.tag.Slicer()[::hist.sum]}]
-                        )
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
+                for sign, sign_idx in (("minus",0), ("plus",1)):
+                    noi_args["rename"] = f"noiW{sign}"
+                    cardTool.addSystematic(**noi_args,
+                        baseName=f"W_qGen{sign_idx}_",
+                        systAxesFlow=[n for n in poi_axes if n in ["ptGen",]],
+                        preOpMap={
+                            m.name: (lambda h: hh.addHists(
+                                h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                    "acceptance": hist.tag.Slicer()[::hist.sum]}], 
+                                h[{"acceptance":True}], 
+                                scale2=args.scaleNormXsecHistYields)
+                            ) 
+                            if sign in m.name else (
+                                lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                                    "acceptance": hist.tag.Slicer()[::hist.sum]}]
+                            )
+                            for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
+                    )
             else:
                 cardTool.addSystematic(**noi_args,
                     baseName=f"{label}_",
@@ -684,7 +674,52 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
                 )
 
+    if isUnfolding and args.correlateMCstat:
+        recovar = args.fitvar[0].split("-")
+        recovar_syst = [f"_{n}" for n in recovar]
+        if xnorm:
+            cardTool.setProcsNoStatUnc([])
+            selection_var = {"relIso":0, "mt":2} if wmass else {} # select signal region
+            integration_var = {a:hist.sum for a in datagroups.gen_axes_names} # integrate out gen axes for bin by bin uncertainties
+            cardTool.addSystematic(
+                nominalName="nominal",
+                name="yieldsUnfolding",
+                rename="correlateMCstat",
+                group=f"correlateMCstat",
+                passToFakes=False,
+                systAxes=recovar,
+                processes=["signal_samples"],
+                mirror=True,
+                labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
+                actionRequiresNomi=True,
+                action=lambda hvar, hnom:
+                    hh.addHists(
+                        hnom[{"count":hist.sum, "acceptance":hist.sum}],
+                        hvar[{"acceptance":True, **selection_var}].project(*recovar, *datagroups.gen_axes_names),
+                        scale2=(
+                            np.sqrt(hvar[{"acceptance":hist.sum, **selection_var, **integration_var}].variances(flow=True))
+                            / hvar[{"acceptance":hist.sum, **selection_var, **integration_var}].values(flow=True)
+                        )[...,*[np.newaxis] * len(datagroups.gen_axes_names)]
+                    )
+            )
+        else:
+            cardTool.setProcsNoStatUnc(cardTool.procGroups['signal_samples'])
+            cardTool.addSystematic(
+                name=cardTool.nominalName,
+                rename="correlateMCstat",
+                group=f"correlateMCstat",
+                passToFakes=False,
+                systAxes=recovar_syst,
+                processes=["signal_samples"],
+                mirror=True,
+                labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
+                action=lambda h: 
+                    hh.addHists(h,
+                        hh.expand_hist_by_duplicate_axes(h, recovar, recovar_syst),
+                        scale2=np.sqrt(h.variances(flow=True))/h.values(flow=True))
+            )
 
+ 
     if args.doStatOnly:
         # print a card with only mass weights
         logger.info("Using option --doStatOnly: the card was created with only mass nuisance parameter")

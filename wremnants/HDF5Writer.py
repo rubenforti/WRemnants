@@ -258,6 +258,9 @@ class HDF5Writer(object):
 
                 if not masked:                
                     norm_proc, sumw2_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes)
+                    if proc in chanInfo.noStatUncProcesses:
+                        logger.info(f"Skip sumw2 for proc {proc}")
+                        sumw2_proc = 0
                 else:
                     norm_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes, return_variances=False)
 
@@ -374,7 +377,7 @@ class HDF5Writer(object):
                     dg.getProcNames([p for g in procs_syst for p in chanInfo.expandProcesses(g) if p != dg.fakeName])]
 
                 dg.loadHistsForDatagroups(
-                    chanInfo.nominalName, systName, label="syst",
+                    syst["nominalName"], systName, label="syst",
                     procsToRead=procs_syst, 
                     forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                     preOpMap=syst["preOpMap"], preOpArgs=syst["preOpArgs"], applySelection=syst["applySelection"],

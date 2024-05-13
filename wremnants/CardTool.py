@@ -288,7 +288,7 @@ class CardTool(object):
     # preOp is a function to apply per process, preOpMap can be used with a dict for a speratate function for each process, 
     #   it is executed before summing the processes. Arguments can be specified with preOpArgs 
     # action will be applied to the sum of all the individual samples contributing, arguments can be specified with actionArgs
-    def addSystematic(self, name, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None, 
+    def addSystematic(self, name, nominalName=None, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None, 
                       baseName="", mirror=False, mirrorDownVarEqualToUp=False, mirrorDownVarEqualToNomi=False, symmetrize = "average",
                       scale=1, processes=None, group=None, noi=False, noConstraint=False, noProfile=False,
                       preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, actionRequiresNomi=False, selectionArgs={},
@@ -313,6 +313,9 @@ class CardTool(object):
 
         if preOp and preOpMap:
             raise ValueError("Only one of preOp and preOpMap args are allowed")
+
+        if nominalName is None:
+            nominalName = self.nominalName
 
         if isinstance(processes, str):
             processes = [processes]
@@ -340,6 +343,7 @@ class CardTool(object):
                 "outNames" : [] if not outNames else outNames,
                 "outNamesFinal" : [] if not outNames else outNames,
                 "baseName" : baseName,
+                "nominalName": nominalName,
                 "processes" : procs_to_add,
                 "systAxes" : systAxes,
                 "systAxesFlow" : systAxesFlow,
@@ -813,6 +817,7 @@ class CardTool(object):
         processes = self.expandProcesses(processes)
 
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
+
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
             if pseudoData in ["closure", "truthMC"]:
@@ -846,10 +851,11 @@ class CardTool(object):
             logger.warning(f"Making pseudodata summing these processes: {processes}")
             if len(processesFromNomi):
                 # only load nominal histograms that are not already loaded
-                processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
-                logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
                 datagroupsFromNomi = self.datagroups
+                procDictFromNomi = datagroupsFromNomi.getDatagroups()
+                processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
                 if len(processesFromNomiToLoad):
+                    logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
                     datagroupsFromNomi.loadHistsForDatagroups(
                         baseName=self.nominalName, syst=self.nominalName,
                         procsToRead=processesFromNomiToLoad, 
@@ -951,7 +957,7 @@ class CardTool(object):
             forceToNominal=[x for x in self.datagroups.getProcNames() if x not in 
                 self.datagroups.getProcNames([p for g in processes for p in self.expandProcesses(g) if p != self.getFakeName()])]
             self.datagroups.loadHistsForDatagroups(
-                self.nominalName, systName, label="syst",
+                systMap["nominalName"], systName, label="syst",
                 procsToRead=processes, 
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                 preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
