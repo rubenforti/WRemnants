@@ -935,7 +935,7 @@ class CardTool(object):
         self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
 
-        if not self.real_data and not self.xnorm:
+        if not self.pseudoData and not self.real_data and not self.xnorm:
             # If real data is not explicitly requested, use pseudodata instead (but still store read data in root writer)
             self.setPseudodata([self.nominalName])
         if self.pseudoData and not self.xnorm:
@@ -943,10 +943,13 @@ class CardTool(object):
 
         self.writeLnNSystematics()
         for syst in self.systematics.keys():
-            if self.isExcludedNuisance(syst): continue
+            if self.isExcludedNuisance(syst): 
+                continue
             systMap = self.systematics[syst]
             systName = syst if not systMap["name"] else systMap["name"]
             processes = systMap["processes"]
+            if len(processes) == 0:
+                continue
             # Needed to avoid always reading the variation for the fakes, even for procs not specified
             forceToNominal=[x for x in self.datagroups.getProcNames() if x not in 
                 self.datagroups.getProcNames([p for g in processes for p in self.expandProcesses(g) if p != self.getFakeName()])]
