@@ -190,6 +190,14 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
     return df
 
 def hlt_string(era = "2016PostVFP"):
-    hltString = ("HLT_IsoTkMu24 || HLT_IsoMu24" if era == "2016PostVFP" else "HLT_IsoMu24")
+    match era:
+        case "2016PostVFP":
+            hltString = "HLT_IsoTkMu24 || HLT_IsoMu24"
+        case "2017":
+            hltString = "HLT_IsoMu24" #to be potentially replaced by HLT_IsoMu27
+        case "2018":
+            hltString = "HLT_IsoMu24"
+        case _:
+            hltString = "HLT_IsoMu24"
     return hltString
     
