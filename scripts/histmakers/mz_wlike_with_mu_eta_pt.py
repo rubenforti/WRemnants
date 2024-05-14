@@ -121,6 +121,8 @@ smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing e
 
 bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibration else None
 
+pixel_multiplicity_helper, pixel_multiplicity_uncertainty_helper, pixel_multiplicity_uncertainty_helper_stat = muon_calibration.make_pixel_multiplicity_helpers(reverse_variations = args.reweightPixelMultiplicity)
+
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
@@ -180,7 +182,7 @@ def build_graph(df, dataset):
 
     isoThreshold = args.isolationThreshold
     passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold)
+    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold, requirePixelHits=args.requirePixelHits)
     
     df = muon_selections.define_trigger_muons(df)
 
@@ -225,6 +227,22 @@ def build_graph(df, dataset):
         if not args.noScaleFactors:
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
+
+        # prepare inputs for pixel multiplicity helpers
+        cvhName = "cvhideal"
+
+        df = df.Define(f"trigMuons_{cvhName}NValidPixelHits0", f"Muon_{cvhName}NValidPixelHits[trigMuons][0]")
+        df = df.Define(f"nonTrigMuons_{cvhName}NValidPixelHits0", f"Muon_{cvhName}NValidPixelHits[nonTrigMuons][0]")
+
+        df = df.DefinePerSample("MuonNonTrigTrig_triggerCat", "ROOT::VecOps::RVec<wrem::TriggerCat>{wrem::TriggerCat::nonTriggering, wrem::TriggerCat::triggering}");
+        df = df.Define("MuonNonTrigTrig_eta", "ROOT::VecOps::RVec<float>{nonTrigMuons_eta0, trigMuons_eta0}")
+        df = df.Define(f"MuonNonTrigTrig_{cvhName}NValidPixelHits", f"ROOT::VecOps::RVec<int>{{nonTrigMuons_{cvhName}NValidPixelHits0, trigMuons_{cvhName}NValidPixelHits0}}")
+
+        pixel_multiplicity_cols = ["MuonNonTrigTrig_triggerCat", "MuonNonTrigTrig_eta", f"MuonNonTrigTrig_{cvhName}NValidPixelHits"]
+
+        if args.reweightPixelMultiplicity:
+            df = df.Define("weight_pixel_multiplicity", pixel_multiplicity_helper, pixel_multiplicity_cols)
+            weight_expr += "*weight_pixel_multiplicity"
 
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
@@ -334,6 +352,16 @@ def build_graph(df, dataset):
                 results.append(muonScaleSyst_responseWeights)
 
                 df = muon_calibration.add_resolution_uncertainty(df, axes, results, cols, smearing_uncertainty_helper, reco_sel_GF)
+
+                # add pixel multiplicity uncertainties
+                df = df.Define("nominal_pixelMultiplicitySyst_tensor", pixel_multiplicity_uncertainty_helper, [*pixel_multiplicity_cols, "nominal_weight"])
+                hist_pixelMultiplicitySyst = df.HistoBoost("nominal_pixelMultiplicitySyst", axes, [*cols, "nominal_pixelMultiplicitySyst_tensor"], tensor_axes = pixel_multiplicity_uncertainty_helper.tensor_axes, storage=hist.storage.Double())
+                results.append(hist_pixelMultiplicitySyst)
+
+                if args.pixelMultiplicityStat:
+                    df = df.Define("nominal_pixelMultiplicityStat_tensor", pixel_multiplicity_uncertainty_helper_stat, [*pixel_multiplicity_cols, "nominal_weight"])
+                    hist_pixelMultiplicityStat = df.HistoBoost("nominal_pixelMultiplicityStat", axes, [*cols, "nominal_pixelMultiplicityStat_tensor"], tensor_axes = pixel_multiplicity_uncertainty_helper_stat.tensor_axes, storage=hist.storage.Double())
+                    results.append(hist_pixelMultiplicityStat)
 
                 if args.nonClosureScheme in ["A-M-separated", "A-only"]:
                     # add the ad-hoc Z non-closure nuisances from the jpsi massfit to muon scale unc
