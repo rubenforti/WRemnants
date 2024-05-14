@@ -63,7 +63,8 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, etaCut=2.4):
     df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
     df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGlobal && Muon_highPurity && Muon_standalonePt > 15 && Muon_standaloneNumberOfValidHits > 0 && wrem::vectDeltaR2(Muon_standaloneEta, Muon_standalonePhi, Muon_correctedEta, Muon_correctedPhi) < 0.09")
     df = df.Define("vetoMuons", f"vetoMuonsPre2 && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
-    df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
+    if nMuons >= 0:
+        df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
 
     return df
 
@@ -91,7 +92,8 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
         goodMuonsSelection += f" && {isoBranch} < {isoThreshold}"
 
     df = df.Define("goodMuons", goodMuonsSelection) 
-    df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
+    if nMuons >= 0:
+        df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
 
     return df
 
