@@ -931,7 +931,7 @@ class HDF5Writer(object):
         sumgroupidxs = []
         dict_sumgroups = {}
         for chanInfo in self.get_channels().values():
-            dict_sumgroups.update(chanInfo.cardSumGroups)
+            dict_sumgroups.update(chanInfo.cardSumXsecGroups)
         for igroup, (group, members) in enumerate(common.natural_sort_dict(dict_sumgroups).items()):
             sumgroups.append(group)
             for proc in members:

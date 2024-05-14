@@ -48,7 +48,7 @@ def expand_flow(val, axes, flow_axes, var=None):
         return val, var
 
 def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_types=True,
-    merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, flow_axes=[],
+    merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, merge_gen_charge_W=True,
 ):
     # convert POIs in fitresult into histograms
     # uncertainties, use None to get all, use [] to get none
@@ -91,7 +91,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
     if poi_types is None:
         if meta_info["args"]["poiAsNoi"]:
-            poi_types = ["nois"]
+            poi_types = ["nois", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm"]
         else:
             poi_types = ["mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm"]
     
@@ -107,7 +107,21 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             logger.debug(f"Merge channel {chan} into {channel}")
 
             lumi = info["lumi"]
-            gen_axes = info["gen_axes"]    
+            gen_axes = info["gen_axes"]
+
+            if merge_gen_charge_W:
+                if "W_qGen0" not in gen_axes or "W_qGen1" not in gen_axes:
+                    logger.debug("Can't merge W, it requires W_qGen0 and W_qGen1 as separate processes")
+                elif gen_axes["W_qGen0"] != gen_axes["W_qGen1"]:
+                    raise RuntimeError("Axes for different gen charges are diffenret, gen charges can't be merged")
+                else:
+                    logger.debug("Merge W_qGen0 and W_qGen1 into W with charge axis")
+                    axis_qGen = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "qGen")
+                    gen_axes = {
+                        "W": [*gen_axes["W_qGen0"], axis_qGen], 
+                        **{k:v for k,v in gen_axes.items() if k not in ["W_qGen0", "W_qGen1"]}
+                    }
+                    # gen_axes["W"] = [*gen_axes["W_qGen0"], axis_qGen]
 
             if channel not in channel_info:
                 channel_info[channel] = {
@@ -131,6 +145,9 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             logger.warning(f"POI type {poi_type} not found in histogram, continue with next one")
             continue
 
+        # find all axes where the flow bins are included in the unfolding, needed for correct reshaping
+        flow_axes = list(set([l for i in df["Name"].apply(lambda x: [i[:-1] for i in x.split("_")[1:-1] if i[-1] in ["U","O"]]).values if i for l in i]))
+        
         action_val, action_err = transform_poi(poi_type, meta_info)
 
         poi_type_initial="mu"
@@ -168,9 +185,10 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
                 if proc not in result[poi_key][channel]:
                     result[poi_key][channel][proc] = {}
+
                 for axes in gen_axes_permutations:
-                    shape = [a.extent if a.name in flow_axes else a.size for a in axes]
                     axes_names = [a.name for a in axes]
+                    shape = [a.extent if a.name in flow_axes else a.size for a in axes]
 
                     data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=True)
                     for u in filter(lambda x: x.startswith("err_"), data.keys()):
@@ -196,7 +214,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                     hist_name = "hist_" + "_".join(axes_names)
                     if expected:
                         hist_name+= "_expected"
-                    logger.info(f"Save histogram {hist_name}")
+                    logger.info(f"Save histogram {hist_name} for proc {proc} in channel {channel} and type {poi_key}")
                     if hist_name in result[poi_key][channel][proc]:
                         logger.warning(f"Histogram {hist_name} already in result, it will be overridden")
                     result[poi_key][channel][proc][hist_name] = h_

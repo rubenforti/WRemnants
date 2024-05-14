@@ -43,7 +43,7 @@ class CardTool(object):
         self.channels = ["inclusive"]
         self.cardContent = {}
         self.cardGroups = {}
-        self.cardSumGroups = {} # POI sum groups
+        self.cardSumXsecGroups = {} # POI sum groups
         self.nominalTemplate = f"{pathlib.Path(__file__).parent}/../scripts/combine/Templates/datacard.txt"
         self.spacing = 28
         self.systTypeSpacing = 16
@@ -986,7 +986,7 @@ class CardTool(object):
                 card.write(self.cardContent[chan])
                 card.write("\n")
                 card.write(self.cardGroups[chan])
-                card.write(self.writePOISumGroupToText())
+                card.write(self.writeXsecSumGroupToText())
 
     def addSystToGroup(self, groupName, chan, members, groupLabel="group"):
         group_expr = f"{groupName} {groupLabel} ="
@@ -996,14 +996,14 @@ class CardTool(object):
         else:
             self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
 
-    def addSumGroups(self, gen_axes=None, additional_axes=None, genCharge=None, all_poi_names=None):
-        if all_poi_names is None:
-            all_poi_names = self.unconstrainedProcesses
+    def addSumXsecGroups(self, gen_axes=None, additional_axes=None, genCharge=None, all_param_names=None):
+        if all_param_names is None:
+            all_param_names = self.unconstrainedProcesses
         if gen_axes is None:
             gen_axes = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
             gen_axes += additional_axes
-        # if only one or none gen axes, it is already included as main POI and no sumGroups are needed
+        # if only one or none gen axes, it is already included as main Param and no sumGroups are needed
         if len(gen_axes) <= 1:
             return
         # make a sum group for each gen axis
@@ -1017,36 +1017,36 @@ class CardTool(object):
             if isinstance(axes, str):
                 axes = [axes]
 
-            pois_names = [x for x in all_poi_names if all([a in x for a in axes])]
+            param_names = [x for x in all_param_names if all([a in x for a in axes])]
 
             # in case of multiple base processes (e.g. in simultaneous unfoldings) loop over all base processes
-            base_processes = set(map(lambda x: x.split("_")[0], pois_names))
+            base_processes = set(map(lambda x: x.split("_")[0], param_names))
             for base_process in base_processes:
-                pois = [x for x in pois_names if base_process in x.split("_")]
+                params = [x for x in param_names if base_process in x.split("_")]
 
-                sum_groups = set(["_".join([a + p.split(a)[1].split("_")[0] for a in axes]) for p in pois])
+                sum_groups = set(["_".join([a + p.split(a)[1].split("_")[0] for a in axes]) for p in params])
 
                 for sum_group in sorted(sum_groups):
-                    membersList = [p for p in pois if all([g in p.split("_") for g in sum_group.split("_")])]
+                    membersList = [p for p in params if all([g in p.split("_") for g in sum_group.split("_")])]
                     sum_group_name = f"{base_process}_{sum_group}"
                     if genCharge is not None:                
                         membersList = list(filter(lambda x: genCharge in x, membersList))
                         sum_group_name += f"_{genCharge}"
                     if len(membersList):                            
-                        self.addSumGroup(sum_group_name, membersList)
+                        self.addSumXsecGroup(sum_group_name, membersList)
                         
-    def addSumGroup(self, groupName, members):
-        if groupName in self.cardSumGroups:
-            self.cardSumGroups[groupName].append(members)
+    def addSumXsecGroup(self, groupName, members):
+        if groupName in self.cardSumXsecGroups:
+            self.cardSumXsecGroups[groupName].append(members)
         else:
-            self.cardSumGroups[groupName] = members
+            self.cardSumXsecGroups[groupName] = members
 
-    def writePOISumGroupToText(self, groupLabel="sumGroup"):
-        # newName sumGroup = poi_bin1 poi_bin2 poi_bin3
+    def writeXsecSumGroupToText(self, groupLabel="sumGroup"):
+        # newName sumGroup = param_bin1 param_bin2 param_bin3
         text = ""
-        for groupName, membersList in self.cardSumGroups.items():
+        for groupName, membersList in self.cardSumXsecGroups.items():
             members = " ".join(membersList)
-            logger.debug(f"Write POI sum group {groupName} with members {members}")
+            logger.debug(f"Write X sec sum group {groupName} with members {members}")
             text += f"\n{groupName} {groupLabel} = {members}"
         return text
         

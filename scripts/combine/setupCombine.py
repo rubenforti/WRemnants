@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections
+from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections, histselections
 from wremnants.syst_tools import massWeightNames
 from wremnants.datasets.datagroups import Datagroups
 
@@ -28,7 +28,6 @@ def make_subparsers(parser):
     parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
     parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
-    parser.add_argument("--correlateMCstat", action='store_true', help="When unfolding, correlate bin by bin statistical uncertainty in reco bins with masked channel; Introduces one nuisance parameter per reco bin")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
@@ -114,6 +113,7 @@ def make_parser(parser=None):
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
     parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
+    parser.add_argument("--explicitSignalMCstat", action='store_true', help="Use explicit parameters for signal MC stat uncertainty. Introduces one nuisance parameter per reco bin. When unfolding, correlate bin by bin statistical uncertainty in reco bins with masked channel.")
     # pseudodata
     parser.add_argument("--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata")
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
@@ -130,7 +130,6 @@ def make_parser(parser=None):
     parser = make_subparsers(parser)
 
     return parser
-
 
 def setup(args, inputFile, fitvar, xnorm=False):
 
@@ -246,7 +245,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
                     datagroups.gen_axes["W_qGen0"] = gen_axes_to_read
                     gen_bin_indices = datagroups.getGenBinIndices(unfolding_hist, axesToRead=[a.name for a in gen_axes_to_read])
-                    noi_names.append(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen0", flow=False))
+                    noi_names.extend(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen0", flow=False))
                 if "plus" in args.recoCharge:
                     unfolding_hist = datagroups.getHistForUnfolding(
                         base_group, 
@@ -256,7 +255,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
                     datagroups.gen_axes["W_qGen1"] = gen_axes_to_read
                     gen_bin_indices = datagroups.getGenBinIndices(unfolding_hist, axesToRead=[a.name for a in gen_axes_to_read])
-                    noi_names.append(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen1", flow=False))
+                    noi_names.extend(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen1", flow=False))
             else:
                 unfolding_hist = datagroups.getHistForUnfolding(base_group, member_filter=lambda x: not x.name.endswith("OOA"), histToReadAxes= "xnorm")
                 datagroups.gen_axes[base_group[0]] = [ax for ax in unfolding_hist.axes if ax.name in datagroups.gen_axes_names]
@@ -345,11 +344,11 @@ def setup(args, inputFile, fitvar, xnorm=False):
         # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
         if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes_names:
             if "plus" in args.recoCharge:
-                cardTool.addSumGroups(genCharge="qGen1")
+                cardTool.addSumXsecGroups(genCharge="qGen1")
             if "minus" in args.recoCharge:
-                cardTool.addSumGroups(genCharge="qGen0")
+                cardTool.addSumXsecGroups(genCharge="qGen0")
         else:
-            cardTool.addSumGroups(all_poi_names=noi_names if isUnfolding and isPoiAsNoi else None)
+            cardTool.addSumXsecGroups(all_param_names=noi_names if isUnfolding and isPoiAsNoi else None)
 
     if args.noHist:
         cardTool.skipHistograms()
@@ -474,6 +473,13 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale2=0.1)
         )
 
+    if args.doStatOnly and isUnfolding and not isPoiAsNoi:
+        # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
+        cardTool.addLnNSystematic("dummy", 
+            processes=['MCnoQCD'], 
+            size=1.0001, 
+            group="dummy")
+
     if not (args.doStatOnly and constrainMass):
         if args.massVariation != 0:
             if len(args.fitMassDecorr)==0:
@@ -569,34 +575,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
 
-    if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
-        info=dict(
-            name=args.baseName, 
-            group="Fake",
-            processes=cardTool.getFakeName(), 
-            noConstraint=False, 
-            mirror=False, 
-            scale=1,
-            applySelection=False, # don't apply selection, all regions will be needed for the action
-            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
-            systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
-        subgroup = f"{cardTool.getFakeName()}Rate"
-        cardTool.addSystematic(**info,
-            rename=subgroup,
-            splitGroup = {subgroup: f".*"},
-            systNamePrepend=subgroup,
-            actionArgs=dict(variations_frf=True),
-        )
-        if args.fakeEstimation in ["extended2D",]:
-            subgroup = f"{cardTool.getFakeName()}Shape"
-            cardTool.addSystematic(**info,
-                rename=subgroup,
-                splitGroup = {subgroup: f".*"},
-                systNamePrepend=subgroup,
-                actionArgs=dict(variations_scf=True),
-            )
-
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
         if isTheoryAgnostic:
@@ -674,45 +652,51 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
                 )
 
-    if isUnfolding and args.correlateMCstat:
-        recovar = args.fitvar[0].split("-")
+    if args.explicitSignalMCstat:
+        if not xnorm:
+            recovar = fitvar
+        else:
+            # need to find the reco variables that correspond to the masked channel
+            idx = args.inputFile.index(inputFile) 
+            recovar = args.fitvar[idx].split("-")
         recovar_syst = [f"_{n}" for n in recovar]
+        info=dict(
+            baseName="MCstat_"+"_".join(cardTool.procGroups['signal_samples'])+"_",
+            rename="statMC",
+            group=f"statMC",
+            passToFakes=False,
+            processes=["signal_samples"],
+            mirror=True,
+            labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
+        )
         if xnorm:
             cardTool.setProcsNoStatUnc([])
-            selection_var = {"relIso":0, "mt":2} if wmass else {} # select signal region
+            if wmass:
+                action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])  
+            else:
+                action_sel = lambda h, x: h[x] # signal region selection
+
             integration_var = {a:hist.sum for a in datagroups.gen_axes_names} # integrate out gen axes for bin by bin uncertainties
-            cardTool.addSystematic(
-                nominalName="nominal",
+            cardTool.addSystematic(**info,
                 name="yieldsUnfolding",
-                rename="correlateMCstat",
-                group=f"correlateMCstat",
-                passToFakes=False,
+                nominalName="nominal",
                 systAxes=recovar,
-                processes=["signal_samples"],
-                mirror=True,
-                labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
                 actionRequiresNomi=True,
-                action=lambda hvar, hnom:
+                action=lambda hv, hn:
                     hh.addHists(
-                        hnom[{"count":hist.sum, "acceptance":hist.sum}],
-                        hvar[{"acceptance":True, **selection_var}].project(*recovar, *datagroups.gen_axes_names),
+                        hn[{"count":hist.sum, "acceptance":hist.sum}].project(*datagroups.gen_axes_names),
+                        action_sel(hv, {"acceptance":True}).project(*recovar, *datagroups.gen_axes_names),
                         scale2=(
-                            np.sqrt(hvar[{"acceptance":hist.sum, **selection_var, **integration_var}].variances(flow=True))
-                            / hvar[{"acceptance":hist.sum, **selection_var, **integration_var}].values(flow=True)
+                            np.sqrt(action_sel(hv, {"acceptance":hist.sum, **integration_var}).variances(flow=True))
+                            / action_sel(hv, {"acceptance":hist.sum, **integration_var}).values(flow=True)
                         )[...,*[np.newaxis] * len(datagroups.gen_axes_names)]
                     )
             )
         else:
             cardTool.setProcsNoStatUnc(cardTool.procGroups['signal_samples'])
-            cardTool.addSystematic(
+            cardTool.addSystematic(**info,
                 name=cardTool.nominalName,
-                rename="correlateMCstat",
-                group=f"correlateMCstat",
-                passToFakes=False,
                 systAxes=recovar_syst,
-                processes=["signal_samples"],
-                mirror=True,
-                labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
                 action=lambda h: 
                     hh.addHists(h,
                         hh.expand_hist_by_duplicate_axes(h, recovar, recovar_syst),
@@ -837,6 +821,35 @@ def setup(args, inputFile, fitvar, xnorm=False):
     else:
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
+
+    # shape uncertainty on fakes from fakerate factor
+    if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+        syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
+        info=dict(
+            name=args.baseName, 
+            group="Fake",
+            processes=cardTool.getFakeName(), 
+            noConstraint=False, 
+            mirror=False, 
+            scale=1,
+            applySelection=False, # don't apply selection, all regions will be needed for the action
+            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
+            systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
+        subgroup = f"{cardTool.getFakeName()}Rate"
+        cardTool.addSystematic(**info,
+            rename=subgroup,
+            splitGroup = {subgroup: f".*"},
+            systNamePrepend=subgroup,
+            actionArgs=dict(variations_frf=True),
+        )
+        if args.fakeEstimation in ["extended2D",]:
+            subgroup = f"{cardTool.getFakeName()}Shape"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_scf=True),
+            )
 
     if not args.noEfficiencyUnc:
 

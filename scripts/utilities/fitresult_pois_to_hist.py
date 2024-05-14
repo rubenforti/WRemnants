@@ -14,7 +14,6 @@ parser.add_argument("--initial", type=str, default=None, help="fitresult file wi
 parser.add_argument("-o", "--outfolder", type=str, default="./", help="Output folder")
 parser.add_argument("--outputFile", type=str, default="results_unfolded", help="Output file name")
 parser.add_argument("--override", action="store_true", help="Override output file if it exists")
-parser.add_argument("--flowAxes", nargs="*", type=str, default=[], help="Include overflow/underflow bins of specified axes")
 parser.add_argument("--h5py", action="store_true", help="Dump output into hdf5 file using narf, use pickle by default")
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -25,9 +24,9 @@ result = {}
 meta = None
 meta_exp = None
 if args.observed:
-    result, meta = fitresult_pois_to_hist(args.observed.replace(".root",".hdf5"), result, uncertainties=None, initial=args.initial.replace(".root",".hdf5") if args.initial else None, flow_axes=args.flowAxes)
+    result, meta = fitresult_pois_to_hist(args.observed.replace(".root",".hdf5"), result, uncertainties=None, initial=args.initial.replace(".root",".hdf5") if args.initial else None)
 if args.expected:
-    result, meta_exp = fitresult_pois_to_hist(args.expected.replace(".root",".hdf5"), result, uncertainties=None, expected=True, flow_axes=args.flowAxes)
+    result, meta_exp = fitresult_pois_to_hist(args.expected.replace(".root",".hdf5"), result, uncertainties=None, expected=True)
     if not args.observed:
         meta = meta_exp
         meta_exp = None

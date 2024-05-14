@@ -104,6 +104,7 @@ common_groups = [
     "Total",
     "stat",
     "binByBinStat",
+    "statMC",
     "luminosity",
     "recoil",
     "CMS_background",

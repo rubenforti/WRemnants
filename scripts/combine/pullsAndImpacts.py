@@ -87,11 +87,11 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
 
     if impacts and include_ref:
         # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
-        frmt = "{:0"+str(int(np.log10(max(df[impact_str])))+2)+".2f}"
+        frmt = "{:0"+str(int(np.log10(max(df[impact_str])) if max(df[f"{impact_str}_ref"])>0 else 0)+2)+".2f}"
         nval = df[impact_str].apply(lambda x,frmt=frmt: frmt.format(x)) #.astype(str)
         nspace = nval.apply(lambda x, n=nval.apply(len).max(): " "*(n - len(x))) 
         if include_ref:
-            frmt_ref = "{:0"+str(int(np.log10(max(df[f"{impact_str}_ref"])))+2)+".2f}"
+            frmt_ref = "{:0"+str(int(np.log10(max(df[f"{impact_str}_ref"])) if max(df[f"{impact_str}_ref"])>0 else 0)+2)+".2f}"
             nval_ref = df[f'{impact_str}_ref'].apply(lambda x,frmt=frmt_ref: " ("+frmt.format(x)+")") #.round(2).astype(str)
             nspace_ref = nval_ref.apply(lambda x, n=nval_ref.apply(len).max(): " "*(n - len(x))) 
             nval = nval+nspace_ref+nval_ref 
@@ -366,7 +366,12 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
 
     if fitresult_ref:
         df_ref = readFitInfoFromFile(fitresult_ref, args.referenceFile, poi, group, stat=args.stat/100., normalize=normalize, scale=scale)
-        df = df.merge(df_ref, how="left", on="label", suffixes=("","_ref"))
+        df = df.merge(df_ref, how="outer", on="label", suffixes=("","_ref"))
+
+        # Set default values for missing entries in respective columns
+        default_values = {'impact_color': "#377eb8",  'impact_color_ref': "#377eb8"}  
+        for col in df.columns:
+            df[col].fillna(default_values.get(col, 0), inplace=True)
     
     if group and fitresult_ref and set(fitresult_ref["hsysts"]) != set(fitresult["hsysts"]):
         # add another group for the uncertainty from all systematics that are not common among the two groups; 
