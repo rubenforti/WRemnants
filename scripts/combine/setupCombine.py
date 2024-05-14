@@ -106,6 +106,7 @@ def make_parser(parser=None):
     parser.add_argument("--scaleMuonCorr", type=float, default=1.0, help="Scale up/down dummy muon scale uncertainty by this factor")
     parser.add_argument("--correlatedNonClosureNuisances", action='store_true', help="get systematics from histograms for the Z non-closure nuisances without decorrelation in eta and pt")
     parser.add_argument("--calibrationStatScaling", type=float, default=2.1, help="scaling of calibration statistical uncertainty")
+    parser.add_argument("--resolutionStatScaling", type=float, default=5.0, help="scaling of resolution statistical uncertainty")
     parser.add_argument("--correlatedAdHocA", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on b-field term A (in addition to Z pdg mass)")
     parser.add_argument("--correlatedAdHocM", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on alignment term M")
     parser.add_argument("--noEfficiencyUnc", action='store_true', help="Skip efficiency uncertainty (useful for tests, because it's slow). Equivalent to --excludeNuisances '.*effSystTnP|.*effStatTnP' ")
@@ -988,15 +989,35 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if not input_tools.args_from_metadata(cardTool, "noSmearing"):
         cardTool.addSystematic("muonResolutionSyst_responseWeights", 
             mirror = True,
-            # scale=10,
             processes=['single_v_samples'],
             group="resolutionCrctn",
             splitGroup={f"muonCalibration" : f".*"},
             baseName="Resolution_correction_",
             systAxes=["smearing_variation"],
             passToFakes=passSystToFakes,
+            scale = args.resolutionStatScaling,
         )
-       
+
+    cardTool.addSystematic("pixelMultiplicitySyst",
+        mirror = True,
+        processes=['single_v_samples'],
+        group="pixelMultiplicitySyst",
+        splitGroup={f"muonCalibration" : f".*"},
+        baseName="pixel_multiplicity_syst_",
+        systAxes=["var"],
+        passToFakes=passSystToFakes,
+    )
+
+    if input_tools.args_from_metadata(cardTool, "pixelMultiplicityStat"):
+        cardTool.addSystematic("pixelMultiplicityStat",
+            mirror = True,
+            processes=['single_v_samples'],
+            group="pixelMultiplicityStat",
+            splitGroup={f"muonCalibration" : f".*"},
+            baseName="pixel_multiplicity_stat_",
+            systAxes=["var"],
+            passToFakes=passSystToFakes,
+        )
     
     # Previously we had a QCD uncertainty for the mt dependence on the fakes, see: https://github.com/WMass/WRemnants/blob/f757c2c8137a720403b64d4c83b5463a2b27e80f/scripts/combine/setupCombineWMass.py#L359
 
