@@ -327,13 +327,16 @@ def setup(args, inputFile, fitvar, xnorm=False):
         if args.pseudoDataFile:
             # FIXME: should make sure to apply the same customizations as for the nominal datagroups so far
             pseudodataGroups = Datagroups(args.pseudoDataFile, excludeGroups=excludeGroup, filterGroups=filterGroup)
-            pseudodataGroups.set_histselectors(
-                pseudodataGroups.getNames(), args.baseName, mode=args.fakeEstimation,
-                smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
-                integrate_x="mt" not in fitvar,
-                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
             if not xnorm and (args.axlim or args.rebin or args.absval):
                 pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
+
+            if wmass and not xnorm:
+                    pseudodataGroups.fakerate_axes=args.fakerateAxes
+                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, mode=args.fakeEstimation,
+                    smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
+                    integrate_x="mt" not in fitvar,
+                    simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     if args.pseudoDataFakes:
         cardTool.setPseudodata(args.pseudoDataFakes)
