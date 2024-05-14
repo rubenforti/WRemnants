@@ -454,7 +454,6 @@ def build_graph(df, dataset):
         df = df.Define(f"goodMuons_{cvhName}NValidPixelHits", f"Muon_{cvhName}NValidPixelHits[goodMuons]")
         df = df.Define("goodMuons_triggerCat", "ROOT::VecOps::RVec<wrem::TriggerCat>(goodMuons_eta.size(), wrem::TriggerCat::triggering)");
 
-        # pixel_multiplicity_cols = ["goodMuons_triggerCat", "goodMuons_eta", f"goodMuons_{cvhName}NValidPixelHits"]
         pixel_multiplicity_cols = ["goodMuons_triggerCat", "goodMuons_eta", "goodMuons_pt", "goodMuons_charge", f"goodMuons_{cvhName}NValidPixelHits"]
 
         if args.reweightPixelMultiplicity:
