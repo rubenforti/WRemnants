@@ -1785,4 +1785,254 @@ private:
 
 };
 
+template<typename HIST>
+class PixelMultiplicityHelper {
+public:
+    PixelMultiplicityHelper(HIST &&hist) : hist_(std::make_shared<const HIST>(std::move(hist))) {}
+
+    double operator() (const ROOT::VecOps::RVec<TriggerCat> &trigcats, const ROOT::VecOps::RVec<float> &etas, const ROOT::VecOps::RVec<float> &pts, const ROOT::VecOps::RVec<int> &charges, const ROOT::VecOps::RVec<int> &nvalidpixels) const {
+        double w = 1.;
+
+        using enum_t = std::underlying_type_t<TriggerCat>;
+
+        for (unsigned int i = 0; i < trigcats.size(); ++i) {
+            // pt is intentionally not used
+            w *= narf::get_value(*hist_, static_cast<enum_t>(trigcats[i]), etas[i], charges[i], nvalidpixels[i]);
+        }
+
+        return w;
+    }
+
+private:
+    std::shared_ptr<const HIST> hist_;
+};
+
+template<std::size_t N, typename HIST>
+class PixelMultiplicityUncertaintyHelper {
+public:
+    using tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N>>;
+
+    PixelMultiplicityUncertaintyHelper(HIST &&hist) : hist_(std::make_shared<const HIST>(std::move(hist))) {}
+
+    tensor_t operator() (const ROOT::VecOps::RVec<TriggerCat> &trigcats, const ROOT::VecOps::RVec<float> &etas, const ROOT::VecOps::RVec<float> &pts, const ROOT::VecOps::RVec<int> &charges, const ROOT::VecOps::RVec<int> &nvalidpixels, const double nominal_weight = 1.) const {
+        tensor_t res;
+        res.setConstant(nominal_weight);
+
+        using enum_t = std::underlying_type_t<TriggerCat>;
+
+        for (unsigned int i = 0; i < trigcats.size(); ++i) {
+            // pt is intentionally not used
+            res *= narf::get_value(*hist_, static_cast<enum_t>(trigcats[i]), etas[i], charges[i], nvalidpixels[i]).data();
+        }
+
+        return res;
+    }
+
+private:
+    std::shared_ptr<const HIST> hist_;
+};
+
+Eigen::Matrix<double, 1, 6> massJac(const ROOT::Math::PtEtaPhiMVector &muplus_mom4, const ROOT::Math::PtEtaPhiMVector &muminus_mom4) {
+
+  //FIXME make this consistent for different mass particles?
+  const double mp = muplus_mom4.mass();
+
+  const double qop0 = 1./muplus_mom4.P();
+  const double lam0 = M_PI_2 - muplus_mom4.theta();
+  const double phi0 = muplus_mom4.phi();
+
+  const double qop1 = -1./muminus_mom4.P();
+  const double lam1 = M_PI_2 - muminus_mom4.theta();
+  const double phi1 = muminus_mom4.phi();
+
+  const double xf0 = std::pow(mp, 2);
+  const double xf1 = std::sin(lam0);
+  const double xf2 = std::sin(lam1);
+  const double xf3 = 1.0/std::fabs(qop0);
+  const double xf4 = 1.0/std::fabs(qop1);
+  const double xf5 = xf3*xf4;
+  const double xf6 = xf2*xf5;
+  const double xf7 = std::sin(phi0);
+  const double xf8 = std::sin(phi1);
+  const double xf9 = xf7*xf8;
+  const double xf10 = std::cos(lam0);
+  const double xf11 = std::cos(lam1);
+  const double xf12 = xf11*xf5;
+  const double xf13 = xf10*xf12;
+  const double xf14 = 2*xf13;
+  const double xf15 = std::cos(phi0);
+  const double xf16 = std::cos(phi1);
+  const double xf17 = xf15*xf16;
+  const double xf18 = std::pow(qop0, -2);
+  const double xf19 = std::sqrt(xf0 + xf18);
+  const double xf20 = std::pow(qop1, -2);
+  const double xf21 = std::sqrt(xf0 + xf20);
+  const double xf22 = std::sqrt(2*xf0 - 2*xf1*xf6 - xf14*xf17 - xf14*xf9 + 2*xf19*xf21);
+  const double xf23 = xf1*xf2;
+  const double xf24 = xf18*xf4*(((qop0) > 0) - ((qop0) < 0));
+  const double xf25 = xf10*xf11;
+  const double xf26 = xf24*xf25;
+  const double xf27 = 1.0/xf22;
+  const double xf28 = xf10*xf6;
+  const double xf29 = xf1*xf12;
+  const double xf30 = xf13*xf16*xf7;
+  const double xf31 = xf13*xf15*xf8;
+  const double xf32 = xf20*xf3*(((qop1) > 0) - ((qop1) < 0));
+  const double xf33 = xf25*xf32;
+  const double m = xf22;
+  const double dmdqop0 = xf27*(xf17*xf26 + xf23*xf24 + xf26*xf9 - xf21/(std::pow(qop0, 3)*xf19));
+  const double dmdlam0 = xf27*(xf17*xf29 - xf28 + xf29*xf9);
+  const double dmdphi0 = xf27*(xf30 - xf31);
+  const double dmdqop1 = xf27*(xf17*xf33 + xf23*xf32 + xf33*xf9 - xf19/(std::pow(qop1, 3)*xf21));
+  const double dmdlam1 = xf27*(xf17*xf28 + xf28*xf9 - xf29);
+  const double dmdphi1 = xf27*(-xf30 + xf31);
+  Eigen::Matrix<double, 1, 6> res;
+  res(0,0) = dmdqop0;
+  res(0,1) = dmdlam0;
+  res(0,2) = dmdphi0;
+  res(0,3) = dmdqop1;
+  res(0,4) = dmdlam1;
+  res(0,5) = dmdphi1;
+
+//   std::cout << "massJacobianAlt m = " << m << std::endl;
+
+
+
+
+
+  return res;
+}
+
+
+std::array<Eigen::TensorFixedSize<double, Eigen::Sizes<7>>, 2> parmgrads_k7_t(const ROOT::Math::PtEtaPhiMVector &muplus_mom4, const ROOT::Math::PtEtaPhiMVector &muminus_mom4, double w = 1.) {
+
+
+    constexpr int nparmslocal = 7;
+    // constexpr int nparmslocal = 3;
+    // constexpr int nparmslocal = 1;
+
+    const Eigen::Matrix<double, 1, 6> dmdmom = massJac(muplus_mom4, muminus_mom4);
+
+    Eigen::Matrix<double, 6, 2*nparmslocal> dmomdparms = Eigen::Matrix<double, 6, 2*nparmslocal>::Zero();
+
+    constexpr double q0 = 1.;
+    constexpr double q1 = -1.;
+
+    const double qop0 = q0/muplus_mom4.P();
+    const double qop1 = q1/muminus_mom4.P();
+
+    const double sintheta0 = std::sin(muplus_mom4.Theta());
+    const double sintheta1 = std::sin(muminus_mom4.Theta());
+
+    const double k0 = 1./muplus_mom4.Pt();
+    const double k1 = 1./muminus_mom4.Pt();
+
+    // dqop+/dA+
+    dmomdparms(0, 0) = q0*sintheta0*k0;
+    // dqop+/de+
+    dmomdparms(0, 1) = -q0*sintheta0*k0*k0;
+    // dqop+/dM+
+    dmomdparms(0, 2) = sintheta0;
+    // dlam+/dMlam+
+    dmomdparms(1, 3) = 1.;
+    // dphi+/dAphi+
+    dmomdparms(2, 4) = q0*k0;
+    // dphi+/dephi+
+    dmomdparms(2, 5) = -q0*k0*k0;
+    // dphi+/dMphi+
+    dmomdparms(2, 6) = 1.;
+    // dqop+/dA+
+    dmomdparms(3, 7) = q1*sintheta1*k1;
+    // dqop+/de+
+    dmomdparms(3, 8) = -q1*sintheta1*k1*k1;
+    // dqop+/dM+
+    dmomdparms(3, 9) = sintheta1;
+    // dlam-/dMlam-
+    dmomdparms(4, 10) = 1.;
+    // dphi-/dAphi-
+    dmomdparms(5, 11) = q1*k1;
+    // dphi-/dephi-
+    dmomdparms(5, 12) = -q1*k1*k1;
+    // dphi-/dMphi-
+    dmomdparms(5, 13) = 1.;
+
+    const Eigen::Matrix<double, 1, 2*nparmslocal> dmdparms = dmdmom*dmomdparms;
+
+    std::array<Eigen::TensorFixedSize<double, Eigen::Sizes<7>>, 2> res;
+    for (int i = 0; i < nparmslocal; ++i) {
+      res[0](i) = w*dmdparms(0, i);
+      res[1](i) = w*dmdparms(0, nparmslocal + i);
+    }
+
+    return res;
+
+}
+
+template<typename HIST>
+class SmearingGradHelper {
+public:
+  SmearingGradHelper(HIST &&hist) : hist_(std::make_shared<const HIST>(std::move(hist))) {}
+
+  std::array<Eigen::TensorFixedSize<double, Eigen::Sizes<3>>, 2> operator() (const ROOT::Math::PtEtaPhiMVector &muplus_mom4, const ROOT::Math::PtEtaPhiMVector &muminus_mom4, double w = 1.) const {
+
+    constexpr int nparmslocal = 3;
+
+    const Eigen::Matrix<double, 1, 6> dmdmom = massJac(muplus_mom4, muminus_mom4);
+
+    Eigen::Matrix<double, 6, 2*nparmslocal> dsigma2momdparms = Eigen::Matrix<double, 6, 2*nparmslocal>::Zero();
+
+    constexpr double q0 = 1.;
+    constexpr double q1 = -1.;
+
+    const double qop0 = q0/muplus_mom4.P();
+    const double qop1 = q1/muminus_mom4.P();
+
+    const double sintheta0 = std::sin(muplus_mom4.Theta());
+    const double sintheta1 = std::sin(muminus_mom4.Theta());
+
+    const double k0 = 1./muplus_mom4.Pt();
+    const double k1 = 1./muminus_mom4.Pt();
+
+    const double d0 = narf::get_value(*hist_, muplus_mom4.Eta()).value();
+    const double d1 = narf::get_value(*hist_, muminus_mom4.Eta()).value();
+
+
+    // dsigma^2(qop+)/da+
+    dsigma2momdparms(0, 0) = qop0*qop0;
+    // dsigma^2(qop+)/dc+
+    dsigma2momdparms(0, 1) = qop0*qop0/k0/k0;
+    // dsigma^2(qop+)/db+
+    dsigma2momdparms(0, 2) = qop0*qop0/(1. + d0*k0*k0);
+    // dsigma^2(qop-)/da-
+    dsigma2momdparms(3, 3) = qop1*qop1;
+    // dsigma^2(qop-)/dc-
+    dsigma2momdparms(3, 4) = qop1*qop1/k1/k1;
+    // dsigma^2(qop-)/db-
+    dsigma2momdparms(3, 5) = qop1*qop1/(1. + d1*k1*k1);
+
+    Eigen::Matrix<double, 1, 2*nparmslocal> dsigma2mdparms = Eigen::Matrix<double, 1, 2*nparmslocal>::Zero();
+    //FIXME make this cleaner/more automated
+    dsigma2mdparms(0, 0) = dmdmom(0, 0)*dmdmom(0, 0)*dsigma2momdparms(0, 0);
+    dsigma2mdparms(0, 1) = dmdmom(0, 0)*dmdmom(0, 0)*dsigma2momdparms(0, 1);
+    dsigma2mdparms(0, 2) = dmdmom(0, 0)*dmdmom(0, 0)*dsigma2momdparms(0, 2);
+    dsigma2mdparms(0, 3) = dmdmom(0, 3)*dmdmom(0, 3)*dsigma2momdparms(3, 3);
+    dsigma2mdparms(0, 4) = dmdmom(0, 3)*dmdmom(0, 3)*dsigma2momdparms(3, 4);
+    dsigma2mdparms(0, 5) = dmdmom(0, 3)*dmdmom(0, 3)*dsigma2momdparms(3, 5);
+
+    std::array<Eigen::TensorFixedSize<double, Eigen::Sizes<nparmslocal>>, 2> res;
+    for (int i = 0; i < nparmslocal; ++i) {
+      res[0](i) = w*dsigma2mdparms(0, i);
+      res[1](i) = w*dsigma2mdparms(0, nparmslocal + i);
+    }
+
+    return res;
+
+
+  }
+
+private:
+  std::shared_ptr<const HIST> hist_;
+
+};
+
 }
