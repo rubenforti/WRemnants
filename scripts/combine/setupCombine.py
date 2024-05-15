@@ -126,6 +126,7 @@ def make_parser(parser=None):
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
     parser.add_argument("--forceConstrainMass", action='store_true', help="force mass to be constrained in fit")
+    parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
 
     parser = make_subparsers(parser)
 
@@ -436,10 +437,12 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale2=0.1)
         )
 
+    decorwidth = args.decorMassWidth or args.fitWidth
+    massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
     if not (args.doStatOnly and constrainMass):
         if args.massVariation != 0:
             if len(args.fitMassDecorr)==0:
-                cardTool.addSystematic(f"massWeight{label}",
+                cardTool.addSystematic(f"{massWeightName}{label}",
                                     processes=signal_samples_forMass,
                                     group=f"massShift",
                                     noi=not constrainMass,
@@ -453,7 +456,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
                 new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
                 cardTool.addSystematic(
-                    name=f"massWeight{label}",
+                    name=f"{massWeightName}{label}",
                     processes=signal_samples_forMass,
                     rename=f"massDecorr{suffix}{label}",
                     group=f"massDecorr{label}",
@@ -473,7 +476,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         if args.fitMassDiff:
             suffix = "".join([a.capitalize() for a in args.fitMassDiff.split("-")])
             mass_diff_args = dict(
-                name=f"massWeight{label}",
+                name=f"{massWeightName}{label}",
                 processes=signal_samples_forMass,
                 rename=f"massDiff{suffix}{label}",
                 group=f"massDiff{label}",
