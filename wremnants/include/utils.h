@@ -619,15 +619,6 @@ private:
 
 enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
-// return a test vector, useful for tests in python since cppyy
-// has some limitations with respect to enums
-ROOT::VecOps::RVec<TriggerCat> make_test_triggercatv() {
-  ROOT::VecOps::RVec<TriggerCat> res;
-  res.push_back(TriggerCat::nonTriggering);
-  res.push_back(TriggerCat::triggering);
-  return res;
-}
-
 }
 
 
