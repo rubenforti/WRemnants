@@ -270,6 +270,34 @@ def define_dressed_vars(df, mode, flavor="mu"):
 
     return df
 
+def define_lhe_vars(df, mode=None):
+    if "lheLeps" in df.GetColumnNames():
+        logger.debug("LHE leptons are already defined, do nothing here.")
+        return df
+
+    logger.info("Defining LHE variables")
+
+    df = df.Define("lheLeps", "LHEPart_status == 1 && abs(LHEPart_pdgId) >= 11 && abs(LHEPart_pdgId) <= 16")
+    df = df.Define("lheLep", "lheLeps && LHEPart_pdgId>0")
+    df = df.Define("lheAntiLep", "lheLeps && LHEPart_pdgId<0")
+    df = df.Define("lheLep_idx",     "ROOT::VecOps::ArgMax(lheLep)")
+    df = df.Define("lheAntiLep_idx", "ROOT::VecOps::ArgMax(lheAntiLep)")
+
+    df = df.Define("lheLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheLep_idx], LHEPart_eta[lheLep_idx], LHEPart_phi[lheLep_idx], LHEPart_mass[lheLep_idx])")
+    df = df.Define("lheAntiLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheAntiLep_idx], LHEPart_eta[lheAntiLep_idx], LHEPart_phi[lheAntiLep_idx], LHEPart_mass[lheAntiLep_idx])")
+    df = df.Define("lheV", "ROOT::Math::PxPyPzEVector(lheLep_mom)+ROOT::Math::PxPyPzEVector(lheAntiLep_mom)")
+    df = df.Define("ptVlhe", "lheV.pt()")
+    df = df.Define("massVlhe", "lheV.mass()")
+    df = df.Define("ptqVlhe", "lheV.pt()/lheV.mass()")
+    df = df.Define("yVlhe", "lheV.Rapidity()")
+    df = df.Define("phiVlhe", "lheV.Phi()")
+    df = df.Define("absYVlhe", "std::fabs(yVlhe)")
+    df = df.Define("chargeVlhe", "LHEPart_pdgId[lheLep_idx] + LHEPart_pdgId[lheAntiLep_idx]")
+    df = df.Define("csSineCosThetaPhilhe", "wrem::csSineCosThetaPhi(lheAntiLep_mom, lheLep_mom)")
+    df = df.Define("csCosThetalhe", "csSineCosThetaPhilhe.costheta")
+
+    return df
+
 def define_prefsr_vars(df, mode=None):
     if "prefsrLeps" in df.GetColumnNames():
         logger.debug("PreFSR leptons are already defined, do nothing here.")
@@ -496,7 +524,8 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
 
-    df = define_ew_vars(df)
+    if "GenPart_status" in df.GetColumnNames():
+        df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
     df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
