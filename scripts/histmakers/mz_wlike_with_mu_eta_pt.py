@@ -236,9 +236,11 @@ def build_graph(df, dataset):
 
         df = df.DefinePerSample("MuonNonTrigTrig_triggerCat", "ROOT::VecOps::RVec<wrem::TriggerCat>{wrem::TriggerCat::nonTriggering, wrem::TriggerCat::triggering}");
         df = df.Define("MuonNonTrigTrig_eta", "ROOT::VecOps::RVec<float>{nonTrigMuons_eta0, trigMuons_eta0}")
+        df = df.Define("MuonNonTrigTrig_pt", "ROOT::VecOps::RVec<float>{nonTrigMuons_pt0, trigMuons_pt0}")
+        df = df.Define("MuonNonTrigTrig_charge", "ROOT::VecOps::RVec<int>{nonTrigMuons_charge0, trigMuons_charge0}")
         df = df.Define(f"MuonNonTrigTrig_{cvhName}NValidPixelHits", f"ROOT::VecOps::RVec<int>{{nonTrigMuons_{cvhName}NValidPixelHits0, trigMuons_{cvhName}NValidPixelHits0}}")
 
-        pixel_multiplicity_cols = ["MuonNonTrigTrig_triggerCat", "MuonNonTrigTrig_eta", f"MuonNonTrigTrig_{cvhName}NValidPixelHits"]
+        pixel_multiplicity_cols = ["MuonNonTrigTrig_triggerCat", "MuonNonTrigTrig_eta", "MuonNonTrigTrig_pt", "MuonNonTrigTrig_charge", f"MuonNonTrigTrig_{cvhName}NValidPixelHits"]
 
         if args.reweightPixelMultiplicity:
             df = df.Define("weight_pixel_multiplicity", pixel_multiplicity_helper, pixel_multiplicity_cols)
