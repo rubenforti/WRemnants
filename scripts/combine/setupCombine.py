@@ -113,6 +113,7 @@ def make_parser(parser=None):
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
     parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
+    parser.add_argument("--logNormalWmunu", default=None, type=float, help="Add lnN uncertainty for W signal (mainly for tests with fakes in control regions, where W is a subdominant background")
     # pseudodata
     parser.add_argument("--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata")
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
@@ -674,6 +675,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
     cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
+        if args.logNormalWmunu:            
+            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background")
         cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=1.15, group="Fake")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")

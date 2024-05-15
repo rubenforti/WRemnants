@@ -31,7 +31,8 @@ parser.add_argument("--onlyTheorySyst", action="store_true", help="Keep only the
 parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC file every N, where N is given by this option. Mainly for tests")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
-parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
+parser.add_argument("--vetoGenPartPt", type=float, default=14.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
+parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt preFSR muons in acceptance")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
@@ -404,6 +405,8 @@ def build_graph(df, dataset):
         df = theory_tools.define_postfsr_vars(df)
         df = df.Filter("wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09)")
         df = df.Define("postfsrMuons_inAcc", f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}")
+        if args.selectVetoEventsMC:
+            df = df.Filter("Sum(postfsrMuons_inAcc) >= 2")
         df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
         df = df.Define("unmatched_postfsrMuon_pt","wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")
         df = df.Define("unmatched_postfsrMuon_eta","wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc],GenPart_pt[postfsrMuons_inAcc],hasMatchDR2idx)")

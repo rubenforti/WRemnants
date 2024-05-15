@@ -158,14 +158,14 @@ namespace wrem {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            const double sftrig = base_t::scale_factor_product(trig_pt, trig_eta, trig_sapt, trig_saeta,
-                                                               trig_charge,
-                                                               trig_passiso, pass_trigger, iso_with_trigger,
-                                                               base_t::idx_nom_);
-            const double sfnontrig = base_t::scale_factor_product(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
-                                                                  nontrig_charge,
-                                                                  nontrig_passiso, pass_trigger, iso_without_trigger,
-                                                                  base_t::idx_nom_);
+            const double sftrig = (trig_pt > 0.0) ? base_t::scale_factor_product(trig_pt, trig_eta, trig_sapt, trig_saeta,
+                                                                                 trig_charge,
+                                                                                 trig_passiso, pass_trigger, iso_with_trigger,
+                                                                                 base_t::idx_nom_) : 1.0;
+            const double sfnontrig = (nontrig_pt > 0.0) ? base_t::scale_factor_product(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
+                                                                                       nontrig_charge,
+                                                                                       nontrig_passiso, pass_trigger, iso_without_trigger,
+                                                                                       base_t::idx_nom_) : 1.0;
             return sftrig*sfnontrig;
         }
 
@@ -191,14 +191,14 @@ namespace wrem {
                            float second_pt, float second_eta, float second_sapt, float second_saeta,
                            int second_charge, bool second_passiso, bool second_passtrigger) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
-            const double sftrig = base_t::scale_factor_product(first_pt, first_eta, first_sapt, first_saeta,
-                                                               first_charge,
-                                                               first_passiso, first_passtrigger, iso_with_trigger,
-                                                               base_t::idx_nom_);
-            const double sfnontrig = base_t::scale_factor_product(second_pt, second_eta, second_sapt, second_saeta,
-                                                                  second_charge,
-                                                                  second_passiso, second_passtrigger, iso_with_trigger,
-                                                                  base_t::idx_nom_);
+            const double sftrig = (first_pt > 0.0) ? base_t::scale_factor_product(first_pt, first_eta, first_sapt, first_saeta,
+                                                                                  first_charge,
+                                                                                  first_passiso, first_passtrigger, iso_with_trigger,
+                                                                                  base_t::idx_nom_) : 1.0;
+            const double sfnontrig = (second_pt > 0.0) ? base_t::scale_factor_product(second_pt, second_eta, second_sapt, second_saeta,
+                                                                                      second_charge,
+                                                                                      second_passiso, second_passtrigger, iso_with_trigger,
+                                                                                      base_t::idx_nom_) : 1.0;
             return sftrig*sfnontrig;
         }
 
@@ -257,12 +257,12 @@ namespace wrem {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            const tensor_t variation_trig = base_t::sf_syst_var(trig_pt, trig_eta, trig_sapt, trig_saeta,
-                                                                trig_charge,
-                                                                trig_passiso, pass_trigger, iso_with_trigger);
-            const tensor_t variation_nontrig = base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
-                                                                   nontrig_charge,
-                                                                   nontrig_passiso, pass_trigger, iso_without_trigger);
+            const tensor_t variation_trig = (trig_pt > 0.0) ? base_t::sf_syst_var(trig_pt, trig_eta, trig_sapt, trig_saeta,
+                                                                                  trig_charge,
+                                                                                  trig_passiso, pass_trigger, iso_with_trigger) : 1.0;
+            const tensor_t variation_nontrig = (nontrig_pt > 0.0) ? base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
+                                                                                        nontrig_charge,
+                                                                                        nontrig_passiso, pass_trigger, iso_without_trigger) : 1.0;
             return nominal_weight * variation_trig * variation_nontrig;
         }
 
@@ -291,12 +291,12 @@ namespace wrem {
                              int second_charge, bool second_passiso, bool second_passtrigger,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
-            const tensor_t variation_trig = base_t::sf_syst_var(first_pt, first_eta, first_sapt, first_saeta,
-                                                                first_charge,
-                                                                first_passiso, first_passtrigger, iso_with_trigger);
-            const tensor_t variation_nontrig = base_t::sf_syst_var(second_pt, second_eta, second_sapt, second_saeta,
-                                                                   second_charge,
-                                                                   second_passiso, second_passtrigger, iso_with_trigger);
+            const tensor_t variation_trig = (first_pt > 0.0) ? base_t::sf_syst_var(first_pt, first_eta, first_sapt, first_saeta,
+                                                                                  first_charge,
+                                                                                   first_passiso, first_passtrigger, iso_with_trigger) : 1.0;
+            const tensor_t variation_nontrig = (second_pt > 0.0) ? base_t::sf_syst_var(second_pt, second_eta, second_sapt, second_saeta,
+                                                                                       second_charge,
+                                                                                       second_passiso, second_passtrigger, iso_with_trigger) : 1.0;
             return nominal_weight * variation_trig * variation_nontrig;
         }
 

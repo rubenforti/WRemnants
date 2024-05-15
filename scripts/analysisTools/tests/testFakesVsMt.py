@@ -18,7 +18,7 @@ import wremnants
 import hist
 import lz4.frame, pickle
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
+from wremnants import legacy_functions as sel
 
 import numpy as np
 
@@ -656,7 +656,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                 nMtBins = hnarf_asNominal.axes["mt"].size
                 # just select signal region: pass isolation and mT > mtThreshold with overflow included
                 hnarf_asNominal = hnarf_asNominal[{"passIso" : True, 
-                                                   "mt" : s[complex(0,mtThreshold):hist.overflow:hist.sum],
+                                                   "mt" : s[complex(0,mtThreshold)::hist.sum],
                                                    }]
                 hnarf_forMtWithDataDrivenFakes = hnarf_forMtWithDataDrivenFakes[{"passIso" : True, 
                                                                                  "mt" : s[complex(0,mtThreshold):nMtBins],
@@ -1124,7 +1124,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
                             invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
-        if args.fitPolDegree:
+        if args.fitPolDegree == 1:
             drawTH1(histoChi2diffTest,
                     "#chi^{2} difference probability (pol0 versus pol1)",
                     f"Events::0,{1.2*histoChi2diffTest.GetBinContent(histoChi2diffTest.GetMaximumBin())}",

@@ -67,7 +67,7 @@ if __name__ == "__main__":
     parser.add_argument('-t','--histTitle',   default='', type=str, help='Title to assign to output histogram. It is used as a label for the canvas')
     parser.add_argument('-r','--ratioRange',  default=(0, -1),type=float, nargs=2, help="Min and max for the ratio in the plot")
     parser.add_argument(     '--h1Dbinning',  default='50,0.9,1.1', type=str, help='Comma separated list of 3 numbers: nbins,min,max')
-    parser.add_argument('-v','--valBadRatio',  default='0', type=float, help='Value to be used in case of bad ratio (division by 0). The 1D histogram is not filled in case of bad ratio')
+    parser.add_argument(     '--valBadRatio',  default='0', type=float, help='Value to be used in case of bad ratio (division by 0). The 1D histogram is not filled in case of bad ratio')
     parser.add_argument(     '--buildFakeRate', action="store_true", help="The input histograms have the parameters of the linear fits to fake-rate or prompt-rate versus eta: build the histogram with FR (PR) vs pt and eta (obsolete, no longer using pol1 to interpolate)")
     parser.add_argument(     '--skip1DPlot', action="store_true", help="Do not plot 1D distribution")
     parser.add_argument(     '--xRange',  default=(0,-1), type=float, nargs=2, help='Select range for X axis to plot. Also, bins outside this range are not considered in the 1D histogram. If min > max, the option is neglected')

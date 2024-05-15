@@ -89,7 +89,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     hdata_eta = hdata2D.ProjectionX("data_eta",lowPtbin,highPtbin,"e")
     hdata_pt  = hdata2D.ProjectionY("data_pt",1,hdata2D.GetNbinsX(),"e")
 
-    legend = ROOT.TLegend(0.2,0.72,0.95,0.92)
+    legend = ROOT.TLegend(0.2,0.72,0.95,0.9)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
     legend.SetBorderSize(0)
@@ -161,15 +161,15 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     ratio2D.Divide(den2D)
     ratio2D.Write()
 
-    drawTH1dataMCstack(hdata_eta, stack_eta, "Muon #eta", "Events", "muon_eta" + ptRange,
+    drawTH1dataMCstack(hdata_eta, stack_eta, xAxisName, "Events", "muon_eta" + ptRange,
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
-                       drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True
+                       drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 #, xcmsText=0.3
     )
-    drawTH1dataMCstack(hdata_pt, stack_pt, "Muon p_{T} (GeV)", "Events", "muon_pt",
+    drawTH1dataMCstack(hdata_pt, stack_pt, yAxisName, "Events", "muon_pt",
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
-                       drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True
+                       drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 # , xcmsText=0.3
     )
 
     ratio2D.SetTitle(f"{dataTitle} / (signal + background)")
@@ -205,7 +205,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                   legendCoords="0.15,0.85,0.82,0.9;2",
                   leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
                   drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
-                  textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=30, drawLineTopPanel=1.0)
+                  textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, drawLineTopPanel=1.0)
 
     allHists = hmc2D + [hdata2D]
     hdata2D.SetTitle(f"{dataTitle} {chargeLabel}")
@@ -221,7 +221,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                        passCanvas=canvasWide,
                        wideCanvas=True, leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
                        drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
-                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, textAngle=30,
+                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, topMargin=0.06
                        #noRatioPanel=True
     )
 
