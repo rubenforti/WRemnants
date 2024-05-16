@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 # example
-# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_COPY_scetlib_dyturboCorr_maxFiles_m1.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/ -n nominal_muonsonly --plotNonTrig
+# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ -n nominal_muonsonly --plotNonTrig
 
-# use this file as input: /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_COPY_scetlib_dyturboCorr_maxFiles_m1.hdf5
 # histogram template:
 #      nominal_muonsonly
 # Axes = ('trigMuons_eta0', 'trigMuons_pt0', 'trigMuons_charge0', 'nonTrigMuons_eta0', 'nonTrigMuons_pt0', 'nonTrigMuons_charge0')
