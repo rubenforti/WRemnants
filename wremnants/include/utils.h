@@ -584,6 +584,66 @@ Vec_f breitWignerWeights(double massVgen, int type=0) {
     return res;
 }
 
+// remove width dependence from mass weights
+template<std::size_t N>
+class MassWeightHelper {
+
+public:
+  using tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N>>;
+
+  MassWeightHelper(const double m0, const double gamma0, const std::vector<double> &massVals, const std::vector<double> &widthVals) {
+
+    if (massVals.size() != N) {
+      throw std::runtime_error("Invalid massVals, the length must match the number of mass weights.");
+    }
+
+    // pre-compute which width weight to use and to what power it needs to be raised to
+    // compensate the width change which accompanies the default mass weights
+    for (std::size_t i = 0; i < N; ++i) {
+      const double m = massVals[i];
+      const double gammaSource = std::pow(m/m0, 3)*gamma0;
+
+      const double logGammaTargetRatio = std::log(gamma0/gammaSource);
+
+      // find closest width weight to compensate for change in width which accompanies the original mass weight
+      double mindistance = std::numeric_limits<double>::infinity();
+      std::size_t widthIdx = 0;
+      double widthPower = 0.;
+      for (std::size_t j = 0; j < widthVals.size(); ++j) {
+        const double logGammaRatio = std::log(widthVals[j]/gamma0);
+        const double distance = std::fabs(logGammaRatio - logGammaTargetRatio);
+        if (distance < mindistance) {
+          widthIdx = j;
+          widthPower = logGammaTargetRatio/logGammaRatio;
+        }
+      }
+
+      widthIdxs_[i] = widthIdx;
+      widthPowers_[i] = widthPower;
+    }
+
+  }
+
+  tensor_t operator() (const ROOT::VecOps::RVec<float> &massWeights, const ROOT::VecOps::RVec<float> &widthWeights) const {
+    tensor_t res;
+    for (std::size_t i = 0; i < N; ++i) {
+      res(i) = massWeights[i]*std::pow(widthWeights[widthIdxs_[i]], widthPowers_[i]);
+      // protect against rare pathological cases where width weight is zero
+      if (!std::isfinite(res(i))) {
+        res(i) = massWeights[i];
+      }
+    }
+
+    return res;
+  }
+
+private:
+  std::array<std::size_t, N> widthIdxs_;
+  std::array<double, N> widthPowers_;
+
+
+};
+
 // take elements from a 1d tensor by index
 template<typename tensor_t, std::size_t N>
 class index_taker {
@@ -616,6 +676,8 @@ public:
 private:
     idxs_type idxs_;
 };
+
+enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
 }
 

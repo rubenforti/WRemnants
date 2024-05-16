@@ -347,6 +347,11 @@ def common_parser(analysis_label=""):
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
         parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
         parser.add_argument("--isolationThreshold", default=0.15, type=float, help="Threshold for isolation cut")
+        parser.add_argument("--reweightPixelMultiplicity", action='store_true', help="Reweight events based on number of valid pixel hits for the muons")
+        parser.add_argument("--requirePixelHits", action='store_true', help="Require good muons to have at least one valid pixel hit used in the track refit.")
+        parser.add_argument("--pixelMultiplicityStat", action='store_true', help="Include (very small) statistical uncertainties for pixel multiplicity variation")
+
+
 
     commonargs,_ = parser.parse_known_args()
 
