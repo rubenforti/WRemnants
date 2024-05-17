@@ -35,11 +35,17 @@ parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
+parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 #
 
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+if args.useGlobalOrTrackerVeto:
+    useGlobalOrTrackerVeto = True
+else:
+    useGlobalOrTrackerVeto = False
 
 if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
     raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
@@ -173,7 +179,7 @@ elif args.binnedScaleFactors:
 else:
     logger.info("Using smoothed scale factors and uncertainties")
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
-    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(era = era)
+    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
 
 logger.info(f"SF file: {args.sfFile}")
 
@@ -339,7 +345,7 @@ def build_graph(df, dataset):
 
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
-    df = muon_selections.select_veto_muons(df, nMuons=1)
+    df = muon_selections.select_veto_muons(df, nMuons=1, useGlobalOrTrackerVeto = useGlobalOrTrackerVeto)
     df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
                                            use_trackerMuons=args.trackerMuons, use_isolation=False,
                                            nonPromptFromSV=args.selectNonPromptFromSV,
