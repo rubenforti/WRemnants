@@ -42,10 +42,7 @@ args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-if args.useGlobalOrTrackerVeto:
-    useGlobalOrTrackerVeto = True
-else:
-    useGlobalOrTrackerVeto = False
+useGlobalOrTrackerVeto = args.useGlobalOrTrackerVeto
 
 if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
     raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
