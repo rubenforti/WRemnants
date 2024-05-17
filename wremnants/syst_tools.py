@@ -463,6 +463,72 @@ def widthWeightNames(matches=None, proc=""):
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
+# weak weights from Powheg EW NanoLHE files
+def define_weak_weights(df, proc):
+    if proc != 'Zmumu_powheg-weak':
+        logger.debug("weakWeight_tensor only implemented for Zmumu_powheg-weak.")
+        return df
+    if "weakWeight_tensor" in df.GetColumnNames():
+        logger.debug("weakWeight_tensor already defined, do nothing here.")
+        return df
+    nweights = 20
+    df = df.Define("weakWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights}>(LHEReweightingWeight)")
+    df = df.Define("weakWeight_tensor_wnom", "auto res = weakWeight_tensor; res = LHEWeight_originalXWGTUP*res; return res;")
+    return df
+
+def add_weakweights_hist(results, df, axes, cols, base_name="nominal", proc="", storage_type=hist.storage.Double()):
+    name = Datagroups.histName(base_name, syst="weakWeight"+(proc[0] if len(proc) else proc))
+    weakWeight = df.HistoBoost(name, axes, [*cols, "weakWeight_tensor_wnom"], 
+                    tensor_axes=[hist.axis.StrCategory(weakWeightNames(proc=proc), name="weak")], 
+                    storage=storage_type)
+    results.append(weakWeight)
+
+def weakWeightNames(matches=None, proc=""):
+    names = [
+        # no_ew=1d0
+        'weak_no_ew',
+        # no_ew=0d0, weak-only=1d0
+        'weak_no_ho',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0
+        'weak_default',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, PS_scheme=1d0
+        'weak_ps',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Tmass=170.69d0
+        'weak_mt_dn',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Tmass=174.69d0
+        'weak_mt_up',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Zmass=91.1855d0
+        'weak_mz_dn',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Zmass=91.1897d0
+        'weak_mz_up',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, gmu=1.1663782d-5
+        'weak_gmu_dn',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, gmu=1.1663793d-5
+        'weak_gmu_up',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, scheme=1d0, alphaem_z=0.0077561467d0
+        'weak_aem',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, FS_scheme=1d0
+        'weak_fs',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Hmass=124.25d0
+        'weak_mh_dn',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, Hmass=126.25d0
+        'weak_mh_up',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23125d0
+        'weak_s2eff_0p23125',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23105d0
+        'weak_s2eff_0p23105',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.22155d0
+        'weak_s2eff_0p22155',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23185d0
+        'weak_s2eff_0p23185',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23205d0
+        'weak_s2eff_0p23205',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23255d0
+        'weak_s2eff_0p23255',
+    ]
+
+    return [x if not matches or any(y in x for y in matches) else "" for x in names]
+
 def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", addhelicity=False, propagateToHelicity=False, storage_type=hist.storage.Double()):
     # Remove duplicates but preserve the order of the first set
     for pdf in pdfs:
