@@ -617,7 +617,7 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
-            muon_columns_syst = [*muon_columns_syst_trig, "trigMuons_passTrigger0", *muon_columns_syst_nonTrig, "nonTrigMuons_passTrigger0"]
+            muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         else:
             raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")            
     
