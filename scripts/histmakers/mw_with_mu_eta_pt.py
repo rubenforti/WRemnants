@@ -218,6 +218,9 @@ smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing e
 
 bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibration else None
 
+pixel_multiplicity_helper, pixel_multiplicity_uncertainty_helper, pixel_multiplicity_uncertainty_helper_stat = muon_calibration.make_pixel_multiplicity_helpers(reverse_variations = args.reweightPixelMultiplicity)
+
+
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
 if len(procsWithTheoryCorr):
@@ -364,7 +367,8 @@ def build_graph(df, dataset):
     df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
                                            use_trackerMuons=args.trackerMuons, use_isolation=False,
                                            nonPromptFromSV=args.selectNonPromptFromSV,
-                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLighMesonDecay)
+                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLighMesonDecay,
+                                           requirePixelHits=args.requirePixelHits)
 
     # the corrected RECO muon kinematics, which is intended to be used as the nominal
     df = muon_calibration.define_corrected_reco_muon_kinematics(df)
@@ -464,6 +468,21 @@ def build_graph(df, dataset):
             if isZveto and not args.noGenMatchMC:
                 df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
                 weight_expr += "*weight_vetoSF_nominal"
+
+        # prepare inputs for pixel multiplicity helpers
+        cvhName = "cvhideal"
+
+        df = df.Define("goodMuons_eta", "Muon_correctedEta[goodMuons]")
+        df = df.Define("goodMuons_pt", "Muon_correctedPt[goodMuons]")
+        df = df.Define("goodMuons_charge", "Muon_correctedCharge[goodMuons]")
+        df = df.Define(f"goodMuons_{cvhName}NValidPixelHits", f"Muon_{cvhName}NValidPixelHits[goodMuons]")
+        df = df.Define("goodMuons_triggerCat", "ROOT::VecOps::RVec<wrem::TriggerCat>(goodMuons_eta.size(), wrem::TriggerCat::triggering)");
+
+        pixel_multiplicity_cols = ["goodMuons_triggerCat", "goodMuons_eta", "goodMuons_pt", "goodMuons_charge", f"goodMuons_{cvhName}NValidPixelHits"]
+
+        if args.reweightPixelMultiplicity:
+            df = df.Define("weight_pixel_multiplicity", pixel_multiplicity_helper, pixel_multiplicity_cols)
+            weight_expr += "*weight_pixel_multiplicity"
             
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
@@ -706,6 +725,16 @@ def build_graph(df, dataset):
                     df = muon_validation.make_hists_for_muon_scale_var_weights(
                         df, axes, results, cols, cols_gen_smeared
                     )
+
+                # add pixel multiplicity uncertainties
+                df = df.Define("nominal_pixelMultiplicitySyst_tensor", pixel_multiplicity_uncertainty_helper, [*pixel_multiplicity_cols, "nominal_weight"])
+                hist_pixelMultiplicitySyst = df.HistoBoost("nominal_pixelMultiplicitySyst", axes, [*cols, "nominal_pixelMultiplicitySyst_tensor"], tensor_axes = pixel_multiplicity_uncertainty_helper.tensor_axes, storage=hist.storage.Double())
+                results.append(hist_pixelMultiplicitySyst)
+
+                if args.pixelMultiplicityStat:
+                    df = df.Define("nominal_pixelMultiplicityStat_tensor", pixel_multiplicity_uncertainty_helper_stat, [*pixel_multiplicity_cols, "nominal_weight"])
+                    hist_pixelMultiplicityStat = df.HistoBoost("nominal_pixelMultiplicityStat", axes, [*cols, "nominal_pixelMultiplicityStat_tensor"], tensor_axes = pixel_multiplicity_uncertainty_helper_stat.tensor_axes, storage=hist.storage.Double())
+                    results.append(hist_pixelMultiplicityStat)
 
                 # extra uncertainties from non-closure stats
                 df = df.Define("muonScaleClosSyst_responseWeights_tensor_splines", closure_unc_helper,

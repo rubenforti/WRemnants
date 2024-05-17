@@ -2,7 +2,7 @@ import argparse
 from utilities import common, rdf_tools, logging, differential
 from utilities.io_tools import output_tools
 
-parser,initargs = common.common_parser(True)
+parser,initargs = common.common_parser("w_mass")
 
 import narf
 import wremnants
@@ -21,7 +21,6 @@ import ROOT
 
 parser.add_argument("--testHelpers", action="store_true", help="Test the smearing weights helper")
 
-
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -39,6 +38,10 @@ axis_genPt = hist.axis.Regular(45, 9., 81., name = "genPt")
 axis_genEta = hist.axis.Regular(50, -2.5, 2.5, name = "genEta")
 axis_genCharge =  hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "genCharge")
 axis_qopr = hist.axis.Regular(1001, 0., 2.0, name = "qopr")
+
+axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name="eta")
+axis_charge = common.axis_charge
+axis_nvalidpixel = hist.axis.Integer(0, 10, name="nvalidpixel")
 
 response_axes = [axis_genPt, axis_genEta, axis_genCharge, axis_qopr]
 
@@ -98,16 +101,25 @@ def build_graph(df, dataset):
 
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
-    df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
+    df = muon_selections.select_veto_muons(df, nMuons=-1)
+    df = muon_selections.select_good_muons(df, ptLow = 0., ptHigh=1e6, nMuons=-1, datasetGroup=None)
+
+    df = df.Define("goodTrigObjs", f"wrem::goodMuonTriggerCandidate<wrem::Era::Era_{era}>(TrigObj_id,TrigObj_filterBits)")
+    df = df.Define("trigMuons", "wrem::hasTriggerMatch(Muon_correctedEta,Muon_correctedPhi,TrigObj_eta[goodTrigObjs],TrigObj_phi[goodTrigObjs])")
+
 
 
     if not dataset.is_data:
-        df = df.Define("selMuons", "vetoMuonsPre && (Muon_genPartFlav == 1 || Muon_genPartFlav==15)")
+        df = df.Define("genMatchedMuons", "Muon_genPartFlav == 1 || Muon_genPartFlav==15")
+        df = df.Define("selMuons", "vetoMuonsPre && genMatchedMuons")
+        df = df.Define("selGoodMuons", "goodMuons && selMuons")
+        df = df.Define("selGoodTrigMuons", "selGoodMuons && trigMuons")
 
         df = df.Define("selMuons_correctedPt", "Muon_correctedPt[selMuons]")
         df = df.Define("selMuons_correctedEta", "Muon_correctedEta[selMuons]")
         df = df.Define("selMuons_correctedPhi", "Muon_correctedPhi[selMuons]")
         df = df.Define("selMuons_correctedCharge", "Muon_correctedCharge[selMuons]")
+        df = df.Define("selMuons_cvhidealNValidPixelHits", "Muon_cvhidealNValidPixelHits[selMuons]")
         df = df.Define("selMuons_genPartIdx", "Muon_genPartIdx[selMuons]")
         df = df.Define("selMuons_genPt", "Take(GenPart_pt, selMuons_genPartIdx)")
         df = df.Define("selMuons_genEta", "Take(GenPart_eta, selMuons_genPartIdx)")
@@ -117,6 +129,36 @@ def build_graph(df, dataset):
         df = df.Define("selMuons_qop", "selMuons_correctedCharge*1.0/(selMuons_correctedPt*cosh(selMuons_correctedEta))")
         df = df.Define("selMuons_genQop", "selMuons_genCharge*1.0/(selMuons_genPt*cosh(selMuons_genEta))")
         df = df.Define("selMuons_qopr", "selMuons_qop/selMuons_genQop")
+
+        df = df.Define("selGoodMuons_correctedPt", "Muon_correctedPt[selGoodMuons]")
+        df = df.Define("selGoodMuons_correctedEta", "Muon_correctedEta[selGoodMuons]")
+        df = df.Define("selGoodMuons_correctedPhi", "Muon_correctedPhi[selGoodMuons]")
+        df = df.Define("selGoodMuons_correctedCharge", "Muon_correctedCharge[selGoodMuons]")
+        df = df.Define("selGoodMuons_cvhidealNValidPixelHits", "Muon_cvhidealNValidPixelHits[selGoodMuons]")
+        df = df.Define("selGoodMuons_genPartIdx", "Muon_genPartIdx[selGoodMuons]")
+        df = df.Define("selGoodMuons_genPt", "Take(GenPart_pt, selGoodMuons_genPartIdx)")
+        df = df.Define("selGoodMuons_genEta", "Take(GenPart_eta, selGoodMuons_genPartIdx)")
+        df = df.Define("selGoodMuons_genPhi", "Take(GenPart_phi, selGoodMuons_genPartIdx)")
+        df = df.Define("selGoodMuons_genPdgId", "Take(GenPart_pdgId, selGoodMuons_genPartIdx)")
+        df = df.Define("selGoodMuons_genCharge", "-1*(selGoodMuons_genPdgId > 0) + 1*(selGoodMuons_genPdgId < 0)")
+        df = df.Define("selGoodMuons_qop", "selGoodMuons_correctedCharge*1.0/(selGoodMuons_correctedPt*cosh(selGoodMuons_correctedEta))")
+        df = df.Define("selGoodMuons_genQop", "selGoodMuons_genCharge*1.0/(selGoodMuons_genPt*cosh(selGoodMuons_genEta))")
+        df = df.Define("selGoodMuons_qopr", "selGoodMuons_qop/selGoodMuons_genQop")
+
+        df = df.Define("selGoodTrigMuons_correctedPt", "Muon_correctedPt[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_correctedEta", "Muon_correctedEta[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_correctedPhi", "Muon_correctedPhi[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_correctedCharge", "Muon_correctedCharge[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_cvhidealNValidPixelHits", "Muon_cvhidealNValidPixelHits[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_genPartIdx", "Muon_genPartIdx[selGoodTrigMuons]")
+        df = df.Define("selGoodTrigMuons_genPt", "Take(GenPart_pt, selGoodTrigMuons_genPartIdx)")
+        df = df.Define("selGoodTrigMuons_genEta", "Take(GenPart_eta, selGoodTrigMuons_genPartIdx)")
+        df = df.Define("selGoodTrigMuons_genPhi", "Take(GenPart_phi, selGoodTrigMuons_genPartIdx)")
+        df = df.Define("selGoodTrigMuons_genPdgId", "Take(GenPart_pdgId, selGoodTrigMuons_genPartIdx)")
+        df = df.Define("selGoodTrigMuons_genCharge", "-1*(selGoodTrigMuons_genPdgId > 0) + 1*(selGoodTrigMuons_genPdgId < 0)")
+        df = df.Define("selGoodTrigMuons_qop", "selGoodTrigMuons_correctedCharge*1.0/(selGoodTrigMuons_correctedPt*cosh(selGoodTrigMuons_correctedEta))")
+        df = df.Define("selGoodTrigMuons_genQop", "selGoodTrigMuons_genCharge*1.0/(selGoodTrigMuons_genPt*cosh(selGoodTrigMuons_genEta))")
+        df = df.Define("selGoodTrigMuons_qopr", "selGoodTrigMuons_qop/selGoodTrigMuons_genQop")
 
 
     if isW or isZ:
@@ -144,6 +186,14 @@ def build_graph(df, dataset):
         hist_qopr_smearedmulti._hist.metadata = { "sigmarel" : sigmarel }
         results.append(hist_qopr_smearedmulti)
 
+        hist_nvalidpixel_gen = df.HistoBoost("hist_nvalidpixel_gen", [axis_genEta, axis_genPt, axis_genCharge, axis_nvalidpixel], ["selMuons_genEta", "selMuons_genPt", "selMuons_genCharge", "selMuons_cvhidealNValidPixelHits", "nominal_weight"] )
+        results.append(hist_nvalidpixel_gen)
+
+        hist_nvalidpixel_nontrig = df.HistoBoost("hist_nvalidpixel_nontrig", [axis_eta, axis_genPt, axis_charge, axis_nvalidpixel], ["selGoodMuons_correctedEta", "selGoodMuons_genPt", "selGoodMuons_correctedCharge", "selGoodMuons_cvhidealNValidPixelHits", "nominal_weight"])
+        results.append(hist_nvalidpixel_nontrig)
+
+        hist_nvalidpixel_trig = df.HistoBoost("hist_nvalidpixel_trig", [axis_eta, axis_genPt, axis_charge, axis_nvalidpixel], ["selGoodTrigMuons_correctedEta", "selGoodTrigMuons_genPt", "selGoodTrigMuons_correctedCharge", "selGoodTrigMuons_cvhidealNValidPixelHits", "nominal_weight"])
+        results.append(hist_nvalidpixel_trig)
 
         if args.testHelpers:
 
@@ -176,6 +226,7 @@ def build_graph(df, dataset):
 
             hist_qopr_scaled_weight = df.HistoBoost("hist_qopr_scaled_weight", response_axes, [*response_cols, "weight_scale"])
             results.append(hist_qopr_scaled_weight)
+
 
     return results, weightsum
 
