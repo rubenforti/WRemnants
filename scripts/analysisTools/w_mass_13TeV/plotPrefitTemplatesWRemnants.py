@@ -157,6 +157,14 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             drawCorrelationPlot(hMCstat_Fake, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}" + f"::{minyFake},{maxyFake}",
                                 f"MCstatOverPoissonUncRatio_Fake_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
+
+        if any(x in h.GetName() for x in ["Wmunu", "Zmumu", "Fake"]):
+            hProcOverTot = copy.deepcopy(h.Clone(f"yieldRatio_{h.GetName()}OverTotal"))
+            hProcOverTot.SetTitle(f"{h.GetName()} / (S + B) {chargeLabel}")
+            hProcOverTot.Divide(den2D)
+            drawCorrelationPlot(hProcOverTot, xAxisName, yAxisName, "Ratio of event yields",
+                                f"{hProcOverTot.GetName()}_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
     
     ratio2D.Divide(den2D)
     ratio2D.Write()

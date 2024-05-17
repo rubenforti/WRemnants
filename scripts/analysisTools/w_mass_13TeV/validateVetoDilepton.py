@@ -57,14 +57,17 @@ if __name__ == "__main__":
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     #parser.add_argument("--mtRange", type=float, nargs=2, default=[0,40], choices=[-1.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.], help="Apply mT cut, if upper edge is negative integrate the overflow")
-    #parser.add_argument("--charge", type=int, default=1, choices=[-1, 1], help="Charge selection for the triggering muon")
+    parser.add_argument("-c", "--charges", type=int, default=[-1, 1], nargs='+', choices=[-1, 1], help="Charge selection for chosen muon")
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.95,1.05), type=float, nargs=2, help="Range for ratio plot")
     parser.add_argument('--plotNonTrig', action='store_true', help='Plot non triggering muon (with the veto selection), otherwise plot triggering muon')
+    parser.add_argument('--scaleProc', default=None, nargs='*', type=str,
+                        help='Apply scaling factor to process by name, with syntax proc=scale=charge (=charge can be omitted, if given it must be plus or minus). Can specify multiple times')
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
 
-    charges = { -1 : "minus", 1 : "plus" }
+    allCharges = { -1 : "minus", 1 : "plus" }
+    charges = allCharges if len(args.charges) == 2 else {args.charges[0]: allCharges[args.charges[0]]}
     muonTag = "nonTrigMuon" if args. plotNonTrig else "trigMuons"
     muonTitle = "Non triggering" if args. plotNonTrig else "Triggering"
     ###############################################################################################
@@ -94,12 +97,27 @@ if __name__ == "__main__":
     histInfo = groups.getDatagroups() # keys are same as returned by groups.getNames()
     s = hist.tag.Slicer()
 
+    scaleDict = {"plus": {},
+                 "minus" : {}}
+    if args.scaleProc:
+        for sp in args.scaleProc:
+            tokens = sp.split("=")
+            proc,scale = tokens[0],float(tokens[1])
+            if len(tokens) == 3:
+                ch = tokens[2]
+                scaleDict[ch][proc] = scale
+            else:
+                scaleDict["plus"][proc] = scale
+                scaleDict["minus"][proc] = scale
+    
     for charge in charges.keys():
         chargeTag = charges[charge]
         chargeBin = 0 if charge == -1 else 1
         outdirTag = f"{muonTag}_{chargeTag}/"
         outdirCharge = f"{outdir}/{outdirTag}/"
         createPlotDirAndCopyPhp(outdirCharge, eoscp=args.eoscp)
+
+        scaleDictByCharge = scaleDict[charges[charge]]
 
         hdata2D = None
         hmc2D = []
@@ -130,6 +148,9 @@ if __name__ == "__main__":
                 hmc2D.append(narf.hist_to_root(h))
                 hmc2D[-1].SetName(f"{d}_{chargeTag}")
                 hmc2D[-1].SetTitle(f"{d}_{chargeTag}")
+                if d in scaleDictByCharge:
+                    hmc2D[-1].Scale(scaleDictByCharge[d])
+                    logger.info(f"Scaling process {d} for charge {chargeTag} by {scaleDictByCharge[d]}")
         # end of process loop
         plotPrefitHistograms(hdata2D, hmc2D, outdirCharge, xAxisName=f"{muonTitle} muon #eta", yAxisName=f"{muonTitle} muon p_{{T}} (GeV)",
                              chargeLabel=chargeTag, canvas=canvas, canvasWide=cwide, canvas1D=canvas1D,
