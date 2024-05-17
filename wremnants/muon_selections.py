@@ -65,7 +65,7 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, staPtCut=15.0, e
     if not useGlobalOrTrackerVeto:
         df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGoodGlobal")
     else:
-		df = df.Define("Muon_isGoodTracker", "Muon_highPurity && Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14")
+        df = df.Define("Muon_isGoodTracker", "Muon_highPurity && Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14")
         df = df.Define("vetoMuonsPre2", "vetoMuonsPre && (Muon_isGoodGlobal || Muon_isGoodTracker)")
     df = df.Define("vetoMuons", f"vetoMuonsPre2 && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
     if nMuons >= 0:
