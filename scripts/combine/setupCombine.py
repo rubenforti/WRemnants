@@ -127,7 +127,6 @@ def make_parser(parser=None):
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
     parser.add_argument("--forceConstrainMass", action='store_true', help="force mass to be constrained in fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
-    parser.add_argument("--useGlobalOrTrackerVeto", action='store_true', help="use the global-or-tracker veto definition and SFs and systematic uncertainties instead of global-only")
 
     parser = make_subparsers(parser)
 
@@ -809,15 +808,16 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         )
 
             if wmass:
+                useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
                     if "Syst" in name:
-                        if args.useGlobalOrTrackerVeto:
+                        if useGlobalOrTrackerVeto:
                             axes = ["veto_reco-veto_tracking-veto_idip-veto_trackerreco-veto_trackertracking", "n_syst_variations"]
                         else:
                             axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
                         axlabels = ["WPSYST", "_etaDecorr"]
-                        if args.useGlobalOrTrackerVeto:
+                        if useGlobalOrTrackerVeto:
                             nameReplace = [("WPSYST0", "reco"), ("WPSYST1", "tracking"), ("WPSYST2", "idip"), ("WPSYST3", "trackerreco"), ("WPSYST4", "trackertracking"), ("effSystTnP_veto", "effSyst_veto"), ("etaDecorr0", "fullyCorr") ]
                         else:
                             nameReplace = [("WPSYST0", "reco"), ("WPSYST1", "tracking"), ("WPSYST2", "idip"), ("effSystTnP_veto", "effSyst_veto"), ("etaDecorr0", "fullyCorr") ]
@@ -825,7 +825,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         mirror = True
                         mirrorDownVarEqualToNomi=False
                         groupName = "muon_eff_veto_syst"
-                        if args.useGlobalOrTrackerVeto:
+                        if useGlobalOrTrackerVeto:
                             splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip","trackerreco","trackertracking"])}
                         else:
                             splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
