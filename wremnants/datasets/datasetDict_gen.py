@@ -212,6 +212,16 @@ genDataDict.update({
     },
 })
 
+# NanoLHE
+genDataDict.update({
+    'Zmumu_powheg-weak' : { 
+                   'filepaths' :
+                    ["{BASE_PATH}/NanoLHE/Zmumu_powheg-weak/test"],
+                   'xsec' : 1815.82,
+                   'group': "Zmumu",
+    },
+})
+
 if horace_v1:
     genDataDict.update({
         'Zmumu_horace-v1-alpha-old-fsr-off-isr-pythia' : { 
