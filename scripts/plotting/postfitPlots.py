@@ -195,7 +195,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
         label=args.cmsDecor, data=data)
 
-    plot_tools.addLegend(ax1, ncols=len(h_stack)//3, text_size=20*args.scaleleg*scale)
+    plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=20*args.scaleleg*scale)
     plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
