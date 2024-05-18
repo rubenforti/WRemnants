@@ -248,7 +248,7 @@ if combinetf2:
 
     chi2=None
     if f"chi2_{fittype}" in fitresult:
-        chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf"]
+        chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
 
     for channel, info in meta_input["channel_info"].items():
         hist_data = fitresult["hist_data_obs"][channel].get()
