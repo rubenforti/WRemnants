@@ -80,11 +80,13 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
     if nonPromptFromSV:
         # medium ID added afterwards
         df = select_good_secondary_vertices(df)
-        goodMuonsSelection += " && Muon_sip3d > 4.0 && wrem::hasMatchDR2(Muon_correctedEta,Muon_correctedPhi,SV_eta[goodSV],SV_phi[goodSV], 0.01)"
+        # match by index
+        df = df.Define("Muon_goodSV", "ROOT::VecOps::Take(goodSV, Muon_svIdx, 0)")
+        goodMuonsSelection += " && Muon_sip3d > 4.0 && Muon_goodSV"
 
     if nonPromptFromLighMesonDecay:
         # looseID should be part of veto, but just in case, the global condition should also already exist
-        goodMuonsSelection += " && Muon_looseId && Muon_isGlobal && not Muon_mediumId"
+        goodMuonsSelection += " && Muon_looseId && Muon_isGlobal && !Muon_mediumId && Muon_trkKink > 20."
     else:
         goodMuonsSelection += " && Muon_mediumId"
 
