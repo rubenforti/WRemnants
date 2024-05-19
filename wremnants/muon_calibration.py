@@ -7,6 +7,7 @@ from utilities import common, logging
 from utilities import boostHistHelpers as hh
 import uproot
 import numpy as np
+import scipy
 import warnings
 from functools import reduce
 import narf.tfliteutils
@@ -25,6 +26,11 @@ def make_muon_calibration_helpers(args,
         mc_filename=data_dir+"/calibration/correctionResults_v718_idealgeom_gensim.root", 
         data_filename=data_dir+"/calibration/correctionResults_v721_recjpsidata.root", 
         era = None):
+
+    if era == "2018":
+        data_filename=data_dir+"/calibration/correctionResults_lbl2018_recjpsidata.root"
+    elif era == "2017":
+        data_filename=data_dir+"/calibration/correctionResults_lbl2017_recjpsidata.root"
 
     if args.muonCorrMC in ["trackfit_only", "lbl", "lbl_massfit"]:
         raise NotImplementedError(f"Muon calibrations for non-ideal geometry are currently not available! (needed for --muonCorrMC {args.muonCorrMC})")
@@ -353,6 +359,21 @@ def get_dummy_uncertainties():
     h.values(flow=True)[-1, ...] = h.values(flow=True)[-2, ...]
 
     return h
+
+def make_smearing_grad_helper(filename = f"{data_dir}/calibration/resparms_dummy_eta48.root"):
+
+    f = ROOT.TFile.Open(filename)
+
+    d = f.Get("d")
+    d = narf.root_to_hist(d)
+
+    f.Close()
+
+    d = narf.hist_to_pyroot_boost(d)
+
+    smearinggradhelper = ROOT.wrem.SmearingGradHelper[type(d)](ROOT.std.move(d))
+
+    return smearinggradhelper
 
 def make_jpsi_crctn_helper(filepath):
     f = uproot.open(filepath)
@@ -1253,3 +1274,142 @@ def define_passthrough_corrections_jpsi_calibration_ntuples(df):
     df = df.Define("Jpsicor_mom4", "ROOT::Math::PtEtaPhiMVector(Jpsicor_pt, Jpsicor_eta, Jpsicor_phi, Jpsicor_mass)")
 
     return df
+
+def make_pixel_multiplicity_helpers(filename = f"{common.data_dir}/calibration/pixelcorr.pkl.lz4", reverse_variations = False):
+    with lz4.frame.open(filename, "rb") as fin:
+        res = pickle.load(fin)
+
+    hNValidPixelHitsTrig_data = res["hNValidPixelHitsTrig_data"]
+    hNValidPixelHitsNonTrig_data = res["hNValidPixelHitsTrig_data"]
+    hNValidPixelHitsTrig_mc = res["hNValidPixelHitsTrig_mc"]
+    hNValidPixelHitsNonTrig_mc = res["hNValidPixelHitsNonTrig_mc"]
+
+    axis_data_mc = hist.axis.StrCategory(["data", "mc"], name="data_mc")
+
+    # make this an integer axis for more performant lookup
+    # the indexing must match the enum class TriggerCat defined in utils.h
+    # axis_nontrig_trig = hist.axis.StrCategory(["nontrig", "nontrig"], name="nontrig_trig")
+    axis_nontrig_trig = hist.axis.Integer(0, 2, name="nontrig_trig", underflow=False, overflow=False)
+
+    hdists = hist.Hist(axis_data_mc, axis_nontrig_trig,  *hNValidPixelHitsTrig_data.axes, storage = hNValidPixelHitsTrig_data._storage_type())
+
+
+    hdists[ {"data_mc" : "data", "nontrig_trig" : ROOT.wrem.TriggerCat.nonTriggering*1j}] = hNValidPixelHitsNonTrig_data.view(flow=True)
+    hdists[ {"data_mc" : "data", "nontrig_trig" : ROOT.wrem.TriggerCat.triggering*1j}] = hNValidPixelHitsTrig_data.view(flow=True)
+    hdists[ {"data_mc" : "mc", "nontrig_trig" : ROOT.wrem.TriggerCat.nonTriggering*1j}] = hNValidPixelHitsNonTrig_mc.view(flow=True)
+    hdists[ {"data_mc" : "mc", "nontrig_trig" : ROOT.wrem.TriggerCat.triggering*1j}] = hNValidPixelHitsTrig_mc.view(flow=True)
+
+
+    # integrate out pt since we can't reliably derive corrections differential in it
+    hdists = hdists[{"pt" : hist.sum}]
+
+
+    # compute reweighting in terms of nvalidpixel==0 or nvalidpixel>0 rather than full distribution
+    s = hist.tag.Slicer()
+
+    h0 = hdists[{"nvalidpixel" : 0j}]
+    h1 = hdists[{"nvalidpixel" : s[1j::hist.sum]}]
+    h0val = h0.values(flow=True)
+    h0var = h0.variances(flow=True)
+    h1val = h1.values(flow=True)
+    h1var = h1.variances(flow=True)
+    num = h0val
+    den = h0val + h1val
+    p0 = num/den
+    p0var = 1./den**4*(h1val**2*h0var + h0val**2*h1var)
+
+    hp0 = hist.Hist(*h0.axes, storage = hist.storage.Weight())
+    hp0.values(flow=True)[...] = np.where(den==0., 0., p0)
+    hp0.variances(flow=True)[...] = np.where(den==0., 0., p0var)
+
+    axis_nvalidpixel = hist.axis.Variable([-0.5, 0.5, np.inf], name = "nvalidpixel")
+
+    hnom_axes = hp0[{"data_mc" : "data"}].axes
+    hnom_axes = [*hnom_axes, axis_nvalidpixel]
+
+    hnom = hist.Hist(*hnom_axes, name="hnom")
+
+    # default weight is 1
+    hnom.values(flow=True)[...] = 1.
+
+    p0d = hp0[{"data_mc" : "data"}].values()
+    p0m = hp0[{"data_mc" : "mc"}].values()
+
+    hnom[{"nvalidpixel" : 0j}] = np.where(p0m==0., 1., p0d/p0m)
+    hnom[{"nvalidpixel" : 1j}] = np.where((1.-p0m)==0., 1., (1. - p0d)/(1. - p0m))
+
+    # build variations for statistical uncertainties
+    axis_eta = hnom.axes["eta"]
+    axis_charge = hnom.axes["charge"]
+
+    nvarstat = hp0.values().size
+    axis_varstat = hist.axis.Integer(0, nvarstat, name = "var", underflow=False, overflow=False)
+
+    hp0var = hist.Hist(*hp0.axes, axis_varstat)
+    hp0var.values(flow=True)[...] = hp0.values(flow=True)[..., None]
+
+    ivar = 0
+    for idatamc in range(axis_data_mc.size):
+        for itrig in range(axis_nontrig_trig.size):
+            for ieta in range(axis_eta.size):
+                for icharge in range(axis_charge.size):
+                    val = hp0[{"data_mc" : idatamc, "nontrig_trig" : itrig, "eta" : ieta, "charge" : icharge}].value
+                    var = hp0[{"data_mc" : idatamc, "nontrig_trig" : itrig, "eta" : ieta, "charge" : icharge}].variance
+                    newval = val + np.sqrt(np.abs(var))
+                    hp0var[{"data_mc" : idatamc, "nontrig_trig" : itrig, "eta" : ieta, "charge" : icharge, "var" : ivar}] = np.clip(val + np.sqrt(np.abs(var)), 0., 1.)
+                    ivar += 1
+
+    if ivar != nvarstat:
+        raise ValueError("Incorrect number of variations")
+
+    hvarstat = hist.Hist(*hnom.axes, axis_varstat, name = "hvarstat")
+    hvarstat.values(flow=True)[...] = 1.
+
+
+    p0dvar = hp0var[{"data_mc" : "data"}].values()
+    p0mvar = hp0var[{"data_mc" : "mc"}].values()
+
+    hvarstat[{"nvalidpixel" : 0j}] = np.where(p0mvar == 0., 1., p0dvar/p0mvar)
+    hvarstat[{"nvalidpixel" : 1j}] = np.where((1 - p0mvar)==0., 1., (1. - p0dvar)/(1. - p0mvar))
+
+    hvarstat.values(flow=True)[...] *= 1./hnom.values(flow=True)[..., None]
+
+
+    neta = axis_eta.size
+
+    # one variation per eta bin plus one fully correlated variation
+    nvar = neta + 1
+
+    axis_var = hist.axis.Integer(0, nvar, name = "var", underflow=False, overflow=False)
+    hvar = hist.Hist(*hnom.axes, axis_var, name = "hvar")
+
+    # default weight is 1
+    hvar.values(flow=True)[...] = 1.
+
+    ivar = 0
+    for ieta in range(neta):
+        hvar[{"eta" : ieta, "var" : ivar}] = hnom[{"eta" : ieta}].view(flow=True)
+        ivar += 1
+
+    # fully correlated variation
+    hvar[{"var" : ivar}] = hnom.view(flow=True)
+    ivar += 1
+
+    if ivar != nvar:
+        raise ValueError("Incorrect number of variations")
+
+    if reverse_variations:
+        hvar.values(flow=True)[...] = 1./hvar.values(flow=True)
+
+    hnom_cpp = narf.hist_to_pyroot_boost(hnom)
+    hvar_cpp = narf.hist_to_pyroot_boost(hvar, tensor_rank=1)
+    hvarstat_cpp = narf.hist_to_pyroot_boost(hvarstat, tensor_rank=1)
+
+    helper = ROOT.wrem.PixelMultiplicityHelper[type(hnom_cpp)](ROOT.std.move(hnom_cpp))
+    helper_var = ROOT.wrem.PixelMultiplicityUncertaintyHelper[nvar, type(hvar_cpp)](ROOT.std.move(hvar_cpp))
+    helper_varstat = ROOT.wrem.PixelMultiplicityUncertaintyHelper[nvarstat, type(hvarstat_cpp)](ROOT.std.move(hvarstat_cpp))
+
+    helper_var.tensor_axes = [axis_var]
+    helper_varstat.tensor_axes = [axis_varstat]
+
+    return helper, helper_var, helper_varstat

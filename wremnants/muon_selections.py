@@ -68,11 +68,12 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, etaCut=2.4):
     df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
     df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGlobal && Muon_highPurity && Muon_standalonePt > 15 && Muon_standaloneNumberOfValidHits > 0 && wrem::vectDeltaR2(Muon_standaloneEta, Muon_standalonePhi, Muon_correctedEta, Muon_correctedPhi) < 0.09")
     df = df.Define("vetoMuons", f"vetoMuonsPre2 && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
-    df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
+    if nMuons >= 0:
+        df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
 
     return df
 
-def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoBranch="Muon_vtxAgnPfRelIso04_all", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoBranch="Muon_vtxAgnPfRelIso04_all", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False, requirePixelHits = False):
 
     if use_trackerMuons:
         df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
@@ -95,8 +96,12 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
     if use_isolation:
         goodMuonsSelection += f" && {isoBranch} < {isoThreshold}"
 
+    if requirePixelHits:
+        goodMuonsSelection += " && Muon_cvhNValidPixelHits > 0"
+
     df = df.Define("goodMuons", goodMuonsSelection) 
-    df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
+    if nMuons >= 0:
+        df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
 
     return df
 
@@ -195,6 +200,14 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
     return df
 
 def hlt_string(era = "2016PostVFP"):
-    hltString = ("HLT_IsoTkMu24 || HLT_IsoMu24" if era == "2016PostVFP" else "HLT_IsoMu24")
+    match era:
+        case "2016PostVFP":
+            hltString = "HLT_IsoTkMu24 || HLT_IsoMu24"
+        case "2017":
+            hltString = "HLT_IsoMu24" #to be potentially replaced by HLT_IsoMu27
+        case "2018":
+            hltString = "HLT_IsoMu24"
+        case _:
+            hltString = "HLT_IsoMu24"
     return hltString
     

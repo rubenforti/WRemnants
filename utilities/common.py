@@ -347,6 +347,11 @@ def common_parser(analysis_label=""):
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
         parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
         parser.add_argument("--isolationThreshold", default=0.15, type=float, help="Threshold for isolation cut")
+        parser.add_argument("--reweightPixelMultiplicity", action='store_true', help="Reweight events based on number of valid pixel hits for the muons")
+        parser.add_argument("--requirePixelHits", action='store_true', help="Require good muons to have at least one valid pixel hit used in the track refit.")
+        parser.add_argument("--pixelMultiplicityStat", action='store_true', help="Include (very small) statistical uncertainties for pixel multiplicity variation")
+
+
 
     commonargs,_ = parser.parse_known_args()
 
@@ -360,7 +365,20 @@ def common_parser(analysis_label=""):
             # since the dataAltSig tag-and-probe fits were not run in 3D (it is assumed for simplicity that the syst/nomi ratio is independent from uT)
             #
             # 2D SF without ut-dependence, still needed to compute systematics when uing 3D SF
-            sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            if commonargs.era == "2016PostVFP":
+                sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            elif commonargs.era == "2018":
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2018_vtxAgnIso.root"
+            elif commonargs.era == "2017": 
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2017_vtxAgnIso.root"
+            else:
+                raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
 
         sfFile = f"{data_dir}/muonSF/{sfFile}"
     else:

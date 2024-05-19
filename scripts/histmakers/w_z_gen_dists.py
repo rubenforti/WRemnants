@@ -143,7 +143,26 @@ def build_graph(df, dataset):
     if args.singleLeptonHists and (isW or isZ):
         results.append(df.HistoBoost("nominal_genlep", lep_axes, [*lep_cols, "nominal_weight"], storage=hist.storage.Weight()))
 
-    if not args.skipEWHists and (isW or isZ):
+    if not args.skipEWHists and (isW or isZ) and dataset.name == 'Zmumu_powheg-weak':
+        if isZ:
+            massBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010, bin_edges_low=[0,50,60], bin_edges_high=[120])
+        else:
+            massBins = theory_tools.make_ew_binning(mass = 80.3815, width = 2.0904, initialStep=0.010)
+        
+        # LHE level
+        df = theory_tools.define_lhe_vars(df)
+        df = syst_tools.define_weak_weights(df, dataset.name)
+        axis_lheMV = hist.axis.Variable(massBins, name = "massVlhe", underflow=False)
+        axis_lhePtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVlhe") 
+        axis_lheAbsYV = hist.axis.Regular(50, 0, 5, name = "absYVlhe")
+        axis_lheCosTheta = hist.axis.Regular(50, -1, 1, name = "lheCosTheta")
+        results.append(df.HistoBoost("lhe_massVptV", [axis_lheMV, axis_lhePtV], ["massVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
+        results.append(df.HistoBoost("lhe_absYVptV", [axis_lheAbsYV, axis_lhePtV], ["absYVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
+        results.append(df.HistoBoost("lhe_absYVmassV", [axis_lheAbsYV, axis_lheMV], ["absYVlhe", "massVlhe", "nominal_weight"], storage=hist.storage.Weight()))
+        results.append(df.HistoBoost("lhe_massVcosTheta", [axis_lheMV, axis_lheCosTheta], ["massVlhe", "csCosThetalhe", "nominal_weight"], storage=hist.storage.Weight()))
+        syst_tools.add_weakweights_hist(results, df, [axis_lheMV, axis_lheCosTheta], ["massVlhe", "csCosThetalhe"], proc=dataset.name, base_name='lhe_massVcosTheta')
+
+    if not args.skipEWHists and (isW or isZ) and "GenPart_status" in df.GetColumnNames():
         if isZ:
             massBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010, bin_edges_low=[0,50,60], bin_edges_high=[120])
         else:
@@ -245,7 +264,7 @@ def build_graph(df, dataset):
     results.append(nominal_gen)
 
     if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
-            "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames():
+            "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames() and "MEParamWeight" in df.GetColumnNames():
 
         qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
 
