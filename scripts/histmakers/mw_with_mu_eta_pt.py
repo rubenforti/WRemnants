@@ -487,7 +487,9 @@ def build_graph(df, dataset):
             df = df.Define("nJetsClean", "Sum(goodCleanJetsNoPt)")
             df = df.Define("leadjetPt", "(nJetsClean > 0) ? Jet_pt[goodCleanJetsNoPt][0] : 0.0")
             #
-            results.append(df.HistoBoost("Muon_genPartFlav", [hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")], ["goodMuons_genPartFlav0", "nominal_weight"]))
+            axis_genPartFlav = hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")
+            results.append(df.HistoBoost("Muon_genPartFlav", [axis_genPartFlav], ["goodMuons_genPartFlav0", "nominal_weight"]))
+            results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "nominal_weight"]))
             #
             otherStudyForFakes = df.HistoBoost("otherStudyForFakes", otherStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nJetsClean", "leadjetPt", "deltaPhiMuonMet", "nominal_weight"])
             results.append(otherStudyForFakes)

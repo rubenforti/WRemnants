@@ -47,7 +47,7 @@ from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 def plotProjection1D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes=None, chargeBin=1,
                      projectAxisToKeep=0, isoAxisRange=[1,1], jetAxisRange=[1,2],
                      xAxisName="variable", plotName="variable_failIso_jetInclusive", mTvalueRange=[],
-                     rebinVariable=None):
+                     rebinVariable=None, scaleQCDMC=1.0):
 
     firstBinMt = 1
     lastBinMt = 1 + rootHists["Data"].GetAxis(3).GetNbins()
@@ -82,6 +82,8 @@ def plotProjection1D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes=None,
             hmc[d].SetLineColor(ROOT.kBlack)
             hmc[d].SetMarkerSize(0)
             hmc[d].SetMarkerStyle(0)
+            if d == "QCD":
+                hmc[d].Scale(scaleQCDMC)
             if rebinVariable:
                 hmc[d].Rebin(rebinVariable)
 
@@ -731,37 +733,37 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                      projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1],
                                      plotName=f"{axisVar[xbin][0]}_failIso_jetInclusive_{mtTitle}",
                                      isoAxisRange=[1,1], jetAxisRange=[1,2],
-                                     mTvalueRange=mtRange)
+                                     mTvalueRange=mtRange, scaleQCDMC=args.scaleQCDMC)
                     plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC, canvas1Dshapes=canvas1Dshapes,
                                      chargeBin=chargeBin,
                                      projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1],
                                      plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive_{mtTitle}",
                                      isoAxisRange=[2,2], jetAxisRange=[1,2],
-                                     mTvalueRange=mtRange)
+                                     mTvalueRange=mtRange, scaleQCDMC=args.scaleQCDMC)
                 continue  # no need for the rest of the plots for this variable
             ######
 
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_1orMoreJet",
-                             isoAxisRange=[2,2], jetAxisRange=[2,2])
+                             isoAxisRange=[2,2], jetAxisRange=[2,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive",
-                             isoAxisRange=[2,2], jetAxisRange=[1,2])
+                             isoAxisRange=[2,2], jetAxisRange=[1,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_failIso_1orMoreJet",
-                             isoAxisRange=[1,1], jetAxisRange=[2,2])
+                             isoAxisRange=[1,1], jetAxisRange=[2,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_failIso_jetInclusive",
-                             isoAxisRange=[1,1], jetAxisRange=[1,2])
+                             isoAxisRange=[1,1], jetAxisRange=[1,2], scaleQCDMC=args.scaleQCDMC)
             # signal region adding mT cut too
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive_passMt",
-                             isoAxisRange=[2,2], jetAxisRange=[1,2], mTvalueRange=[40,-1])
+                             isoAxisRange=[2,2], jetAxisRange=[1,2], mTvalueRange=[40,-1], scaleQCDMC=args.scaleQCDMC)
 
         ###################################
         ###################################
@@ -1448,6 +1450,7 @@ if __name__ == "__main__":
     parser.add_argument("--useQCDMC", action="store_true",   help="Make study using QCD MC instead of data-driven fakes, as a cross check")
     parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=-1.0)
     parser.add_argument("--dphiStudy", action="store_true",   help="Only do some plots for dphi study skipping the rest")
+    parser.add_argument("--scaleQCDMC", default=1.0, type=float, help="Apply scaling factor to QCD MC when plotting stacks, to improve agreement")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
