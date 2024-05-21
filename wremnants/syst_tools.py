@@ -658,7 +658,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
             muon_columns_syst = [*muon_columns_syst_trig, "trigMuons_passTrigger0", *muon_columns_syst_nonTrig, "nonTrigMuons_passTrigger0"]
         else:
             raise NotImplementedError(f"add_muon_efficiency_unc_hists: analysis {what_analysis} not implemented.")            
-        
+
     if not smooth3D:
         # will use different helpers and member functions
         muon_columns_stat = [x for x in muon_columns_stat if "_uT0" not in x]
@@ -718,7 +718,7 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
-            muon_columns_syst = [*muon_columns_syst_trig, "trigMuons_passTrigger0", *muon_columns_syst_nonTrig, "nonTrigMuons_passTrigger0"]
+            muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         else:
             raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")            
     
