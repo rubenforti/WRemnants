@@ -775,7 +775,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                             splitGroup={groupName: ".*",
                                         "muon_eff_all" : ".*"},
                         )
-
             if wmass:
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
