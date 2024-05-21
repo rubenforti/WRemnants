@@ -1354,12 +1354,13 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
             if "absdz_cm" in hnarf.axes.name:
                 hnarf = hnarf[{"absdz_cm": s[::hist.sum]}]
             # rebin a bit more in eta-pt (not for QCD MC since the binning is already chosen by hand)
-            nPtBins = hnarf.axes['pt'].size
             if not args.useQCDMC:
                 hnarf = hnarf[{"eta" : s[::hist.rebin(2)]}]
                 hnarf = hnarf[{"pt" : s[::hist.rebin(2)]}]
             else:
+                nPtBins = hnarf.axes['pt'].size
                 logger.warning(f"Histogram has {nPtBins} pt bins")
+            nPtBins = hnarf.axes['pt'].size
                 
             lowMtUpperBound = int(args.mtNominalRange.split(",")[1])
             hnarf = hnarf[{"mt" : s[:complex(0,lowMtUpperBound):hist.sum]}]
@@ -1398,7 +1399,8 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
                 ##
                 # select a few eta-pt bins with index numbers (after rebinning)
                 iptroot = ipt + 1
-                etapt_bins = [(1, iptroot), (2, iptroot), (3, iptroot)]
+                centralEtaBin = int(max(3, 0.5*histo_fakes_dphiBins.GetAxis(0).GetNbins()))
+                etapt_bins = [(1, iptroot), (2, iptroot), (centralEtaBin, iptroot)]
                 hists = {b : ROOT.TH1D(f"FRFvsDphi_{d}_ieta{b[0]}_ipt{b[1]}", "", nBinsDphi, 0, np.pi) for b in etapt_bins}
                 for b in hists.keys():
                     for i in range(hists[b].GetNbinsX()):

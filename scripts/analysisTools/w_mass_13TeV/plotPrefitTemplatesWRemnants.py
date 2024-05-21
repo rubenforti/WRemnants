@@ -32,7 +32,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                          lumi=None, ptRangeProjection=(0,-1), chargeLabel="",
                          canvas=None, canvasWide=None, canvas1D=None,
                          colors=None, legEntries=None, isPseudoData=False,
-                         ratioRange=None):
+                         ratioRange=None, plotPostfix=""):
 
     #TODO: make colors and legEntries a single dictionary
 
@@ -41,6 +41,11 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     adjustSettings_CMS_lumi()
     if not canvas1D: canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
+    if len(plotPostfix) and not plotPostfix.startswith("_"):
+        ppfx = f"_{plotPostfix}"
+    else:
+        ppfx = plotPostfix
+    
     if not colors:
         colors = colors_plots_
 
@@ -137,7 +142,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     maxyMCSum = min(1.5,maxyMCSum)
     minyMCSum = max(0.0, minyMCSum)
     drawCorrelationPlot(hMCstat, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}" + f"::{minyMCSum},{maxyMCSum}",
-                        f"MCstatOverPoissonUncRatio_allProcs_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                        f"MCstatOverPoissonUncRatio_allProcs_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
     for h in hmc2D:
         if "Wmunu" in h.GetName():
@@ -145,7 +150,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             hMCstat_Wmunu.SetTitle("Wmunu " + chargeLabel)
             ROOT.wrem.makeHistStatUncertaintyRatio(hMCstat_Wmunu, h)
             drawCorrelationPlot(hMCstat_Wmunu, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}",
-                                f"MCstatOverPoissonUncRatio_Wmunu_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                f"MCstatOverPoissonUncRatio_Wmunu_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
         elif "Fake" in h.GetName():
             hMCstat_Fake = copy.deepcopy(h.Clone("hMCstat_Fake"))
@@ -155,7 +160,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             maxyFake = min(7.0,maxyFake)
             minyFake = max(0.0, minyFake)
             drawCorrelationPlot(hMCstat_Fake, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}" + f"::{minyFake},{maxyFake}",
-                                f"MCstatOverPoissonUncRatio_Fake_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                f"MCstatOverPoissonUncRatio_Fake_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
 
         if any(x in h.GetName() for x in ["Wmunu", "Zmumu", "Fake"]):
@@ -163,18 +168,18 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             hProcOverTot.SetTitle(f"{h.GetName()} / (S + B) {chargeLabel}")
             hProcOverTot.Divide(den2D)
             drawCorrelationPlot(hProcOverTot, xAxisName, yAxisName, "Ratio of event yields",
-                                f"{hProcOverTot.GetName()}_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                f"{hProcOverTot.GetName()}_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
     
     ratio2D.Divide(den2D)
     ratio2D.Write()
 
-    drawTH1dataMCstack(hdata_eta, stack_eta, xAxisName, "Events", "muon_eta" + ptRange,
+    drawTH1dataMCstack(hdata_eta, stack_eta, xAxisName, "Events", f"muon_eta{ppfx}" + ptRange,
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
                        drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 #, xcmsText=0.3
     )
-    drawTH1dataMCstack(hdata_pt, stack_pt, yAxisName, "Events", "muon_pt",
+    drawTH1dataMCstack(hdata_pt, stack_pt, yAxisName, "Events", f"muon_pt{ppfx}",
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
                        drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 # , xcmsText=0.3
@@ -182,10 +187,10 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
 
     ratio2D.SetTitle(f"{dataTitle} / (signal + background)")
     drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred{ratioRangeStr}",
-                        f"muon_eta_pt_dataMCratio", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                        f"muon_eta_pt{ppfx}_dataMCratio", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True)
     drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred. statistical uncertainty",
-                        f"muon_eta_pt_dataMCratio_absUncertainty", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                        f"muon_eta_pt{ppfx}_dataMCratio_absUncertainty", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, plotError=True)
 
     #
@@ -195,7 +200,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     nRecoBins = recoBins.NTotBins
     #following array is used to call function dressed2DfromFit()
     binning = [recoBins.Neta, recoBins.etaBins, recoBins.Npt, recoBins.ptBins]        
-    cnameUnroll = f"muon_etaPtUnrolled"
+    cnameUnroll = f"muon_etaPtUnrolled{ppfx}"
     XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
     YlabelUnroll = "Events::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
     # to draw panels in the unrolled plots
@@ -207,7 +212,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     # plot unrolled ratio to better see how it looks like
     ratio_unrolled = unroll2Dto1D(ratio2D, newname=f"{ratio2D.GetName()}_unrolled")
     ROOT.wrem.setRootHistogramError(ratio_unrolled, 0.0)
-    drawSingleTH1(ratio_unrolled, XlabelUnroll, f"{dataTitle}/pred. ratio", "muon_etaPtUnrolledRatio",
+    drawSingleTH1(ratio_unrolled, XlabelUnroll, f"{dataTitle}/pred. ratio", f"muon_etaPtUnrolledRatio{ppfx}",
                   outdir_dataMC, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="", 
                   passCanvas=canvasWide,
                   legendCoords="0.15,0.85,0.82,0.9;2",
@@ -221,7 +226,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
         h.SetTitle(legEntries[h.GetName().split("_")[-2]] + " " + chargeLabel)
     for h in allHists:
         drawCorrelationPlot(h, xAxisName, yAxisName, "Events",
-                            f"muon_eta_pt_{h.GetName()}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                            f"muon_eta_pt{ppfx}_{h.GetName()}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                             palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True)
 
     drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll,

@@ -646,10 +646,6 @@ def build_graph(df, dataset):
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
             # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
             df = syst_tools.add_luminosity_unc_hists(results, df, args, axes, cols, storage_type=storage_type)
-            '''
-            if isZveto:
-                df = syst_tools.add_scaledByCondition_unc_hists(results, df, args, axes, cols, "weight_ZmuonVeto", "ZmuonVeto", "ZvetoCondition", 2.0, storage_type=storage_type)
-            '''
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)

@@ -277,6 +277,8 @@ def build_graph(df, dataset):
     results.append(df.HistoBoost("WlikeMET", [hist.axis.Regular(20, 0, 100, name="Wlike-MET")], ["met_wlike_TV2_pt", "nominal_weight"]))
     ###########
 
+    df = df.Define("passWlikeMT", f"transverseMass >= {mtw_min}")
+
     if not args.onlyMainHistograms:
         axis_mt_coarse = hist.axis.Variable([0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.0], name = "mt", underflow=False, overflow=True)
         axis_trigPassIso = hist.axis.Boolean(name = f"trig_passIso")
@@ -285,12 +287,18 @@ def build_graph(df, dataset):
         nominal_bin = df.HistoBoost("nominal_isoMtBins", [*axes, axis_trigPassIso, axis_nonTrigPassIso, axis_mt_coarse], [*cols, "trigMuons_passIso0", "nonTrigMuons_passIso0", "transverseMass", "nominal_weight"])
         results.append(nominal_bin)
 
+        axis_eta_nonTrig = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "etaNonTrig", overflow=False, underflow=False)
+        axis_pt_nonTrig = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
+        # nonTriggering muon charge can be assumed to be opposite of triggering one
+        nominal_bothMuons = df.HistoBoost("nominal_bothMuons", [*axes, axis_eta_nonTrig, axis_pt_nonTrig, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
+        results.append(nominal_bothMuons)
+
     # cutting after storing mt distributions for plotting, since the cut is only on corrected met
     if args.dphiMuonMetCut > 0.0:
         df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
         df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
 
-    df = df.Filter(f"transverseMass >= {mtw_min}")
+    df = df.Filter("passWlikeMT")
 
     if not args.onlyMainHistograms:
         # plot reco vertex distribution before and after PU reweigthing

@@ -40,6 +40,13 @@ def getBetterLabel(k, isWlike):
     #     label = "Total eff_stat"
     # elif k == "muon_eff_syst":
     #     label = "Total eff_syst"
+    elif "QCDscale" in k:
+        if k == "QCDscaleWMiNNLO":
+            label = "A_{i} W"
+        elif k == "QCDscaleZMiNNLO":
+            label = "A_{i} Z"
+        else:
+            label = "Angular coefficients" # "A_{i}"
     else:
         label = k
     return label

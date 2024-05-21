@@ -699,43 +699,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],
                                 passToFakes=passSystToFakes)
-        ## TODO: implement second lepton veto for low PU (both electrons and muons)
-        if not lowPU:
-            pass
-            '''
-            # eta decorrelated nuisances
-            decorrVarAxis = "eta"
-            if "abseta" in fitvar:
-                decorrVarAxis = "abseta"
-            cardTool.addSystematic("ZmuonVeto",
-                                   processes=['Zveto_samples'],
-                                   group="ZmuonVeto",
-                                   mirror=True,
-                                   passToFakes=passSystToFakes,
-                                   scale=args.scaleZmuonVeto,
-                                   baseName="ZmuonVeto_",
-                                   systAxes=["decorrEta"],
-                                   labelsByAxis=["decorrEta"],
-                                   actionRequiresNomi=True,
-                                   action=syst_tools.decorrelateByAxis,
-                                   actionArgs=dict(axisToDecorrName=decorrVarAxis,
-                                                   # empty array automatically uses all edges of the axis named "axisToDecorrName"
-                                                #    rebin=[round(-2.4+i*0.2,1) for i in range(25)],
-                                                   newDecorrAxisName="decorrEta"
-                                                   )
-                                   )
-            # add also the fully inclusive systematic uncertainty, which is not kept in the previous step
-            cardTool.addSystematic("ZmuonVeto",
-                                   processes=['Zveto_samples'],
-                                   group="ZmuonVeto",
-                                   rename=f"ZmuonVeto_inclusive",
-                                   baseName="ZmuonVeto_inclusive",
-                                   mirror=True,
-                                   passToFakes=passSystToFakes,
-                                   scale=args.scaleZmuonVeto,
-                                   )
-            '''
-
     else:
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
@@ -762,6 +725,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     mirrorDownVarEqualToNomi=False
                     groupName = "muon_eff_syst"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effSyst.*{x}" for x in list(effTypesNoIso + ["iso"])}
+                    splitGroupDict["muon_eff_all"] = ".*"
                 else:
                     nameReplace = [] if any(x in name for x in chargeDependentSteps) else [("q0", "qall")] # for iso change the tag id with another sensible label
                     mirror = True
@@ -775,6 +739,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale = 1
                     groupName = "muon_eff_stat"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effStat.*{x}" for x in effStatTypes}
+                    splitGroupDict["muon_eff_all"] = ".*"
                 if args.effStatLumiScale and "Syst" not in name:
                     scale /= math.sqrt(args.effStatLumiScale)
 
@@ -807,7 +772,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
                             passToFakes=passSystToFakes,
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
-                            splitGroup={groupName: ".*"},
+                            splitGroup={groupName: ".*",
+                                        "muon_eff_all" : ".*"},
                         )
 
             if wmass:
@@ -822,6 +788,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         mirrorDownVarEqualToNomi=False
                         groupName = "muon_eff_veto_syst"
                         splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        splitGroupDict["muon_eff_all"] = ".*"
                     else:
                         nameReplace = []
                         mirror = True
@@ -834,7 +801,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]           
                         scale = 1.0
                         groupName = "muon_eff_veto_stat"
-                        splitGroupDict = {}
+                        splitGroupDict = {"muon_eff_all" : ".*"}
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
 
