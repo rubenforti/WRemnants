@@ -1178,14 +1178,18 @@ namespace wrem {
             sf_type_(std::make_shared<const HIST_SF>(std::move(sf_type))) {
         }
 
+        double scale_factor_byCell(int pt_idx, int eta_idx, int charge_idx, int idx_nom_alt) const {
+            const double sf = sf_type_->at(eta_idx, pt_idx, charge_idx, idx_nom_alt);
+            // std::cout << "Scale factor " << sf << std::endl;
+            return sf;
+        }
+
         double scale_factor(float pt, float eta, int charge, int idx_nom_alt) const {
 
             auto const eta_idx = sf_type_->template axis<0>().index(eta);
             auto const pt_idx = sf_type_->template axis<1>().index(pt);
             auto const charge_idx = sf_type_->template axis<2>().index(charge);
-            const double sf = sf_type_->at(eta_idx, pt_idx, charge_idx, idx_nom_alt);
-            // std::cout << "Scale factor " << sf << std::endl;
-            return sf;
+            return scale_factor_byCell(pt_idx, eta_idx, charge_idx, idx_nom_alt);
 
         }
 
@@ -1199,11 +1203,11 @@ namespace wrem {
             auto const pt_idx =      sf_type_->template axis<1>().index(pt);
             auto const charge_idx =  sf_type_->template axis<2>().index(charge);
 
-            double sf_nomi = scale_factor(pt_idx, eta_idx, charge_idx, idx_nom_);
+            double sf_nomi = scale_factor_byCell(pt_idx, eta_idx, charge_idx, idx_nom_);
 
             for(int ns = 0; ns < NSysts; ns++) {
                 
-                double sf_alt  = scale_factor(pt_idx, eta_idx, charge_idx, sf_type_->template axis<3>().index(ns+1) ); // 0 is the nominal, systs starts from 1
+                double sf_alt  = scale_factor_byCell(pt_idx, eta_idx, charge_idx, sf_type_->template axis<3>().index(ns+1) ); // 0 is the nominal, systs starts from 1
                 res(ns) = sf_alt / sf_nomi; 
 
             }
