@@ -786,8 +786,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         scale = 1.0
                         mirror = True
                         mirrorDownVarEqualToNomi=False
-                        groupName = "muon_eff_veto_syst"
-                        splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        groupName = "muon_eff_syst_veto"
+                        splitGroupDict = {f"{groupName}{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
                         splitGroupDict["muon_eff_all"] = ".*"
                     else:
                         nameReplace = []
@@ -800,7 +800,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         axlabels = ["eta", "pt", "q"]
                         nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]           
                         scale = 1.0
-                        groupName = "muon_eff_veto_stat"
+                        groupName = "muon_eff_stat_veto"
                         splitGroupDict = {"muon_eff_all" : ".*"}
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
