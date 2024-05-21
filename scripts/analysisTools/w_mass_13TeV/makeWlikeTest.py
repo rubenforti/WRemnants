@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-## make study using a histogram created specifically for QCD MC (but in principle it can be used for other processes too if the histograms exist
-## axes should be these ones ('eta', 'pt', 'charge', 'mt', 'passIso', 'NjetsClean', 'leadjetPt', 'DphiMuonMet')
-
-# example
-# python scripts/analysisTools/w_mass_13TeV/makeQCDMCstudy.py /scratch/mciprian/CombineStudies/TRASHTEST/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_extMC_noSF.hdf5 scripts/analysisTools/plots/fromMyWremnants/testFakes_studies/  -v 4
-
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
 #from wremnants import plot_tools,theory_tools,syst_tools
