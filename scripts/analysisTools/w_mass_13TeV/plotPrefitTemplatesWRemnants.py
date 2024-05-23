@@ -6,6 +6,8 @@
 # python w-mass-13TeV/plotPrefitTemplatesWRemnants.py input.root outdir [--wlike]
 #
 # add --pt-range-projection to make projections in a restricted pt range (just for tests to check data/MC)
+#
+# python scripts/analysisTools/w_mass_13TeV/plotPrefitTemplatesWRemnants.py /scratch/mciprian/CombineStudies/TRASHTEST/updateNote_DeepMET/WMass_eta_pt_charge/WMassCombineInput.root scripts/analysisTools/plots/fromMyWremnants/fitResults/updateNote_DeepMET/WMass_eta_pt_charge/plotPrefitTemplatesWRemnants/ -l 16.8 --gatherProcesses WsignalRegion
 
 import re
 import os, os.path
@@ -268,7 +270,8 @@ if __name__ == "__main__":
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.92,1.08), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
 
-    print(f"Predicted processes = {args.predictedProcesses}")
+    logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
+    logger.warning(f"Initial list of predicted processes = {args.predictedProcesses}")
 
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -291,18 +294,54 @@ if __name__ == "__main__":
     colors = colors_plots_
     legEntries = legEntries_plots_
 
+    originalProcessNames = processes[:]
+    predictedProcessNames = processes[:]
+    gatherDict = {}
+    if args.gatherProcesses:
+        logger.warning("Gathering these processes together")
+        gatherDict = gatherProcesses_[args.gatherProcesses]
+        reducedProcs = []
+        groupedProcs = []
+        for k in gatherDict.keys():
+            logger.warning(f"{k}: {gatherDict[k]}")
+            groupedProcs.extend(gatherDict[k])
+            reducedProcs.append(k)
+        predictedProcessNames = [x for x in originalProcessNames if x not in groupedProcs]
+        predictedProcessNames.extend(reducedProcs)
+        logger.warning(f"Reduced predicted processes: {predictedProcessNames}")
+
     for charge in charges:
 
         # read histograms
         nomihists = {}
         infile = safeOpenFile(fname)
-        for proc in processes:
+
+        for proc in originalProcessNames:
             # print(f"{charge}   {proc}")
-            nomihists[proc] = safeGetObject(infile, f"{proc}/nominal_{proc}_{charge}", detach=True) # process name as subfolder
+            # check if name is already in list of reduced processes ...
+            if proc in predictedProcessNames:
+                nomihists[proc] = safeGetObject(infile, f"{proc}/nominal_{proc}_{charge}", detach=True) # process name as subfolder
+            else:
+                # ... otherwise get group which contains it to index the dictionary
+                for k in gatherDict.keys():
+                    if proc in gatherDict[k]:
+                        hname = f"{proc}/nominal_{proc}_{charge}"
+                        if k not in nomihists.keys():
+                            # first time it appears, create the histogram
+                            nomihists[k] = safeGetObject(infile, hname, detach=True)
+                            #logger.error(nomihists[k].GetName())
+                            nomihists[k].SetName(f"nominal_{k}_{charge}")
+                        else:
+                            # histogram with same key exists, sum the new one to it
+                            nomihists[k].Add(safeGetObject(infile, hname, detach=True))
+                    else:
+                        continue
+
         if args.pseudodata:
             nomihists["Data"] = safeGetObject(infile, f"Data/{args.pseudodata}_{charge}", detach=True)
         infile.Close()
 
+        logger.warning(f"Histogram keys: {nomihists.keys()}")
         hdata2D = nomihists["Data"]
         hmc2D = [nomihists[x] for x in nomihists.keys() if x != "Data"]
 

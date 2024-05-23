@@ -42,9 +42,9 @@ def getBetterLabel(k, isWlike):
     #     label = "Total eff_syst"
     elif "QCDscale" in k:
         if k == "QCDscaleWMiNNLO":
-            label = "A_{i} W"
+            label = "Angular coefficients W"
         elif k == "QCDscaleZMiNNLO":
-            label = "A_{i} Z"
+            label = "Angular coefficients Z"
         else:
             label = "Angular coefficients" # "A_{i}"
     else:
@@ -147,6 +147,10 @@ if __name__ == "__main__":
     # 56 kInvertedDarkBodyRadiator
     # 100 kSolar + inverted
 
+    if "ZMassWLike" in args.rootfile[0] and not args.isWlike:
+        logger.warning(f"ZMassWLike found in input path {args.rootfile[0]}, but option --wlike not specified, please check")
+        quit()
+    
     ROOT.TColor.CreateGradientColorTable(3,
                                          array ("d", [0.00, 0.50, 1.00]),
                                          ##array ("d", [1.00, 1.00, 0.00]),

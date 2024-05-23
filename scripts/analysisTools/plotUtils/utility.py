@@ -74,7 +74,7 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
 gatherProcesses_ = {"fakeControlRegion": {"Other" : ["Top", "Diboson", "PhotonInduced"],
                                           "Z"     : ["Zmumu", "DYlowMass", "Ztautau"]},
                     "WsignalRegion": {"Zmumu" : ["Zmumu", "DYlowMass"],
-                                      "Other" : ["Top", "Diboson", "PhotonInduced"]},
+                                      "Rare" : ["Top", "Diboson", "PhotonInduced"]},
                     }
                    
 
