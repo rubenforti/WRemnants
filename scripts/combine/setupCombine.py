@@ -106,7 +106,7 @@ def make_parser(parser=None):
     parser.add_argument("--scaleMuonCorr", type=float, default=1.0, help="Scale up/down dummy muon scale uncertainty by this factor")
     parser.add_argument("--correlatedNonClosureNuisances", action='store_true', help="get systematics from histograms for the Z non-closure nuisances without decorrelation in eta and pt")
     parser.add_argument("--calibrationStatScaling", type=float, default=2.1, help="scaling of calibration statistical uncertainty")
-    parser.add_argument("--resolutionStatScaling", type=float, default=5.0, help="scaling of resolution statistical uncertainty")
+    parser.add_argument("--resolutionStatScaling", type=float, default=10.0, help="scaling of resolution statistical uncertainty")
     parser.add_argument("--correlatedAdHocA", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on b-field term A (in addition to Z pdg mass)")
     parser.add_argument("--correlatedAdHocM", type=float, default=0.0, help="fully correlated ad-hoc uncertainty on alignment term M")
     parser.add_argument("--noEfficiencyUnc", action='store_true', help="Skip efficiency uncertainty (useful for tests, because it's slow). Equivalent to --excludeNuisances '.*effSystTnP|.*effStatTnP' ")
@@ -114,6 +114,7 @@ def make_parser(parser=None):
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
     parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
+    parser.add_argument("--logNormalWmunu", default=None, type=float, help="Add lnN uncertainty for W signal (mainly for tests with fakes in control regions, where W is a subdominant background")
     # pseudodata
     parser.add_argument("--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata")
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
@@ -686,6 +687,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Below: experimental uncertainties
     cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background")
     if wmass:
+        if args.logNormalWmunu:            
+            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background")
         cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=1.15, group="Fake")
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background")
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background")
@@ -696,43 +699,6 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],
                                 passToFakes=passSystToFakes)
-        ## TODO: implement second lepton veto for low PU (both electrons and muons)
-        if not lowPU:
-            pass
-            '''
-            # eta decorrelated nuisances
-            decorrVarAxis = "eta"
-            if "abseta" in fitvar:
-                decorrVarAxis = "abseta"
-            cardTool.addSystematic("ZmuonVeto",
-                                   processes=['Zveto_samples'],
-                                   group="ZmuonVeto",
-                                   mirror=True,
-                                   passToFakes=passSystToFakes,
-                                   scale=args.scaleZmuonVeto,
-                                   baseName="ZmuonVeto_",
-                                   systAxes=["decorrEta"],
-                                   labelsByAxis=["decorrEta"],
-                                   actionRequiresNomi=True,
-                                   action=syst_tools.decorrelateByAxis,
-                                   actionArgs=dict(axisToDecorrName=decorrVarAxis,
-                                                   # empty array automatically uses all edges of the axis named "axisToDecorrName"
-                                                #    rebin=[round(-2.4+i*0.2,1) for i in range(25)],
-                                                   newDecorrAxisName="decorrEta"
-                                                   )
-                                   )
-            # add also the fully inclusive systematic uncertainty, which is not kept in the previous step
-            cardTool.addSystematic("ZmuonVeto",
-                                   processes=['Zveto_samples'],
-                                   group="ZmuonVeto",
-                                   rename=f"ZmuonVeto_inclusive",
-                                   baseName="ZmuonVeto_inclusive",
-                                   mirror=True,
-                                   passToFakes=passSystToFakes,
-                                   scale=args.scaleZmuonVeto,
-                                   )
-            '''
-
     else:
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
@@ -759,6 +725,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     mirrorDownVarEqualToNomi=False
                     groupName = "muon_eff_syst"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effSyst.*{x}" for x in list(effTypesNoIso + ["iso"])}
+                    splitGroupDict["muon_eff_all"] = ".*"
                 else:
                     nameReplace = [] if any(x in name for x in chargeDependentSteps) else [("q0", "qall")] # for iso change the tag id with another sensible label
                     mirror = True
@@ -772,6 +739,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     scale = 1
                     groupName = "muon_eff_stat"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effStat.*{x}" for x in effStatTypes}
+                    splitGroupDict["muon_eff_all"] = ".*"
                 if args.effStatLumiScale and "Syst" not in name:
                     scale /= math.sqrt(args.effStatLumiScale)
 
@@ -804,9 +772,9 @@ def setup(args, inputFile, fitvar, xnorm=False):
                             passToFakes=passSystToFakes,
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
-                            splitGroup={groupName: ".*"},
+                            splitGroup={groupName: ".*",
+                                        "muon_eff_all" : ".*"},
                         )
-
             if wmass:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
@@ -824,11 +792,12 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         scale = 1.0
                         mirror = True
                         mirrorDownVarEqualToNomi=False
-                        groupName = "muon_eff_veto_syst"
+                        groupName = "muon_eff_syst_veto"
                         if useGlobalOrTrackerVeto:
-                            splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip","trackerreco","trackertracking"])}
+                            splitGroupDict = {f"{groupName}{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip","trackerreco","trackertracking"])}
                         else:
-                            splitGroupDict = {f"{groupName}_{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                            splitGroupDict = {f"{groupName}{x}" : f".*effSyst_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        splitGroupDict["muon_eff_all"] = ".*"
                     else:
                         nameReplace = []
                         mirror = True
@@ -840,8 +809,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         axlabels = ["eta", "pt", "q"]
                         nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]           
                         scale = 1.0
-                        groupName = "muon_eff_veto_stat"
-                        splitGroupDict = {}
+                        groupName = "muon_eff_stat_veto"
+                        splitGroupDict = {"muon_eff_all" : ".*"}
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
 

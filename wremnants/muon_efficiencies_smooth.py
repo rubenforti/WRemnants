@@ -540,6 +540,33 @@ def make_muon_efficiency_helpers_smooth_altSyst(filename = data_dir + "/muonSF/a
     sf_syst_2D.values(flow=True)[:, 0, ...] = sf_syst_2D.values(flow=True)[:, 1, ...]
     sf_syst_2D.values(flow=True)[:, axis_pt_eff.extent-1, ...] = sf_syst_2D.values(flow=True)[:, axis_pt_eff.extent-2, ...]
 
+    # ### TEST
+    # s = hist.tag.Slicer()
+    # from scripts.analysisTools.plotUtils.utility import createPlotDirAndCopyPhp, adjustSettings_CMS_lumi, drawCorrelationPlot, copyOutputToEos
+    # outdir_original = "scripts/analysisTools/plots/TESTPLOTS/altBkgSF/"
+    # outdir_local = createPlotDirAndCopyPhp(outdir_original, eoscp=True)
+    # adjustSettings_CMS_lumi()
+    # canvas = ROOT.TCanvas("canvas","",800,800)
+    # for js in range(1+Nsyst):
+    #     hplot = sf_syst_2D[{2: s[1],
+    #                         3: s[js],
+    #                         }] # take syst js (0 is the nominal), and charge plus for now
+    #     logger.error(f"hplot.axes.name = {hplot.axes.name}")
+    #     hroot = narf.hist_to_root(hplot)
+    #     hroot.SetName(f"hroot_plus_js_{js}")
+    #     hroot.SetTitle("Nominal" if js == 0 else "Inclusive syst" if js == 1 else f"Syst #eta bin {js-1}")
+    #     drawCorrelationPlot(hroot,
+    #                         "Standalone muon #eta",
+    #                         "Standalone muon p_{T} (GeV)",
+    #                         "Scale factor",
+    #                         hroot.GetName(), plotLabel="ForceTitle", outdir=outdir_local,
+    #                         draw_both0_noLog1_onlyLog2=1, nContours=51, palette=87,
+    #                         invertPalette=False, passCanvas=canvas, skipLumi=True)
+    # copyOutputToEos(outdir_original, eoscp=True)
+    # logger.warning("STOP HERE")
+    # quit()
+    # ####
+
     # case with only 2D histograms
     sf_syst_2D_pyroot = narf.hist_to_pyroot_boost(sf_syst_2D)
     helper_syst = ROOT.wrem.muon_efficiency_smooth_helper_syst_oneStep[templateAnalysisArg, Nsyst, type(sf_syst_2D_pyroot)]( ROOT.std.move(sf_syst_2D_pyroot) )
@@ -549,7 +576,7 @@ def make_muon_efficiency_helpers_smooth_altSyst(filename = data_dir + "/muonSF/a
     axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
     helper_syst.tensor_axes = [axis_nsyst]
     #
-    
+
     fin.Close()
 
     logger.debug(f"Return efficiency helper for altBkg systematics!")
