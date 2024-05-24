@@ -102,7 +102,8 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     legend.SetBorderSize(0)
     legend.SetNColumns(3)
 
-    leg_unrolled = prepareLegend(0.2,0.72,0.95,0.90, textSize=0.045, nColumns=5)
+    leg_unrolled = prepareLegend(0.1, 0.72 if len(hmc2D) > 6 else 0.80, 0.95, 0.90,
+                                 textSize=0.045, nColumns=1+min(6,len(hmc2D)))
 
     hdata2D.Write("data2D")
     hdata_eta.Write()
@@ -236,7 +237,8 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                        passCanvas=canvasWide,
                        wideCanvas=True, leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
                        drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
-                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, topMargin=0.06
+                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, topMargin=0.06,
+                       textYheightOffset=0.6
                        #noRatioPanel=True
     )
 
