@@ -43,30 +43,21 @@ def select_good_secondary_vertices(df, dlenSig=4.0, ntracks=0):
     df = df.Define(f"goodSV", f"SV_dlenSig > {dlenSig} && SV_ntracks >= {ntracks}")
     return df
 
-def select_veto_muons_custom(df, nMuons=1, condition="==", ptCut=15.0, SAptCut=15.0, etaCut=2.4, onlyGlobal=True, tightGlobalOrTracker=False):
-
-    # n.b. charge = -99 is a placeholder for invalid track refit/corrections (mostly just from tracks below
-    # the pt threshold of 8 GeV in the nano production)    
-    df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
-    df = df.Define("Muon_isGoodGlobal", f"Muon_isGlobal && Muon_highPurity && Muon_standalonePt > {SAptCut} && Muon_standaloneNumberOfValidHits > 0 && wrem::vectDeltaR2(Muon_standaloneEta, Muon_standalonePhi, Muon_correctedEta, Muon_correctedPhi) < 0.09")
-    if onlyGlobal:
-        df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGoodGlobal")
-    elif tightGlobalOrTracker:
-        df = df.Define("Muon_isGoodTracker", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
-        df = df.Define("vetoMuonsPre2", "vetoMuonsPre && (Muon_isGoodTracker || Muon_isGoodGlobal)")
-    else:
-        df = df.Alias("vetoMuonsPre2", "vetoMuonsPre")
-    df = df.Define("vetoMuons", f"vetoMuonsPre2 && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
-    df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
-
-    return df
-
-def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, etaCut=2.4):
+def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, staPtCut=15.0, etaCut=2.4, useGlobalOrTrackerVeto=False, tightGlobalOrTracker=True):
 
     # n.b. charge = -99 is a placeholder for invalid track refit/corrections (mostly just from tracks below
     # the pt threshold of 8 GeV in the nano production)
+    # tightGlobalOrTracker relevant only when useGlobalOrTrackerVeto = True
     df = df.Define("vetoMuonsPre", "Muon_looseId && abs(Muon_dxybs) < 0.05 && Muon_correctedCharge != -99")
-    df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGlobal && Muon_highPurity && Muon_standalonePt > 15 && Muon_standaloneNumberOfValidHits > 0 && wrem::vectDeltaR2(Muon_standaloneEta, Muon_standalonePhi, Muon_correctedEta, Muon_correctedPhi) < 0.09")
+    df = df.Define("Muon_isGoodGlobal", f"Muon_isGlobal && Muon_highPurity && Muon_standalonePt > {staPtCut} && Muon_standaloneNumberOfValidHits > 0 && wrem::vectDeltaR2(Muon_standaloneEta, Muon_standalonePhi, Muon_correctedEta, Muon_correctedPhi) < 0.09")
+    if useGlobalOrTrackerVeto:
+        if tightGlobalOrTracker:
+            df = df.Define("Muon_isGoodTracker", "Muon_highPurity && Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14")
+            df = df.Define("vetoMuonsPre2", "vetoMuonsPre && (Muon_isGoodGlobal || Muon_isGoodTracker)")
+        else:
+            df = df.Alias("vetoMuonsPre2", "vetoMuonsPre")
+    else:
+        df = df.Define("vetoMuonsPre2", "vetoMuonsPre && Muon_isGoodGlobal")
     df = df.Define("vetoMuons", f"vetoMuonsPre2 && Muon_correctedPt > {ptCut} && abs(Muon_correctedEta) < {etaCut}")
     if nMuons >= 0:
         df = df.Filter(f"Sum(vetoMuons) {condition} {nMuons}")
