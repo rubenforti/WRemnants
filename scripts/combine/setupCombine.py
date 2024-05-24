@@ -654,8 +654,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
     #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
     # Variation from EW fit (mostly driven by alphas unc.)    
     cardTool.addSystematic(f"widthWeightZ",
-                            rename=f"WidthW0p8MeV",
-                            processes=["signal_samples_inctau"],
+                            rename=f"WidthZ0p8MeV",
+                            processes= ['single_v_nonsig_samples'] if wmass else signal_samples_forMass,
                             action=lambda h: h[{"width" : ['widthZ2p49333GeV', 'widthZ2p49493GeV']}],
                             group=f"widthZ",
                             mirror=False,
@@ -668,7 +668,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if wmass:
         cardTool.addSystematic(f"widthWeightW",
                                 rename=f"WidthW0p6MeV",
-                                processes=["signal_samples_inctau"],
+                                processes=signal_samples_forMass,
                                 action=lambda h: h[{"width" : ['widthW2p09053GeV', 'widthW2p09173GeV']}],
                                 group=f"widthW",
                                 mirror=False,
