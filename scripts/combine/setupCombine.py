@@ -192,6 +192,20 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if args.fitXsec:
         datagroups.unconstrainedProcesses.append(base_group)
 
+    if "lumi" in fitvar:
+        # in case fit is split by runs/ cumulated lumi
+        # lumi axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
+        lumis = np.array([0.0, 0.419, 2.332, 4.329, 6.247, 8.072, 10.152, 12.265, 14.067, 15.994, 16.812])
+        lumis = np.diff(lumis)/lumis[-1]
+
+        datagroups.setGlobalAction(
+            lambda h: h[{"lumi": hist.tag.Slicer()[:10:]}] if "lumi" in h.axes.name else
+                hh.scaleHist(
+                    hh.addGenericAxis(h, hist.axis.Regular(10, 0, 10, name = "lumi", underflow=False, overflow=False), add_trailing=False),
+                    lumis[:,*[np.newaxis for a in h.axes]],
+                )
+            )
+
     if xnorm:
         datagroups.select_xnorm_groups(base_group)
         datagroups.globalAction = None # reset global action in case of rebinning or such
@@ -637,21 +651,32 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     # Experimental range
     #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
-    # Variation from EW fit (mostly driven by alphas unc.)
-    widthVars = (0.6, ['widthW2p09053GeV', 'widthW2p09173GeV']) if wmass else (0.8, ['widthZ2p49333GeV', 'widthZ2p49493GeV'])
-    cardTool.addSystematic(f"widthWeight{label}",
-                            rename=f"Width{label}{str(widthVars[0]).replace('.','p')}MeV",
+    # Variation from EW fit (mostly driven by alphas unc.)    
+    cardTool.addSystematic(f"widthWeightZ",
+                            rename=f"WidthW0p8MeV",
                             processes=["signal_samples_inctau"],
-                            action=lambda h: h[{"width" : widthVars[1]}],
-                            group=f"width{label}",
+                            action=lambda h: h[{"width" : ['widthZ2p49333GeV', 'widthZ2p49493GeV']}],
+                            group=f"widthZ",
                             mirror=False,
-                            noi=args.fitWidth,
-                            noConstraint=args.fitWidth,
+                            noi=args.fitWidth if not wmass else False,
+                            noConstraint=args.fitWidth if not wmass else False,
                             systAxes=["width"],
-                            outNames=[f"width{label}Down", f"width{label}Up"],
+                            outNames=[f"widthZDown", f"widthZUp"],
                             passToFakes=passSystToFakes,
     )
-
+    if wmass:
+        cardTool.addSystematic(f"widthWeightW",
+                                rename=f"WidthW0p6MeV",
+                                processes=["signal_samples_inctau"],
+                                action=lambda h: h[{"width" : ['widthW2p09053GeV', 'widthW2p09173GeV']}],
+                                group=f"widthW",
+                                mirror=False,
+                                noi=args.fitWidth,
+                                noConstraint=args.fitWidth,
+                                systAxes=["width"],
+                                outNames=[f"widthWDown", f"widthWUp"],
+                                passToFakes=passSystToFakes,
+        )
 
     combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
         samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
@@ -732,10 +757,27 @@ def setup(args, inputFile, fitvar, xnorm=False):
                                    scale=args.scaleZmuonVeto,
                                    )
             '''
-
     else:
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
+
+    if "lumi" in fitvar:
+        # add ad-hoc normalization uncertainty uncorrelated across lumi bins 
+        #   accounting for time instability (e.g. reflecting the corrections applied as average like prefiring)
+        cardTool.addSystematic(
+            name=cardTool.nominalName,
+            rename="timeStability",
+            processes=['MCnoQCD'],
+            group=f"luminosity",
+            passToFakes=passSystToFakes,
+            mirror=True,
+            labelsByAxis=[f"lumi"],
+            systAxes=["lumi_"],
+            action=lambda h: 
+                hh.addHists(h,
+                    hh.expand_hist_by_duplicate_axis(h, "lumi", "lumi_"),
+                    scale2=0.01)
+        )
 
     if not args.noEfficiencyUnc:
 

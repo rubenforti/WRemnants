@@ -32,6 +32,7 @@ parser.add_argument("--prefit", action='store_true', help="Make prefit plot, els
 parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"], 
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
+parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 
 args = parser.parse_args()
 
@@ -85,8 +86,11 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     if len(h_data.axes) > 1:
         if "eta" in axes_names[-1]:
+            axes_names = axes_names[::-1]
+        if args.invertAxes:
             logger.info("invert eta order")
             axes_names = axes_names[::-1]
+
         # make unrolled 1D histograms
         h_data = hh.unrolledHist(h_data, binwnorm=binwnorm, obs=axes_names)
         h_inclusive = hh.unrolledHist(h_inclusive, binwnorm=binwnorm, obs=axes_names)
