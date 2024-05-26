@@ -191,8 +191,9 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if args.addLumiAxis and dataset.is_data:
-        axes = [*axes, hist.axis.Regular(11, 0, 11, name = "lumi", underflow=False, overflow=False)]
-        cols = [*cols, "lumi"]
+        run_edges = common.run_edges
+        axes = [*axes, hist.axis.Variable(run_edges+0.5, name = "run", underflow=False, overflow=False)]
+        cols = [*cols, "run"]
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
@@ -310,8 +311,6 @@ def build_graph(df, dataset):
     logger.debug(f"Define weights and store nominal histograms")
 
     if dataset.is_data:
-        if args.addLumiAxis:
-            df = df.Define("lumi", "wrem::run_lumi(run)")
         results.append(df.HistoBoost("nominal", axes, cols))
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])

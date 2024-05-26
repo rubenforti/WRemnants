@@ -93,6 +93,10 @@ axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, nam
 down_up_axis = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "downUpVar")
 down_nom_up_axis = hist.axis.Regular(3, -1.5, 1.5, underflow=False, overflow=False, name = "downNomUpVar")
 
+# run edges chosen to separate eras (era F post VFP: [278769, 278808], era G [278820, 280385], era F [281613, 284044])
+run_edges = np.array([278768, 278808, 279588, 279767, 280017, 280385, 282037, 283270, 283478, 283934, 284044])
+run_edges_lumi = np.array([0.0, 0.419, 2.332, 4.329, 6.247, 8.072, 10.152, 12.265, 14.067, 15.994, 16.812])
+
 # for fake estimation
 # binary categories for simple ABCD method
 passIsoName = "passIso"

@@ -35,25 +35,6 @@ bool printVar(const T& var) {
     return 1;
 }
 
-float run_lumi(int run) {
-  // 0: Era F
-  // 1-4: Era G
-  // 5-9: Era H
-  const int run_bounds[10] ={
-    278820, 279653, 279794, 280018, 
-    281613, 282092, 283283, 283548, 283946, 284045
-  };
-  int i=0;
-  while(i<10){
-    if(run < run_bounds[i]){
-      return i;
-    }
-    i++;
-  }
-  return i;
-}
-
-
 float pt_2(float pt1, float phi1, float pt2, float phi2) {
 
     TVector2 p1 = TVector2();

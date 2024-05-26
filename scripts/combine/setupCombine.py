@@ -193,16 +193,18 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if args.fitXsec:
         datagroups.unconstrainedProcesses.append(base_group)
 
-    if "lumi" in fitvar:
+    if "run" in fitvar:
         # in case fit is split by runs/ cumulated lumi
-        # lumi axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
-        lumis = np.array([0.0, 0.419, 2.332, 4.329, 6.247, 8.072, 10.152, 12.265, 14.067, 15.994, 16.812])
+        # run axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
+        run_edges = common.run_edges
+        run_edges_lumi = common.run_edges_lumi
+
         lumis = np.diff(lumis)/lumis[-1]
 
         datagroups.setGlobalAction(
-            lambda h: h[{"lumi": hist.tag.Slicer()[:10:]}] if "lumi" in h.axes.name else
+            lambda h: h in h.axes.name else
                 hh.scaleHist(
-                    hh.addGenericAxis(h, hist.axis.Regular(10, 0, 10, name = "lumi", underflow=False, overflow=False), add_trailing=False),
+                    hh.addGenericAxis(h, hist.axis.Variable(run_edges+0.5, name = "run", underflow=False, overflow=False), add_trailing=False),
                     lumis[:,*[np.newaxis for a in h.axes]],
                 )
             )
@@ -642,7 +644,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if wmass and not xnorm:
         cardTool.addSystematic(f"massWeightZ",
                                 processes=['single_v_nonsig_samples'],
-                                group=f"massShift",
+                                group="ZmassAndWidth",
                                 skipEntries=massWeightNames(proc="Z", exclude=2.1),
                                 mirror=False,
                                 noConstraint=False,
@@ -653,29 +655,29 @@ def setup(args, inputFile, fitvar, xnorm=False):
     # Experimental range
     #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
     # Variation from EW fit (mostly driven by alphas unc.)    
-    cardTool.addSystematic(f"widthWeightZ",
-                            rename=f"WidthZ0p8MeV",
+    cardTool.addSystematic("widthWeightZ",
+                            rename="WidthZ0p8MeV",
                             processes= ['single_v_nonsig_samples'] if wmass else signal_samples_forMass,
                             action=lambda h: h[{"width" : ['widthZ2p49333GeV', 'widthZ2p49493GeV']}],
-                            group=f"widthZ",
+                            group="ZmassAndWidth" if wmass else "widthZ", 
                             mirror=False,
                             noi=args.fitWidth if not wmass else False,
                             noConstraint=args.fitWidth if not wmass else False,
                             systAxes=["width"],
-                            outNames=[f"widthZDown", f"widthZUp"],
+                            outNames=["widthZDown", "widthZUp"],
                             passToFakes=passSystToFakes,
     )
     if wmass:
-        cardTool.addSystematic(f"widthWeightW",
-                                rename=f"WidthW0p6MeV",
+        cardTool.addSystematic("widthWeightW",
+                                rename="WidthW0p6MeV",
                                 processes=signal_samples_forMass,
                                 action=lambda h: h[{"width" : ['widthW2p09053GeV', 'widthW2p09173GeV']}],
-                                group=f"widthW",
+                                group="widthW",
                                 mirror=False,
                                 noi=args.fitWidth,
                                 noConstraint=args.fitWidth,
                                 systAxes=["width"],
-                                outNames=[f"widthWDown", f"widthWUp"],
+                                outNames=["widthWDown", "widthWUp"],
                                 passToFakes=passSystToFakes,
         )
 
