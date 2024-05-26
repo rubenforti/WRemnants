@@ -50,6 +50,7 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
                  "Fake"       : ROOT.TColor.GetColor("#9c9ca1"),
                  "QCD"        : ROOT.TColor.GetColor("#9c9ca1"),
                  "Other"      : ROOT.TColor.GetColor("#808080"),
+                 "EWandTop"   : ROOT.TColor.GetColor("#5790fc"),
 }
 
 legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
@@ -69,10 +70,15 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "Fake"       : "Nonprompt", # or "Multijet"
                      "QCD"        : "QCD MC",
                      "Other"      : "Other",
-                     "Rare"       : "Rare"}   
+                     "Rare"       : "Rare",
+                     "EWandTop"   : "EW, t quark"}   
 
 gatherProcesses_ = {"fakeControlRegion": {"Other" : ["Top", "Diboson", "PhotonInduced"],
                                           "Z"     : ["Zmumu", "DYlowMass", "Ztautau"]},
+                    "fakeControlRegionLight": {"EWandTop" : ["Top", "Diboson", "PhotonInduced", "Zmumu", "DYlowMass", "Ztautau"],
+                                               #"Other" : ["Top", "Diboson", "PhotonInduced"],
+                                               #"Z"     : ["Zmumu", "DYlowMass", "Ztautau"]
+                                               },
                     "WsignalRegion": {"Zmumu" : ["Zmumu", "DYlowMass"],
                                       "Rare" : ["Top", "Diboson", "PhotonInduced"]},
                     }

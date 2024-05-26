@@ -105,11 +105,15 @@ if __name__ == "__main__":
     parser.add_argument('-n','--normWidth', action='store_true', help="Normalize histograms by bin area (mainly if non uniform binning is used)")
     parser.add_argument('-p', '--postfix', dest="postfix", default='', type=str, help="define postfix for each plot")
     parser.add_argument('-l','--lumi', default=16.8, type=float, help='Integrated luminosity to print in the plot')
-    parser.add_argument('--fp','--filterProcesses', default="", type=str, help='If given, regexp to filter some processes')
-    parser.add_argument('--dt','--dataTitle', default="Data", type=str, help='Title for data in legend (usually Data but could be Pseudodata)')
+    parser.add_argument('--filterProcesses', default="", type=str, help='If given, regexp to filter some processes')
+    parser.add_argument('--dataTitle', default="Data", type=str, help='Title for data in legend (usually Data but could be Pseudodata)')
     parser.add_argument("--rrPre", dest="ratioRangePrefit", default=(0.9,1.1), type=float, nargs=2, help="Range for ratio plot prefit")
     parser.add_argument("--rrPost", dest="ratioRangePostfit", default=(0.99,1.01), type=float, nargs=2, help="Range for ratio plot postfit")
     parser.add_argument(     '--unrolledRatioRangeAsPrefit', action='store_true', help="For unrolled stack plot use same ratio range as prefit also in the postfit")
+    parser.add_argument('--run', choices=["prefit", "postfit"], default=["prefit", "postfit"], nargs='+', type=str, help='What plots to produce')
+    # FIXME: read binning from some input file
+    parser.add_argument("--ptBins", default=None, type=float, nargs='*', help="Edges for pt bins (if not given it uses a default)")
+    parser.add_argument("--etaBins", default=None, type=float, nargs='*', help="Edges for eta bins (if not given it uses a default)")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -133,6 +137,10 @@ if __name__ == "__main__":
     # hardcoded eta-pt reco binning for now
     etabins = [round(-2.4 + (0.1 * i), 1) for i in range(0,49)]
     ptbins = [round(26.0 + (1.0 * i), 1) for i in range(0, 35 if args.isWlike else 31)]
+    if args.etaBins:
+        etabins = args.etaBins
+    if args.ptBins:
+        ptbins = args.ptBins
     recoBins = templateBinning(etabins, ptbins)
     logger.warning("-"*30)
     logger.warning("USING THIS BINNING: PLEASE CHECK IF IT IS OK")
@@ -241,7 +249,8 @@ if __name__ == "__main__":
         unc_unrolled_y = {}
 
         # keep this order
-        for prepost in ['postfit', 'prefit']:
+        whatToRun = ["postfit", "prefit"] if len(args.run) == 2 else [args.run[0]]
+        for prepost in whatToRun:
 
             suffix = f"_{prepost}{postfix}"
             canv = ROOT.TCanvas()
