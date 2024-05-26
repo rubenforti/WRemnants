@@ -1045,7 +1045,7 @@ if __name__ == "__main__":
     parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
 
     args = parser.parse_args()
-    logger = logging.setup_logger(os.path.basename(__file__), 3, True)
+    logger = logging.setup_logger(os.path.basename(__file__), args.verbose, True)
     
     if args.fitPolDegreeEfficiency < -1:
         args.fitPolDegreeEfficiency = -1
