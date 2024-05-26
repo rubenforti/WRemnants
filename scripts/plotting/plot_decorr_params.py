@@ -108,6 +108,12 @@ if __name__ == '__main__':
             axis_ranges = [[278769, 278808], [278820, 279588], [279653, 279767], [279794, 280017], [280018, 280385], [281613, 282037], [282092, 283270], [283283, 283478], [283548, 283934], [283946, 284044]]
             df_p["yticks"] = df_p["lumi"].apply(lambda x: "Run $\in$ ["+str(axis_ranges[x][0])+", "+str(axis_ranges[x][1])+"]").astype(str)
 
+        elif "etaRegionRange" in axes:
+            axis_ranges = {0:"BB",1:"BE",2:"EE"}
+            df_p["yticks"] = df_p["etaRegionRange"].apply(lambda x: str(axis_ranges[x])).astype(str)
+        elif "etaRegionSign" in axes:
+            axis_ranges = {0:"--",1:"+-",2:"++"}
+            df_p["yticks"] = df_p["etaRegionSign"].apply(lambda x: str(axis_ranges[x])).astype(str)
 
         else:
             # otherwise just take noi name
@@ -136,7 +142,7 @@ if __name__ == '__main__':
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
         fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel="",#", ".join(ylabels), 
             cms_label=args.cmsDecor, #lumi=lumi,
-            grid=True, automatic_scale=False, width_scale=0.8, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
+            grid=True, automatic_scale=False, width_scale=1.5, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
 
         if args.infileInclusive:
             if len(dfInclusive) > 1:
@@ -164,11 +170,14 @@ if __name__ == '__main__':
                 # in case of pseudodata fits there are no statistical fluctuations and we can only access the expected p-value, where ndf has to be added to the test statistic
                 chi2_stat += ndf
                 chi2_label = "<\chi^2/\mathrm{ndf}>"
-            plt.text(0.95, 0.1, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
-                fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
 
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
+
+            plt.text(0.95, 0.25, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
+                fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
+            plt.text(0.95, 0.15, f"p = {str(round(p_value,2))}", 
+                fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
 
             ax1.fill_between([central-c_err, central+c_err], ylim[0], ylim[1], color='gray', alpha=0.4)
             ax1.fill_between([central-c_err_cal, central+c_err_cal], ylim[0], ylim[1], color='orange', alpha=0.8)
@@ -181,13 +190,13 @@ if __name__ == '__main__':
             ytickpositions = y
 
 
-        ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input value")
+        ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
 
         ax1.set_yticks(ytickpositions, labels=yticks)
         ax1.minorticks_off()
 
-        ax1.errorbar(val, y, xerr=err_stat, color='red', marker="", linestyle="", label="Stat unc.", zorder=3)
-        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=3, label="Calibration unc.", zorder=2)
+        ax1.errorbar(val, y, xerr=err_stat, color='red', marker="", linestyle="", label="Stat. unc.", zorder=3)
+        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=3, label="Calib. unc.", zorder=2)
         ax1.errorbar(val, y, xerr=err, color='black', marker="", linestyle="", label="Measurement", zorder=1)
         ax1.plot(val, y, color='black', marker="o", linestyle="", zorder=4) # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
