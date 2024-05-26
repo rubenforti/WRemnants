@@ -198,11 +198,10 @@ def setup(args, inputFile, fitvar, xnorm=False):
         # run axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
         run_edges = common.run_edges
         run_edges_lumi = common.run_edges_lumi
-
-        lumis = np.diff(lumis)/lumis[-1]
+        lumis = np.diff(run_edges_lumi)/run_edges_lumi[-1]
 
         datagroups.setGlobalAction(
-            lambda h: h in h.axes.name else
+            lambda h: h if "run" in h.axes.name else
                 hh.scaleHist(
                     hh.addGenericAxis(h, hist.axis.Variable(run_edges+0.5, name = "run", underflow=False, overflow=False), add_trailing=False),
                     lumis[:,*[np.newaxis for a in h.axes]],
@@ -730,7 +729,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background")
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity")
 
-    if "lumi" in fitvar:
+    if "run" in fitvar:
         # add ad-hoc normalization uncertainty uncorrelated across lumi bins 
         #   accounting for time instability (e.g. reflecting the corrections applied as average like prefiring)
         cardTool.addSystematic(
@@ -740,11 +739,11 @@ def setup(args, inputFile, fitvar, xnorm=False):
             group=f"luminosity",
             passToFakes=passSystToFakes,
             mirror=True,
-            labelsByAxis=[f"lumi"],
-            systAxes=["lumi_"],
+            labelsByAxis=[f"run"],
+            systAxes=["run_"],
             action=lambda h: 
                 hh.addHists(h,
-                    hh.expand_hist_by_duplicate_axis(h, "lumi", "lumi_"),
+                    hh.expand_hist_by_duplicate_axis(h, "run", "run_"),
                     scale2=0.01)
         )
 
