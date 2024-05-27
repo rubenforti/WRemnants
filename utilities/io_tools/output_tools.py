@@ -105,7 +105,7 @@ def is_eosuser_path(path):
     path = os.path.realpath(path)
     return path.startswith("/eos/user") or path.startswith("/eos/home-")
 
-def make_plot_dir(outpath, outfolder=None, eoscp=False, tmpFolder="temp", allowCreateLocalFolder=False):
+def make_plot_dir(outpath, outfolder=None, eoscp=False, tmpFolder="temp", allowCreateLocalFolder=True):
     if eoscp and is_eosuser_path(outpath):
         outpath = os.path.join(tmpFolder, split_eos_path(outpath)[1])
         if not os.path.isdir(outpath):
