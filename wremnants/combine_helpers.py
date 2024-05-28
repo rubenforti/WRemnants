@@ -16,7 +16,7 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             processes=samples,
             mirror = True,
             group = "recoil" if group_compact else "recoil_syst",
-            splitGroup={"experimental": f".*"},
+            splitGroup={"experiment": f".*"},
             systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
         )
@@ -26,7 +26,7 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             processes=samples,
             mirror = True,
             group = "recoil" if group_compact else "recoil_stat",
-            splitGroup={"experimental": f".*"},
+            splitGroup={"experiment": f".*"},
             systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
         )
@@ -37,6 +37,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
         systAxes=["systIdx"],
         mirror=True,
         group="theory_ew",
+        splitGroup={"theory": ".*"},
         passToFakes=passSystToFakes,
     )
     # different uncertainty for W and Z samples
