@@ -33,6 +33,7 @@ logger = logging.child_logger(__name__)
 #                  "Other"      : ROOT.TColor.GetColor("#808080"), # grey #ROOT.kGray}
 # }
 colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
+                 "Z"          : ROOT.TColor.GetColor("#5790fc"),
                  "Zmumu"      : ROOT.TColor.GetColor("#5790fc"),
                  "ZmumuVeto"  : ROOT.TColor.GetColor("#5790fc"),
                  "DYlowMass"  : ROOT.TColor.GetColor("#00BFFF"),
@@ -44,14 +45,17 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
                  "ZtautauVeto" : ROOT.TColor.GetColor("#7a21dd"),
                  "Top"        : ROOT.TColor.GetColor("#008000"),
                  "Diboson"    : ROOT.TColor.GetColor("#964a8b"),
+                 "Rare"       : ROOT.TColor.GetColor("#964A8B"),
                  "PhotonInduced" : ROOT.TColor.GetColor("#FFFF99"),
                  "Fake"       : ROOT.TColor.GetColor("#9c9ca1"),
                  "QCD"        : ROOT.TColor.GetColor("#9c9ca1"),
                  "Other"      : ROOT.TColor.GetColor("#808080"),
+                 "EWandTop"   : ROOT.TColor.GetColor("#5790fc"),
 }
 
 legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "Zmumu"      : "Z#rightarrow#mu#mu",
+                     "Z"          : "Z#rightarrow#mu#mu",
                      "ZmumuVeto"  : "veto Z#rightarrow#mu#mu",
                      "DYlowMass"  : "Z#rightarrow#mu#mu 10<m<50",
                      "DYlowMassVeto" : "veto Z#rightarrow#mu#mu 10<m<50",
@@ -65,7 +69,20 @@ legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
                      "PhotonInduced" : "#gamma-induced",
                      "Fake"       : "Nonprompt", # or "Multijet"
                      "QCD"        : "QCD MC",
-                     "Other"      : "Other"}   
+                     "Other"      : "Other",
+                     "Rare"       : "Rare",
+                     "EWandTop"   : "EW, t quark"}   
+
+gatherProcesses_ = {"fakeControlRegion": {"Other" : ["Top", "Diboson", "PhotonInduced"],
+                                          "Z"     : ["Zmumu", "DYlowMass", "Ztautau"]},
+                    "fakeControlRegionLight": {"EWandTop" : ["Top", "Diboson", "PhotonInduced", "Zmumu", "DYlowMass", "Ztautau"],
+                                               #"Other" : ["Top", "Diboson", "PhotonInduced"],
+                                               #"Z"     : ["Zmumu", "DYlowMass", "Ztautau"]
+                                               },
+                    "WsignalRegion": {"Zmumu" : ["Zmumu", "DYlowMass"],
+                                      "Rare" : ["Top", "Diboson", "PhotonInduced"]},
+                    }
+                   
 
 #########################################################################
 
@@ -75,6 +92,7 @@ def common_plot_parser():
     parser.add_argument('--palette'  , default=112, type=int, help='Set palette: 55 is kRainbow, 112 is kViridis, 113 is kCividis, 87 is kLightTemperature')
     parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
+    parser.add_argument('--gatherProcesses' , default=None, type=str, choices=list(gatherProcesses_.keys()), help='Set list of processes to be gathered in the legend')
     return parser
 
 #########################################################################
@@ -106,11 +124,12 @@ def checkHistInFile(h, hname, fname, message=""):
 
 def safeGetObject(fileObject, objectName, quitOnFail=True, silent=False, detach=True):
     obj = fileObject.Get(objectName)
-    if obj is None:
+    if obj == None:
+        error_msg = f"Error getting {objectName} from file {fileObject.GetName()}"
         if not silent:
-            logger.error(f"Could not get {objectName} from file {fileObject.GetName()}")
+            logger.error(error_msg)
         if quitOnFail:
-            quit()
+            raise IOError(error_msg)
         return None
     else:
         if detach:
@@ -120,17 +139,19 @@ def safeGetObject(fileObject, objectName, quitOnFail=True, silent=False, detach=
 def safeOpenFile(fileName, quitOnFail=True, silent=False, mode="READ"):
     fileObject = ROOT.TFile.Open(fileName, mode)
     if not fileObject or fileObject.IsZombie():
+        error_msg = f"Error when opening file {fileName}"
         if not silent:
-            logger.error(f"Could not open file {fileName}")
+            logger.error(error_msg)
         if quitOnFail:
-            quit()
+            raise IOError(error_msg)
         else:
             return None
     elif not fileObject.IsOpen():
+        error_msg = f"File {fileName} was not opened"
         if not silent:
-            logger.error(f"File {fileName} was not opened")
+            logger.error(error_msg)
         if quitOnFail:
-            quit()
+            raise IOError(error_msg)
         else:
             return None
     else:
@@ -1101,12 +1122,14 @@ def drawSingleTH1(h1,
         for i in range(1,nptBins): # do not need line at canvas borders
             #vertline.DrawLine(offsetXaxisHist+etarange*i,0,offsetXaxisHist+etarange*i,canvas.GetUymax())
             vertline.DrawLine(etarange*i-offsetXaxisHist,ymin,etarange*i-offsetXaxisHist,ymax)
-        if len(textForLines):
-            for i in range(0,len(textForLines)): # we need nptBins texts
-                #texoffset = 0.1 * (4 - (i%4))
-                #ytext = (1. + texoffset)*ymax/2.  
-                ytext = ymax - ytextOffsetFromTop*(ymax - ymin)  
-                bintext.DrawLatex(etarange*i + etarange/sliceLabelOffset, ytext, textForLines[i])
+        nLines = len(textForLines)
+        if nLines:
+            for i in range(0, nLines): # we need nptBins texts
+                if nLines < 31 or not (i % 5): # only print 5 labels
+                    #texoffset = 0.1 * (4 - (i%4))
+                    #ytext = (1. + texoffset)*ymax/2.  
+                    ytext = ymax - ytextOffsetFromTop*(ymax - ymin)  
+                    bintext.DrawLatex(etarange*i + etarange/sliceLabelOffset, ytext, textForLines[i])
 
     # redraw legend, or vertical lines appear on top of it
     if legendCoords != None and len(legendCoords) > 0:
@@ -2402,6 +2425,7 @@ def drawTH1dataMCstack(h1, thestack,
                        fillStyle=3001,
                        leftMargin=0.16,
                        rightMargin=0.05,
+                       topMargin=0.1,
                        nContours=50,
                        palette=55,
                        canvasSize="700,625",
@@ -2420,13 +2444,15 @@ def drawTH1dataMCstack(h1, thestack,
                        noLegendRatio=False,
                        textSize=0.035,
                        textAngle=0.10,
-                       textYheightOffset=0.55, # text printed at y = maxY of cancas times this constant
-                       noRatioPanel=False
+                       textYheightOffset=0.55, # text printed at y = maxY of canvas times this constant
+                       noRatioPanel=False,
+                       moreTextLatex="",
 ):
 
     # if normalizing stack to same area as data, we need to modify the stack
     # however, the stack might be used outside the function. In order to avoid any changes in the stack, it is copied here just for the plot
 
+    ROOT.TGaxis.SetExponentOffset(-0.025 if (wideCanvas or leftMargin < 0.1) else -0.09, 0.0, "y")
     ROOT.TH1.SetDefaultSumw2()
     adjustSettings_CMS_lumi()
     
@@ -2445,6 +2471,7 @@ def drawTH1dataMCstack(h1, thestack,
     canvas.SetLeftMargin(leftMargin)
     canvas.SetRightMargin(rightMargin)
     canvas.SetBottomMargin(0.12 if noRatioPanel else 0.3)
+    canvas.SetTopMargin(topMargin)
     canvas.cd()
 
     addStringToEnd(outdir,"/",notAddIfEndswithMatch=True)
@@ -2544,7 +2571,8 @@ def drawTH1dataMCstack(h1, thestack,
     # legend.SetFillColor(0)
     # legend.SetFillStyle(0)
     # legend.SetBorderSize(0)
-    legend.Draw("same")
+    if legend:
+        legend.Draw("same")
     canvas.RedrawAxis("sameaxis")
 
     reduceSize = False
@@ -2560,7 +2588,7 @@ def drawTH1dataMCstack(h1, thestack,
         latCMS.SetTextFont(42)
         latCMS.SetTextSize(0.045)
         latCMS.DrawLatex(leftMargin, 0.95, '#bf{CMS} #it{Preliminary}')
-        if lumi != None: latCMS.DrawLatex(0.91, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
+        if lumi != None: latCMS.DrawLatex(0.915, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
         else:            latCMS.DrawLatex(0.96, 0.95, '(13 TeV)')
     else:    
         if not skipLumi:
@@ -2577,6 +2605,18 @@ def drawTH1dataMCstack(h1, thestack,
                 else:            latCMS.DrawLatex(0.8, 0.95, '(13 TeV)')
 
     setTDRStyle()
+
+    if len(moreTextLatex):
+        realtext = moreTextLatex.split("::")[0]
+        x1,y1,ypass,textsize = 0.75,0.8,0.08,0.035
+        if "::" in moreTextLatex:
+            x1,y1,ypass,textsize = (float(x) for x in (moreTextLatex.split("::")[1]).split(","))            
+        lat = ROOT.TLatex()
+        lat.SetNDC();
+        lat.SetTextFont(42)        
+        lat.SetTextSize(textsize)
+        for itx,tx in enumerate(realtext.split(";")):
+            lat.DrawLatex(x1,y1-itx*ypass,tx)
 
     if not noRatioPanel:
         pad2.Draw();
@@ -2607,7 +2647,7 @@ def drawTH1dataMCstack(h1, thestack,
 
         ratio.Divide(den_noerr)
         den.Divide(den_noerr)
-        den.SetFillColor(ROOT.kCyan)
+        den.SetFillColor(ROOT.TColor.GetColor("#9c9ca1"))
         den.SetFillStyle(1001)  # make it solid again
         den.SetMarkerSize(0)
         #den.SetLineColor(ROOT.kRed)
@@ -2635,7 +2675,6 @@ def drawTH1dataMCstack(h1, thestack,
             leg2.Draw("same")
 
         pad2.RedrawAxis("sameaxis")
-
 
     if draw_both0_noLog1_onlyLog2 != 2:
         canvas.SaveAs(outdir + canvasName + ".png")

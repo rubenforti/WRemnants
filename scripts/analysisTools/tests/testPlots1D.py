@@ -67,8 +67,8 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
         canvas1Dshapes = ROOT.TCanvas("canvas1Dshapes","",700,800)
 
     nColumns = 3
-    legendLowX = 0.82 if len(hmc) < nColumns else 0.72
-    legend = ROOT.TLegend(0.2,nColumns,0.95,0.92)
+    legendLowY = 0.82 if len(hmc) < nColumns else 0.72
+    legend = ROOT.TLegend(0.2,legendLowY,0.95,0.92)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
     legend.SetBorderSize(0)
@@ -101,8 +101,8 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
 
     drawTH1dataMCstack(hdata, stack_1D, xAxisName, "Fraction of events" if scaleToUnitArea else "Events", plotName,
                        outfolder_dataMC, legend, ratioPadYaxisNameTmp=ratioPadYaxisTitle, passCanvas=canvas1Dshapes,
-                       lumi="16.8", drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True,
-                       draw_both0_noLog1_onlyLog2=draw_both0_noLog1_onlyLog2, noRatioPanel=noRatioPanel)
+                       xcmsText=-1 if scaleToUnitArea else 0.3, lumi="16.8", drawLumiLatex=True, noLegendRatio=True,
+                       draw_both0_noLog1_onlyLog2=draw_both0_noLog1_onlyLog2, noRatioPanel=noRatioPanel, topMargin=0.06)
 
 if __name__ == "__main__":
 
