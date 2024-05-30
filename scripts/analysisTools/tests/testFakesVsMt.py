@@ -18,7 +18,7 @@ import wremnants
 import hist
 import lz4.frame, pickle
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
+from wremnants import legacy_functions as sel
 
 import numpy as np
 
@@ -47,7 +47,7 @@ from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 def plotProjection1D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes=None, chargeBin=1,
                      projectAxisToKeep=0, isoAxisRange=[1,1], jetAxisRange=[1,2],
                      xAxisName="variable", plotName="variable_failIso_jetInclusive", mTvalueRange=[],
-                     rebinVariable=None):
+                     rebinVariable=None, scaleQCDMC=1.0):
 
     firstBinMt = 1
     lastBinMt = 1 + rootHists["Data"].GetAxis(3).GetNbins()
@@ -82,6 +82,8 @@ def plotProjection1D(rootHists, datasets, outfolder_dataMC, canvas1Dshapes=None,
             hmc[d].SetLineColor(ROOT.kBlack)
             hmc[d].SetMarkerSize(0)
             hmc[d].SetMarkerStyle(0)
+            if d == "QCD":
+                hmc[d].Scale(scaleQCDMC)
             if rebinVariable:
                 hmc[d].Rebin(rebinVariable)
 
@@ -656,7 +658,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                 nMtBins = hnarf_asNominal.axes["mt"].size
                 # just select signal region: pass isolation and mT > mtThreshold with overflow included
                 hnarf_asNominal = hnarf_asNominal[{"passIso" : True, 
-                                                   "mt" : s[complex(0,mtThreshold):hist.overflow:hist.sum],
+                                                   "mt" : s[complex(0,mtThreshold)::hist.sum],
                                                    }]
                 hnarf_forMtWithDataDrivenFakes = hnarf_forMtWithDataDrivenFakes[{"passIso" : True, 
                                                                                  "mt" : s[complex(0,mtThreshold):nMtBins],
@@ -731,37 +733,37 @@ def runStudy(fname, charges, mainOutputFolder, args):
                                      projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1],
                                      plotName=f"{axisVar[xbin][0]}_failIso_jetInclusive_{mtTitle}",
                                      isoAxisRange=[1,1], jetAxisRange=[1,2],
-                                     mTvalueRange=mtRange)
+                                     mTvalueRange=mtRange, scaleQCDMC=args.scaleQCDMC)
                     plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC, canvas1Dshapes=canvas1Dshapes,
                                      chargeBin=chargeBin,
                                      projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1],
                                      plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive_{mtTitle}",
                                      isoAxisRange=[2,2], jetAxisRange=[1,2],
-                                     mTvalueRange=mtRange)
+                                     mTvalueRange=mtRange, scaleQCDMC=args.scaleQCDMC)
                 continue  # no need for the rest of the plots for this variable
             ######
 
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_1orMoreJet",
-                             isoAxisRange=[2,2], jetAxisRange=[2,2])
+                             isoAxisRange=[2,2], jetAxisRange=[2,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive",
-                             isoAxisRange=[2,2], jetAxisRange=[1,2])
+                             isoAxisRange=[2,2], jetAxisRange=[1,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_failIso_1orMoreJet",
-                             isoAxisRange=[1,1], jetAxisRange=[2,2])
+                             isoAxisRange=[1,1], jetAxisRange=[2,2], scaleQCDMC=args.scaleQCDMC)
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_failIso_jetInclusive",
-                             isoAxisRange=[1,1], jetAxisRange=[1,2])
+                             isoAxisRange=[1,1], jetAxisRange=[1,2], scaleQCDMC=args.scaleQCDMC)
             # signal region adding mT cut too
             plotProjection1D(rootHists_forplots, datasetsNoFakes, outfolder_dataMC,
                              canvas1Dshapes=canvas1Dshapes, chargeBin=chargeBin,
                              projectAxisToKeep=xbin, xAxisName=axisVar[xbin][1], plotName=f"{axisVar[xbin][0]}_passIso_jetInclusive_passMt",
-                             isoAxisRange=[2,2], jetAxisRange=[1,2], mTvalueRange=[40,-1])
+                             isoAxisRange=[2,2], jetAxisRange=[1,2], mTvalueRange=[40,-1], scaleQCDMC=args.scaleQCDMC)
 
         ###################################
         ###################################
@@ -1124,7 +1126,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                             draw_both0_noLog1_onlyLog2=1, nContours=args.nContours, palette=args.palette,
                             invertPalette=args.invertPalette, passCanvas=canvas, skipLumi=True)
 
-        if args.fitPolDegree:
+        if args.fitPolDegree == 1:
             drawTH1(histoChi2diffTest,
                     "#chi^{2} difference probability (pol0 versus pol1)",
                     f"Events::0,{1.2*histoChi2diffTest.GetBinContent(histoChi2diffTest.GetMaximumBin())}",
@@ -1352,12 +1354,13 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
             if "absdz_cm" in hnarf.axes.name:
                 hnarf = hnarf[{"absdz_cm": s[::hist.sum]}]
             # rebin a bit more in eta-pt (not for QCD MC since the binning is already chosen by hand)
-            nPtBins = hnarf.axes['pt'].size
             if not args.useQCDMC:
                 hnarf = hnarf[{"eta" : s[::hist.rebin(2)]}]
                 hnarf = hnarf[{"pt" : s[::hist.rebin(2)]}]
             else:
+                nPtBins = hnarf.axes['pt'].size
                 logger.warning(f"Histogram has {nPtBins} pt bins")
+            nPtBins = hnarf.axes['pt'].size
                 
             lowMtUpperBound = int(args.mtNominalRange.split(",")[1])
             hnarf = hnarf[{"mt" : s[:complex(0,lowMtUpperBound):hist.sum]}]
@@ -1396,7 +1399,8 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
                 ##
                 # select a few eta-pt bins with index numbers (after rebinning)
                 iptroot = ipt + 1
-                etapt_bins = [(1, iptroot), (2, iptroot), (3, iptroot)]
+                centralEtaBin = int(max(3, 0.5*histo_fakes_dphiBins.GetAxis(0).GetNbins()))
+                etapt_bins = [(1, iptroot), (2, iptroot), (centralEtaBin, iptroot)]
                 hists = {b : ROOT.TH1D(f"FRFvsDphi_{d}_ieta{b[0]}_ipt{b[1]}", "", nBinsDphi, 0, np.pi) for b in etapt_bins}
                 for b in hists.keys():
                     for i in range(hists[b].GetNbinsX()):
@@ -1448,6 +1452,7 @@ if __name__ == "__main__":
     parser.add_argument("--useQCDMC", action="store_true",   help="Make study using QCD MC instead of data-driven fakes, as a cross check")
     parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=-1.0)
     parser.add_argument("--dphiStudy", action="store_true",   help="Only do some plots for dphi study skipping the rest")
+    parser.add_argument("--scaleQCDMC", default=1.0, type=float, help="Apply scaling factor to QCD MC when plotting stacks, to improve agreement")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)

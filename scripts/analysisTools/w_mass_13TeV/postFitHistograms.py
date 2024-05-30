@@ -6,6 +6,7 @@
 import os, re
 import argparse
 from array import array
+import scipy
 
 import sys
 args = sys.argv[:]
@@ -99,15 +100,20 @@ if __name__ == "__main__":
     parser.add_argument('-m','--n-mask-chan', dest='nMaskedChannel', default=0, type=int, help='Number of masked channels in the fit for each charge (0 if not using masked channels because no signal POIs is used in the fit)')
     parser.add_argument('-c','--charges', dest='charges', choices=['plus', 'minus', 'both'], default='both', type=str, help='Charges to process')
     parser.add_argument(     '--no2Dplot', dest="no2Dplot", action='store_true', help="Do not plot 2D templates")
+    parser.add_argument(     '--comparePrefitPostfit', action='store_true', help="Plot comparisons of postfit/prefit yields and uncertainties ")
     parser.add_argument(     '--wlike', dest="isWlike", action='store_true', help="Analysis is wlike")
-    parser.add_argument('-n','--norm-width', dest="normWidth", action='store_true', help="Normalize histograms by bin area (mainly if non uniform binning is used)")
+    parser.add_argument('-n','--normWidth', action='store_true', help="Normalize histograms by bin area (mainly if non uniform binning is used)")
     parser.add_argument('-p', '--postfix', dest="postfix", default='', type=str, help="define postfix for each plot")
     parser.add_argument('-l','--lumi', default=16.8, type=float, help='Integrated luminosity to print in the plot')
-    parser.add_argument('--fp','--filter-processes', dest="filterProcesses", default="", type=str, help='If given, regexp to filter some processes')
-    parser.add_argument('--dt','--data-title', dest="dataTitle", default="Data", type=str, help='Title for data in legend (usually Data but could be Pseudodata)')
+    parser.add_argument('--filterProcesses', default="", type=str, help='If given, regexp to filter some processes')
+    parser.add_argument('--dataTitle', default="Data", type=str, help='Title for data in legend (usually Data but could be Pseudodata)')
     parser.add_argument("--rrPre", dest="ratioRangePrefit", default=(0.9,1.1), type=float, nargs=2, help="Range for ratio plot prefit")
     parser.add_argument("--rrPost", dest="ratioRangePostfit", default=(0.99,1.01), type=float, nargs=2, help="Range for ratio plot postfit")
     parser.add_argument(     '--unrolledRatioRangeAsPrefit', action='store_true', help="For unrolled stack plot use same ratio range as prefit also in the postfit")
+    parser.add_argument('--run', choices=["prefit", "postfit"], default=["prefit", "postfit"], nargs='+', type=str, help='What plots to produce')
+    # FIXME: read binning from some input file
+    parser.add_argument("--ptBins", default=None, type=float, nargs='*', help="Edges for pt bins (if not given it uses a default)")
+    parser.add_argument("--etaBins", default=None, type=float, nargs='*', help="Edges for eta bins (if not given it uses a default)")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -131,6 +137,10 @@ if __name__ == "__main__":
     # hardcoded eta-pt reco binning for now
     etabins = [round(-2.4 + (0.1 * i), 1) for i in range(0,49)]
     ptbins = [round(26.0 + (1.0 * i), 1) for i in range(0, 35 if args.isWlike else 31)]
+    if args.etaBins:
+        etabins = args.etaBins
+    if args.ptBins:
+        ptbins = args.ptBins
     recoBins = templateBinning(etabins, ptbins)
     logger.warning("-"*30)
     logger.warning("USING THIS BINNING: PLEASE CHECK IF IT IS OK")
@@ -143,13 +153,28 @@ if __name__ == "__main__":
 
     outdir_original = args.outdir
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-    outdirsub = outdir+'/postfit_over_prefit/'
-    createPlotDirAndCopyPhp(outdirsub)
+    if args.comparePrefitPostfit:
+        outdirsub = outdir+'/postfit_over_prefit/'
+        createPlotDirAndCopyPhp(outdirsub)
 
     savErrorLevel = ROOT.gErrorIgnoreLevel; ROOT.gErrorIgnoreLevel = ROOT.kError;
 
     infile = safeOpenFile(args.rootfile[0], mode="READ")
     h1d = safeGetObject(infile, "expfull_postfit")
+    # for some postfit stuff to print in plots
+    nbins = safeGetObject(infile, "obs").GetNbinsX()
+    tree = safeGetObject(infile, "fitresults", detach=False)
+    tree.GetEntry(0)
+    postfit_2deltaLL = 2.0 * (tree.nllvalfull - tree.satnllvalfull)
+    postfit_chi2prob = scipy.stats.chi2.sf(postfit_2deltaLL, nbins)
+    logger.warning(f"-loglikelihood_{{full}} = {tree.nllvalfull}")
+    logger.warning(f"-loglikelihood_{{saturated}} = {tree.satnllvalfull}")
+    logger.warning(f"2*(nllfull-nllsat) = {postfit_2deltaLL}")
+    logger.warning(f"nbins = {nbins}")
+    logger.warning(f"chi2 probability = {postfit_chi2prob}")
+    #
+    textForUnrolled = f"2 * (nllfull - nllsat) = {round(postfit_2deltaLL,1)}     nbins(+/-) = {nbins}     #chi^{{2}} prob = {round(100.0*postfit_chi2prob,1)}%::0.3,0.96,0.08,0.04"
+
     shifts = chargeUnrolledBinShifts(h1d, nCharges, nMaskedChanPerCharge)
     # get process names:
     predictedProcessNames = []
@@ -160,12 +185,27 @@ if __name__ == "__main__":
             predictedProcessNames.append("_".join(name.split("_")[1:-1]))
     logger.info(f"Found these predicted processes: {predictedProcessNames}")
 
+    originalProcessNames = predictedProcessNames[:]
+    gatherDict = {}
+    if args.gatherProcesses:
+        logger.warning("Gathering these processes together")
+        gatherDict = gatherProcesses_[args.gatherProcesses]
+        reducedProcs = []
+        groupedProcs = []
+        for k in gatherDict.keys():
+            logger.warning(f"{k}: {gatherDict[k]}")
+            groupedProcs.extend(gatherDict[k])
+            reducedProcs.append(k)
+        predictedProcessNames = [x for x in originalProcessNames if x not in groupedProcs]
+        predictedProcessNames.extend(reducedProcs)
+        logger.warning(f"Reduced predicted processes: {predictedProcessNames}")
+
     postfix = ""
     if args.postfix:
         postfix = f"_{args.postfix}"
     full_outfileName = f"{outdir}/plots{postfix}.root"
     outfile = ROOT.TFile(full_outfileName, "recreate")
-    print(f"Will save 2D templates in file --> {full_outfileName}")
+    logger.info(f"Will save 2D templates in file --> {full_outfileName}")
 
     process_features = {p: {"color": colors_plots_[p], "title": legEntries_plots_[p]} for p in predictedProcessNames}
 
@@ -194,9 +234,9 @@ if __name__ == "__main__":
     for charge in charges:
         binshift = shifts[charge]
 
-        print("="*30)
-        print(f"charge: {charge}")
-        print("-"*30)
+        logger.info("="*30)
+        logger.info(f"charge: {charge}")
+        logger.info("-"*30)
         all_procs = {}
         all_procs_unrolled = {}
         ratios_unrolled = {}
@@ -209,20 +249,44 @@ if __name__ == "__main__":
         unc_unrolled_y = {}
 
         # keep this order
-        for prepost in ['postfit', 'prefit']:
+        whatToRun = ["postfit", "prefit"] if len(args.run) == 2 else [args.run[0]]
+        for prepost in whatToRun:
 
             suffix = f"_{prepost}{postfix}"
             canv = ROOT.TCanvas()
             chfl = charge
-            print("-"*30)
-            print(f"Doing {prepost}")
-            print("-"*30)
+            logger.info("-"*30)
+            logger.info(f"Doing {prepost}")
+            logger.info("-"*30)
 
             procs = [str(key) for key in process_features.keys() if (args.filterProcesses == "" or re.match(args.filterProcesses, str(key)) )]
             titles = [process_features[p]["title"] for p in procs]
             procs += ["obs"]
             titles += [args.dataTitle]
             procsAndTitles = dict(zip(procs,titles))
+
+            inputHists = {"obs": safeGetObject(infile, "obs")}
+            # get original histograms and possibly group them if needed
+            for i,p in enumerate(originalProcessNames):
+                pname = f"{p}_{prepost}"
+                hname = f"expproc_{p}_{prepost}"
+                logger.debug(f"Hist {hname}")
+                # check if name is already in list of reduced processes ...
+                if p in procs:
+                    inputHists[p] = safeGetObject(infile, hname)
+                else:
+                    # ... otherwise get group which contains it to index the dictionary
+                    for k in gatherDict.keys():
+                        if p in gatherDict[k]:
+                            if k not in inputHists.keys():
+                                # first time it appears, create the histogram
+                                inputHists[k] = safeGetObject(infile, hname)
+                            else:
+                                # histogram with same key exists, sum the new one to it
+                                inputHists[k].Add(safeGetObject(infile, hname))
+                        else:
+                            continue
+
             for i,p in enumerate(procs):
                 if p == 'obs':
                     pname = p
@@ -232,9 +296,9 @@ if __name__ == "__main__":
                     hname = f"expproc_{p}_{prepost}"
                 keyplot = f"{chfl}_{pname}"
                 logger.debug(f"Hist {hname}")
-                h1_1 = safeGetObject(infile, hname)
+                h1_1 = inputHists[p]
                 h2_backrolled = dressed2DfromFit(h1_1, binning, pname, titles[i], binshift, nMaskedCha=nMaskedChanPerCharge,
-                                                   nRecoBins=nRecoBins)
+                                                 nRecoBins=nRecoBins)
                 h1_unrolled = unroll2Dto1D(h2_backrolled, newname=f"unroll_{pname}", cropNegativeBins=False)
                 h1_unrolled_y = unroll2Dto1D(h2_backrolled, newname=f"unroll_y_{pname}", cropNegativeBins=False, invertUnroll=True)
 
@@ -247,7 +311,7 @@ if __name__ == "__main__":
                 all_procs[keyplot].SetDirectory(0); 
                 all_procs_unrolled[keyplot].SetDirectory(0)
                 all_procs_unrolled_y[keyplot].SetDirectory(0)
-                if prepost == 'prefit' and p != 'obs':
+                if prepost == 'prefit' and p != 'obs' and args.comparePrefitPostfit:
                     postfitkey = keyplot.replace("prefit", "postfit")
                     if all_procs_unrolled[postfitkey] != None and all_procs_unrolled[keyplot] != None:
                         keyratio = f"{chfl}_{p}_ratio"
@@ -322,8 +386,9 @@ if __name__ == "__main__":
 
 
                     else:
-                        print("Error: something went wrong! Missing either {postfitkey} or {keyplot}")
+                        logger.error("Error: something went wrong! Missing either {postfitkey} or {keyplot}")
                         quit()
+                # end of postfit/prefit comparisons
 
                 if not args.no2Dplot:
                     cname = f"{p}_{chfl}{suffix}"
@@ -383,7 +448,7 @@ if __name__ == "__main__":
                     if keycolor.startswith(f"{charge}_"):
                         keycolor = "_".join(keycolor.split("_")[1:])
                     if 'obs' in key or prepost not in key: continue
-                    print(f"{projection} projection:  {key}   {histo.GetName()}   {keycolor}")
+                    logger.info(f"{projection} projection:  {key}   {histo.GetName()}   {keycolor}")
                     if  projection == 'X':
                         proj1d = all_procs[key].ProjectionX(all_procs[key].GetName() + charge+"_px", 0, -1, "e")
                     else:
@@ -405,7 +470,8 @@ if __name__ == "__main__":
                 ratioYlabel = "data/pred::" + (f"{args.ratioRangePrefit[0]},{args.ratioRangePrefit[1]}" if prepost == "prefit" else f"{args.ratioRangePostfit[0]},{args.ratioRangePostfit[1]}")
                 verticalAxisNameProj = verticalAxisNameProjX if projection == "X" else verticalAxisNameProjY
                 drawTH1dataMCstack(hdata, stack, xaxisProj, verticalAxisNameProj, cnameProj, outdir, leg, ratioYlabel,
-                                   1, passCanvas=cnarrow, hErrStack=hexpfull, lumi=args.lumi)
+                                   1, passCanvas=cnarrow, hErrStack=hexpfull, lumi=args.lumi, drawLumiLatex=True,
+                                   topMargin=0.06, noLegendRatio=True)
 
             # hdata_unrolled = singleChargeUnrolled(infile.Get('obs'), binshift, nCharges, nMaskedChanPerCharge, 
             #                                       name=f"unrolled_{charge}_data",
@@ -441,7 +507,7 @@ if __name__ == "__main__":
                 if keycolor.startswith(f"{charge}_"):
                     keycolor = "_".join(keycolor.split("_")[1:])
                 if key=='obs' or prepost not in key: continue
-                print("unrolled {: >35} {: >35}   {y} ".format(key, histo.GetName(), y=str("%.3f" % histo.Integral())) )
+                logger.info("unrolled {: >35} {: >35}   {y} ".format(key, histo.GetName(), y=str("%.3f" % histo.Integral())) )
                 proc_unrolled = all_procs_unrolled[key]
                 proc_unrolled.SetFillColor(process_features[keycolor]["color"])
                 stack_unrolled.Add(proc_unrolled)
@@ -461,24 +527,30 @@ if __name__ == "__main__":
             YlabelUnroll = verticalAxisName + "::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
             # for unrolled may use always the prefit ratio for better comparison
             ratioYlabel = "data/pred::" + (f"{args.ratioRangePrefit[0]},{args.ratioRangePrefit[1]}" if prepost == "prefit" or args.unrolledRatioRangeAsPrefit else f"{args.ratioRangePostfit[0]},{args.ratioRangePostfit[1]}")
+
+            pp = prepost.capitalize()
+            fullTextForUnrolled = f"#bf{{{pp}}}:     {textForUnrolled}"
+            logger.info(fullTextForUnrolled)
             
             cnameUnroll = f"unrolled_{chfl}{suffix}"
             XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
             drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll, outdir,
                                leg_unrolled, ratioYlabel, 1, passCanvas=cwide, hErrStack=h1_expfull_unrolled, lumi=args.lumi,
-                               wideCanvas=True, leftMargin=0.05,rightMargin=0.02, 
+                               wideCanvas=True, leftMargin=0.05,rightMargin=0.01, topMargin=0.06,
                                drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
                                textForLines=ptBinRanges, etaptbinning=binning,
-                               textSize=0.04, textAngle=0, textYheightOffset=0.65)
+                               textSize=0.04, textAngle=0, textYheightOffset=0.65, moreTextLatex=fullTextForUnrolled,
+                               noLegendRatio=True)
             #
             cnameUnroll = f"unrolled_{chfl}{suffix}_unrollY"
             XlabelUnroll = "unrolled template along p_{T}:  p_{T} #in [%.1f, %.1f]" % (recoBins.ptBins[0], recoBins.ptBins[-1])
             drawTH1dataMCstack(hdata_unrolled_y, stack_unrolled_y, XlabelUnroll, YlabelUnroll, cnameUnroll, outdir,
                                leg_unrolled, ratioYlabel, 1, passCanvas=cwide, hErrStack=h1_expfull_unrolled_y, lumi=args.lumi,
-                               wideCanvas=True, leftMargin=0.05,rightMargin=0.02, 
+                               wideCanvas=True, leftMargin=0.05,rightMargin=0.01, topMargin=0.06,
                                drawVertLines="{a},{b}".format(a=recoBins.Neta,b=recoBins.Npt),
                                textForLines=etaBinRanges, etaptbinning=binning,
-                               textSize=0.04, textAngle=0, textYheightOffset=0.65)
+                               textSize=0.04, textAngle=0, textYheightOffset=0.65, moreTextLatex=fullTextForUnrolled,
+                               noLegendRatio=True)
 
     outfile.Close()
 
