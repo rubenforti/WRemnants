@@ -81,12 +81,13 @@ if __name__ == "__main__":
                         help='Choose what processes to plot, otherwise all are done')
     parser.add_argument(     '--rebinPt', default=-1, type=int, help='If positive, rebin yields versus pT by this number before deriving efficiencies (it happens after selecting the pt range)')
     parser.add_argument(     '--ptRange', default=None, nargs=2, type=float, help='Pt range for plot')
+    parser.add_argument("--rr", dest="ratioRange", default=(0.98,1.02), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
     fname = args.inputfile[0]
     outdir_original = args.outdir[0]
-    outdir = createPlotDirAndCopyPhp(outdir_original)
+    outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
         
     ROOT.TH1.SetDefaultSumw2()
 
@@ -96,7 +97,9 @@ if __name__ == "__main__":
     xAxisName = "PostFSR muon #eta"
     yAxisName = "PostFSR muon p_{T} (GeV)"
 
-    groups = Datagroups(fname, mode="wmass")
+    ratioRangeStr = f"::{args.ratioRange[0]},{args.ratioRange[1]}"
+    
+    groups = Datagroups(fname, mode="w_mass")
     datasets = groups.getNames()
     if args.processes is not None and len(args.processes):
         datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -209,14 +212,14 @@ if __name__ == "__main__":
         eff_veto_boost1Deta,eff_veto_eta = getEtaPtEff(n_veto_pass, n_veto_tot, getRoot=True, rootName=f"{d}_MC_eff_veto_1Deta", rootTitle="P(veto | gen)", integrateVar=["pt"])
         eff_vetoplus_boost1Deta,eff_vetoplus_eta = getEtaPtEff(n_vetoplus_pass, n_vetoplus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetoplus_1Deta", rootTitle="P(vetoplus | gen)", integrateVar=["pt"])
         eff_vetominus_boost1Deta,eff_vetominus_eta = getEtaPtEff(n_vetominus_pass, n_vetominus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetominus_1Deta", rootTitle="P(vetominus | gen)", integrateVar=["pt"])
-        drawNTH1([eff_vetoplus_eta, eff_vetominus_eta, eff_veto_eta],
-                 legEntries=["Charge plus", "Charge minus", "Inclusive"],
+        drawNTH1([eff_veto_eta, eff_vetoplus_eta, eff_vetominus_eta],
+                 legEntries=["Inclusive", "Charge plus", "Charge minus"],
                  labelXtmp=xAxisName, labelYtmp="MC veto efficiency",
                  canvasName="vetoEfficiency_1Deta",
                  outdir=outdir,
-                 labelRatioTmp="x/plus.::0.995,1.005",
+                 labelRatioTmp=f"x/incl.{ratioRangeStr}",
                  topMargin=0.05,
-                 legendCoords="0.16,0.9,0.84,0.94;3",  # x1,x2,y1,y2
+                 legendCoords="0.16,0.94,0.84,0.94;3",  # x1,x2,y1,y2
                  passCanvas=canvas1D, skipLumi=True, transparentLegend=True, onlyLineColor=True, useLineFirstHistogram=True, drawErrorAll=True,
                  yAxisExtendConstant=1.4)
 
@@ -225,14 +228,15 @@ if __name__ == "__main__":
         eff_vetominus_boost1Dpt,eff_vetominus_pt = getEtaPtEff(n_vetominus_pass, n_vetominus_tot, getRoot=True, rootName=f"{d}_MC_eff_vetominus_1Dpt", rootTitle="P(vetominus | gen)", integrateVar=["eta"])
         minEffi,_ = getMinMaxMultiHisto([eff_vetoplus_pt, eff_vetominus_pt, eff_veto_pt])
         minPtForRange = min(0.992, minEffi)
-        drawNTH1([eff_vetoplus_pt, eff_vetominus_pt, eff_veto_pt],
-                 legEntries=["Charge plus", "Charge minus", "Inclusive"],
-                 labelXtmp=yAxisName, labelYtmp=f"MC veto efficiency::{minPtForRange},1.002",
+        yRangeEff = f"::{minPtForRange},1.002"
+        drawNTH1([eff_veto_pt, eff_vetoplus_pt, eff_vetominus_pt],
+                 legEntries=["Inclusive", "Charge plus", "Charge minus"],
+                 labelXtmp=yAxisName, labelYtmp="MC veto efficiency",
                  canvasName="vetoEfficiency_1Dpt",
                  outdir=outdir,
-                 labelRatioTmp="x/plus.::0.995,1.005",
+                 labelRatioTmp=f"x/incl.{ratioRangeStr}",
                  topMargin=0.05,
-                 legendCoords="0.16,0.9,0.84,0.94;3",  # x1,x2,y1,y2
+                 legendCoords="0.16,0.94,0.84,0.94;3",  # x1,x2,y1,y2
                  passCanvas=canvas1D, skipLumi=True, transparentLegend=True, onlyLineColor=True, useLineFirstHistogram=True, drawErrorAll=True,
                  yAxisExtendConstant=1.4)
 

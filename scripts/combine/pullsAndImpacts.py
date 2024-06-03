@@ -339,7 +339,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
     poi_type = poi.split("_")[-1] if poi else None
 
     if poi is not None and "MeV" in poi:
-        scale = float(re.search(r'\d+(\.\d+)?', poi.split("MeV")[0].replace("p",".")).group())
+        scale = float(re.findall(r'\d+', poi.split("MeV")[0].replace("p","."))[-1])
         if "Diff" in poi:
             scale *= 2 # take diffs by 2 as up and down pull in opposite directions
     else:

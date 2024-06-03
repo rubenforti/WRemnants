@@ -782,7 +782,7 @@ def rescaleBandVariation(histo, factor):
         histo[...]= np.stack([new_lower,new_upper],axis=-1)
         return histo
 
-def rssHists(h, syst_axis, scale=1., hnom=None):
+def rssHists(h, syst_axis, scale=1., hnom=None, returnDiff=False, returnDiffSquare=False):
     s = hist.tag.Slicer()
 
     if hnom is None:
@@ -790,8 +790,12 @@ def rssHists(h, syst_axis, scale=1., hnom=None):
 
     hdiff = addHists(h, hnom, scale2=-1.)*scale
     hss = multiplyHists(hdiff, hdiff)
+    if returnDiffSquare:
+        return hss[{syst_axis : s[0:hist.overflow:hist.sum]}]
 
     hrss = sqrtHist(hss[{syst_axis : s[0:hist.overflow:hist.sum]}])
+    if returnDiff:
+        return hrss
     hUp = addHists(hnom, hrss)
     hDown = addHists(hnom, hrss, scale2=-1.)
 

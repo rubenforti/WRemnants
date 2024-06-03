@@ -110,9 +110,18 @@ common_groups = [
     "CMS_background",
     "theory_ew",
     "normXsecW",
-    "width"
+    "width",
+    "ZmassAndWidth"
 ]
 nuisance_groupings = {
+    "super":[
+        "Total",
+        "stat",
+        "binByBinStat",
+        "theory", 
+        "experiment",
+        "muonCalibration",
+    ],
     "max": common_groups + [
         "massShift",
         "QCDscale", 

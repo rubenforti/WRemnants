@@ -1,15 +1,17 @@
 import argparse
 from utilities import common, rdf_tools, logging, differential
 from utilities.io_tools import output_tools
-from utilities.common import background_MCprocs as bkgMCprocs
+from utilities.common import background_MCprocs as bkgMCprocs, data_dir
 from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser(True)
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__).replace("_VETOEFFI",""))
+parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation, unfolding_tools, theoryAgnostic_tools, helicity_utils
+from wremnants import theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
@@ -21,9 +23,8 @@ import pathlib
 import os
 import numpy as np
 
-data_dir = common.data_dir
 parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC file every N, where N is given by this option. Mainly for tests")
-parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
+parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT for the postFSR gen muon")
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -71,11 +72,7 @@ vertex_helper = wremnants.make_vertex_helper(era = era)
 calib_filepaths = common.calib_filepaths
 closure_filepaths = common.closure_filepaths
 
-diff_weights_helper = ROOT.wrem.SplinesDifferentialWeightsHelper(calib_filepaths['tflite_file']) if (args.muonScaleVariation == 'smearingWeightsSplines' or args.validationHists) else None
-
 mc_jpsi_crctn_helper, data_jpsi_crctn_helper, jpsi_crctn_MC_unc_helper, jpsi_crctn_data_unc_helper = muon_calibration.make_jpsi_crctn_helpers(args, calib_filepaths, make_uncertainty_helper=True)
-
-z_non_closure_parametrized_helper, z_non_closure_binned_helper = muon_calibration.make_Z_non_closure_helpers(args, calib_filepaths, closure_filepaths)
 
 mc_calibration_helper, data_calibration_helper, calibration_uncertainty_helper = muon_calibration.make_muon_calibration_helpers(args)
 
@@ -86,7 +83,7 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args) if args.biasCalibrat
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
 if len(procsWithTheoryCorr):
-    corr_helpers = theory_corrections.load_corr_helpers(procsWithTheoryCorr, [*args.theoryCorr, *args.ewTheoryCorr], allowMissingTheoryCorr=args.allowMissingTheoryCorr)
+    corr_helpers = theory_corrections.load_corr_helpers(procsWithTheoryCorr, theory_corrs)
 else:
     corr_helpers = {}
 
@@ -143,7 +140,8 @@ def build_graph(df, dataset):
     df = df.Define("postFSRmuon_phi0", "GenPart_phi[postFSRmuons][0]")
     df = df.Define("postFSRmuon_charge0", "-1 * std::copysign(1.0, GenPart_pdgId[postFSRmuons][0])")
 
-    df = muon_selections.select_veto_muons(df, nMuons=0, condition=">=", ptCut=0.0, etaCut=3.0)
+    df = muon_selections.select_veto_muons(df, nMuons=0, condition=">=", ptCut=15.0, etaCut=3.0,
+                                           useGlobalOrTrackerVeto=False, tightGlobalOrTracker=True)
     # might have more veto muons, but will look for at least one gen matched to the only gen muon
     df = df.Define("oneOrMoreVetoMuons", "Sum(vetoMuons) > 0")
     df = df.Define("passVeto", "oneOrMoreVetoMuons && wrem::hasMatchDR2(postFSRmuon_eta0,postFSRmuon_phi0,Muon_eta[vetoMuons],Muon_phi[vetoMuons],0.09)")

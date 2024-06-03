@@ -6,6 +6,8 @@
 # python w-mass-13TeV/plotPrefitTemplatesWRemnants.py input.root outdir [--wlike]
 #
 # add --pt-range-projection to make projections in a restricted pt range (just for tests to check data/MC)
+#
+# python scripts/analysisTools/w_mass_13TeV/plotPrefitTemplatesWRemnants.py /scratch/mciprian/CombineStudies/TRASHTEST/updateNote_DeepMET/WMass_eta_pt_charge/WMassCombineInput.root scripts/analysisTools/plots/fromMyWremnants/fitResults/updateNote_DeepMET/WMass_eta_pt_charge/plotPrefitTemplatesWRemnants/ -l 16.8 --gatherProcesses WsignalRegion
 
 import re
 import os, os.path
@@ -32,7 +34,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                          lumi=None, ptRangeProjection=(0,-1), chargeLabel="",
                          canvas=None, canvasWide=None, canvas1D=None,
                          colors=None, legEntries=None, isPseudoData=False,
-                         ratioRange=None):
+                         ratioRange=None, plotPostfix=""):
 
     #TODO: make colors and legEntries a single dictionary
 
@@ -41,6 +43,11 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     adjustSettings_CMS_lumi()
     if not canvas1D: canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
+    if len(plotPostfix) and not plotPostfix.startswith("_"):
+        ppfx = f"_{plotPostfix}"
+    else:
+        ppfx = plotPostfix
+    
     if not colors:
         colors = colors_plots_
 
@@ -89,13 +96,14 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     hdata_eta = hdata2D.ProjectionX("data_eta",lowPtbin,highPtbin,"e")
     hdata_pt  = hdata2D.ProjectionY("data_pt",1,hdata2D.GetNbinsX(),"e")
 
-    legend = ROOT.TLegend(0.2,0.72,0.95,0.92)
+    legend = ROOT.TLegend(0.2,0.72,0.95,0.9)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
     legend.SetBorderSize(0)
     legend.SetNColumns(3)
 
-    leg_unrolled = prepareLegend(0.2,0.72,0.95,0.90, textSize=0.045, nColumns=5)
+    leg_unrolled = prepareLegend(0.1, 0.72 if len(hmc2D) > 6 else 0.80, 0.95, 0.90,
+                                 textSize=0.045, nColumns=1+min(6,len(hmc2D)))
 
     hdata2D.Write("data2D")
     hdata_eta.Write()
@@ -137,7 +145,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     maxyMCSum = min(1.5,maxyMCSum)
     minyMCSum = max(0.0, minyMCSum)
     drawCorrelationPlot(hMCstat, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}" + f"::{minyMCSum},{maxyMCSum}",
-                        f"MCstatOverPoissonUncRatio_allProcs_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                        f"MCstatOverPoissonUncRatio_allProcs_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
     for h in hmc2D:
         if "Wmunu" in h.GetName():
@@ -145,7 +153,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             hMCstat_Wmunu.SetTitle("Wmunu " + chargeLabel)
             ROOT.wrem.makeHistStatUncertaintyRatio(hMCstat_Wmunu, h)
             drawCorrelationPlot(hMCstat_Wmunu, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}",
-                                f"MCstatOverPoissonUncRatio_Wmunu_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                f"MCstatOverPoissonUncRatio_Wmunu_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
         elif "Fake" in h.GetName():
             hMCstat_Fake = copy.deepcopy(h.Clone("hMCstat_Fake"))
@@ -155,29 +163,37 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             maxyFake = min(7.0,maxyFake)
             minyFake = max(0.0, minyFake)
             drawCorrelationPlot(hMCstat_Fake, xAxisName, yAxisName, "#sqrt{#sum w^{2}} / #sqrt{N}" + f"::{minyFake},{maxyFake}",
-                                f"MCstatOverPoissonUncRatio_Fake_{chargeLabel}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                f"MCstatOverPoissonUncRatio_Fake_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                                palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
+
+        if any(x in h.GetName() for x in ["Wmunu", "Zmumu", "Fake"]):
+            hProcOverTot = copy.deepcopy(h.Clone(f"yieldRatio_{h.GetName()}OverTotal"))
+            hProcOverTot.SetTitle(f"{h.GetName()} / (S + B) {chargeLabel}")
+            hProcOverTot.Divide(den2D)
+            drawCorrelationPlot(hProcOverTot, xAxisName, yAxisName, "Ratio of event yields",
+                                f"{hProcOverTot.GetName()}_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
     
     ratio2D.Divide(den2D)
     ratio2D.Write()
 
-    drawTH1dataMCstack(hdata_eta, stack_eta, "Muon #eta", "Events", "muon_eta" + ptRange,
+    drawTH1dataMCstack(hdata_eta, stack_eta, xAxisName, "Events", f"muon_eta{ppfx}" + ptRange,
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
-                       drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True
+                       drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 #, xcmsText=0.3
     )
-    drawTH1dataMCstack(hdata_pt, stack_pt, "Muon p_{T} (GeV)", "Events", "muon_pt",
+    drawTH1dataMCstack(hdata_pt, stack_pt, yAxisName, "Events", f"muon_pt{ppfx}",
                        outdir_dataMC, legend, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvas1D, lumi=lumi,
-                       drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True
+                       drawLumiLatex=True, noLegendRatio=True, topMargin=0.06 # , xcmsText=0.3
     )
 
     ratio2D.SetTitle(f"{dataTitle} / (signal + background)")
-    drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred",
-                        f"muon_eta_pt_dataMCratio", plotLabel="ForceTitle", outdir=outdir_dataMC,
+    drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred{ratioRangeStr}",
+                        f"muon_eta_pt{ppfx}_dataMCratio", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True)
     drawCorrelationPlot(ratio2D, xAxisName, yAxisName, f"{dataTitle}/pred. statistical uncertainty",
-                        f"muon_eta_pt_dataMCratio_absUncertainty", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                        f"muon_eta_pt{ppfx}_dataMCratio_absUncertainty", plotLabel="ForceTitle", outdir=outdir_dataMC,
                         palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, plotError=True)
 
     #
@@ -187,7 +203,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     nRecoBins = recoBins.NTotBins
     #following array is used to call function dressed2DfromFit()
     binning = [recoBins.Neta, recoBins.etaBins, recoBins.Npt, recoBins.ptBins]        
-    cnameUnroll = f"muon_etaPtUnrolled"
+    cnameUnroll = f"muon_etaPtUnrolled{ppfx}"
     XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
     YlabelUnroll = "Events::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
     # to draw panels in the unrolled plots
@@ -199,13 +215,13 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     # plot unrolled ratio to better see how it looks like
     ratio_unrolled = unroll2Dto1D(ratio2D, newname=f"{ratio2D.GetName()}_unrolled")
     ROOT.wrem.setRootHistogramError(ratio_unrolled, 0.0)
-    drawSingleTH1(ratio_unrolled, XlabelUnroll, f"{dataTitle}/pred. ratio", "muon_etaPtUnrolledRatio",
+    drawSingleTH1(ratio_unrolled, XlabelUnroll, f"{dataTitle}/pred. ratio", f"muon_etaPtUnrolledRatio{ppfx}",
                   outdir_dataMC, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="", 
                   passCanvas=canvasWide,
                   legendCoords="0.15,0.85,0.82,0.9;2",
                   leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
                   drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
-                  textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=30, drawLineTopPanel=1.0)
+                  textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, drawLineTopPanel=1.0)
 
     allHists = hmc2D + [hdata2D]
     hdata2D.SetTitle(f"{dataTitle} {chargeLabel}")
@@ -213,7 +229,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
         h.SetTitle(legEntries[h.GetName().split("_")[-2]] + " " + chargeLabel)
     for h in allHists:
         drawCorrelationPlot(h, xAxisName, yAxisName, "Events",
-                            f"muon_eta_pt_{h.GetName()}", plotLabel="ForceTitle", outdir=outdir_dataMC,
+                            f"muon_eta_pt{ppfx}_{h.GetName()}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                             palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True)
 
     drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll,
@@ -221,7 +237,8 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
                        passCanvas=canvasWide,
                        wideCanvas=True, leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
                        drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
-                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, textAngle=30,
+                       textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, topMargin=0.06,
+                       textYheightOffset=0.6
                        #noRatioPanel=True
     )
 
@@ -255,7 +272,8 @@ if __name__ == "__main__":
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.92,1.08), type=float, nargs=2, help="Range for ratio plot")
     args = parser.parse_args()
 
-    print(f"Predicted processes = {args.predictedProcesses}")
+    logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
+    logger.warning(f"Initial list of predicted processes = {args.predictedProcesses}")
 
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -278,18 +296,54 @@ if __name__ == "__main__":
     colors = colors_plots_
     legEntries = legEntries_plots_
 
+    originalProcessNames = processes[:]
+    predictedProcessNames = processes[:]
+    gatherDict = {}
+    if args.gatherProcesses:
+        logger.warning("Gathering these processes together")
+        gatherDict = gatherProcesses_[args.gatherProcesses]
+        reducedProcs = []
+        groupedProcs = []
+        for k in gatherDict.keys():
+            logger.warning(f"{k}: {gatherDict[k]}")
+            groupedProcs.extend(gatherDict[k])
+            reducedProcs.append(k)
+        predictedProcessNames = [x for x in originalProcessNames if x not in groupedProcs]
+        predictedProcessNames.extend(reducedProcs)
+        logger.warning(f"Reduced predicted processes: {predictedProcessNames}")
+
     for charge in charges:
 
         # read histograms
         nomihists = {}
         infile = safeOpenFile(fname)
-        for proc in processes:
+
+        for proc in originalProcessNames:
             # print(f"{charge}   {proc}")
-            nomihists[proc] = safeGetObject(infile, f"{proc}/nominal_{proc}_{charge}", detach=True) # process name as subfolder
+            # check if name is already in list of reduced processes ...
+            if proc in predictedProcessNames:
+                nomihists[proc] = safeGetObject(infile, f"{proc}/nominal_{proc}_{charge}", detach=True) # process name as subfolder
+            else:
+                # ... otherwise get group which contains it to index the dictionary
+                for k in gatherDict.keys():
+                    if proc in gatherDict[k]:
+                        hname = f"{proc}/nominal_{proc}_{charge}"
+                        if k not in nomihists.keys():
+                            # first time it appears, create the histogram
+                            nomihists[k] = safeGetObject(infile, hname, detach=True)
+                            #logger.error(nomihists[k].GetName())
+                            nomihists[k].SetName(f"nominal_{k}_{charge}")
+                        else:
+                            # histogram with same key exists, sum the new one to it
+                            nomihists[k].Add(safeGetObject(infile, hname, detach=True))
+                    else:
+                        continue
+
         if args.pseudodata:
             nomihists["Data"] = safeGetObject(infile, f"Data/{args.pseudodata}_{charge}", detach=True)
         infile.Close()
 
+        logger.warning(f"Histogram keys: {nomihists.keys()}")
         hdata2D = nomihists["Data"]
         hmc2D = [nomihists[x] for x in nomihists.keys() if x != "Data"]
 

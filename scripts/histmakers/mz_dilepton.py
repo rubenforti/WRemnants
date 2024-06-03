@@ -24,6 +24,8 @@ parser.add_argument("--finePtBinning", action='store_true', help="Use fine binni
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+")
+parser.add_argument("--addRunAxis", action="store_true", help="Add axis with slices of luminosity based on run numbers (for data only)")
+
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
@@ -194,6 +196,11 @@ def build_graph(df, dataset):
 
     axes = nominal_axes
     cols = nominal_cols
+
+    if args.addRunAxis and dataset.is_data:
+        run_edges = common.run_edges
+        axes = [*axes, hist.axis.Variable(run_edges+0.5, name = "run", underflow=False, overflow=False)]
+        cols = [*cols, "run"]
 
     if isUnfolding and dataset.name == "ZmumuPostVFP":
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
