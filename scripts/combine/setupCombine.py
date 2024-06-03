@@ -69,6 +69,7 @@ def make_parser(parser=None):
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
     parser.add_argument("--fitWidth", action='store_true', help="Fit boson width")
+    parser.add_argument("--fitAlphaS", action='store_true', help="Fit alphaS")
     parser.add_argument("--fitMassDiff", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the boson mass")
     parser.add_argument("--fitMassDecorr", type=str, default=[], nargs='*', help="Decorrelate POI for given axes, fit multiple POIs for the different POIs")
     parser.add_argument("--decorrRebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
@@ -84,6 +85,7 @@ def make_parser(parser=None):
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
+    parser.add_argument("--noTheoryUnc", action="store_true", default=False, help="Set up fit without theory uncertainties")
     parser.add_argument("--minnloScaleUnc", choices=["byHelicityPt", "byHelicityPtCharge", "byHelicityCharge", "byPtCharge", "byPt", "byCharge", "integrated", "none"], default="byHelicityPt",
             help="Decorrelation for QCDscale")
     parser.add_argument("--resumUnc", default="tnp", type=str, choices=["scale", "tnp", "tnp_minnlo", "minnlo",  "none"], help="Include SCETlib uncertainties")
@@ -676,8 +678,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
             mirror=True,
             labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
         )
-        if xnorm:
-            cardTool.setProcsNoStatUnc([])
+        cardTool.setProcsNoStatUnc(cardTool.procGroups['signal_samples'])
+        if xnorm and not args.fitresult:
             if wmass:
                 action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])  
             else:
@@ -700,14 +702,13 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     )
             )
         else:
-            cardTool.setProcsNoStatUnc(cardTool.procGroups['signal_samples'])
             cardTool.addSystematic(**info,
                 name=cardTool.nominalName,
                 systAxes=recovar_syst,
                 action=lambda h: 
-                    hh.addHists(h,
-                        hh.expand_hist_by_duplicate_axes(h, recovar, recovar_syst),
-                        scale2=np.sqrt(h.variances(flow=True))/h.values(flow=True))
+                    hh.addHists(h.project(*recovar),
+                        hh.expand_hist_by_duplicate_axes(h.project(*recovar), recovar, recovar_syst),
+                        scale2=np.sqrt(h.project(*recovar).variances(flow=True))/h.project(*recovar).values(flow=True))
             )
 
  
@@ -716,61 +717,64 @@ def setup(args, inputFile, fitvar, xnorm=False):
         logger.info("Using option --doStatOnly: the card was created with only mass nuisance parameter")
         return cardTool
 
-    if wmass and not xnorm:
-        cardTool.addSystematic(f"massWeightZ",
-                                processes=['single_v_nonsig_samples'],
-                                group=f"massShift",
-                                skipEntries=massWeightNames(proc="Z", exclude=2.1),
+    if not args.noTheoryUnc:
+
+        if wmass and not xnorm:
+            cardTool.addSystematic(f"massWeightZ",
+                                    processes=['single_v_nonsig_samples'],
+                                    group=f"massShift",
+                                    skipEntries=massWeightNames(proc="Z", exclude=2.1),
+                                    mirror=False,
+                                    noConstraint=False,
+                                    systAxes=["massShift"],
+                                    passToFakes=passSystToFakes,
+            )
+
+        # Experimental range
+        #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
+        # Variation from EW fit (mostly driven by alphas unc.)
+        widthVars = (0.6, ['widthW2p09053GeV', 'widthW2p09173GeV']) if wmass else (0.8, ['widthZ2p49333GeV', 'widthZ2p49493GeV'])
+        cardTool.addSystematic(f"widthWeight{label}",
+                                rename=f"Width{label}{str(widthVars[0]).replace('.','p')}MeV",
+                                processes=["signal_samples_inctau"],
+                                action=lambda h: h[{"width" : widthVars[1]}],
+                                group=f"width{label}",
                                 mirror=False,
-                                noConstraint=False,
-                                systAxes=["massShift"],
+                                noi=args.fitWidth,
+                                noConstraint=args.fitWidth,
+                                systAxes=["width"],
+                                outNames=[f"width{label}Down", f"width{label}Up"],
                                 passToFakes=passSystToFakes,
         )
 
-    # Experimental range
-    #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
-    # Variation from EW fit (mostly driven by alphas unc.)
-    widthVars = (0.6, ['widthW2p09053GeV', 'widthW2p09173GeV']) if wmass else (0.8, ['widthZ2p49333GeV', 'widthZ2p49493GeV'])
-    cardTool.addSystematic(f"widthWeight{label}",
-                            rename=f"Width{label}{str(widthVars[0]).replace('.','p')}MeV",
-                            processes=["signal_samples_inctau"],
-                            action=lambda h: h[{"width" : widthVars[1]}],
-                            group=f"width{label}",
-                            mirror=False,
-                            noi=args.fitWidth,
-                            noConstraint=args.fitWidth,
-                            systAxes=["width"],
-                            outNames=[f"width{label}Down", f"width{label}Up"],
-                            passToFakes=passSystToFakes,
-    )
 
+        combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
+            samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
 
-    combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
-        samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
+        to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
+        
+        theory_helper = combine_theory_helper.TheoryHelper(cardTool, hasNonsigSamples=(wmass and not xnorm))
+        theory_helper.configure(resumUnc=args.resumUnc, 
+            transitionUnc = not args.noTransitionUnc,
+            propagate_to_fakes=to_fakes,
+            np_model=args.npUnc,
+            tnp_scale = args.scaleTNP,
+            mirror_tnp=False,
+            pdf_from_corr=args.pdfUncFromCorr,
+            scale_pdf_unc=args.scalePdf,
+            minnlo_unc=args.minnloScaleUnc,
+            fitAlphaS=args.fitAlphaS,
+        )
 
-    to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
-    
-    theory_helper = combine_theory_helper.TheoryHelper(cardTool, hasNonsigSamples=(wmass and not xnorm))
-    theory_helper.configure(resumUnc=args.resumUnc, 
-        transitionUnc = not args.noTransitionUnc,
-        propagate_to_fakes=to_fakes,
-        np_model=args.npUnc,
-        tnp_scale = args.scaleTNP,
-        mirror_tnp=False,
-        pdf_from_corr=args.pdfUncFromCorr,
-        scale_pdf_unc=args.scalePdf,
-        minnlo_unc=args.minnloScaleUnc,
-    )
+        theorySystSamples = ["signal_samples_inctau"]
+        if wmass:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = ["wtau_samples"]
+            theorySystSamples.append("single_v_nonsig_samples")
+        if xnorm:
+            theorySystSamples = ["signal_samples"]
 
-    theorySystSamples = ["signal_samples_inctau"]
-    if wmass:
-        if args.noPDFandQCDtheorySystOnSignal:
-            theorySystSamples = ["wtau_samples"]
-        theorySystSamples.append("single_v_nonsig_samples")
-    if xnorm:
-        theorySystSamples = ["signal_samples"]
-
-    theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
+        theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
 
     if xnorm or genfit:
         return cardTool
@@ -1237,7 +1241,7 @@ if __name__ == "__main__":
                 writer.add_channel(cardTool)
 
         if args.fitresult:
-            writer.set_fitresult(args.fitresult, mc_stat=not args.noMCStat)
+            writer.set_fitresult(args.fitresult, mc_stat=not (args.noMCStat or args.explicitSignalMCstat))
 
         if len(outnames) == 1:
             outfolder, outfile = outnames[0]

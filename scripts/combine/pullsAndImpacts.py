@@ -354,7 +354,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             impact_title = "$\\mathrm{Impact\\ on\\ mass\\ diff. }(\\eta)\\ (\\mathrm{MeV})$"
         else:
             impact_title = "Impact on mass diff. (MeV)"
-    elif poi and poi.startswith("Width"):
+    elif poi and poi.startswith("width"):
         impact_title = "Impact on width (MeV)"
     else:
         impact_title=poi

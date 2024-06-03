@@ -46,7 +46,8 @@ class TheoryHelper(object):
             pdf_from_corr=False,
             pdf_operation=None,
             scale_pdf_unc=1.,
-            minnlo_unc='byHelicityPt'):
+            minnlo_unc='byHelicityPt',
+            fitAlphaS=False):
 
         self.set_resum_unc_type(resumUnc)
         self.set_np_model(np_model)
@@ -61,6 +62,7 @@ class TheoryHelper(object):
         self.scale_pdf_unc = scale_pdf_unc
         self.samples = []
         self.skipFromSignal = False
+        self.fitAlphaS=fitAlphaS
 
     def add_all_theory_unc(self, samples, skipFromSignal=False):
         self.samples = samples
@@ -561,6 +563,12 @@ class TheoryHelper(object):
         else:
             as_args["systNameReplace"] = as_replace
             as_args['skipEntries'] = [{"alphasVar" : "as0118"}]
+        if self.fitAlphaS:
+            as_args["noi"] = True
+            as_args["noConstraint"] = True
+            as_args["mirror"] = True
+            as_args["symmetrize"] = None
+            as_args["outNames"] = None
         self.card_tool.addSystematic(**as_args)
 
     def add_transition_fo_scale_uncertainties(self, transition = True, scale=True):
