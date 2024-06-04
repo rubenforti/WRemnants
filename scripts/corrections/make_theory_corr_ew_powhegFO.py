@@ -43,6 +43,24 @@ weakvars.insert(0, nominal_corr)
 
 s = hist.tag.Slicer()
 
+
+if args.debug:
+    hnumUL = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_default", "helicity" : -1.j}]
+    hdenUL = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_no_ew", "helicity" : -1.j}]
+    hrUL = hh.divideHists(hnumUL, hdenUL)
+
+    for ihel in range(-1, 8):
+        hnum = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_default", "helicity" : ihel*1.j}]
+        hden = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_no_ew", "helicity" : ihel*1.j}]
+
+        hr = hh.divideHists(hnum, hden)
+        hr2 = hh.divideHists(hr, hrUL)
+
+        print(ihel)
+        print(hr)
+        print(hr2)
+
+
 # integrate over pt and rapidity and re-order the variations
 h = h[{"ptVlhe" : hist.sum, "absYVlhe" : hist.sum, "weak" : weakvars}]
 
