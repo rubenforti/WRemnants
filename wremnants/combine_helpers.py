@@ -36,8 +36,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
     info = dict(
         systAxes=["systIdx"],
         mirror=True,
-        #FIXME reconcile this with overall "theory" group
-        splitGroup={f"theory_ew" : f".*"},
+        splitGroup={"theory_ew" : f".*", "theory" : f".*"},
         passToFakes=passSystToFakes,
     )
     # different uncertainty for W and Z samples
@@ -57,7 +56,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     skipEntries=[(0, -1), (2, -1)],
                     group = f"theory_ew_virtW",
                 )                     
-        elif ewUnc == "powhegFOEWHelicity":
+        elif ewUnc == "powhegFOEW":
             if z_samples:
                 card_tool.addSystematic(f"{ewUnc}Corr",
                     preOp = lambda h : h[{"weak": ["weak_ps", "weak_aem"]}],
@@ -67,6 +66,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     systAxes=["weak"],
                     mirror=True,
                     group="theory_ew_virtZ_scheme",
+                    splitGroup={"theory_ew" : f".*", "theory" : f".*"},
                     passToFakes=passSystToFakes,
                     rename = "ewScheme",
                 )
@@ -78,6 +78,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     systAxes=["weak"],
                     mirror=True,
                     group="theory_ew_virtZ_corr",
+                    splitGroup={"theory_ew" : f".*", "theory" : f".*"},
                     passToFakes=passSystToFakes,
                     rename = "ew",
                 )

@@ -320,6 +320,8 @@ def define_prefsr_vars(df, mode=None):
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define("chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]")
     df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
+    df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")
+    df = df.Define("csPhigen", "csSineCosThetaPhigen.phi()")
 
     # define w and w-like variables 
     df = df.Define("qgen", "isEvenEvent ? -1 : 1")
@@ -584,14 +586,14 @@ def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_
         helper = dataset_helpers[generator]
         df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
         # hack for column names
-        if generator == "powhegFOEWHelicity":
-            ew_cols = ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", f"ew_{generator}corr_weight"]
+        if generator == "powhegFOEW":
+            ew_cols = ["massVgen", "absYVgen", "csCosThetagen", "chargeVgen", f"ew_{generator}corr_weight"]
         else:
             ew_cols = [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]
 
         df = df.Define(f"{generator}Weight_tensor", helper, ew_cols) # multiplying with nominal QCD weight
 
-        if generator in ["powhegFOEWHelicity"] and modify_central_weight:
+        if generator in ["powhegFOEW"] and modify_central_weight:
             logger.debug(f"applying central value correction for {generator}")
             df = df.Define("ew_theory_corr_weight", f"nominal_weight_ew_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_ew_uncorr")
 
