@@ -26,98 +26,70 @@ procs.append("Zmumu_powheg-weak-high")
 
 
 histnames = []
-histnames.append("lhe_weak_helicity")
+histnames.append("lhe_weak_angular")
 
 hists = input_tools.read_all_and_scale(fname = args.input, procs = procs, histnames = histnames)
-lhe_weak_helicity = hists[0]
+lhe_weak_angular = hists[0]
 
-h = lhe_weak_helicity
+h = lhe_weak_angular
 
 print(h)
 
-# nominal correction should be the first entry, so re-order the variations
+s = hist.tag.Slicer()
+
+if args.debug:
+    from wremnants import plot_tools
+    import mplhep as hep
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+
+    hnum = h[{"weak" : "weak_default"}].project("massVlhe")
+    hden = h[{"weak" : "weak_no_ew"}].project("massVlhe")
+
+    plot_tools.makePlotWithRatioToRef([hden, hnum], labels = ["weak_no_ew", "weak_default"], colors = ["blue", "red"], xlim=[80.,100.], rrange=[1.008, 1.012])
+
+    plt.savefig("plotsew/rationom.png")
+    plt.close()
+
+    axis_weak = h.axes["weak"]
+
+    for var in axis_weak:
+        hnumalt = h[{"weak" : var}].project("massVlhe")
+        plot_tools.makePlotWithRatioToRef([hnum, hnumalt], labels = [var, "weak_default"], colors = ["red", "orange"], xlim=[80.,100.], rrange=[0.998, 1.002])
+
+        plt.savefig(f"plotsew/ratio_{var}.png")
+        plt.close()
+
+
+# nominal correction should be the first entry, so re-order the variations in case we want to correct the central value
 nominal_corr = "weak_default"
 weakvars = list(h.axes["weak"])
 weakvars.remove(nominal_corr)
 weakvars.insert(0, nominal_corr)
 
-s = hist.tag.Slicer()
+#  re-order the variations and integrate over pt and phistar
+h = h[{"ptVlhe" : hist.sum, "phiStarlhe" : hist.sum, "weak" : weakvars}]
 
-
-if args.debug:
-    hnumUL = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_default", "helicity" : -1.j}]
-    hdenUL = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_no_ew", "helicity" : -1.j}]
-    hrUL = hh.divideHists(hnumUL, hdenUL)
-
-    for ihel in range(-1, 8):
-        hnum = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_default", "helicity" : ihel*1.j}]
-        hden = h[{"absYVlhe" : hist.sum, "ptVlhe" : hist.sum, "chargeVlhe" : 0.j, "weak" : "weak_no_ew", "helicity" : ihel*1.j}]
-
-        hr = hh.divideHists(hnum, hden)
-        hr2 = hh.divideHists(hr, hrUL)
-
-        print(ihel)
-        print(hr)
-        print(hr2)
-
-
-# integrate over pt and rapidity and re-order the variations
-h = h[{"ptVlhe" : hist.sum, "absYVlhe" : hist.sum, "weak" : weakvars}]
-
-# single bin axes for pt and y since the correction code assumes they're present
-axis_massVlhe = h.axes["massVlhe"]
-axis_absYVlhe = hist.axis.Variable([0., np.inf], underflow=False, overflow=False, name = "absYVlhe")
-axis_ptVlhe = hist.axis.Variable([0., np.inf], underflow=False, overflow=False, name = "ptVlhe")
-axis_chargeVlhe = h.axes["chargeVlhe"]
-axis_helicity = h.axes["helicity"]
-axis_uncorr_corr = hist.axis.StrCategory(["uncorr", "corr"], name="uncorr_corr")
-axis_weak = h.axes["weak"]
-
-# this is the order of the variables expected by the correction code
-hcorr = hist.Hist(axis_massVlhe, axis_absYVlhe, axis_ptVlhe, axis_chargeVlhe, axis_helicity, axis_uncorr_corr, axis_weak)
-# set uncorr to the denominator of the correction (LO)
-hcorr[{"uncorr_corr" : "uncorr", "ptVlhe" : 0, "absYVlhe" : 0}] = h[{"weak" : "weak_no_ew"}].values(flow=True)[..., None]
-hcorr[{"uncorr_corr" : "corr", "ptVlhe" : 0, "absYVlhe" : 0}] = h.values(flow=True)
-
-# sample is NLO QCD so NNLO angular coeffs are just noise, set them to zero
-for ihel in range(5, 8):
-    hcorr[{"helicity" : ihel*1.j}] = np.zeros_like(hcorr[{"helicity" : ihel*1.j}].values(flow=True))
-
-# EW corrections for NLO helicity contributions are not meaningful, so just preserve the corresponding
-# angular coefficients
-uncorr_UL = hcorr[{"uncorr_corr" : "uncorr", "helicity" : -1.j}].values(flow=True)
-corr_UL = hcorr[{"uncorr_corr" : "corr", "helicity" : -1.j}].values(flow=True)
-for ihel in range(0, 4):
-    corr = hcorr[{"uncorr_corr" : "corr", "helicity" : ihel*1.j}].values(flow=True)
-    uncorr = hcorr[{"uncorr_corr" : "uncorr", "helicity" : ihel*1.j}].values(flow=True)
-    hcorr[{"uncorr_corr" : "corr", "helicity" : ihel*1.j}] = np.where(uncorr_UL == 0., corr, corr_UL/uncorr_UL*uncorr)
+hcorr = hist.Hist(*h.axes)
+# safe default
+hcorr.values(flow=True)[...] = 1.
+# set correction to the ratio to LO
+den = h[{"weak" : "weak_no_ew"}].values()[..., None]
+hcorr[...] = np.where(den==0., np.ones_like(h.values()), h.values()/den)
 
 # extreme bins are not populated, "extend" the corrections from the neighboring mass bins
-hcorr[{"massVlhe" : 0}] = hcorr[{"massVlhe" : 1}].values(flow=True)
-hcorr[{"massVlhe" : -1}] = hcorr[{"massVlhe" : -2}].values(flow=True)
-hcorr[{"massVlhe" : hist.overflow}] = hcorr[{"massVlhe" : -2}].values(flow=True)
+hcorr[{"massVlhe" : 0}] = hcorr[{"massVlhe" : 1}].values()
+hcorr[{"massVlhe" : -1}] = hcorr[{"massVlhe" : -2}].values()
+hcorr[{"massVlhe" : hist.overflow}] = hcorr[{"massVlhe" : -2}].values()
 
-if args.debug:
-    print(hcorr)
+#charge axis should go at the end
+hcorr = hcorr.project("massVlhe", "absYVlhe", "cosThetaStarlhe", "chargeVlhe", "weak")
 
-    hnumUL = hcorr[{"uncorr_corr" : "corr", "ptVlhe" : 0, "absYVlhe" : 0, "chargeVlhe" : 0.j, "helicity" : -1.j, "weak" : 0}]
-    hdenUL = hcorr[{"uncorr_corr" : "uncorr", "ptVlhe" : 0, "absYVlhe" : 0, "chargeVlhe" : 0.j, "helicity" : -1.j, "weak" : 0}]
-    hrUL = hh.divideHists(hnumUL, hdenUL)
-
-    for ihel in range(-1, 8):
-        hnum = hcorr[{"uncorr_corr" : "corr", "ptVlhe" : 0, "absYVlhe" : 0, "chargeVlhe" : 0.j, "helicity" : ihel*1.j, "weak" : 0}]
-        hden = hcorr[{"uncorr_corr" : "uncorr", "ptVlhe" : 0, "absYVlhe" : 0, "chargeVlhe" : 0.j, "helicity" : ihel*1.j, "weak" :0 }]
-
-        hr = hh.divideHists(hnum, hden)
-        hr2 = hh.divideHists(hr, hrUL)
-
-        print("ihel", ihel)
-        print(hr)
-        print(hr2)
+print(hcorr)
 
 # hack output name to comply with correction code
-correction_name = "powhegFOEWHelicity"
-hist_name = "powhegFOEW_minnlo_coeffs"
+correction_name = "powhegFOEW"
+hist_name = "powhegFOEW_minnlo_ratio"
 
 res = {}
 res[hist_name] = hcorr
