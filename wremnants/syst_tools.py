@@ -503,7 +503,7 @@ def define_weak_weights(df, proc):
     if "weakWeight_tensor" in df.GetColumnNames():
         logger.debug("weakWeight_tensor already defined, do nothing here.")
         return df
-    nweights = 20
+    nweights = 24
     df = df.Define("weakWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights}>(LHEReweightingWeight)")
     df = df.Define("weakWeight_tensor_wnom", "auto res = weakWeight_tensor; res = LHEWeight_originalXWGTUP*res; return res;")
 
@@ -564,6 +564,14 @@ def weakWeightNames(matches=None, proc=""):
         'weak_s2eff_0p23205',
         # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23255d0
         'weak_s2eff_0p23255',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23355d0
+        'weak_s2eff_0p23355',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.23455d0
+        'weak_s2eff_0p23455',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.22955d0
+        'weak_s2eff_0p22955',
+        # no_ew=0d0, weak-only=1d0, ew_ho=1d0, use-s2effin=0.22655d0
+        'weak_s2eff_0p22655',
     ]
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
