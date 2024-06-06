@@ -25,7 +25,6 @@ initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
-parser = common.set_parser_default(parser, "ewTheoryCorr", ["virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR",])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 
 args = parser.parse_args()
