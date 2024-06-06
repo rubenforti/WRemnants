@@ -1,5 +1,6 @@
 from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+from utilities.common import data_dir
 from wremnants.datasets.datagroups import Datagroups
 import os
 
