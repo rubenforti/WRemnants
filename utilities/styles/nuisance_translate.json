@@ -31,24 +31,26 @@
     "resum": "$p_{\\mathrm{T}}^{\\mathrm{V}} \\ \\mathrm{modelling}$",
     "resumTNP": "Non pert. trans.",
     "resumNonpert": "Non pert.",
-    "muonCalibration": "muon momentum calibration",
-    "muonScale": "muon momentum scale",
-    "nonClosure": "muon momentum scale",
-    "resolutionCrctn": "muon momentum resolution",
+    "muonCalibration": "Muon calibration",
+    "muonScale": "Muon scale",
+    "nonClosure": "Muon scale",
+    "resolutionCrctn": "Muon resolution",
     "muon_eff_stat": "$\\epsilon^{\\mu}_\\mathrm{stat}$",
     "muon_eff_syst": "$\\epsilon^{\\mu}_\\mathrm{syst}$",
     "prefire": "L1 prefire",
     "muonPrefire": "L1 muon prefire",
     "ecalPrefire": "L1 ecal prefire",
     "stat": "Data stat.",
-    "lumi": "Luminosity",
+    "luminosity": "Luminosity",
     "theory_ew": "EW",
     "FakeRate": "Fake rate factors",
     "FakeShape": "Fake shape corrections",
     "Fake": "Fakes",
     "widthW": "W width", 
     "widthZ": "Z width",
-    "bcQuarkMass" : "b,c quark masses"
+    "bcQuarkMass" : "b,c quark masses",
+    "experiment": "Experiment",
+    "theory": "Theory"
 }
 
 

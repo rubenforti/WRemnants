@@ -299,7 +299,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
 
     if doingSF:
 
-        if step == "tracking":
+        if step == "tracking" and histo.GetNbinsX() == 4: # use pol2 only with 4 bins, otherwise pol3
 
             global pol2_tf_scaled
             if pol2_tf_scaled == None:
@@ -674,7 +674,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
 
     ### Draw band to highlight acceptance
     hAcceptBand = copy.deepcopy(histo.Clone("hAcceptBand"))
-    if step != "tracking":
+    if step != "tracking" and "veto" not in step:
         yMaxBand = downLeg * (canvas.GetY2() - canvas.GetY1()) + canvas.GetY1()
         for i in range(1, 1 + hAcceptBand.GetNbinsX()):
             if hAcceptBand.GetBinCenter(i) > 26.0 and hAcceptBand.GetBinCenter(i) < 55.0:
@@ -791,7 +791,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
 
     ### Draw band to highlight acceptance
     hAcceptBandRatio = copy.deepcopy(histo.Clone("hAcceptBandRatio"))
-    if step != "tracking":
+    if step != "tracking" and "veto" not in step:
         hAcceptBandRatio.Reset("ICESM")
         yMaxBand = maxy
         for i in range(1, 1 + hAcceptBandRatio.GetNbinsX()):
@@ -949,9 +949,19 @@ minmaxSF = {"trigger"      : "0.65,1.15",
             "reco"         : "0.94,1.02",
             "recoplus"     : "0.94,1.02",
             "recominus"    : "0.94,1.02",
+            "vetotracking"     : "0.95,1.05",
+            "vetotrackingplus" : "0.95,1.05",
+            "vetotrackingminus": "0.95,1.05",
+            "vetoreco"         : "0.92,1.04",
+            "vetorecoplus"     : "0.92,1.04",
+            "vetorecominus"    : "0.92,1.04",
+            "vetoidip"         : "0.98,1.02",
+            "vetoidipplus"     : "0.98,1.02",
+            "vetoidipminus"    : "0.98,1.02",
 }
 
 stepsWithAntiSF = ["iso", "isoplus", "isominus", "trigger", "triggerplus", "triggerminus"]
+# the veto is special since it should be a product of reco*tracking*idip SF before doing the antiVersion
 
 def mergeFiles(args):
 
@@ -997,7 +1007,7 @@ def runFiles(args):
             step = step.replace(charge, "")
         inputFile = args.inputfile[0].replace("_ERA", f"_{era}").replace("_STEP", f"_{step}").replace("_CHARGE", f"_{charge}")
             
-        cmd = f"python w_mass_13TeV/smoothLeptonScaleFactors.py {inputFile} {args.outdir[0]} -c {charge} -s {step}"
+        cmd = f"python scripts/analysisTools/w_mass_13TeV/smoothLeptonScaleFactors.py {inputFile} {args.outdir[0]} -c {charge} -s {step}"
         cmd += f" --input-hist-names '{args.inputHistNames}' --input-hist-names-alt '{args.inputHistNamesAlt}'"
         ## now we no longer smooth efficiencies, but keep commented in case we need it again
         # if step in ["iso", "isonotrig", "antiiso", "antiisonotrig"]:
@@ -1035,7 +1045,7 @@ if __name__ == "__main__":
     parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
 
     args = parser.parse_args()
-    logger = logging.setup_logger(os.path.basename(__file__), 3, True)
+    logger = logging.setup_logger(os.path.basename(__file__), args.verbose, True)
     
     if args.fitPolDegreeEfficiency < -1:
         args.fitPolDegreeEfficiency = -1

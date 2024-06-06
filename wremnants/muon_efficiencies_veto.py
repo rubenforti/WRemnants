@@ -19,8 +19,7 @@ narf.clingutils.Declare('#include "muon_efficiencies_veto.h"')
 
 data_dir = common.data_dir
 
-def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_plus.root",
-                                      filename_minus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_minus.root",
+def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = False,
                                       era = None):
     
     logger.debug(f"Make efficiency helper veto")
@@ -36,7 +35,17 @@ def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smooth
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1*i,1) for i in range(49)]
     Nsyst = 1 + (len(effSyst_decorrEtaEdges) - 1) # 1 inclusive variation + all decorrelated bins
 
-    Steps = 3 #we decided to compute the syst variations on the veto SFs independently for each of the tnp fits (using only global muons in the muon definition we fit reco, "tracking", looseID + dxybs)
+    if useGlobalOrTrackerVeto: #in this way we are hardcoding the file names for the veto SFs, but I don't think we are going to change them in the helpers anyways
+        filename_plus = data_dir + "/muonSF/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_plus.root"
+        filename_minus = data_dir + "/muonSF/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_minus.root"
+    else:
+        filename_plus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_plus.root"
+        filename_minus = data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_minus.root"
+
+    if not useGlobalOrTrackerVeto:
+        Steps = 3 #we decided to compute the syst variations on the veto SFs independently for each of the tnp fits (using only global muons in the muon definition we fit reco, "tracking", looseID + dxybs)
+    else:
+        Steps = 5 #we decided to compute the syst variations on the veto SFs independently for each of the tnp fits (for global-or-tracker in the muon definition we fit reco, "tracking", P(tracker-seeded track|standalone), P(tracker muon and not global|tracker-seeded track), looseID + dxybs)
 
     file_plus = input_tools.safeOpenRootFile(f"{filename_plus}")
     plus_histo = input_tools.safeGetRootObject(file_plus,"SF_nomiAndAlt_GtoH_newveto_plus")
@@ -72,7 +81,10 @@ def make_muon_efficiency_helpers_veto(filename_plus = data_dir + "/muonSF/smooth
                                                                                                                            helper
                                                                                                                        )
 
-    axis_all = hist.axis.Integer(0, Steps, underflow = False, overflow = False, name = "veto_reco-veto_tracking-veto_idip")
+    if not useGlobalOrTrackerVeto:
+        axis_all = hist.axis.Integer(0, Steps, underflow = False, overflow = False, name = "veto_reco-veto_tracking-veto_idip")
+    else:
+        axis_all = hist.axis.Integer(0, Steps, underflow = False, overflow = False, name = "veto_reco-veto_tracking-veto_idip-veto_trackerreco-veto_trackertracking")
     axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
 
     helper_syst.tensor_axes = [axis_all, axis_nsyst]

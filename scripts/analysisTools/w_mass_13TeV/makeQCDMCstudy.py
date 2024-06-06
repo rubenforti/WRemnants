@@ -67,7 +67,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -359,7 +359,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -468,7 +468,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
