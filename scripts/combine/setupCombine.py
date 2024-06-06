@@ -391,6 +391,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     WMatch = ["W"] # TODO: the name of out-of-acceptance might be changed at some point, maybe to WmunuOutAcc, so W will match it as well (and can exclude it using "OutAcc" if needed)
     ZMatch = ["Z"]
     signalMatch = WMatch if wmass else ZMatch
+    nonSignalMatch = ZMatch if wmass else WMatch
 
     cardTool.addProcessGroup("single_v_samples", lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=dibosonMatch))
     if wmass:
@@ -402,10 +403,13 @@ def setup(args, inputFile, fitvar, xnorm=False):
     cardTool.addProcessGroup("single_vmu_samples",    lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=[*dibosonMatch, "tau"]))
     cardTool.addProcessGroup("signal_samples",        lambda x: assertSample(x, startsWith=signalMatch,        excludeMatch=[*dibosonMatch, "tau"]))
     cardTool.addProcessGroup("signal_samples_inctau", lambda x: assertSample(x, startsWith=signalMatch,        excludeMatch=[*dibosonMatch]))
+    cardTool.addProcessGroup("nonsignal_samples_inctau", lambda x: assertSample(x, startsWith=nonSignalMatch,        excludeMatch=[*dibosonMatch]))
     cardTool.addProcessGroup("MCnoQCD", lambda x: x not in ["QCD", "Data"] + (["Fake"] if simultaneousABCD else []) )
     # FIXME/FOLLOWUP: the following groups may actually not exclude the OOA when it is not defined as an independent process with specific name
     cardTool.addProcessGroup("signal_samples_noOutAcc",        lambda x: assertSample(x, startsWith=signalMatch, excludeMatch=[*dibosonMatch, "tau", "OOA"]))
+    cardTool.addProcessGroup("nonsignal_samples_noOutAcc",     lambda x: assertSample(x, startsWith=nonSignalMatch, excludeMatch=[*dibosonMatch, "tau", "OOA"]))
     cardTool.addProcessGroup("signal_samples_inctau_noOutAcc", lambda x: assertSample(x, startsWith=signalMatch, excludeMatch=[*dibosonMatch, "OOA"]))
+    cardTool.addProcessGroup("nonsignal_samples_inctau_noOutAcc", lambda x: assertSample(x, startsWith=nonSignalMatch, excludeMatch=[*dibosonMatch, "OOA"]))
 
     if not (isTheoryAgnostic or isUnfolding) :
         logger.info(f"All MC processes {cardTool.procGroups['MCnoQCD']}")
@@ -642,7 +646,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         muRmuFPolVar_helper = combine_theoryAgnostic_helper.TheoryAgnosticHelper(cardTool, externalArgs=args)
         muRmuFPolVar_helper.configure_polVar(label,
                                              passSystToFakes,
-                                             hasSeparateOutOfAcceptanceSignal,
+                                             False,
                                              )
         muRmuFPolVar_helper.add_theoryAgnostic_uncertainty()
 
