@@ -22,12 +22,10 @@ logger = logging.child_logger(__name__)
 data_dir = common.data_dir
 
 def makehelicityWeightHelper_polvar(genVcharge=-1, fileTag="x0p40_y3p50_V6", filePath=".", noUL = False):
-    '''
-    if genVcharge not in [-1, 1]:
-        errmsg = f"genVcharge must be -1 or 1, {genVcharge} was given"
+    if genVcharge not in [-1, 1, 0]:
+        errmsg = f"genVcharge must be -1, 1 or 0, {genVcharge} was given"
         logger.error(errmsg)
         raise ValueError(errmsg)
-    '''
 
     charges = { -1. : "minus", 1. : "plus", 0.: "Z"}
     # these inputs should be copied somewhere
