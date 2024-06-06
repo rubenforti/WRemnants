@@ -9,7 +9,7 @@ logger = logging.child_logger(__name__)
 
 class TheoryHelper(object):
     valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Delta_Omega", "binned_Omega", "none"]
-    def __init__(self, card_tool, hasNonsigSamples=False):
+    def __init__(self, card_tool, args, hasNonsigSamples=False):
         toCheck = ['signal_samples', 'signal_samples_inctau', 'single_v_samples']
         if hasNonsigSamples:
             toCheck.extend(['single_v_nonsig_samples', 'wtau_samples'])
@@ -29,6 +29,7 @@ class TheoryHelper(object):
         self.mirror_tnp = True
         self.minnlo_unc = 'byHelicityPt'
         self.skipFromSignal = False
+        self.args = args
 
     def sample_label(self, sample_group):
         if sample_group not in self.card_tool.procGroups:
@@ -137,6 +138,8 @@ class TheoryHelper(object):
             # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
             helicities_to_exclude = None if self.resumUnc == "minnlo" else [-1]
             for sample_group in self.samples:
+                if self.args.muRmuFPolVar:
+                    continue
                 if self.card_tool.procGroups.get(sample_group, None):
                     # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
                     # to avoid underestimating the correlated part of the uncertainty

@@ -35,6 +35,9 @@ parser.add_argument("--vetoGenPartPt", type=float, default=0.0, help="Minimum pT
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
+parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
+parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
+parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5Ext_Trad", choices=["x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
 #
 
 args = parser.parse_args()
@@ -222,6 +225,12 @@ if isTheoryAgnosticPolVar:
     theoryAgnostic_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
     theoryAgnostic_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
 
+# Helper for muR and muF as polynomial variations
+if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
+    muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+    muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+    muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+
 # recoil initialization
 if not args.noRecoil:
     from wremnants import recoil_tools
@@ -329,6 +338,9 @@ def build_graph(df, dataset):
                     axes = [*nominal_axes, *theoryAgnostic_axes]
                     cols = [*nominal_cols, *theoryAgnostic_cols]
                     theoryAgnostic_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, theoryAgnostic_axes, theoryAgnostic_cols)
+    elif args.muRmuFPolVar and isWorZ: #it should probably be isW also above
+        df = theory_tools.define_prefsr_vars(df)
+        df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
 
     if not args.makeMCefficiency and not args.noTrigger:
         # remove trigger, it will be part of the efficiency selection for passing trigger
@@ -607,6 +619,22 @@ def build_graph(df, dataset):
         setTheoryAgnosticGraph(df, results, dataset, reco_sel_GF, era, axes, cols, args)
         # End graph here only for standard theory agnostic analysis, otherwise use same loop as traditional analysis
         return results, weightsum
+
+    if args.muRmuFPolVar and isWorZ and not isTheoryAgnosticPolVar:
+        theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
+        # assume to have same coeffs for plus and minus (no reason for it not to be the case)
+        if dataset.name == "WplusmunuPostVFP" or dataset.name == "WplustaunuPostVFP":
+            helpers_class = muRmuFPolVar_helpers_plus
+        elif dataset.name == "WminusmunuPostVFP" or dataset.name == "WminustaunuPostVFP":
+            helpers_class = muRmuFPolVar_helpers_minus
+        elif dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":
+            helpers_class = muRmuFPolVar_helpers_Z
+        for coeffKey in helpers_class.keys():
+            logger.debug(f"Creating muR/muF histograms with polynomial variations for {coeffKey}")
+            helperQ = helpers_class[coeffKey]
+            df = df.Define(f"muRmuFPolVar_{coeffKey}_tensor", helperQ, theoryAgnostic_helpers_cols)
+            noiAsPoiWithPolHistName = Datagroups.histName("nominal", syst=f"muRmuFPolVar_{coeffKey}")
+            results.append(df.HistoBoost(noiAsPoiWithPolHistName, nominal_axes, [*nominal_cols, f"muRmuFPolVar_{coeffKey}_tensor"], tensor_axes=helperQ.tensor_axes, storage=hist.storage.Double()))
 
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
