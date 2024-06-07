@@ -30,7 +30,6 @@ isUnfolding = initargs.analysisMode == "unfolding"
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
-parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
 parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
 parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5Ext_Trad", choices=["x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
 
@@ -130,10 +129,11 @@ pixel_multiplicity_helper, pixel_multiplicity_uncertainty_helper, pixel_multipli
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
-if args.muRmuFPolVar:
-    muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-    muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-    muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+# helpers for muRmuF MiNNLO polynomial variations
+
+muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
 
 # recoil initialization
 if not args.noRecoil:
@@ -177,7 +177,7 @@ def build_graph(df, dataset):
             axes = [*nominal_axes, *unfolding_axes] 
             cols = [*nominal_cols, *unfolding_cols]
 
-    if args.muRmuFPolVar and isZ:
+    if isZ:
         df = theory_tools.define_prefsr_vars(df)
         df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
 
@@ -330,7 +330,7 @@ def build_graph(df, dataset):
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
-    if args.muRmuFPolVar and isZ and not hasattr(dataset, "out_of_acceptance"):
+    if isZ and not hasattr(dataset, "out_of_acceptance"):
         theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
         # assume to have same coeffs for plus and minus (no reason for it not to be the case)
         if dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":

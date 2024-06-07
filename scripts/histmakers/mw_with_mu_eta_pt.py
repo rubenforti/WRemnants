@@ -37,7 +37,6 @@ parser.add_argument("--noTrigger", action="store_true", help="Just for test: rem
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
-parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
 parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
 parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5Ext_Trad", choices=["x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
 
@@ -231,10 +230,9 @@ if isTheoryAgnosticPolVar:
     theoryAgnostic_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
 
 # Helper for muR and muF as polynomial variations
-if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
-    muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-    muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-    muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
 
 # recoil initialization
 if not args.noRecoil:
@@ -343,7 +341,8 @@ def build_graph(df, dataset):
                     axes = [*nominal_axes, *theoryAgnostic_axes]
                     cols = [*nominal_cols, *theoryAgnostic_cols]
                     theoryAgnostic_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, theoryAgnostic_axes, theoryAgnostic_cols)
-    elif args.muRmuFPolVar and isWorZ: #it should probably be isW also above
+
+    if isWorZ and not (isTheoryAgnostic and isWmunu): #it should probably be isW also above
         df = theory_tools.define_prefsr_vars(df)
         df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
 
@@ -619,7 +618,7 @@ def build_graph(df, dataset):
         # End graph here only for standard theory agnostic analysis, otherwise use same loop as traditional analysis
         return results, weightsum
 
-    if args.muRmuFPolVar and isWorZ and not hasattr(dataset, "out_of_acceptance"):
+    if isWorZ and not hasattr(dataset, "out_of_acceptance"):
         theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
         # assume to have same coeffs for plus and minus (no reason for it not to be the case)
         if dataset.name == "WplusmunuPostVFP" or dataset.name == "WplustaunuPostVFP":
