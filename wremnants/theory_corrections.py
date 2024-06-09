@@ -276,7 +276,7 @@ def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
     moments_lhe = hh.rebinHist(moments_lhe, "ptVgen", common.ptV_binning)
 
     if is_w_like:
-        axis_massVgen = moments.axis["massVgen"]
+        axis_massVgen = moments.axes["massVgen"]
         moments = hh.rebinHist(moments, "massVgen", axis_massVgen.edges[::2])
         moments_lhe = hh.rebinHist(moments_lhe, "massVgen", axis_massVgen.edges[::2])
 
