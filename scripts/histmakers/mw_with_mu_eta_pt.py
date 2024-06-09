@@ -319,11 +319,13 @@ def build_graph(df, dataset):
             
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
 
-    if isTheoryAgnostic and isWmunu: # should be isW to do also Wtaunu
+    if isWorZ:
         df = theory_tools.define_prefsr_vars(df)
+        df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
+    
+    if isTheoryAgnostic and isWmunu: # should be isW to do also Wtaunu
         usePtOverM = False
         if isTheoryAgnosticPolVar:
-            df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
             OOAthresholds = args.theoryAgnosticFileTag.split("_")
             ptVthresholdOOA   = float(OOAthresholds[0].replace("x","").replace("p","."))
             absyVthresholdOOA = float(OOAthresholds[1].replace("y","").replace("p","."))
@@ -341,10 +343,6 @@ def build_graph(df, dataset):
                     axes = [*nominal_axes, *theoryAgnostic_axes]
                     cols = [*nominal_cols, *theoryAgnostic_cols]
                     theoryAgnostic_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, theoryAgnostic_axes, theoryAgnostic_cols)
-
-    if isWorZ and not (isTheoryAgnostic and isWmunu): #it should probably be isW also above
-        df = theory_tools.define_prefsr_vars(df)
-        df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
 
     if not args.makeMCefficiency and not args.noTrigger:
         # remove trigger, it will be part of the efficiency selection for passing trigger
