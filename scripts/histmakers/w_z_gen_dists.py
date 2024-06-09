@@ -152,7 +152,6 @@ def build_graph(df, dataset):
             massBins = theory_tools.make_ew_binning(mass = 80.3815, width = 2.0904, initialStep=0.010)
         
         # LHE level
-        df = theory_tools.define_lhe_vars(df)
         df = syst_tools.define_weak_weights(df, dataset.name)
         axis_lheMV = hist.axis.Variable(massBins, name = "massVlhe", underflow=False)
         axis_lhePtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVlhe") 

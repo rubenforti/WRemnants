@@ -78,5 +78,30 @@ CSVars csSineCosThetaPhi(const PtEtaPhiMVector &antilepton, const PtEtaPhiMVecto
     return angles;
 }
 
+CSVars csSineCosThetaPhiTransported(const PtEtaPhiMVector &antilepton, const PtEtaPhiMVector &lepton, const PtEtaPhiMVector &targetV) {
+    const PxPyPzEVector lepton_v(lepton);
+    const PxPyPzEVector anti_lepton_v(antilepton);
+    const PxPyPzEVector dilepton = lepton_v + anti_lepton_v;
+
+    // boost to rest frame of dilepton system
+    auto const dilepCM = dilepton.BoostToCM();
+    const ROOT::Math::Boost dilepCMBoost(dilepCM);
+
+    auto const lepton_boost = dilepCMBoost(lepton_v);
+    auto const antilepton_boost = dilepCMBoost(anti_lepton_v);
+
+    // boost from rest frame of target back to lab frame
+    auto const targetCM = targetV.BoostToCM();
+    const ROOT::Math::Boost labBoost(-targetCM);
+
+    auto const lepton_target = labBoost(lepton_boost);
+    auto const antilepton_target = labBoost(antilepton_boost);
+
+    // finally compute cs variables
+    return csSineCosThetaPhi(PtEtaPhiMVector(antilepton_target), PtEtaPhiMVector(lepton_target));
+
+
+}
+
 }
 #endif

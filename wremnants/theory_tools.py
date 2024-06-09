@@ -280,8 +280,14 @@ def define_lhe_vars(df, mode=None):
     df = df.Define("lheLeps", "LHEPart_status == 1 && abs(LHEPart_pdgId) >= 11 && abs(LHEPart_pdgId) <= 16")
     df = df.Define("lheLep", "lheLeps && LHEPart_pdgId>0")
     df = df.Define("lheAntiLep", "lheLeps && LHEPart_pdgId<0")
-    df = df.Define("lheLep_idx",     "ROOT::VecOps::ArgMax(lheLep)")
-    df = df.Define("lheAntiLep_idx", "ROOT::VecOps::ArgMax(lheAntiLep)")
+    df = df.Define("lheLep_idx", 'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found."); return ROOT::VecOps::ArgMax(lheLep);')
+    df = df.Define("lheAntiLep_idx", 'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found."); return ROOT::VecOps::ArgMax(lheAntiLep);')
+
+    df = df.Define("lheVs", "abs(LHEPart_pdgId) >=23 && abs(LHEPart_pdgId)<=24")
+    df = df.Define("lheV_idx", 'if (Sum(lheVs) != 1) throw std::runtime_error("LHE V not found."); return ROOT::VecOps::ArgMax(lheVs);')
+    df = df.Define("lheV_pdgId", "LHEPart_pdgId[lheV_idx]")
+    df = df.Define("lheV_pt", "LHEPart_pt[lheV_idx]")
+
 
     df = df.Define("lheLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheLep_idx], LHEPart_eta[lheLep_idx], LHEPart_phi[lheLep_idx], LHEPart_mass[lheLep_idx])")
     df = df.Define("lheAntiLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheAntiLep_idx], LHEPart_eta[lheAntiLep_idx], LHEPart_phi[lheAntiLep_idx], LHEPart_mass[lheAntiLep_idx])")
@@ -332,6 +338,21 @@ def define_prefsr_vars(df, mode=None):
     df = df.Define("etaOthergen", "isEvenEvent ? genlanti.eta() : genl.eta()")
     df = df.Define("absetaOthergen", "std::fabs(etaOthergen)")
     df = df.Define("mTVgen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
+
+    return df
+
+def define_intermediate_gen_vars(df, label, statusMin, statusMax):
+    # define additional variables corresponding to intermediate states in the pythia history
+    df = df.Define(f"idxV{label}", f"wrem::selectGenPart(GenPart_status, GenPart_pdgId, 23, 24, {statusMin}, {statusMax})")
+    df = df.Define(f"mom4V{label}", f"ROOT::Math::PtEtaPhiMVector(GenPart_pt[idxV{label}], GenPart_eta[idxV{label}], GenPart_phi[idxV{label}], GenPart_mass[idxV{label}])")
+    df = df.Define(f"ptV{label}", f"mom4V{label}.pt()")
+    df = df.Define(f"massV{label}", f"mom4V{label}.mass()")
+    df = df.Define(f"ptqV{label}",  f"mom4V{label}.pt()/mom4V{label}.mass()")
+    df = df.Define(f"yV{label}", f"mom4V{label}.Rapidity()")
+    df = df.Define(f"phiV{label}", f"mom4V{label}.Phi()")
+    df = df.Define(f"absYV{label}", f"std::fabs(yV{label})")
+    df = df.Define(f"chargeV{label}", "chargeVgen")
+    df = df.Define(f"csSineCosThetaPhi{label}", f"wrem::csSineCosThetaPhiTransported(genlanti, genl, mom4V{label})")
 
     return df
 
@@ -525,9 +546,15 @@ def define_central_pdf_weight(df, dataset_name, pdf):
     return df.Define("central_pdf_weight", f"std::clamp<float>({pdfBranch}[{first_entry}], -theory_weight_truncate, theory_weight_truncate)")
 
 def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
+    if "LHEPart_status" in df.GetColumnNames():
+        df = define_lhe_vars(df)
+
     if not 'powheg' in dataset_name:
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
+        df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
+        df = define_intermediate_gen_vars(df, "postShower", 21, 59)
+        df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
 
     if "GenPart_status" in df.GetColumnNames():
         df = define_ew_vars(df)
