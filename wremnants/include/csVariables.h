@@ -52,8 +52,10 @@ CSVars csSineCosThetaPhi(const PtEtaPhiMVector &antilepton, const PtEtaPhiMVecto
     PxPyPzEVector dilepton = lepton_v + PxPyPzEVector(antilepton);
     const int zsign = std::copysign(1.0, dilepton.z());
     const double energy = 6500.;
-    PxPyPzEVector proton1(0., 0., zsign * energy, energy);
-    PxPyPzEVector proton2(0., 0., -1. * zsign * energy, energy);
+    const double mp = 0.93827208816;
+    const double pbeam = std::sqrt(energy*energy - mp*mp);
+    PxPyPzEVector proton1(0., 0., zsign * pbeam, energy);
+    PxPyPzEVector proton2(0., 0., -1. * zsign * pbeam, energy);
 
     auto dilepCM = dilepton.BoostToCM();
     ROOT::Math::Boost dilepCMBoost(dilepCM);
