@@ -918,25 +918,28 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", axes, [*cols, "helicity_moments_scale_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
         results.append(helicity_moments_scale)
 
-        df = df.Define("helicity_moments_scale_lhe_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhilhe, scaleWeights_tensor, nominal_weight)")
-        lhe_cols = ["massVlhe", "absYVlhe", "ptVlhe", "chargeVlhe"]
-        helicity_moments_scale_lhe = df.HistoBoost("nominal_gen_helicity_moments_scale_lhe", axes, [*lhe_cols, "helicity_moments_scale_lhe_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
-        results.append(helicity_moments_scale_lhe)
+        # below logic only valid for specific columns
+        if cols == ["massVgen", "absYVgen", "ptVgen", "chargeVgen"]:
 
-        df = df.Define("helicity_moments_scale_hardProcess_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhihardProcess, scaleWeights_tensor, nominal_weight)")
-        hardProcess_cols = ["massVhardProcess", "absYVhardProcess", "ptVhardProcess", "chargeVhardProcess"]
-        helicity_moments_scale_hardProcess = df.HistoBoost("nominal_gen_helicity_moments_scale_hardProcess", axes, [*hardProcess_cols, "helicity_moments_scale_hardProcess_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
-        results.append(helicity_moments_scale_hardProcess)
+            df = df.Define("helicity_moments_scale_lhe_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhilhe, scaleWeights_tensor, nominal_weight)")
+            lhe_cols = ["massVlhe", "absYVlhe", "ptVlhe", "chargeVlhe"]
+            helicity_moments_scale_lhe = df.HistoBoost("nominal_gen_helicity_moments_scale_lhe", axes, [*lhe_cols, "helicity_moments_scale_lhe_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
+            results.append(helicity_moments_scale_lhe)
 
-        df = df.Define("helicity_moments_scale_postShower_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostShower, scaleWeights_tensor, nominal_weight)")
-        postShower_cols = ["massVpostShower", "absYVpostShower", "ptVpostShower", "chargeVpostShower"]
-        helicity_moments_scale_postShower = df.HistoBoost("nominal_gen_helicity_moments_scale_postShower", axes, [*postShower_cols, "helicity_moments_scale_postShower_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
-        results.append(helicity_moments_scale_postShower)
+            df = df.Define("helicity_moments_scale_hardProcess_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhihardProcess, scaleWeights_tensor, nominal_weight)")
+            hardProcess_cols = ["massVhardProcess", "absYVhardProcess", "ptVhardProcess", "chargeVhardProcess"]
+            helicity_moments_scale_hardProcess = df.HistoBoost("nominal_gen_helicity_moments_scale_hardProcess", axes, [*hardProcess_cols, "helicity_moments_scale_hardProcess_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
+            results.append(helicity_moments_scale_hardProcess)
 
-        df = df.Define("helicity_moments_scale_postBeamRemnants_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostBeamRemnants, scaleWeights_tensor, nominal_weight)")
-        postBeamRemnants_cols = ["massVpostBeamRemnants", "absYVpostBeamRemnants", "ptVpostBeamRemnants", "chargeVpostBeamRemnants"]
-        helicity_moments_scale_postBeamRemnants = df.HistoBoost("nominal_gen_helicity_moments_scale_postBeamRemnants", axes, [*postBeamRemnants_cols, "helicity_moments_scale_postBeamRemnants_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
-        results.append(helicity_moments_scale_postBeamRemnants)
+            df = df.Define("helicity_moments_scale_postShower_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostShower, scaleWeights_tensor, nominal_weight)")
+            postShower_cols = ["massVpostShower", "absYVpostShower", "ptVpostShower", "chargeVpostShower"]
+            helicity_moments_scale_postShower = df.HistoBoost("nominal_gen_helicity_moments_scale_postShower", axes, [*postShower_cols, "helicity_moments_scale_postShower_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
+            results.append(helicity_moments_scale_postShower)
+
+            df = df.Define("helicity_moments_scale_postBeamRemnants_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostBeamRemnants, scaleWeights_tensor, nominal_weight)")
+            postBeamRemnants_cols = ["massVpostBeamRemnants", "absYVpostBeamRemnants", "ptVpostBeamRemnants", "chargeVpostBeamRemnants"]
+            helicity_moments_scale_postBeamRemnants = df.HistoBoost("nominal_gen_helicity_moments_scale_postBeamRemnants", axes, [*postBeamRemnants_cols, "helicity_moments_scale_postBeamRemnants_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
+            results.append(helicity_moments_scale_postBeamRemnants)
 
     if for_wmass or isZ:
         logger.debug(f"Make QCD scale histograms for {dataset_name}")
