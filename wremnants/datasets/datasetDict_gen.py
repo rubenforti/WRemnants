@@ -92,12 +92,12 @@ genDataDict = {
                    'xsec' : xsec_powheg_WplusToMuNu_LO,
                     'group': "Wmunu",
     },
-    'Wplusmunu_horace-lo-photos-mecoff' : { 
+    'Wplusmunu_horace-lo-photos-mecoff' : {
                  'filepaths' :
-                ["{BASE_PATH}/WplusJetsToMuNu_LO_TuneCP5_PhotosMecOff_13TeV-horace-pythia8-photospp"],
+                ["{BASE_PATH}/WplusJetsToMuNu_LO_TuneCP5_PhotosAllMecOff_13TeV-horace-pythia8-photospp"],
                  'xsec' : xsec_powheg_WplusToMuNu_LO,
                  'group': "Wmunu",
-    },    
+    },
     'Wplusmunu_horace-lo-photos-isroff' : { 
                 'filepaths' :
                 ["{BASE_PATH}/WplusJetsToMuNu_LO_NoQEDISR_TuneCP5_13TeV-horace-pythia8-photospp"],
@@ -146,12 +146,12 @@ genDataDict = {
                    'xsec' : xsec_powheg_WminusToMuNu_LO,
                     'group': "Wmunu",
     },
-    'Wminusmunu_horace-lo-photos-mecoff' : { 
+    'Wminusmunu_horace-lo-photos-mecoff' : {
                  'filepaths' :
-                ["{BASE_PATH}/WminusJetsToMuNu_LO_TuneCP5_PhotosMecOff_13TeV-horace-pythia8-photospp"],
+                ["{BASE_PATH}/WminusJetsToMuNu_LO_TuneCP5_PhotosAllMecOff_13TeV-horace-pythia8-photospp"],
                  'xsec' : xsec_powheg_WminusToMuNu_LO,
                  'group': "Wmunu",
-    },  
+    },
     'Wminusmunu_horace-lo-photos-isroff' : { 
                 'filepaths' :
                 ["{BASE_PATH}/WminusJetsToMuNu_LO_NoQEDISR_TuneCP5_13TeV-horace-pythia8-photospp"],
