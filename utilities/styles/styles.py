@@ -112,6 +112,14 @@ common_groups = [
     "width"
 ]
 nuisance_groupings = {
+    "super":[
+        "Total",
+        "stat",
+        "binByBinStat",
+        "theory", 
+        "experiment",
+        "muonCalibration",
+    ],
     "max": common_groups + [
         "massShift",
         "QCDscale", 
