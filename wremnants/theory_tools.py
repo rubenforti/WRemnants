@@ -539,7 +539,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
     df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
     df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr, 
         modify_central_weight=not args.theoryCorrAltOnly)
-    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr, modify_central_weight=not args.theoryCorrAltOnly)
+    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr, modify_central_weight=False)
 
     if args.highptscales:
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
@@ -580,6 +580,10 @@ def define_nominal_weight(df):
 
 def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_weight=False):
     logger.debug("define_ew_theory_corr")
+
+    if modify_central_weight:
+        raise ValueError("Modifying central weight not currently supported for EW corrections.")
+
     df = df.Define(f"nominal_weight_ew_uncorr", build_weight_expr(df, exclude_weights=["ew_theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
@@ -599,7 +603,7 @@ def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_
 
         df = df.Define(f"{generator}Weight_tensor", helper, ew_cols) # multiplying with nominal QCD weight
 
-        if generator in ["powhegFOEW"] and modify_central_weight:
+        if generator in ["renesanceEW", "powhegFOEW"] and modify_central_weight:
             logger.debug(f"applying central value correction for {generator}")
             df = df.Define("ew_theory_corr_weight", f"nominal_weight_ew_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_ew_uncorr")
 

@@ -46,16 +46,21 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
     mode = card_tool.datagroups.mode
     
     for ewUnc in ewUncs:
-        if ewUnc == "default":
+        if "renesanceEW" in ewUnc:
+            pass
             if w_samples:
-                # add winhac (approximate virtual EW) uncertainty on W samples
-                card_tool.addSystematic(f"winhacnloewCorr", **info, 
+                # add renesance (virtual EW) uncertainty on W samples
+                card_tool.addSystematic(f"{ewUnc}Corr",
                     processes=w_samples,
-                    labelsByAxis=[f"winhacnloewCorr"],
-                    scale=1,
-                    skipEntries=[(0, -1), (2, -1)],
-                    group = f"theory_ew_virtW",
-                )                     
+                    preOp = lambda h : h[{"var": ["nlo_ew_virtual"]}],
+                    labelsByAxis=[f"renesanceEWCorr"],
+                    scale=1.,
+                    systAxes=["var"],
+                    group = "theory_ew_virtW_corr",
+                    splitGroup={"theory_ew" : f".*", "theory" : f".*"},
+                    passToFakes=passSystToFakes,
+                    mirror = True,
+                )
         elif ewUnc == "powhegFOEW":
             if z_samples:
                 card_tool.addSystematic(f"{ewUnc}Corr",
@@ -71,7 +76,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                     rename = "ewScheme",
                 )
                 card_tool.addSystematic(f"{ewUnc}Corr",
-                    preOp = lambda h : h[{"weak": ["weak_no_ew"]}],
+                    preOp = lambda h : h[{"weak": ["weak_default"]}],
                     processes=z_samples,
                     labelsByAxis=[f"{ewUnc}Corr"],
                     scale=1.,
