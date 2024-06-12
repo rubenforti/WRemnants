@@ -152,7 +152,6 @@ def build_graph(df, dataset):
             massBins = theory_tools.make_ew_binning(mass = 80.3815, width = 2.0904, initialStep=0.010)
         
         # LHE level
-        df = theory_tools.define_lhe_vars(df)
         df = syst_tools.define_weak_weights(df, dataset.name)
         axis_lheMV = hist.axis.Variable(massBins, name = "massVlhe", underflow=False)
         axis_lhePtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVlhe") 
@@ -301,6 +300,9 @@ logger.info("computing angular coefficients")
 z_moments = None
 w_moments = None
 
+z_moments_lhe = None
+w_moments_lhe = None
+
 if not args.skipAngularCoeffs:
     for dataset in datasets:
         name = dataset.name
@@ -308,30 +310,33 @@ if not args.skipAngularCoeffs:
             logger.warning(f"Failed to find helicity_moments_scale hist for proc {name}. Skipping!")
             continue
         moments = resultdict[name]["output"]["nominal_gen_helicity_moments_scale"].get()
-        if name in common.zprocs:
+        moments_lhe = resultdict[name]["output"]["nominal_gen_helicity_moments_scale_lhe"].get()
+        if name in ["ZmumuPostVFP"]:
             if z_moments is None:
                 z_moments = moments
+                z_moments_lhe = moments_lhe
             else:
                 new_moments = moments
+                new_moments_lhe = moments_lhe
                 z_moments = hh.addHists(z_moments, new_moments, createNew=False)
-        elif name in common.wprocs:
+                z_moments_lhe = hh.addHists(z_moments_lhe, new_moments_lhe, createNew=False)
+        elif name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]:
             if w_moments is None:
                 w_moments = moments
+                w_moments_lhe = moments_lhe
             else:
                 new_moments = moments
+                new_moments_lhe = moments_lhe
                 w_moments = hh.addHists(w_moments, new_moments, createNew=False)
+                w_moments_lhe = hh.addHists(w_moments_lhe, new_moments_lhe, createNew=False)
 
     moments_out={}
-    # Common.ptV_binning is the approximate 5% quantiles, rounded to integers. Rebin for approx 10% quantiles
     if z_moments:
-        if not args.useTheoryAgnosticBinning:
-            z_moments = hh.rebinHist(z_moments, axis_ptVgen.name, common.ptV_binning[::2])
-            z_moments = hh.rebinHist(z_moments, axis_massZgen.name, axis_massZgen.edges[::2])
         moments_out["Z"] = z_moments
+        moments_out["Z_lhe"] = z_moments_lhe
     if w_moments:
-        if not args.useTheoryAgnosticBinning:
-            w_moments = hh.rebinHist(w_moments, axis_ptVgen.name, common.ptV_binning[::2])
         moments_out["W"] = w_moments
+        moments_out["W_lhe"] = w_moments_lhe
     if moments_out:
         outfname = "w_z_moments"
         if args.signedY:

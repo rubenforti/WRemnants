@@ -60,22 +60,20 @@ if args.debug:
         plt.savefig(f"plotsew/ratio_{var}.png")
         plt.close()
 
-
-# nominal correction should be the first entry, so re-order the variations in case we want to correct the central value
-nominal_corr = "weak_default"
-weakvars = list(h.axes["weak"])
-weakvars.remove(nominal_corr)
-weakvars.insert(0, nominal_corr)
-
-#  re-order the variations and integrate over pt and phistar
-h = h[{"ptVlhe" : hist.sum, "phiStarlhe" : hist.sum, "weak" : weakvars}]
+# integrate over pt and phistar
+h = h[{"ptVlhe" : hist.sum, "phiStarlhe" : hist.sum}]
 
 hcorr = hist.Hist(*h.axes)
 # safe default
 hcorr.values(flow=True)[...] = 1.
-# set correction to the ratio to LO
-den = h[{"weak" : "weak_no_ew"}].values()[..., None]
+# set variations as the ratio to NLO EW
+den = h[{"weak" : "weak_default"}].values()[..., None]
 hcorr[...] = np.where(den==0., np.ones_like(h.values()), h.values()/den)
+
+# set variation for NLO EW as the ratio to LO EW
+denlo = h[{"weak" : "weak_no_ew"}].values()
+numnlo = h[{"weak" : "weak_default"}].values()
+hcorr[{"weak" : "weak_default"}] = np.where(denlo==0., np.ones_like(numnlo), numnlo/denlo)
 
 # extreme bins are not populated, "extend" the corrections from the neighboring mass bins
 hcorr[{"massVlhe" : 0}] = hcorr[{"massVlhe" : 1}].values()

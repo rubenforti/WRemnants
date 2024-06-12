@@ -17,6 +17,7 @@ import sys
 import datetime
 import json
 import narf 
+import socket
 
 hep.style.use(hep.style.ROOT)
 
@@ -565,9 +566,15 @@ def save_pdf_and_png(outdir, basename, fig=None):
         plt.savefig(fname.replace(".pdf", ".png"), bbox_inches='tight')
     logger.info(f"Wrote file(s) {fname}(.png)")
 
-def write_index_and_log(outpath, logname, indexname="index.php", template_dir=f"{pathlib.Path(__file__).parent}/Templates", 
+def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__).parent}/Templates", 
         yield_tables=None, analysis_meta_info=None, args={}, nround=2):
-    shutil.copyfile(f"{template_dir}/{indexname}", f"{outpath}/{indexname}")
+    if "mit.edu" in socket.gethostname():
+        indexname = "index_mit.php"
+        indexnamesave = "index.php"
+        shutil.copyfile(f"{template_dir}/{indexname}", f"{outpath}/{indexnamesave}")
+    else:
+        indexname = "index.php"
+        shutil.copyfile(f"{template_dir}/{indexname}", f"{outpath}/{indexname}")
     logname = f"{outpath}/{logname}.log"
 
     with open(logname, "w") as logf:
