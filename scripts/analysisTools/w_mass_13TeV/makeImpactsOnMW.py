@@ -113,7 +113,7 @@ if __name__ == "__main__":
     parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
     parser.add_argument('-k',  '--keepNuisgroups', default=None,   type=str, help='nuis groups for which you want to show the impacts, using regular expressions')
-    parser.add_argument('-x', '--excludeNuisgroups', default=None,   type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
+    parser.add_argument('-x', '--excludeNuisgroups', default=".*eff_(stat|syst)_|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*polVar|.*QCDscale$|.*resum$|.*(muon|ecal)Prefire",   type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
     parser.add_argument(     '--setStat',   default=-1.0, type=float, help='If positive, use this value for stat (this is before scaling to MeV) until combinetf is fixed')
     parser.add_argument(     '--postfix',     default='',   type=str, help='postfix for the output name')
     parser.add_argument(     '--canvasSize', default='800,1200', type=str, help='Pass canvas dimensions as "width,height" ')
