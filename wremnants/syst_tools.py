@@ -1,14 +1,9 @@
 import ROOT
 import hist
 import numpy as np
-<<<<<<< HEAD
 from utilities import boostHistHelpers as hh, common, logging
-from wremnants import theory_tools, helicity_utils
+from wremnants import theory_tools, helicity_utils, theoryAgnostic_tools
 from wremnants.helicity_utils import axis_helicity
-=======
-from utilities import boostHistHelpers as hh, common, logging, differential
-from wremnants import theory_tools, theoryAgnostic_tools
->>>>>>> 0e26807e (probably problematic commit)
 from wremnants.datasets.datagroups import Datagroups
 import re
 import collections.abc
@@ -989,6 +984,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
             corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, **info)
 
     if "gen" in base_name:
+        #helicity moments x qcd scales
         df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhigen, scaleWeights_tensor, nominal_weight)")
         helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments_scale", axes, [*cols, "helicity_moments_scale_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
         results.append(helicity_moments_scale)
@@ -1016,42 +1012,32 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
             helicity_moments_scale_postBeamRemnants = df.HistoBoost("nominal_gen_helicity_moments_scale_postBeamRemnants", axes, [*postBeamRemnants_cols, "helicity_moments_scale_postBeamRemnants_tensor"], tensor_axes = [axis_helicity, *theory_tools.scale_tensor_axes], storage=hist.storage.Double())
             results.append(helicity_moments_scale_postBeamRemnants)
         nominal_cols = ["absYVgen", "ptVgen"]
+        #helicity moments x theory agnostic
+        nominal_cols = ["ptVgen","absYVgen", "chargeVgen"]
 
-        theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes()
-        axis_ptV_thag = theoryAgnostic_axes[0]
-        axis_yV_thag = theoryAgnostic_axes[1]
-
-        axis_absYVgen = hist.axis.Variable(
-        axis_yV_thag.edges, #same axis as theory agnostic norms
-        name = "absYVgen", underflow=True
-        )
-
-        axis_ptVgen = hist.axis.Variable(
-        axis_ptV_thag.edges, #same axis as theory agnostic norms, 
-        #common.ptV_binning,
-        name = "ptVgen", underflow=True,
-        )
-        
-        nominal_axes = [axis_absYVgen, axis_ptVgen]
-
-        df = df.Define("helicity_moments_tensor", "wrem::csAngularMoments(csSineCosThetaPhigen)")
-        helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments", nominal_axes, [*nominal_cols, "helicity_moments_tensor"], tensor_axes = [axis_helicity], storage=hist.storage.Weight())
-        results.append(helicity_moments_scale)
-
-        # propagation of theory agnostic norm parameters
         theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes()
         axis_ptV_thag = theoryAgnostic_axes[0]
         axis_yV_thag = theoryAgnostic_axes[1]
 
         axis_absYVgen_thag = hist.axis.Variable(
         axis_yV_thag.edges, #same axis as theory agnostic norms
-        name = "absYVgenSig", underflow=True
+        name = "absYVgen", underflow=False
         )
+
         axis_ptVgen_thag = hist.axis.Variable(
         axis_ptV_thag.edges, #same axis as theory agnostic norms, 
         #common.ptV_binning,
-        name = "ptVgenSig", underflow=True,
+        name = "ptVgen", underflow=False,
         )
+        
+        axis_chargeWgen = hist.axis.Regular(
+        2, -2, 2, name="chargeVgen", underflow=False, overflow=False
+        )
+        nominal_axes = [axis_ptVgen_thag,axis_absYVgen_thag,axis_chargeWgen]
+
+        df = df.Define("helicity_moments_tensor", "wrem::csAngularMoments(csSineCosThetaPhigen, nominal_weight)")
+        helicity_moments_scale = df.HistoBoost("nominal_gen_helicity_moments", nominal_axes, [*nominal_cols, "helicity_moments_tensor"], tensor_axes = [axis_helicity], storage=hist.storage.Weight())
+        results.append(helicity_moments_scale)
 
         axis_helicity_multidim = hist.axis.Integer(-1, 8, name="helicitySig", overflow=False, underflow=False)
         df = theoryAgnostic_tools.define_helicity_weights(df)

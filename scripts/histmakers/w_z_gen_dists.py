@@ -27,12 +27,16 @@ parser.add_argument("--fiducial", choices=["masswindow", "dilepton", "singlelep"
 parser.add_argument("--auxiliaryHistograms", action="store_true", help="Safe auxiliary histograms (mainly for ew analysis)")
 parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q variable instead of ptVgen, GEN only ", default=None)
 parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHelicity hist")
+parser.add_argument("--theoryCorrections", action='store_true', help="Apply default theory corrections")
 
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
-parser = common.set_parser_default(parser, "theoryCorr", [])
-parser = common.set_parser_default(parser, "ewTheoryCorr", [])
-
 args = parser.parse_args()
+
+if not args.theoryCorrections:
+    parser = common.set_parser_default(parser, "theoryCorr", [])
+    parser = common.set_parser_default(parser, "ewTheoryCorr", [])
+
+
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
