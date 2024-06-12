@@ -9,7 +9,7 @@ logger = logging.child_logger(__name__)
 
 class TheoryHelper(object):
     valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Delta_Omega", "binned_Omega", "none"]
-    def __init__(self, card_tool, hasNonsigSamples=False):
+    def __init__(self, card_tool, args, hasNonsigSamples=False):
         toCheck = ['signal_samples', 'signal_samples_inctau', 'single_v_samples']
         if hasNonsigSamples:
             toCheck.extend(['single_v_nonsig_samples', 'wtau_samples'])
@@ -29,6 +29,7 @@ class TheoryHelper(object):
         self.mirror_tnp = True
         self.minnlo_unc = 'byHelicityPt'
         self.skipFromSignal = False
+        self.args = args
 
     def sample_label(self, sample_group):
         if sample_group not in self.card_tool.procGroups:
@@ -139,11 +140,16 @@ class TheoryHelper(object):
             # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
             helicities_to_exclude = None if self.resumUnc == "minnlo" else [-1]
             for sample_group in self.samples:
+                if self.args.muRmuFPolVar:
+                    continue
                 if self.card_tool.procGroups.get(sample_group, None):
                     # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
                     # to avoid underestimating the correlated part of the uncertainty
                     self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=helicities_to_exclude)
                     self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude)
+
+            # additional uncertainty for effect of shower and intrinsic kt on angular coeffs
+            self.add_helicity_shower_kt_uncertainty()
 
     def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None):
         if not sample_group or sample_group not in self.card_tool.procGroups:
@@ -174,6 +180,9 @@ class TheoryHelper(object):
 
         # skip nominal
         skip_entries.append({"vars" : "nominal"})
+
+        # skip pythia shower and kt variations since they are handled elsewhere
+        skip_entries.append({"vars" : "pythia_shower_kt"})
 
         if helicities_to_exclude:
             for helicity in helicities_to_exclude:
@@ -231,7 +240,7 @@ class TheoryHelper(object):
                 symmetrize = "quadratic",
                 processes=[sample_group],
                 group=group_name,
-                splitGroup={"QCDscale": ".*", "pTModeling" : ".*", "theory": ".*"},
+                splitGroup={"QCDscale": ".*", "angularCoeffs" : ".*", "theory": ".*"},
                 systAxes=syst_axes,
                 labelsByAxis=syst_ax_labels,
                 skipEntries=skip_entries,
@@ -240,6 +249,24 @@ class TheoryHelper(object):
                 passToFakes=self.propagate_to_fakes,
                 rename=base_name, # Needed to allow it to be called multiple times
             )
+
+    def add_helicity_shower_kt_uncertainty(self):
+        # select the proper variation and project over gen pt unless it is one of the fit variables
+        if "ptVgen" in self.card_tool.fit_axes:
+            op = lambda h: h[{self.syst_ax : ["pythia_shower_kt"]}]
+        else:
+            op = lambda h: h[{"ptVgen" : hist.sum, self.syst_ax : ["pythia_shower_kt"]}]
+
+        self.card_tool.addSystematic(name="qcdScaleByHelicity",
+            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            passToFakes=self.propagate_to_fakes,
+            systAxes=[self.syst_ax],
+            preOp=op,
+            group="helicity_shower_kt",
+            splitGroup={"angularCoeffs": ".*", "theory": ".*"},
+            rename="helicity_shower_kt",
+            mirror=True,
+        )
 
     def add_scetlib_dyturbo_scale_uncertainty(self, extra_name="", transition = True, rebin_pt=None):
         obs = self.card_tool.fit_axes[:]
