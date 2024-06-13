@@ -422,7 +422,7 @@ class TheoryHelper(object):
             preOp=lambda h: h[{self.syst_ax : var_vals}],
             outNames=var_names,
             group="resumNonpert",
-            splitGroup={"resum": ".*", "theory": ".*"},
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             rename="scetlibNP",
         )
 
@@ -440,7 +440,7 @@ class TheoryHelper(object):
         card_tool.addSystematic(name=theory_hist,
             processes=self.samples,
             group="resumScale",
-            splitGroup={"resum": ".*", "theory": ".*"},
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             passToFakes=to_fakes,
             skipEntries=[{syst_ax : x} for x in both_exclude+tnp_nuisances],
             systAxes=["downUpVar"], # Is added by the preOpMap
@@ -453,6 +453,7 @@ class TheoryHelper(object):
         card_tool.addSystematic(name=theory_hist,
             processes=self.samples,
             group="resumScale",
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             splitGroup={"resum": ".*", "theory": ".*"},
             passToFakes=to_fakes,
             systAxes=["vars"],
@@ -504,7 +505,7 @@ class TheoryHelper(object):
                 self.card_tool.addSystematic(name=self.np_hist_name,
                     processes=[sample_group],
                     group="resumNonpert",
-                    splitGroup={"resum": ".*", "theory": ".*"},
+                    splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
                     systAxes=syst_axes,
                     passToFakes=self.propagate_to_fakes,
                     preOp=operation,
