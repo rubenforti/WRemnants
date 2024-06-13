@@ -2,12 +2,15 @@
 
 # plot impacts on mW or mZ from groups of nuisance parameters
 
-# example for wlike (need --wlike)
-# python w-mass-13TeV/makeImpactsOnMW.py /scratch/mciprian/CombineStudies/Wlike/20Sept2022/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root  -o plots/fromMyWremnants/Wlike_fit/10Sept2022/qcdScale_byHelicityPt/makeImpactsOnMW/ --set-stat 0.071 --showTotal --scaleToMeV --wlike
+# example for W
+# only main groups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --showTotal --postfix asimov -x ".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower"
 #
-# wlike with charge + (assuming root file with fit results exists)
-# python w-mass-13TeV/makeImpactsOnMW.py /scratch/mciprian/CombineStudies/Wlike/20Sept2022/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_onlyplus_bbb1_cxs0.root  -o plots/fromMyWremnants/Wlike_fit/10Sept2022/qcdScale_byHelicityPt/makeImpactsOnMW/ --set-stat 0.100 --showTotal --scaleToMeV --postfix chargePlus --wlike
-
+# only theory subgroups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_theorySplit -x ".*" -k ".*pdf.*Alpha|.*resum.+|.*QCDscale.+|bcQuark|theory_ew.+|sin2|Zmass|width|helicity_shower" --margin 0.55,0.12,0.1,0.1
+#
+# only efficiency subgroups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_efficiencySplit -x ".*" -k ".*eff_(all|stat|syst)" --margin 0.45,0.12,0.1,0.1
 
 import os, datetime, re, operator, math
 import argparse
