@@ -293,8 +293,9 @@ def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=Fals
 def parseArgs():
     sort_choices = ["label", "abspull", "constraint", "absimpact"]
     sort_choices += [
-        *[f"{c}_diff" for c in sort_choices],  # possibility to sort based on largest difference between inputfile and referencefile
-        *[f"{c}_ref" for c in sort_choices] ]  # possibility to sort based on referencefile
+        *[f"{c}_diff" for c in sort_choices],  # possibility to sort based on largest difference between input and referencefile
+        *[f"{c}_ref" for c in sort_choices],   # possibility to sort based on reference file
+        *[f"{c}_both" for c in sort_choices] ] # possibility to sort based on the largest/smallest of both input and reference file
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-f", "--inputFile", type=str, required=True, help="fitresults output ROOT/hdf5 file from combinetf")
@@ -372,35 +373,17 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
         default_values = {'impact_color': "#377eb8",  'impact_color_ref': "#377eb8"}  
         for col in df.columns:
             df[col].fillna(default_values.get(col, 0), inplace=True)
-    
-    if group and fitresult_ref and set(fitresult_ref["hsysts"]) != set(fitresult["hsysts"]):
-        # add another group for the uncertainty from all systematics that are not common among the two groups; 
-        # defined as err = sqrt( variance(total) - variance(common nuisances) )
-        np_common = [s in fitresult_ref["hsysts"][...] for s in fitresult["hsysts"][...]]
-        np_common_ref = [s in fitresult["hsysts"][...] for s in fitresult_ref["hsysts"][...]]
-        cov = fitresult["cov"][np_common, :][:, np_common]
-        cov_ref = fitresult_ref["cov"][np_common_ref, :][:, np_common_ref]
-
-        jac = fitresult["nuisance_impact_nois"][:,np_common]
-        jac_ref = fitresult_ref["nuisance_impact_nois"][:,np_common_ref]
-
-        df_total = df.loc[df["label"] == "Total"]
-        impact_others = np.sqrt(df_total["impact"].values[0]**2 - scale**2 * (jac @ (cov @ jac.T))[0][0])
-        impact_others_ref = np.sqrt(df_total["impact_ref"].values[0]**2 - scale**2 * (jac_ref @ (cov_ref @ jac_ref.T))[0][0])
-
-        new_row = {"label": "Others",
-            "impact": impact_others, "absimpact": abs(impact_others), "impact_color": df_total["impact_color"].values[0],
-            "impact_ref": impact_others_ref, "absimpact_ref": abs(impact_others_ref), "impact_color_ref": df_total["impact_color"].values[0],
-        }
-
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        # remove rows with nuisance groups that are only included in one group but not in the other, since those are included in "Others" already
-        df = df.dropna()
 
     if args.sort:
         if args.sort.endswith("diff"):
             key = args.sort.replace("_diff","")
             df[f"{key}_diff"] = df[key] - df[f"{key}_ref"]
+        elif args.sort.endswith("both"):
+            key = args.sort.replace("_both","")
+            if args.ascending:
+                df[f"{key}_both"] = df[[key, f"{key}_ref"]].max(axis=1)
+            else:
+                df[f"{key}_both"] = df[[key, f"{key}_ref"]].min(axis=1)
 
         df = df.sort_values(by=args.sort, ascending=args.ascending)
 
@@ -457,8 +440,6 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             outfile = args.outputFile
         outfile = os.path.join(outdir, outfile)
         extensions = [outfile.split(".")[-1], *args.otherExtensions]
-
-        df = df.sort_values(by=args.sort, ascending=args.ascending)
         if args.num and args.num < df.size:
             # in case multiple extensions are given including html, don't do the skimming on html but all other formats
             if "html" in extensions and len(extensions)>1:

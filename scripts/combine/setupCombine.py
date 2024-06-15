@@ -27,7 +27,8 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
+    parser.add_argument("--scaleNormXsecHistYields", type=float, default=0.01, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
+
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
@@ -35,6 +36,9 @@ def make_subparsers(parser):
         elif subparserName == "theoryAgnosticPolVar":
             parser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
             parser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
+    elif "unfolding" in subparserName:
+        parser = common.set_parser_default(parser, "massVariation", 10)
+        parser = common.set_parser_default(parser, "hdf5", True)
 
     return parser
 
@@ -723,6 +727,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     )
             )
         else:
+            if args.fitresult:
+                info["group"] = "binByBinStat"
             cardTool.addSystematic(**info,
                 name=cardTool.nominalName,
                 systAxes=recovar_syst,
@@ -1089,7 +1095,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     cardTool.addSystematic("muonScaleSyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleCrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="Scale_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1098,7 +1104,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     cardTool.addSystematic("muonScaleClosSyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleClosCrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="ScaleClos_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1117,7 +1123,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     cardTool.addSystematic("muonScaleClosASyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleClosACrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="ScaleClosA_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1127,7 +1133,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         cardTool.addSystematic("muonScaleClosMSyst_responseWeights",
             processes=['single_v_samples'],
             group="scaleClosMCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="ScaleClosM_correction_",
             systAxes=["unc", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -1138,7 +1144,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             mirror = True,
             processes=['single_v_samples'],
             group="resolutionCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="Resolution_correction_",
             systAxes=["smearing_variation"],
             passToFakes=passSystToFakes,
@@ -1149,7 +1155,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         mirror = True,
         processes=['single_v_samples'],
         group="pixelMultiplicitySyst",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="pixel_multiplicity_syst_",
         systAxes=["var"],
         passToFakes=passSystToFakes,
@@ -1160,7 +1166,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             mirror = True,
             processes=['single_v_samples'],
             group="pixelMultiplicityStat",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="pixel_multiplicity_stat_",
             systAxes=["var"],
             passToFakes=passSystToFakes,
@@ -1190,7 +1196,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             rename="muonScaleSyst_responseWeightsDecorr",
             processes=['single_v_samples'],
             group="scaleCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="Scale_correction_",
             systAxes=["unc", "downUpVar", "run_"],
             passToFakes=passSystToFakes,
@@ -1205,7 +1211,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             rename="muonScaleClosSyst_responseWeightsDecorr",
             processes=['single_v_samples'],
             group="scaleClosCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="ScaleClos_correction_",
             systAxes=["unc", "downUpVar", "run_"],
             passToFakes=passSystToFakes,
@@ -1221,7 +1227,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                 mirror = True,
                 processes=['single_v_samples'],
                 group="resolutionCrctn",
-                splitGroup={f"muonCalibration" : f".*"},
+                splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
                 baseName="Resolution_correction_",
                 systAxes=["smearing_variation", "run_"],
                 passToFakes=passSystToFakes,

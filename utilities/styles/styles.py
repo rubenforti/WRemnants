@@ -147,10 +147,14 @@ nuisance_groupings = {
     ],
     "unfolding_max": [
         "Total",
+        "stat",
+        "binByBinStat",
+        "experiment",
         "QCDscale", 
         "pdfCT18Z",
         "resum",
         "theory_ew",
+        "bcQuarkMass",
     ],
     "unfolding_min": [
         "Total",

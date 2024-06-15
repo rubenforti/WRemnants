@@ -48,6 +48,7 @@ datagroups = groups.getDatagroups()
 translate_label = {
     "pt" : "$\mathrm{Reco}\ p_\mathrm{T}\ [\mathrm{GeV}]$",
     "ptGen" : "$\mathrm{Gen}\ p_\mathrm{T}\ [\mathrm{GeV}]$",
+    "eta" : "$\mathrm{Reco}\ \eta$",
     "abs(eta)" : "$\mathrm{Reco}\ |\eta|$",
     "absEtaGen" : "$\mathrm{Gen}\ |\eta|$",
     "ptll" : r"$\mathrm{Reco}\ p_\mathrm{T}(\ell\ell)\ [\mathrm{GeV}]$",
@@ -83,13 +84,69 @@ def get_stability(matrix, xbins, ybins):
     # stability is same computation as purity with inverted axes
     return get_purity(matrix.T, ybins, xbins)
 
+def plot_resolution(hist, axis_reco, axis_gen, selections_global, selections_slices):
+    # plot slices of gen bins in 1D reco space
+    xlabel = translate_label[axis_reco]
+    if axis_reco.startswith("abs("):
+        axis_reco = axis_reco[4:-1]
+        hist = hh.makeAbsHist(hist, axis_reco, rename=False)
 
+    for sel, idx in selections_global:
+        h2d = hist[{sel:idx}].project(axis_gen, axis_reco)
+
+        fig = plt.figure(figsize=(10,6))
+        ax = fig.add_subplot() 
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Frequency")
+
+        for sel2, idx2 in selections_slices:
+            lo, hi = h2d.axes[sel2].edges[idx2], h2d.axes[sel2].edges[idx2+1]
+            var2 = translate_label[sel2].replace('[\mathrm{GeV}]', '')
+            label = f"{lo} < {var2} < {hi}"
+
+            h1d = h2d[{sel2:idx2}]
+            hep.histplot(h1d, density=True, label=label)
+
+        xedges = hist.axes[axis_reco].edges
+        ax.set_xlim([min(xedges), max(xedges)])
+
+        y_min, y_max = ax.get_ylim()
+        ax.set_ylim([0, y_max*1.5])
+
+        lo, hi = hist.axes[sel].edges[idx], hist.axes[sel].edges[idx+1]
+        var = translate_label[sel].replace('[\mathrm{GeV}]', '')
+        if sel.startswith("abs") and lo==0:
+            title = f"{var} < {hi}"
+        else:
+            title = f"{lo} < {var} < {hi}"
+
+        plt.text(0.06, 0.94, title, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=20)
+
+        hep.cms.label(ax=ax, fontsize=20, label=args.cmsDecor, data=False)
+        plot_tools.addLegend(ax, ncols=1, text_size=15*args.scaleleg)
+
+        outfile = f"resolution_{g_name}_{axis_reco}_{sel}{idx}"
+        plot_tools.save_pdf_and_png(outdir, outfile)
 
 for g_name, group in datagroups.items():
     hist = group.hists[args.histName]
 
     for channel in args.channels:
         select = {} if channel == "all" else {"charge" : -1.j if channel == "minus" else 1.j}
+
+        # plot slices of resolution
+        plot_resolution(
+            hist, axis_reco="pt", axis_gen="ptGen",
+            selections_global=(("absEtaGen",0), ("absEtaGen",17)),
+            selections_slices=(("ptGen",0), ("ptGen",6), ("ptGen",13)),
+        )
+        plot_resolution(
+            hist, axis_reco="abs(eta)", axis_gen="absEtaGen",
+            selections_global=(("ptGen",0), ("ptGen",13)),
+            selections_slices=(("absEtaGen",0), ("absEtaGen",8), ("absEtaGen",17)),
+        )
+
+        continue
 
         for axes_string in args.axes:
             axes = axes_string.split("-")
@@ -109,6 +166,10 @@ for g_name, group in datagroups.items():
                 hist2d = hist[select].project(*axes)
                 values = hist2d.values(flow=genFlow)
                 xbins = hist2d.axes[0].edges
+
+            if np.sum(values<0):
+                logger.warning(f"Found {np.sum(values<0)} negative entries {values[values<0]}. Setting to zero")
+                values[values<0] = 0
 
             ybins = hist2d.axes[1].edges
             if genFlow:
@@ -139,7 +200,6 @@ for g_name, group in datagroups.items():
             plot_tools.save_pdf_and_png(outdir, outfile)
 
 
-
             # plot stability
             fig = plt.figure(figsize=(8,4))
             ax = fig.add_subplot() 
@@ -162,7 +222,6 @@ for g_name, group in datagroups.items():
             outfile = "stability_"+outname
             plot_tools.save_pdf_and_png(outdir, outfile)
 
-
             # plot response matrix
             fig = plt.figure()#figsize=(8*width,8))
             ax = fig.add_subplot() 
@@ -174,7 +233,7 @@ for g_name, group in datagroups.items():
 
             # calculate condition number
             nans = np.isnan(values)
-            nancount = np.count_nonzero(nans)
+            nancount = nans.sum()
             if nancount:
                 logger.warning(f"Found {nancount} NaNs in positions {np.argwhere(nans)}. Setting to zero")
                 values[nans] = 0

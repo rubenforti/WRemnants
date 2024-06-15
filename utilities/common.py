@@ -212,7 +212,7 @@ def set_subparsers(subparser, name, analysis_label):
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
                                help="Generator level definition for unfolding")
-        subparser.add_argument("--genBins", type=int, nargs="+", default=[36, 0] if "wlike" in analysis_label else [32, 0],
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label else [16, 0],
                                help="Number of generator level bins")
         subparser.add_argument("--fitresult", type=str, help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI unfolding)")
         subparser.add_argument("--inclusive", action='store_true', help="No fiducial selection (mass window only)")
