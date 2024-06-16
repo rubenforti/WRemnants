@@ -25,7 +25,7 @@ class TheoryHelper(object):
         self.resumUnc = None
         self.np_model = "Delta_Lambda"
         self.pdf_from_corr = False
-        self.scale_pdf_unc = 1.
+        self.scale_pdf_unc = -1.
         self.mirror_tnp = True
         self.minnlo_unc = 'byHelicityPt'
         self.skipFromSignal = False
@@ -47,7 +47,7 @@ class TheoryHelper(object):
             as_from_corr=True,
             pdf_from_corr=False,
             pdf_operation=None,
-            scale_pdf_unc=1.,
+            scale_pdf_unc=-1.,
             minnlo_unc='byHelicityPt'):
 
         self.set_resum_unc_type(resumUnc)
@@ -515,11 +515,11 @@ class TheoryHelper(object):
                     rename=rename,
                 )
 
-    def add_pdf_uncertainty(self, operation=None, scale=1):
+    def add_pdf_uncertainty(self, operation=None, scale=-1.):
         pdf = input_tools.args_from_metadata(self.card_tool, "pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = scale if scale != 1.0 else pdfInfo["inflationFactor"]
+        scale = scale if scale != -1. else pdfInfo["inflationFactor"]
         pdf_hist = pdfName
         pdf_corr_hist = f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr" 
         symmetrize = "quadratic"
