@@ -140,18 +140,28 @@ class TheoryHelper(object):
             # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
             helicities_to_exclude = None if self.resumUnc == "minnlo" else [-1]
             for sample_group in self.samples:
-                if self.args.muRmuFPolVar:
-                    continue
                 if self.card_tool.procGroups.get(sample_group, None):
                     # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
                     # to avoid underestimating the correlated part of the uncertainty
-                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=helicities_to_exclude)
-                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude)
+                    # (but scale it down to avoid double counting)
+                    if self.args.muRmuFPolVar:
+                        # TODO avoid hardcoding this, which corresponds to the number of nodes
+                        # in the chebychev polynomials (number of degrees + 1)
+                        nptfine = 6
+                    else:
+                        fine_pt_binning = common.ptV_binning[::2]
+                        nptfine = len(fine_pt_binning) - 1
+
+                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=fine_pt_binning, helicities_to_exclude=helicities_to_exclude)
+
+
+                    scale_inclusive = 1./np.sqrt(1. + 1./nptfine)
+                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude, scale = scale_inclusive)
 
             # additional uncertainty for effect of shower and intrinsic kt on angular coeffs
             self.add_helicity_shower_kt_uncertainty()
 
-    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None):
+    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None, scale = 1.0):
         if not sample_group or sample_group not in self.card_tool.procGroups:
             logger.warning(f"Skipping QCD scale syst '{self.minnlo_unc}' for group '{sample_group}.' No process to apply it to")
             return
@@ -247,6 +257,7 @@ class TheoryHelper(object):
                 baseName=base_name+"_",
                 formatWithValue=format_with_values,
                 passToFakes=self.propagate_to_fakes,
+                scale = scale,
                 rename=base_name, # Needed to allow it to be called multiple times
             )
 
@@ -422,7 +433,7 @@ class TheoryHelper(object):
             preOp=lambda h: h[{self.syst_ax : var_vals}],
             outNames=var_names,
             group="resumNonpert",
-            splitGroup={"resum": ".*", "theory": ".*"},
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             rename="scetlibNP",
         )
 
@@ -440,7 +451,7 @@ class TheoryHelper(object):
         card_tool.addSystematic(name=theory_hist,
             processes=self.samples,
             group="resumScale",
-            splitGroup={"resum": ".*", "theory": ".*"},
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             passToFakes=to_fakes,
             skipEntries=[{syst_ax : x} for x in both_exclude+tnp_nuisances],
             systAxes=["downUpVar"], # Is added by the preOpMap
@@ -453,7 +464,7 @@ class TheoryHelper(object):
         card_tool.addSystematic(name=theory_hist,
             processes=self.samples,
             group="resumScale",
-            splitGroup={"resum": ".*", "theory": ".*"},
+            splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             passToFakes=to_fakes,
             systAxes=["vars"],
             preOpMap={s : lambda h: h[{"vars" : ["kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5", "mufdown", "mufup",]}] for s in expanded_samples},
@@ -504,7 +515,7 @@ class TheoryHelper(object):
                 self.card_tool.addSystematic(name=self.np_hist_name,
                     processes=[sample_group],
                     group="resumNonpert",
-                    splitGroup={"resum": ".*", "theory": ".*"},
+                    splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
                     systAxes=syst_axes,
                     passToFakes=self.propagate_to_fakes,
                     preOp=operation,
