@@ -34,7 +34,7 @@ def apply_iso_muons(df, iso_first, iso_second, isoBranch, isoThreshold=0.15, nam
     return df
     
 def apply_met_filters(df):
-    df = df.Filter("Flag_globalSuperTightHalo2016Filter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_goodVertices && Flag_HBHENoiseIsoFilter && Flag_HBHENoiseFilter && Flag_BadPFMuonFilter") #  && Flag_eeBadScFilter
+    df = df.Filter("Flag_globalSuperTightHalo2016Filter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_goodVertices && Flag_HBHENoiseIsoFilter && Flag_HBHENoiseFilter && Flag_BadPFMuonFilter")
 
     return df
 

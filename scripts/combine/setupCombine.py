@@ -834,7 +834,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                             scale=scale,
                         )
             if wmass:
-                useGlobalOrTrackerVeto = False#input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
+                useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
                     if "Syst" in name:
