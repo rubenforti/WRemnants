@@ -1329,7 +1329,7 @@ if __name__ == "__main__":
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            genvar = args.genAxes[i].split("-")
+            genvar = args.genAxes[i].split("-") if hasattr(args,"genAxes") else None
             cardTool = setup(args, ifile, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 

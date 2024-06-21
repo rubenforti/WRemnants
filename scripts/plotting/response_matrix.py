@@ -135,18 +135,18 @@ for g_name, group in datagroups.items():
         select = {} if channel == "all" else {"charge" : -1.j if channel == "minus" else 1.j}
 
         # plot slices of resolution
-        plot_resolution(
-            hist, axis_reco="pt", axis_gen="ptGen",
-            selections_global=(("absEtaGen",0), ("absEtaGen",17)),
-            selections_slices=(("ptGen",0), ("ptGen",6), ("ptGen",13)),
-        )
-        plot_resolution(
-            hist, axis_reco="abs(eta)", axis_gen="absEtaGen",
-            selections_global=(("ptGen",0), ("ptGen",13)),
-            selections_slices=(("absEtaGen",0), ("absEtaGen",8), ("absEtaGen",17)),
-        )
-
-        continue
+        if all(x in hist.axes.name for x in ["pt", "ptGen", "absEtaGen"]):
+            plot_resolution(
+                hist, axis_reco="pt", axis_gen="ptGen",
+                selections_global=(("absEtaGen",0), ("absEtaGen",17)),
+                selections_slices=(("ptGen",0), ("ptGen",6), ("ptGen",13)),
+            )
+        if all(x in hist.axes.name for x in ["ptGen", "eta", "absEtaGen"]):
+            plot_resolution(
+                hist, axis_reco="abs(eta)", axis_gen="absEtaGen",
+                selections_global=(("ptGen",0), ("ptGen",13)),
+                selections_slices=(("absEtaGen",0), ("absEtaGen",8), ("absEtaGen",17)),
+            )
 
         for axes_string in args.axes:
             axes = axes_string.split("-")
