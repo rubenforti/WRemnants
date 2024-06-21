@@ -134,7 +134,8 @@ def get_gen_axes(dilepton_ptV_binning=None, inclusive=False, flow=False):
 
     gen_axes = {
         "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
-        "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
+        # "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
+        "absYVGen": hist.axis.Regular([0, 0.4, 0.8, 1.4, 2.5], name = "absYVGen", underflow=False, overflow=flow)
     }
     if inclusive:
         binning = (*gen_axes["absYVGen"].edges[:-1], 5.)

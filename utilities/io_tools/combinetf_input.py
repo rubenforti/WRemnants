@@ -80,6 +80,7 @@ def get_pulls_and_constraints(fitresult_filename, labels):
         pulls[i] = getattr(rtree, label)
         constraints[i] = getattr(rtree, label+"_err")
         pulls_prefit[i] = getattr(rtree, label+"_In")
+
     return pulls, constraints, pulls_prefit
 
 def read_impacts_poi(fileobject, group, poi, sort=True, add_total=True, stat=0.0, normalize=True):
@@ -114,11 +115,20 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
         poi_type=None
     else:
         poi_type = poi.split("_")[-1]
+        poi_type = poi_type.replace("sumxsec", "sumpois")
+        poi_type = poi_type.replace("ratiometaratio", "ratiometapois")
+
         poi_names = get_poi_names(h5file, poi_type)
         if poi in poi_names:      
             if poi_type == "noi":
                 poi_type = 'nois'
-            impact_hist_total = f"nuisance_impact_{poi_type}"
+            
+            if poi_type in ["sumpois", "sumpoisnorm", "ratiometapois"]:
+                all_labels_hist = f"{poi_type}_names"
+                impact_hist_total = f"{poi_type}_outcov"
+            else:
+                all_labels_hist = "hsysts"
+                impact_hist_total = f"sumpois_{poi_type}"
             impact_hist = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
         else:
             raise ValueError(f"Invalid POI: {poi}")
@@ -135,11 +145,13 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
         norm = 0.
     else:
         ipoi = np.where(poi_names == poi)[0][0]
-        all_labels = h5file["hsysts"][...].astype(str)
-        isys = np.where(all_labels == poi.replace('_noi',''))[0][0]
         impacts = h5file[impact_hist][...][ipoi]
-        total = h5file[impact_hist_total][...][ipoi,isys]
         norm = h5file["x"][...][ipoi]
+        all_labels = h5file[all_labels_hist][...].astype(str)
+        isys = np.where(all_labels == poi.replace(f'_{poi_type}',''))[0][0]
+        total = h5file[impact_hist_total][...][ipoi,isys]
+        if impact_hist_total.endswith("cov"):
+            total = total**0.5
 
     if len(labels)+1 == len(impacts): 
         labels = np.append(labels, "binByBinStat")

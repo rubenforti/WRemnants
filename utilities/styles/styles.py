@@ -212,4 +212,5 @@ poi_types = {
     "sumpois": "d$\sigma$ [pb]",
     "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
     "sumpoisnorm": "1/$\sigma$ d$\sigma$",
+    "ratiometapois": "$\sigma(W^{+})/\sigma(W^{-})$",
 }

@@ -87,6 +87,7 @@ def make_parser(parser=None):
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
+    parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
     parser.add_argument("--noTheoryUnc", action="store_true", default=False, help="Set up fit without theory uncertainties")
@@ -141,7 +142,7 @@ def make_parser(parser=None):
 
     return parser
 
-def setup(args, inputFile, fitvar, xnorm=False):
+def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
 
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -231,7 +232,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     
     if isPoiAsNoi:
         constrainMass = False if isTheoryAgnostic else True
-        poi_axes = datagroups.gen_axes_names if args.genAxes is None else args.genAxes
+        poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
         datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
 
@@ -292,8 +293,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
-        datagroups.setGenAxes(args.genAxes)
-        logger.info(f"GEN axes are {args.genAxes}")
+        datagroups.setGenAxes(genvar)
+        logger.info(f"GEN axes are {genvar}")
         if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
@@ -365,7 +366,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         cardTool.setNominalName(args.baseName)
         
     # define sumGroups for integrated cross section
-    if isUnfolding or isTheoryAgnostic:
+    if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
         # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
         if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes_names:
             if "plus" in args.recoCharge:
@@ -738,7 +739,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
                         scale2=np.sqrt(h.project(*recovar).variances(flow=True))/h.project(*recovar).values(flow=True))
             )
 
- 
+
     if args.doStatOnly:
         # print a card with only mass weights
         logger.info("Using option --doStatOnly: the card was created with only mass nuisance parameter")
@@ -1319,14 +1320,18 @@ if __name__ == "__main__":
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            cardTool = setup(args, ifile, fitvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
+            genvar = args.genAxes[i].split("-")
+            cardTool = setup(args, ifile, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
             if isFloatingPOIs or isUnfolding:
-                fitvar = args.genAxes if isPoiAsNoi else ["count"] 
+                fitvar = genvar if isPoiAsNoi else ["count"] 
                 cardTool = setup(args, ifile, fitvar, xnorm=True)
                 writer.add_channel(cardTool)
+
+        if not args.skipSumGroups:
+            combine_helpers.add_ratio_xsec_groups(writer)
 
         if args.fitresult:
             writer.set_fitresult(args.fitresult, mc_stat=not (args.noMCStat or args.explicitSignalMCstat))

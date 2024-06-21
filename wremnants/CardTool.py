@@ -43,7 +43,8 @@ class CardTool(object):
         self.channels = ["inclusive"]
         self.cardContent = {}
         self.cardGroups = {}
-        self.cardSumXsecGroups = {} # POI sum groups
+        self.cardSumXsecGroups = {} # cross section sum groups
+        self.cardRatioXsecGroups = {} # cross section ratio groups
         self.nominalTemplate = f"{pathlib.Path(__file__).parent}/../scripts/combine/Templates/datacard.txt"
         self.spacing = 28
         self.systTypeSpacing = 16
@@ -1003,14 +1004,16 @@ class CardTool(object):
             gen_axes = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
             gen_axes += additional_axes
-        # if only one or none gen axes, it is already included as main Param and no sumGroups are needed
-        if len(gen_axes) <= 1:
-            return
-        # make a sum group for each gen axis
-        axes_combinations = gen_axes
+        # make a sum group for inclusive cross section
+        axes_combinations = [[]]
+        # if only one or none gen axes, it is already included as main Param and no further sumXsecGroups are needed
+        if len(gen_axes) > 1:
+            # make a sum group for each gen axis
+            axes_combinations.extend(gen_axes)
         # also include combinations of axes in case there are more than 2 axes
         for n in range(2, len(self.datagroups.gen_axes_names)):
             axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes_names, n)]
+        
         for axes in axes_combinations:
             logger.debug(f"Add sum group for {axes}{' with ' + genCharge if genCharge else ''}")
 
@@ -1018,24 +1021,25 @@ class CardTool(object):
                 axes = [axes]
 
             param_names = [x for x in all_param_names if all([a in x for a in axes])]
-
+            
             # in case of multiple base processes (e.g. in simultaneous unfoldings) loop over all base processes
             base_processes = set(map(lambda x: x.split("_")[0], param_names))
+
             for base_process in base_processes:
                 params = [x for x in param_names if base_process in x.split("_")]
-
-                sum_groups = set(["_".join([a + p.split(a)[1].split("_")[0] for a in axes]) for p in params])
-
+                sum_groups = set(["_".join([base_process, *[a + p.split(a)[1].split("_")[0] for a in axes]]) for p in params])
                 for sum_group in sorted(sum_groups):
                     membersList = [p for p in params if all([g in p.split("_") for g in sum_group.split("_")])]
-                    sum_group_name = f"{base_process}_{sum_group}"
+                    sum_group_name = sum_group
                     if genCharge is not None:                
                         membersList = list(filter(lambda x: genCharge in x, membersList))
                         sum_group_name += f"_{genCharge}"
+
                     if len(membersList):                            
                         self.addSumXsecGroup(sum_group_name, membersList)
                         
     def addSumXsecGroup(self, groupName, members):
+        logger.debug(f"Add xsec sum group {groupName}")
         if groupName in self.cardSumXsecGroups:
             self.cardSumXsecGroups[groupName].append(members)
         else:

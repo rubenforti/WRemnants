@@ -47,6 +47,63 @@ def expand_flow(val, axes, flow_axes, var=None):
     else:
         return val, var
 
+def combine_channels(meta, merge_gen_charge_W):
+    # merge channels with same energy
+    channel_energy={
+        "2017G": "5TeV",
+        "2017H": "13TeV",
+        "2016preVFP": "13TeV", 
+        "2016postVFP":"13TeV", 
+        "2017": "13TeV", 
+        "2018": "13TeV",
+    }
+    # merge electron and muon into lepton channels
+    channel_flavor ={
+        "e": "l", 
+        "mu": "l",
+        "ee": "ll", 
+        "mumu": "ll",
+    }
+
+    channel_info = {}
+    for chan, info in meta["channel_info"].items():
+        if chan.endswith("masked"):
+            continue
+        channel = f"chan_{channel_energy[info['era']]}"
+        if info['flavor'] in channel_flavor:
+            channel += f"_{channel_flavor[info['flavor']]}"
+
+        logger.debug(f"Merge channel {chan} into {channel}")
+
+        lumi = info["lumi"]
+        gen_axes = info["gen_axes"]
+
+        if merge_gen_charge_W:
+            if "W_qGen0" not in gen_axes or "W_qGen1" not in gen_axes:
+                logger.debug("Can't merge W, it requires W_qGen0 and W_qGen1 as separate processes")
+            elif gen_axes["W_qGen0"] != gen_axes["W_qGen1"]:
+                raise RuntimeError("Axes for different gen charges are diffenret, gen charges can't be merged")
+            else:
+                logger.debug("Merge W_qGen0 and W_qGen1 into W with charge axis")
+                axis_qGen = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "qGen")
+                gen_axes = {
+                    "W": [*gen_axes["W_qGen0"], axis_qGen], 
+                    **{k:v for k,v in gen_axes.items() if k not in ["W_qGen0", "W_qGen1"]}
+                }
+                # gen_axes["W"] = [*gen_axes["W_qGen0"], axis_qGen]
+
+        if channel not in channel_info:
+            channel_info[channel] = {
+                "gen_axes": gen_axes,
+                "lumi": lumi,
+            }
+        elif gen_axes == channel_info[channel]["gen_axes"]:
+            channel_info[channel]["lumi"] += lumi
+        else:
+            channel_info[channel]["gen_axes"].update(gen_axes)
+
+    return channel_info
+
 def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_types=True,
     merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, merge_gen_charge_W=True,
 ):
@@ -65,21 +122,6 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
         "sumpoisnorm": "xsec_normalized",
     }
     
-    channel_energy={
-        "2017G": "5TeV",
-        "2017H": "13TeV",
-        "2016preVFP": "13TeV", 
-        "2016postVFP":"13TeV", 
-        "2017": "13TeV", 
-        "2018": "13TeV",
-    }
-    channel_flavor ={
-        "e": "l", 
-        "mu": "l",
-        "ee": "ll", 
-        "mumu": "ll",
-    }
-
     fitresult = combinetf_input.get_fitresult(infile.replace(".root",".hdf5"))
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
@@ -91,47 +133,12 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
     if poi_types is None:
         if meta_info["args"]["poiAsNoi"]:
-            poi_types = ["nois", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm"]
+            poi_types = ["nois", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
         else:
-            poi_types = ["mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm"]
+            poi_types = ["mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
     
     if merge_channels:
-        channel_info = {}
-        for chan, info in meta["channel_info"].items():
-            if chan.endswith("masked"):
-                continue
-            channel = f"chan_{channel_energy[info['era']]}"
-            if info['flavor'] in channel_flavor:
-                channel += f"_{channel_flavor[info['flavor']]}"
-
-            logger.debug(f"Merge channel {chan} into {channel}")
-
-            lumi = info["lumi"]
-            gen_axes = info["gen_axes"]
-
-            if merge_gen_charge_W:
-                if "W_qGen0" not in gen_axes or "W_qGen1" not in gen_axes:
-                    logger.debug("Can't merge W, it requires W_qGen0 and W_qGen1 as separate processes")
-                elif gen_axes["W_qGen0"] != gen_axes["W_qGen1"]:
-                    raise RuntimeError("Axes for different gen charges are diffenret, gen charges can't be merged")
-                else:
-                    logger.debug("Merge W_qGen0 and W_qGen1 into W with charge axis")
-                    axis_qGen = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "qGen")
-                    gen_axes = {
-                        "W": [*gen_axes["W_qGen0"], axis_qGen], 
-                        **{k:v for k,v in gen_axes.items() if k not in ["W_qGen0", "W_qGen1"]}
-                    }
-                    # gen_axes["W"] = [*gen_axes["W_qGen0"], axis_qGen]
-
-            if channel not in channel_info:
-                channel_info[channel] = {
-                    "gen_axes": gen_axes,
-                    "lumi": lumi,
-                }
-            else:
-                if gen_axes != channel_info[channel]["gen_axes"]:
-                    raise RuntimeError(f"The gen axes are different among channels {channel_info}, so they can't be merged")
-                channel_info[channel]["lumi"] += lumi
+        channel_info = combine_channels(meta, merge_gen_charge_W)
     else:
         channel_info = meta["channel_info"]
 
@@ -146,8 +153,8 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             continue
 
         # find all axes where the flow bins are included in the unfolding, needed for correct reshaping
-        flow_axes = list(set([l for i in df["Name"].apply(lambda x: [i[:-1] for i in x.split("_")[1:-1] if i[-1] in ["U","O"]]).values if i for l in i]))
-        
+        flow_axes = list(set([l for i in df["Name"].apply(lambda x: [i[:-1] for i in x.split("_")[1:-1] if len(i) and i[-1] in ["U","O"]]).values if i for l in i]))
+
         action_val, action_err = transform_poi(poi_type, meta_info)
 
         poi_type_initial="mu"
@@ -174,9 +181,9 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             for proc, gen_axes_proc in info["gen_axes"].items():
                 logger.debug(f"Now at proc {proc}")
 
-                if poi_type.startswith("sum"):
-                    if len(gen_axes_proc)==1:
-                        logger.info(f"Skip POI type {poi_type} since there is only one gen axis")
+                if poi_type.startswith("sum") or poi_type.startswith("ratio"):
+                    if len(gen_axes_proc)<=1:
+                        logger.info(f"Skip POI type {poi_type} since there is only {len(gen_axes_proc)} gen axis")
                         continue
                     # make all possible lower dimensional gen axes combinations; wmass only combinations including qGen
                     gen_axes_permutations = [list(k) for n in range(1, len(gen_axes_proc)) for k in itertools.combinations(gen_axes_proc, n)]
@@ -187,13 +194,31 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                     result[poi_key][channel][proc] = {}
 
                 for axes in gen_axes_permutations:
+                    logger.debug(f"Now at axes {axes}")
+
                     axes_names = [a.name for a in axes]
                     shape = [a.extent if a.name in flow_axes else a.size for a in axes]
 
-                    data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=True)
+                    # TODO: clean up hard coded treatment for cross section ratios
+                    if poi_type == "ratiometapois":
+                        if proc not in ["W_qGen0", "r_qGen_W"]:
+                            continue
+
+                        proc = "r_qGen_W"
+                        if proc not in result[poi_key][channel]:
+                            result[poi_key][channel][proc] = {}
+
+                        data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=True)
+                        data = data.loc[data["Name"].apply(lambda x: not x.endswith("totalxsec"))]
+                    else:
+                        data = combinetf_input.select_pois(df, axes_names, base_processes=proc, flow=True)
+
                     for u in filter(lambda x: x.startswith("err_"), data.keys()):
                         data.loc[:,u] = action_err(data["value"], data[u], channel_scale)
                     data.loc[:,"value"] = action_val(data["value"], channel_scale)
+                    if len(data['value']) <= 0:
+                        logger.debug(f"No values found for the hist in poi {poi_key}, continue with next one")
+                        continue
                     logger.debug(f"The values for the hist in poi {poi_key} are {data['value'].values}")
 
                     if initial:

@@ -20,6 +20,8 @@ import pdb
 
 hep.style.use(hep.style.ROOT)
 
+poi_type_choices = ["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
+
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")
 parser.add_argument("--name",  type=str, default="Unfolded data", help="Name for main source")
@@ -36,12 +38,12 @@ parser.add_argument("--selectionAxes", type=str, default=["qGen", ],
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
-    choices=["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm"])
+    choices=poi_type_choices)
 # specify a reference unfolding
 parser.add_argument("--reference",  type=str, default=None, help="Optional combine fitresult file from an reference fit for comparison")
 parser.add_argument("--refName",  type=str, default="Reference model", help="Name for reference source")
 parser.add_argument("--poiTypeReference", type=str, default=None, help="POI types used for the plotting of the reference",
-    choices=["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", ])
+    choices=poi_type_choices)
 
 parser.add_argument("--grouping", type=str, default=None, help="Select nuisances by a predefined grouping", choices=styles.nuisance_groupings.keys())
 parser.add_argument("--ratioToPred", action='store_true', help="Use prediction as denominator in ratio")
@@ -137,7 +139,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     yLabel = args.ylabel if args.ylabel else styles.poi_types.get(poi_type, poi_type)
 
     # unroll histograms
-    binwnorm = 1 if poi_type not in ["nois", "mu",] else None
+    binwnorm = 1 if poi_type not in ["nois", "mu", "ratiometapois"] else None
     axes_names = hist_xsec.axes.name
     if len(axes_names) > 1:
         hist_xsec = hh.unrolledHist(hist_xsec, binwnorm=binwnorm, add_flow_bins=args.genFlow)
@@ -147,14 +149,16 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
         if hist_xsec_stat is not None:
             hist_xsec_stat = hh.unrolledHist(hist_xsec_stat, binwnorm=binwnorm, add_flow_bins=args.genFlow)
 
-    if binwnorm==1:
-        yLabel = yLabel+"/unit"
-
     xlabel = get_xlabel(axes_names, proc)
 
     edges = hist_xsec.axes.edges[0]
     binwidths = np.diff(edges)
     centers = hist_xsec.axes.centers[0]
+
+    if binwnorm==1:
+        yLabel = yLabel+"/unit"
+    else:
+        binwidths = np.ones_like(binwidths)
 
     if pulls:
         rlabel=f"Pulls"
@@ -167,7 +171,8 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     rrange = args.rrange
 
     if args.ylim is None:
-        ylim = (0, 1.4 * max( (hist_xsec.values()+np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1)) )
+        ymax = max((hist_xsec.values()+np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1))
+        ylim = (0, 1.4 * ymax)
     else:
         ylim = args.ylim
 

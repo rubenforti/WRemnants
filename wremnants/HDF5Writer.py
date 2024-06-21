@@ -20,7 +20,6 @@ class HDF5Writer(object):
     # keeps multiple card tools and writes them out in a single file to fit (appending the histograms)
     def __init__(self, card_name="card", sparse=False):
         self.cardName = card_name
-        self.cardTools = []
         # settings for writing out hdf5 files
         self.dtype="float64"
         self.chunkSize=4*1024**2
@@ -727,7 +726,7 @@ class HDF5Writer(object):
         polgroups, polgroupidxs = self.get_polgroups()
         helgroups, helgroupidxs = self.get_helgroups()
         chargemetagroups, chargemetagroupidxs = self.get_chargemetagroups()
-        ratiometagroups, ratiometagroupidxs = self.get_ratiometagroups()
+        ratiometagroups, ratiometagroupidxs = self.get_ratiometagroups(sumgroups)
         helmetagroups, helmetagroupidxs = self.get_helmetagroups()
         reggroups, reggroupidxs = self.get_reggroups()
         poly1dreggroups, poly1dreggroupfirstorder, poly1dreggrouplastorder, poly1dreggroupnames, poly1dreggroupbincenters = self.get_poly1dreggroups()
@@ -756,11 +755,11 @@ class HDF5Writer(object):
         create_dataset("sumgroupsegmentids", sumgroupsegmentids, dtype='int32')
         create_dataset("sumgroupidxs", sumgroupidxs, dtype='int32')
         create_dataset("chargemetagroups", chargemetagroups)
-        create_dataset("chargemetagroupidxs", chargemetagroups, 2, dtype='int32')
+        create_dataset("chargemetagroupidxs", chargemetagroupidxs, 2, dtype='int32')
         create_dataset("ratiometagroups", ratiometagroups)
-        create_dataset("ratiometagroupidxs", ratiometagroups, 2, dtype='int32')
+        create_dataset("ratiometagroupidxs", ratiometagroupidxs, 2, dtype='int32')
         create_dataset("helmetagroups", helmetagroups)
-        create_dataset("helmetagroupidxs", helmetagroups, 6, dtype='int32')
+        create_dataset("helmetagroupidxs", helmetagroupidxs, 6, dtype='int32')
         create_dataset("reggroups", reggroups)
         create_dataset("reggroupidxs", reggroupidxs, dtype=h5py.special_dtype(vlen=np.dtype('int32')))
         create_dataset("poly1dreggroups", poly1dreggroups)
@@ -955,9 +954,21 @@ class HDF5Writer(object):
         #list of groups of signal processes by chargemeta
         return [], []
 
-    def get_ratiometagroups(self):
-        #list of groups of signal processes by ratiometa
-        return [], []
+    def get_ratiometagroups(self, sumgroups):
+        ratiometagroups = []
+        ratiometagroupidxs = []
+        dict_ratioroups = {}
+        for chanInfo in self.get_channels().values():
+            dict_ratioroups.update(chanInfo.cardRatioXsecGroups)
+
+        for group, members in dict_ratioroups.items():
+            ratiometagroups.append(group)
+            ratiometagroupidx = []
+            for proc in members:
+                ratiometagroupidx.append(sumgroups.index(proc))
+            ratiometagroupidxs.append(ratiometagroupidx)
+
+        return ratiometagroups, ratiometagroupidxs
 
     def get_helmetagroups(self):
         #list of groups of signal processes by helmeta

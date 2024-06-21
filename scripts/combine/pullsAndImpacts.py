@@ -10,11 +10,13 @@ import dash_daq as daq
 from dash import html
 from dash.dependencies import Input, Output
 from utilities import logging
-from utilities.io_tools import input_tools, output_tools, combinetf_input
+from utilities.io_tools import input_tools, output_tools, combinetf_input, conversion_tools
 from wremnants import plot_tools
 import os
 import re
 import json
+
+from narf import ioutils
 
 from utilities.styles.styles import nuisance_groupings as groupings
 
@@ -257,7 +259,8 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
     return fig
 
 def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=False, scale=1):    
-    impacts, labels, _ = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
+    logger.debug("Read impacts for poi from file")
+    impacts, labels, norm = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
     
     if (group and grouping) or args.filters:
         filtimpacts = []
@@ -272,7 +275,7 @@ def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=Fals
         impacts = filtimpacts
         labels = filtlabels
 
-    df = pd.DataFrame(np.array(impacts, dtype=np.float64).T*scale, columns=["impact"])
+    df = pd.DataFrame(np.array(impacts, dtype=np.float64).T*scale, columns=["impact"])    
     df['label'] = [translate_label.get(l, l) for l in labels]
     df['absimpact'] = np.abs(df['impact'])
     if not group:
@@ -312,6 +315,8 @@ def parseArgs():
     parser.add_argument("--grouping", type=str, default=None, help="Select nuisances by a predefined grouping", choices=groupings.keys())
     parser.add_argument("-t","--translate", type=str, default=None, help="Specify .json file to translate labels")
     parser.add_argument("--noImpacts", action='store_true', help="Don't show impacts")
+    parser.add_argument("--poi", type=str, default=None, help="Specify POI to make impacts for, otherwise use all")
+    parser.add_argument("--poiType", type=str, default=None, help="POI type to make impacts for")
     parsers = parser.add_subparsers(dest='output_mode')
     interactive = parsers.add_parser("interactive", help="Launch and interactive dash session")
     interactive.add_argument("-i", "--interface", default="localhost", help="The network interface to bind to.")
@@ -357,6 +362,23 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             impact_title = "Impact on mass diff. (MeV)"
     elif poi and poi.startswith("width"):
         impact_title = "Impact on width (MeV)"
+    elif poi_type in ["pmaskedexp", "pmaskedexpnorm", "sumxsec", "sumxsecnorm"]:
+        if poi_type in ["pmaskedexp", "sumxsec"]:
+            meta = ioutils.pickle_load_h5py(fitresult["meta"])
+            channel_info = conversion_tools.combine_channels(meta, True)
+            if len(channel_info.keys()) == 1:
+                lumi = channel_info["chan_13TeV"]["lumi"]
+            else:
+                raise NotImplementedError(f"Found channels {[k for k in channel_info.keys()]} but only one channel is supported.")
+            scale = 1./(lumi*1000)
+            poi_name = "_".join(poi.split("_")[:-1])
+            impact_title = "$\\sigma_\\mathrm{fid}("+poi_name+") [\\mathrm{pb}]$" 
+        else:
+            impact_title = "$1/\\sigma_\\mathrm{fid} \\mathrm{d}\\sigma$"
+    elif poi_type in ["ratiometaratio"]:
+        poi_name = "_".join(poi.split("_")[:-1]).replace("r_","")
+        impact_title = f"Impact on ratio {poi_name} *1000"
+        scale=1000
     else:
         impact_title=poi
 
@@ -375,6 +397,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             df[col].fillna(default_values.get(col, 0), inplace=True)
 
     if args.sort:
+        logger.debug("Sort impacts")
         if args.sort.endswith("diff"):
             key = args.sort.replace("_diff","")
             df[f"{key}_diff"] = df[key] - df[f"{key}_ref"]
@@ -388,7 +411,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
         df = df.sort_values(by=args.sort, ascending=args.ascending)
 
     df = df.fillna(0)
-
+    logger.debug("Make plots")
     if args.output_mode == "interactive":
         app.layout = html.Div([
                 dcc.Input(
@@ -478,9 +501,16 @@ if __name__ == '__main__':
         producePlots(fitresult, args, None, fitresult_ref=fitresult_ref)
         exit()
 
-    pois = combinetf_input.get_poi_names(fitresult, poi_type=None)
+    if args.poi:
+        pois = [args.poi]
+    else:
+        pois = combinetf_input.get_poi_names(fitresult, poi_type=args.poiType)
+
     for poi in pois:
+        logger.debug(f"Now at {poi}")
         if args.mode in ["both", "ungrouped"]:
+            logger.debug(f"Make impact per nuisance")
             producePlots(fitresult, args, poi, fitresult_ref=fitresult_ref)
         if args.mode in ["both", "group"]:
+            logger.debug(f"Make impact my group")
             producePlots(fitresult, args, poi, group=True, fitresult_ref=fitresult_ref)

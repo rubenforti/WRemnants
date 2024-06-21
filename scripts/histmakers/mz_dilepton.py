@@ -59,8 +59,10 @@ dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "mll": hist.axis.Variable([60,70,75,78,80,82,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,102,105,110,120], name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
+    # "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "yll": hist.axis.Regular([-2.5, -1.4, -0.8, -0.4, 0, 0.4, 0.8, 1.4, 2.5], name = "yll", underflow=not args.excludeFlow, overflow=not args.excludeFlow),
+    # "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
+    "absYll": hist.axis.Regular([0, 0.4, 0.8, 1.4, 2.5], name = "absYll", underflow=False, overflow=not args.excludeFlow),
     "ptll": hist.axis.Variable(dilepton_ptV_binning, name = "ptll", underflow=False, overflow=not args.excludeFlow),
     "etaPlus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaPlus"),
     "etaMinus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaMinus"),
@@ -73,8 +75,8 @@ all_axes = {
     "etaDiff": hist.axis.Variable([-4.8, -1.0, -0.6, -0.2, 0.2, 0.6, 1.0, 4.8], name = "etaDiff"),
     "ptPlus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptPlus"),
     "ptMinus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptMinus"),
-    "cosThetaStarll": hist.axis.Regular(20, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
-    "phiStarll": hist.axis.Regular(20, -math.pi, math.pi, circular = True, name = "phiStarll"),
+    "cosThetaStarll": hist.axis.Regular(6, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
+    "phiStarll": hist.axis.Regular(6, -math.pi, math.pi, circular = True, name = "phiStarll"),
     #"charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
     "massVgen": hist.axis.Variable(ewMassBins, name = "massVgen", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "ewMll": hist.axis.Variable(ewMassBins, name = "ewMll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
