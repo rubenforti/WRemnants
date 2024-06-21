@@ -48,6 +48,8 @@ def get_dilepton_axes(gen_vars, gen_axes, add_out_of_acceptance_axis=False):
     selections = []
 
     for var in gen_vars:
+        if var == "helicitySig": 
+            continue
         axes.append(gen_axes[var])
         cols.append(var)
 
