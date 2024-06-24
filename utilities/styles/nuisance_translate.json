@@ -50,6 +50,7 @@
     "widthW": "W width", 
     "widthZ": "Z width",
     "ZmassAndWidth": "Z mass and width",
+    "massAndWidth": "W,Z mass and width",
     "bcQuarkMass" : "b,c quark masses",
     "experiment": "Experiment",
     "theory": "Theory"

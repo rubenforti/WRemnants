@@ -226,7 +226,17 @@ def build_graph(df, dataset):
             else:
                 df_xnorm = df
 
-            unfolding_tools.add_xnorm_histograms(results, df_xnorm, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
+            unfolding_tools.add_xnorm_histograms(
+                results, 
+                df_xnorm, 
+                args, 
+                dataset.name, 
+                corr_helpers, 
+                qcdScaleByHelicity_helper, 
+                unfolding_axes, 
+                unfolding_cols, 
+                add_helicity_axis="helicity" in args.genAxes,
+            )
             if not isPoiAsNoi:
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
@@ -379,7 +389,7 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
-        if "helicitySig" in args.genAxes:
+        if "helicity" in args.genAxes:
             df = theoryAgnostic_tools.define_helicity_weights(df)
 
     # histograms for corrections/uncertainties for pixel hit multiplicity
@@ -399,7 +409,7 @@ def build_graph(df, dataset):
     if isUnfolding and isPoiAsNoi and dataset.name == "ZmumuPostVFP":
         noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
         logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
-        if "helicitySig" in args.genAxes:
+        if "helicity" in args.genAxes:
             from wremnants.helicity_utils import axis_helicity
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))  
         else:

@@ -126,9 +126,11 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
             if poi_type in ["sumpois", "sumpoisnorm", "ratiometapois"]:
                 all_labels_hist = f"{poi_type}_names"
                 impact_hist_total = f"{poi_type}_outcov"
+                norm_hist = f"{poi_type}_outvals"
             else:
                 all_labels_hist = "hsysts"
                 impact_hist_total = f"sumpois_{poi_type}"
+                norm_hist = "x"
             impact_hist = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
         else:
             raise ValueError(f"Invalid POI: {poi}")
@@ -146,7 +148,7 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
     else:
         ipoi = np.where(poi_names == poi)[0][0]
         impacts = h5file[impact_hist][...][ipoi]
-        norm = h5file["x"][...][ipoi]
+        norm = h5file[norm_hist][...][ipoi]
         all_labels = h5file[all_labels_hist][...].astype(str)
         isys = np.where(all_labels == poi.replace(f'_{poi_type}',''))[0][0]
         total = h5file[impact_hist_total][...][ipoi,isys]

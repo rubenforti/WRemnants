@@ -20,6 +20,8 @@ from narf import ioutils
 
 from utilities.styles.styles import nuisance_groupings as groupings
 
+logger = logging.child_logger(__name__)
+
 def writeOutput(fig, outfile, extensions=[], postfix=None, args=None, meta_info=None):
     name, ext = os.path.splitext(outfile)
     if ext not in extensions:
@@ -258,17 +260,17 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
 
     return fig
 
-def readFitInfoFromFile(rf, filename, poi, group=False, stat=0.0, normalize=False, scale=1):    
+def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[], stat=0.0, normalize=False, scale=1):    
     logger.debug("Read impacts for poi from file")
     impacts, labels, norm = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
     
-    if (group and grouping) or args.filters:
+    if (group and grouping) or filters:
         filtimpacts = []
         filtlabels = []
         for impact,label in zip(impacts,labels):
             if group and grouping and label not in grouping:
                 continue
-            if args.filters and not any(re.match(f, label) for f in args.filters):
+            if filters and not any(re.match(f, label) for f in filters):
                 continue
             filtimpacts.append(impact)
             filtlabels.append(label)

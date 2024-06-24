@@ -168,7 +168,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py
           --analysisMode unfolding --poiAsNoi -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
-          --scaleNormXsecHistYields '0.01' --genAxes qGen ptGen absEtaGen --explicitSignalMCstat
+          --scaleNormXsecHistYields '0.01' --genAxes qGen ptGen absEtaGen
 
       - name: wmass combine fit 
         run: >-
