@@ -135,6 +135,8 @@ def prepareChargeFit(options, charges=["plus"]):
         combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --doImpacts --saveHists --computeHistErrors '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
         if options.combinetfOption:
             combineCmd += " %s" % options.combinetfOption
+        if args.globalImpacts:
+            combineCmd += " --globalImpacts"
         if args.theoryAgnostic:
             combineCmd += " --POIMode mu --allowNegativePOI"
         else:
@@ -211,6 +213,7 @@ if __name__ == "__main__":
     parser.add_argument("--combinetf-option",  dest="combinetfOption", default="",  type=str,  help="Pass other options to combinetf (TODO: some are already activated with other options, might move them here)")
     parser.add_argument("-t",  "--toys", type=int, default=0, help="Run combinetf for N toys if argument N is positive")
     parser.add_argument(       '--theoryAgnostic', action='store_true', help='Run theory agnostic fit, with masked channels and so on (not needed when using POIs as NOIs)')
+    parser.add_argument(       '--globalImpacts', action='store_true', help='Use global impacts for combinetf')
     args = parser.parse_args()
 
     if not args.dryRun:
