@@ -195,7 +195,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         datagroups.unconstrainedProcesses.append(base_group)
 
     if lowPU and ((args.fakeEstimation != 'simple') or (args.binnedFakeEstimation == False)):
-        logger.error(f"When running lowPU mode, fakeEstimation should be set to 'simple,' and binnedFakeEstimation to False.")
+        logger.error(f"When running lowPU mode, fakeEstimation should be set to 'simple' and binnedFakeEstimation set.")
 
     if "run" in fitvar:
         # in case fit is split by runs/ cumulated lumi
