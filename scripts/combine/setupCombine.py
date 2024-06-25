@@ -54,7 +54,7 @@ def make_parser(parser=None):
     parser.add_argument("-x", "--excludeNuisances", type=str, default="", help="Regular expression to exclude some systematics from the datacard")
     parser.add_argument("-k", "--keepNuisances", type=str, default="", help="Regular expression to keep some systematics, overriding --excludeNuisances. Can be used to keep only some systs while excluding all the others with '.*'")
     parser.add_argument("--absolutePathInCard", action="store_true", help="In the datacard, set Absolute path for the root file where shapes are stored")
-    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
+    parser.add_argument("-n", "--baseName", type=str, nargs='*', default="nominal", help="Histogram name in the file (e.g., 'nominal')")
     parser.add_argument("--noHist", action='store_true', help="Skip the making of 2D histograms (root file is left untouched if existing)")
     parser.add_argument("--qcdProcessName" , type=str, default=None, help="Name for QCD process (by default taken from datagroups object")
     # setting on the fit behaviour
@@ -64,7 +64,7 @@ def make_parser(parser=None):
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
     parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
-    parser.add_argument("--lumiScale", type=float, default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
+    parser.add_argument("--lumiScale", type=float, nargs='*', default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
     parser.add_argument("--lumiScaleVarianceLinearly", type=str, nargs='*', default=[], choices=["data", "mc"], help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.")
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
@@ -135,7 +135,7 @@ def make_parser(parser=None):
     return parser
 
 
-def setup(args, inputFile, fitvar, xnorm=False):
+def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, xnorm=False):
 
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -274,7 +274,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation,
+        datagroups.set_histselectors(datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
                                      smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
                                      integrate_x="mt" not in fitvar,
                                      simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
@@ -314,8 +314,8 @@ def setup(args, inputFile, fitvar, xnorm=False):
         cardTool.setHistName(histName)
         cardTool.setNominalName(histName)
     else:
-        cardTool.setHistName(args.baseName)
-        cardTool.setNominalName(args.baseName)
+        cardTool.setHistName(inputBaseName)
+        cardTool.setNominalName(inputBaseName)
         
     # define sumGroups for integrated cross section
     if isFloatingPOIs:
@@ -350,7 +350,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
 
             if wmass and not xnorm:
                     pseudodataGroups.fakerate_axes=args.fakerateAxes
-                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, mode=args.fakeEstimation,
+                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
                     smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
                     integrate_x="mt" not in fitvar,
                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
@@ -364,7 +364,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
-            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
+            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, 
                 mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=not args.binnedFakeEstimation, 
                 simultaneousABCD=simultaneousABCD, 
                 )
@@ -376,7 +376,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         
         cardTool.setPseudodataDatagroups(pseudodataGroups)
 
-    cardTool.setLumiScale(args.lumiScale, args.lumiScaleVarianceLinearly)
+    cardTool.setLumiScale(inputLumiScale, args.lumiScaleVarianceLinearly)
 
     if not isTheoryAgnostic:
         logger.info(f"cardTool.allMCProcesses(): {cardTool.allMCProcesses()}")
@@ -562,7 +562,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
     if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
         syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
-            name=args.baseName, 
+            name=inputBaseName, 
             group="Fake",
             processes=cardTool.getFakeName(), 
             noConstraint=False, 
@@ -1166,7 +1166,9 @@ def main(args, xnorm=False):
     checkSysts = forceNonzero
 
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
-    cardTool = setup(args, args.inputFile[0], fitvar, xnorm)
+    iBaseName = args.baseName[0] if isinstance(args.baseName, list) else args.baseName
+    iLumiScale = args.lumiScale[0] if isinstance(args.lumiScale, list) else args.lumiScale
+    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm)
     cardTool.setOutput(outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool))
     cardTool.writeOutput(args=args, forceNonzero=forceNonzero, check_systs=checkSysts)
     return
@@ -1208,12 +1210,15 @@ if __name__ == "__main__":
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            cardTool = setup(args, ifile, fitvar, xnorm=args.fitresult is not None)
+            iBaseName = args.baseName[i] if isinstance(args.baseName, list) else args.baseName
+            iLumiScale = args.lumiScale[i] if isinstance(args.lumiScale, list) else args.lumiScale
+            
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
             if isFloatingPOIs:
-                cardTool = setup(args, ifile, ["count"], xnorm=True)
+                cardTool = setup(args, ifile, iBaseName, iLumiScale, ["count"], xnorm=True)
                 writer.add_channel(cardTool)
         if args.fitresult:
             writer.set_fitresult(args.fitresult, mc_stat=not args.noMCStat)
