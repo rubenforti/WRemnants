@@ -189,7 +189,6 @@ def expand_pdf_entries(pdf, alphas=False, renorm=False):
         vals = [f"std::clamp<float>({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
     else:
         vals = [f"std::clamp<float>({x}, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
-
     return vals
 
 def define_scale_tensor(df):
@@ -206,7 +205,7 @@ theory_corr_weight_map = {
         "scetlib_dyturboMSHT20_pdfas" : expand_pdf_entries("msht20", alphas=True),
         "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
         "scetlib_dyturboCT18ZVars" : expand_pdf_entries("ct18z"),
-        "scetlib_dyturboCT18Z_pdfas" : expand_pdf_entries("ct18z", alphas=True),
+        "scetlib_dyturboCT18Z_pdfas" : expand_pdf_entries("ct18z", alphas=True, renorm=True),
         "scetlib_dyturboMSHT20an3lo_pdfas" : expand_pdf_entries("msht20an3lo", alphas=True),
         "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
         # Tested this, better not to treat this way unless using MSHT20nnlo as central set
@@ -675,7 +674,6 @@ def define_theory_corr_weight_column(df, generator):
             "; return res;")
     else:
         df = df.Alias(f"{generator}_corr_weight", "nominal_weight_uncorr")
-
     return df
 
 def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_central_weight, isW, storage_type=hist.storage.Double()):
