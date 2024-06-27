@@ -710,9 +710,9 @@ def build_graph(df, dataset):
 
             # Don't think it makes sense to apply the mass weights to scale leptons from tau decays
             if not args.onlyTheorySyst and not "tau" in dataset.name:
-                syst_tools.add_muonscale_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols, storage_type=storage_type)
+                df = syst_tools.add_muonscale_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols, storage_type=storage_type)
                 if args.muonScaleVariation == 'smearingWeightsGaus':
-                    syst_tools.add_muonscale_smeared_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols_gen_smeared, storage_type=storage_type)
+                    df = syst_tools.add_muonscale_smeared_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols_gen_smeared, storage_type=storage_type)
 
             ####################################################
             # nuisances from the muon momemtum scale calibration 
