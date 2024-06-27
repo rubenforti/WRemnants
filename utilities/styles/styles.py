@@ -1,3 +1,7 @@
+from utilities import logging
+
+logger = logging.child_logger(__name__)
+
 
 process_colors = {
     "Data": "black",
@@ -199,6 +203,20 @@ syst_labels = {
 
 syst_labels["virtual_ew_wlike"] = syst_labels["virtual_ew"]
 
+systematics_labels = {
+    "massShiftZ100MeV": '$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$',
+    "massShiftW100MeV": '$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$',
+    "widthZ": '$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
+    "widthW": '$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
+}
+
+def get_systematics_label(key):
+    if key in systematics_labels:
+        return systematics_labels[key]
+    
+    # custom formatting
+
+
 poi_types = {
     "mu": "$\mu$",
     "nois": "$\mathrm{NOI}$",
@@ -207,3 +225,15 @@ poi_types = {
     "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
     "sumpoisnorm": "1/$\sigma$ d$\sigma$",
 }
+
+
+
+def get_labels_colors_procs_sorted(procs):
+    # order of the processes in the plots
+    procs_sort = ["Wmunu", "Fake", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced"][::-1]
+
+    procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
+    logger.info(f"Found processes {procs} in fitresult")
+    labels = [process_labels.get(p, p) for p in procs]
+    colors = [process_colors.get(p, "red") for p in procs]
+    return labels, colors, procs
