@@ -2,9 +2,9 @@ import ROOT
 import hist
 import numpy as np
 from utilities import boostHistHelpers as hh, common, logging
-from wremnants import theory_tools
+from wremnants import theory_tools, helicity_utils
+from wremnants.helicity_utils import axis_helicity
 from wremnants.datasets.datagroups import Datagroups
-from wremnants.helicity_utils import *
 import re
 import collections.abc
 
@@ -178,10 +178,12 @@ def syst_transform_map(base_hist, hist_name):
 
     return transforms
 
+
 def gen_scale_helicity_hist_to_variations(scale_hist, gen_obs, sum_axes=[], pt_ax="ptVgen", gen_axes=["ptVgen", "chargeVgen", "helicity"], rebinPtV=None):
     scale_hist = hh.expand_hist_by_duplicate_axes(hist_in, gen_obs, [a+"Alt" for a in gen_obs], swap_axes=True)
 
     return scale_helicity_hist_to_variations(scale_hist, sum_axes, pt_ax, gen_axes, rebinPtV)
+
 
 def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", gen_axes=["ptVgen", "chargeVgen", "helicity"], rebinPtV=None):
     s = hist.tag.Slicer()
@@ -238,8 +240,10 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", g
 
     return scale_variation_hist
 
+
 def decorrelateByAxis(hvar, hnom, axisToDecorrName, newDecorrAxisName=None, axlim=[], rebin=[], absval=False):
     return decorrelateByAxes(hvar, hnom, axesToDecorrNames=[axisToDecorrName], newDecorrAxesNames=[newDecorrAxisName], axlim=[axlim], rebin=[rebin], absval=[absval])
+
 
 def decorrelateByAxes(hvar, hnom, axesToDecorrNames, newDecorrAxesNames=[], axlim=[], rebin=[], absval=[]):
 
@@ -274,6 +278,7 @@ def decorrelateByAxes(hvar, hnom, axesToDecorrNames, newDecorrAxesNames=[], axli
         hvar = hvar.project(*sortedAxes)
 
     return hvar
+
 
 def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_fakerate=0.5, flow=False):
     # 1) calculate fakerate in bins of fakerate axes
@@ -312,11 +317,13 @@ def make_fakerate_variation(href, fakerate_axes, fakerate_axes_syst, variation_f
     # 5) add back to the nominal histogram and broadcase the nominal histogram
     return hh.addHists(href, hsyst)
 
+
 def gen_hist_to_variations(hist_in, gen_obs, gen_axes=["ptVgen", "chargeVgen", "helicity"], sum_axes=[], rebin_axes=[], rebin_edges=[]):
     for obs in gen_obs:
         hist_in = hh.expand_hist_by_duplicate_axis(hist_in, obs, obs+"Alt", swap_axes=True)
 
     return hist_to_variations(hist_in, gen_axes, sum_axes, rebin_axes, rebin_edges)
+
 
 def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], rebin_edges=[]):
 
@@ -351,6 +358,7 @@ def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], reb
 
     return variation_hist
 
+
 def uncertainty_hist_from_envelope(h, proj_ax, entries):
     hdown = hh.syst_min_or_max_env_hist(h, proj_ax, "vars", entries, no_flow=["ptVgen"], do_min=True)
     hup = hh.syst_min_or_max_env_hist(h, proj_ax, "vars", entries, no_flow=["ptVgen"], do_min=False)
@@ -358,6 +366,37 @@ def uncertainty_hist_from_envelope(h, proj_ax, entries):
     hnew[...,0] = hdown.view(flow=True)
     hnew[...,1] = hup.view(flow=True)
     return hnew
+
+
+def add_syst_hist(results, df, name, axes, cols, tensor_name=None, tensor_axes=[], addhelicity=False, nhelicity=6, storage_type=hist.storage.Double()):
+    """
+    Add hist to results list
+    """
+    if not isinstance(tensor_axes, (list, tuple)):
+        tensor_axes = [tensor_axes]
+    if addhelicity:
+        if len(tensor_axes) == 0:
+            # rank 0 tensor
+            if tensor_name is None:
+                # unity
+                results.append(df.HistoBoost(name, axes, [*cols, "helWeight_tensor"], tensor_axes=[helicity_utils.axis_helicity_multidim], storage=storage_type))
+            else:
+                # scalar weight
+                df = df.Define(f'{tensor_name}_helicity', f"auto res = helWeight_tensor; res = {tensor_name}*res; return res;")
+                results.append(df.HistoBoost(name, axes, [*cols, f'{tensor_name}_helicity'], tensor_axes=[helicity_utils.axis_helicity_multidim], storage=storage_type))
+        else:
+            helper_helicity, tensor_axes_helicity = helicity_utils.make_helper_helicity(tensor_axes, nhelicity)
+            df = df.Define(f'{tensor_name}_helicity', helper_helicity, [tensor_name, 'helWeight_tensor'])
+            results.append(df.HistoBoost(name, axes, [*cols, f"{tensor_name}_helicity"], tensor_axes=tensor_axes_helicity, storage=storage_type))
+    else:
+        if len(tensor_axes) == 0:
+            if tensor_name is None:
+                results.append(df.HistoBoost(name, axes, cols, storage=storage_type))
+            else:
+                results.append(df.HistoBoost(name, axes, [*cols, tensor_name], storage=storage_type))
+        else:
+            results.append(df.HistoBoost(name, axes, [*cols, tensor_name], tensor_axes=tensor_axes, storage=storage_type))
+
 
 def define_mass_weights(df, proc):
     if "massWeight_tensor" in df.GetColumnNames():
@@ -391,34 +430,14 @@ def define_mass_weights(df, proc):
 
     return df
 
-def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc="", addhelicity=False, storage_type=hist.storage.Double()):
+
+def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="massWeight"+(proc[0] if len(proc) else proc))
     name_widthdecor = Datagroups.histName(base_name, syst="massWeight_widthdecor"+(proc[0] if len(proc) else proc))
     mass_axis = hist.axis.StrCategory(massWeightNames(proc=proc), name="massShift")
-    if addhelicity:
-        massweightHelicity, massWeight_axes = make_massweight_helper_helicity(mass_axis)
-        df = df.Define("massWeight_tensor_wnom_helicity", massweightHelicity, ['massWeight_tensor_wnom', 'helWeight_tensor'])
-        massWeight = df.HistoBoost(name, axes, [*cols, "massWeight_tensor_wnom_helicity"],
-                                   tensor_axes=massWeight_axes,
-                                   storage=storage_type)
+    add_syst_hist(results, df, name, axes, cols, "massWeight_tensor_wnom", mass_axis, **kwargs)
+    add_syst_hist(results, df, name_widthdecor, axes, cols, "massWeight_widthdecor_tensor_wnom", mass_axis, **kwargs)
 
-        df = df.Define("massWeight_widthdecor_tensor_wnom_helicity", massweightHelicity, ['massWeight_widthdecor_tensor_wnom', 'helWeight_tensor'])
-        massWeight_widthdecor = df.HistoBoost(name_widthdecor, axes, [*cols, "massWeight_widthdecor_tensor_wnom_helicity"],
-                                   tensor_axes=massWeight_axes,
-                                   storage=storage_type)
-
-
-    else:
-        massWeight = df.HistoBoost(name, axes, [*cols, "massWeight_tensor_wnom"], 
-                                   tensor_axes=[mass_axis], 
-                                   storage=storage_type)
-
-        massWeight_widthdecor = df.HistoBoost(name_widthdecor, axes, [*cols, "massWeight_widthdecor_tensor_wnom"],
-                                   tensor_axes=[mass_axis],
-                                   storage=storage_type)
-
-    results.append(massWeight)
-    results.append(massWeight_widthdecor)
 
 def massWeightNames(matches=None, proc="", exclude=[]):
     if isinstance(exclude, (int, float)):
@@ -433,6 +452,7 @@ def massWeightNames(matches=None, proc="", exclude=[]):
     # If name is "" it won't be stored
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
+
 def define_width_weights(df, proc):
     if "widthWeight_tensor" in df.GetColumnNames():
         logger.debug("widthWeight_tensor already defined, do nothing here.")
@@ -442,12 +462,12 @@ def define_width_weights(df, proc):
     df = df.Define("widthWeight_tensor_wnom", "auto res = widthWeight_tensor; res = nominal_weight*res; return res;")
     return df
 
-def add_widthweights_hist(results, df, axes, cols, base_name="nominal", proc="", storage_type=hist.storage.Double()):
+
+def add_widthweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="widthWeight"+(proc[0] if len(proc) else proc))
-    widthWeight = df.HistoBoost(name, axes, [*cols, "widthWeight_tensor_wnom"], 
-                    tensor_axes=[hist.axis.StrCategory(widthWeightNames(proc=proc), name="width")], 
-                    storage=storage_type)
-    results.append(widthWeight)
+    axis_width = hist.axis.StrCategory(widthWeightNames(proc=proc), name="width")
+    add_syst_hist(results, df, name, axes, cols, "widthWeight_tensor_wnom", axis_width, **kwargs)
+
 
 def widthWeightNames(matches=None, proc=""):
     central=3
@@ -463,6 +483,7 @@ def widthWeightNames(matches=None, proc=""):
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
+
 def define_sin2theta_weights(df, proc):
     if "sin2thetaWeight_tensor" in df.GetColumnNames():
         logger.debug("sin2thetaWeight_tensor already defined, do nothing here.")
@@ -476,12 +497,12 @@ def define_sin2theta_weights(df, proc):
     df = df.Define("sin2thetaWeight_tensor_wnom", "auto res = sin2thetaWeight_tensor; res = nominal_weight*res; return res;")
     return df
 
-def add_sin2thetaweights_hist(results, df, axes, cols, base_name="nominal", proc="", storage_type=hist.storage.Double()):
+
+def add_sin2thetaweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="sin2thetaWeight"+(proc[0] if len(proc) else proc))
-    sin2thetaWeight = df.HistoBoost(name, axes, [*cols, "sin2thetaWeight_tensor_wnom"],
-                    tensor_axes=[hist.axis.StrCategory(sin2thetaWeightNames(proc=proc), name="sin2theta")],
-                    storage=storage_type)
-    results.append(sin2thetaWeight)
+    axis_sin2theta = hist.axis.StrCategory(sin2thetaWeightNames(proc=proc), name="sin2theta")
+    add_syst_hist(results, df, name, axes, cols, "sin2thetaWeight_tensor_wnom", axis_sin2theta, **kwargs)
+
 
 def sin2thetaWeightNames(matches=None, proc=""):
     if proc[0] != "Z":
@@ -494,6 +515,7 @@ def sin2thetaWeightNames(matches=None, proc=""):
     names = [f"sin2theta{proc[0]}{str(sin2theta).replace('.','p')}" for sin2theta in sin2thetas]
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
+
 
 # weak weights from Powheg EW NanoLHE files
 def define_weak_weights(df, proc):
@@ -515,12 +537,12 @@ def define_weak_weights(df, proc):
 
     return df
 
-def add_weakweights_hist(results, df, axes, cols, base_name="nominal", proc="", storage_type=hist.storage.Double()):
+
+def add_weakweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="weakWeight"+(proc[0] if len(proc) else proc))
-    weakWeight = df.HistoBoost(name, axes, [*cols, "weakWeight_tensor_wnom"], 
-                    tensor_axes=[hist.axis.StrCategory(weakWeightNames(proc=proc), name="weak")], 
-                    storage=storage_type)
-    results.append(weakWeight)
+    tensor_axis = hist.axis.StrCategory(weakWeightNames(proc=proc), name="weak")
+    add_syst_hist(results, df, name, axes, cols, "weakWeight_tensor_wnom", tensor_axis, **kwargs)
+
 
 def weakWeightNames(matches=None, proc=""):
     names = [
@@ -576,7 +598,8 @@ def weakWeightNames(matches=None, proc=""):
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
-def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", addhelicity=False, propagateToHelicity=False, storage_type=hist.storage.Double()):
+
+def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", propagateToHelicity=False, storage_type=hist.storage.Double(), **kwargs):
     # Remove duplicates but preserve the order of the first set
     for pdf in pdfs:
         try:
@@ -595,90 +618,126 @@ def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", a
         if tensorName not in df.GetColumnNames():
             logger.warning(f"PDF {pdf} was not found for sample {dataset}. Skipping uncertainty hist!")
             continue
+        add_syst_hist(results, df, pdfHistName, axes, cols, tensorName, pdf_ax, storage_type=storage_type, **kwargs)
 
-        has_as = "alphasRange" in pdfInfo
-        if has_as:
+        if "alphasRange" in pdfInfo:
             asr = pdfInfo["alphasRange"] 
             alphaSHistName = Datagroups.histName(base_name, syst=f"{pdfName}alphaS{asr}")
             as_ax = hist.axis.StrCategory(["as0118"]+(["as0117", "as0119"] if asr == "001" else ["as0116", "as0120"]), name="alphasVar")
+            add_syst_hist(results, df, alphaSHistName, axes, cols, tensorASName, as_ax, storage_type=storage_type, **kwargs)
 
-        if addhelicity:
-            pdfHeltensor, pdfHeltensor_axes =  make_pdfweight_helper_helicity(npdf, pdf_ax)
-            df = df.Define(f'{tensorName}_helicity', pdfHeltensor, [tensorName, "helWeight_tensor"])
-            pdfHist = df.HistoBoost(pdfHistName, axes, [*cols, f'{tensorName}_helicity'], tensor_axes=pdfHeltensor_axes, storage=storage_type)
-            if has_as:
-                alphaSHeltensor, alphaSHeltensor_axes =  make_pdfweight_helper_helicity(3, as_ax)
-                df = df.Define(f'{tensorASName}_helicity', alphaSHeltensor, [tensorASName, "helWeight_tensor"])
-                alphaSHist = df.HistoBoost(alphaSHistName, axes, [*cols, f'{tensorASName}_helicity'], tensor_axes=alphaSHeltensor_axes, storage=storage_type)
-        else:
-            pdfHist = df.HistoBoost(pdfHistName, axes, [*cols, tensorName], tensor_axes=[pdf_ax], storage=storage_type)
-            if has_as:
-                alphaSHist = df.HistoBoost(alphaSHistName, axes, [*cols, tensorASName], tensor_axes=[as_ax], storage=storage_type)
+        if propagateToHelicity:
+            pdfhelper = ROOT.wrem.makeHelicityMomentPdfTensor[npdf]()
+            df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhigen", f"{tensorName}", "unity"])
+            alphahelper = ROOT.wrem.makeHelicityMomentPdfTensor[3]()
+            df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhigen", f"{tensorASName}", "unity"])
+            pdfHist_hel = df.HistoBoost(f"helicity_{pdfHistName}", axes, [*cols, f"helicity_moments_{tensorName}_tensor"], tensor_axes=[axis_helicity,pdf_ax], storage=storage_type)
+            alphaSHist_hel = df.HistoBoost(f"helicity_{alphaSHistName}", axes, [*cols, f"helicity_moments_{tensorASName}_tensor"], tensor_axes=[axis_helicity,as_ax], storage=storage_type)
+            results.extend([pdfHist_hel, alphaSHist_hel])
 
-            if propagateToHelicity:
-
-                pdfhelper = ROOT.wrem.makeHelicityMomentPdfTensor[npdf]()
-                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhigen", f"{tensorName}", "unity"])
-                alphahelper = ROOT.wrem.makeHelicityMomentPdfTensor[3]()
-                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhigen", f"{tensorASName}", "unity"])
-                pdfHist_hel = df.HistoBoost(f"helicity_{pdfHistName}", axes, [*cols, f"helicity_moments_{tensorName}_tensor"], tensor_axes=[axis_helicity,pdf_ax], storage=storage_type)
-                alphaSHist_hel = df.HistoBoost(f"helicity_{alphaSHistName}", axes, [*cols, f"helicity_moments_{tensorASName}_tensor"], tensor_axes=[axis_helicity,as_ax], storage=storage_type)
-                results.extend([pdfHist_hel, alphaSHist_hel])
-
-        results.extend([pdfHist, alphaSHist])
     return df
 
-def add_qcdScale_hist(results, df, axes, cols, base_name="nominal", addhelicity=False, storage_type=hist.storage.Double()):
+
+def add_qcdScale_hist(results, df, axes, cols, base_name="nominal", **kwargs):
     name = Datagroups.histName(base_name, syst="qcdScale")
-    if addhelicity:
-        qcdbyHelicity, qcdbyHelicity_axes = make_qcdscale_helper_helicity(theory_tools.scale_tensor_axes)
-        df = df.Define('scaleWeights_tensor_wnom_helicity', qcdbyHelicity, ['scaleWeights_tensor_wnom', 'helWeight_tensor'])
-        scaleHist = df.HistoBoost(name, axes, [*cols, "scaleWeights_tensor_wnom_helicity"], tensor_axes=qcdbyHelicity_axes, storage=storage_type)
-    else:
-        scaleHist = df.HistoBoost(name, axes, [*cols, "scaleWeights_tensor_wnom"], tensor_axes=theory_tools.scale_tensor_axes, storage=storage_type)
-    results.append(scaleHist)
+    add_syst_hist(results, df, name, axes, cols, "scaleWeights_tensor_wnom", theory_tools.scale_tensor_axes, **kwargs)
 
-def add_qcdScaleByHelicityUnc_hist(results, df, helper, axes, cols, base_name="nominal", addhelicity=False, storage_type=hist.storage.Double()):
+
+def add_qcdScaleByHelicityUnc_hist(results, df, helper, axes, cols, base_name="nominal", **kwargs):
     name = Datagroups.histName(base_name, syst="qcdScaleByHelicity")
-    if "helicityWeight_tensor" not in df.GetColumnNames():
-        df = df.Define("helicityWeight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
-    if addhelicity:
-        qcdbyHelicity, qcdbyHelicity_axes = make_qcdscale_helper_helicity(helper.tensor_axes)
-        df = df.Define('scaleWeights_tensor_wnom_helicity', qcdbyHelicity, ['helicityWeight_tensor', 'helWeight_tensor'])
-        qcdScaleByHelicityUnc = df.HistoBoost(name, axes, [*cols, "scaleWeights_tensor_wnom_helicity"], tensor_axes=qcdbyHelicity_axes, storage=storage_type)
-    else:
-        qcdScaleByHelicityUnc = df.HistoBoost(name, axes, [*cols,"helicityWeight_tensor"], tensor_axes=helper.tensor_axes, storage=storage_type)
-    results.append(qcdScaleByHelicityUnc)
+    tensorName = "helicityWeight_tensor"
+    df = df.Define(tensorName, helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
+    add_syst_hist(results, df, name, axes, cols, tensorName, helper.tensor_axes, **kwargs)
 
-def add_QCDbkg_jetPt_hist(results, df, nominal_axes, nominal_cols, base_name="nominal", jet_pt=30, storage_type=hist.storage.Double()):
-    # branching the rdataframe to add special filter, no need to return dQCDbkGVar
-    name = Datagroups.histName(base_name, syst=f"qcdJetPt{str(jet_pt)}")
-    dQCDbkGVar = df.Define(f"goodCleanJetsPt{jet_pt}", f"goodCleanJetsNoPt && Jet_pt > {jet_pt}")
-    dQCDbkGVar = dQCDbkGVar.Filter(f"passMT || Sum(goodCleanJetsPt{jet_pt})>=1")
-    qcdJetPt = dQCDbkGVar.HistoBoost(name, nominal_axes, [*nominal_cols, "nominal_weight"], storage=storage_type)
-    results.append(qcdJetPt)
 
-def add_luminosity_unc_hists(results, df, args, axes, cols, addhelicity=False, storage_type=hist.storage.Double()):
-    # TODO: implement for theory agnostic with addhelicity=True
-    if addhelicity:
-        pass
-    else:
-        df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
-        luminosity = df.HistoBoost("nominal_luminosity", axes, [*cols, "luminosityScaling"], tensor_axes = [common.down_up_axis], storage=storage_type)
-        results.append(luminosity)
-    return df
+def add_luminosity_unc_hists(results, df, args, axes, cols, base_name="nominal", **kwargs):
+    name = Datagroups.histName(base_name, syst="luminosity")
+    df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
+    add_syst_hist(results, df, name, axes, cols, "luminosityScaling", common.down_up_axis, **kwargs)
 
-# TODO: generalize to non-constant scaling if needed
-def add_scaledByCondition_unc_hists(results, df, args, axes, cols, newWeightName, histName, condition, scale, storage_type=hist.storage.Double()):
-    # scale represents the scaling factor of the nominal weight, 1.1 means +10%, 2.0 means + 100% and so on
-    df = df.Define(newWeightName, f"({condition}) ? ({scale}*nominal_weight) : nominal_weight")
-    # df = df.Filter(f"wrem::printVar({newWeightName})")
-    # df = df.Filter(f"wrem::printVar(nominal_weight)")
-    scaledHist = df.HistoBoost(f"nominal_{histName}", axes, [*cols, newWeightName], storage=storage_type)
-    results.append(scaledHist)
-    return df
 
-def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False, addhelicity=False, storage_type=hist.storage.Double()):
+def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_central_weight, isW, base_name="nominal", **kwargs):
+    results = []
+    
+    for i, generator in enumerate(generators):
+        if generator not in helpers:
+            continue
+        
+        if i == 0 and modify_central_weight:
+            add_syst_hist(results, df, f"{base_name}_uncorr", axes, cols, "nominal_weight_uncorr", **kwargs)
+            if base_name == "nominal":
+                add_syst_hist(results, df, f"weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], **kwargs)
+
+        var_axis = helpers[generator].tensor_axes[-1]
+
+        name = Datagroups.histName(base_name, syst=f"{generator}Corr")
+        weight_tensor_name = f"{generator}Weight_tensor"
+        add_syst_hist(results, df, name, axes, cols, weight_tensor_name, var_axis, **kwargs)
+
+        def is_flavor_dependent_np(var_label):
+            return var_label.startswith("Omega") \
+                    or var_label.startswith("Delta_Omega") \
+                    or var_label.startswith("Lambda2") \
+                    or var_label.startswith("Delta_Lambda2") \
+                    or var_label.startswith("Lambda4")
+
+        # special treatment for Lambda2/Omega since they need to be decorrelated in charge and possibly rapidity
+        if isinstance(var_axis, hist.axis.StrCategory) and any(is_flavor_dependent_np(var_label) for var_label in var_axis):
+            omegaidxs = [var_axis.index(var_label) for var_label in var_axis if is_flavor_dependent_np(var_label)]
+
+            # include nominal as well
+            omegaidxs = [0] + omegaidxs
+
+            tensor_name = f"{generator}FlavDepNP"
+            if tensor_name not in df.GetColumnNames():
+                np_idx_helper = ROOT.wrem.index_taker[df.GetColumnType(weight_tensor_name), len(omegaidxs)](omegaidxs)
+
+                df = df.Define(tensor_name, np_idx_helper, [weight_tensor_name])
+
+            axis_FlavDepNP = hist.axis.StrCategory([var_axis[idx] for idx in omegaidxs], name = var_axis.name)
+
+            if isW:
+                axis_chargegen = hist.axis.Regular(2, -2, 2, name="chargeVgenNP", underflow=False, overflow=False)
+            else:
+                axis_chargegen = hist.axis.Integer(0, 1, name="chargeVgenNP", underflow=False, overflow=False)
+
+            axes_FlavDepNP = [*axes, theory_tools.axis_absYVgen, axis_chargegen]
+            cols_FlavDepNP = [*cols, "absYVgen", "chargeVgen"]
+            name = Datagroups.histName(base_name, syst=tensor_name)
+            add_syst_hist(results, df, name, axes_FlavDepNP, cols_FlavDepNP, tensor_name, axis_FlavDepNP, **kwargs)
+
+        def is_pt_dependent_scale(var_label):
+            return var_label.startswith("renorm_fact_resum_transition_scale_envelope") \
+                    or var_label.startswith("renorm_fact_resum_scale_envelope")
+
+        # special treatment for envelope of scale variations since they need to be decorrelated in pt
+        if isinstance(var_axis, hist.axis.StrCategory) and any(is_pt_dependent_scale(var_label) for var_label in var_axis):
+
+            scaleidxs = [var_axis.index(var_label) for var_label in var_axis if is_pt_dependent_scale(var_label)]
+
+            # include nominal as well
+            scaleidxs = [0] + scaleidxs
+
+            tensor_name = f"{generator}PtDepScales"
+            if tensor_name not in df.GetColumnNames():
+                scale_idx_helper = ROOT.wrem.index_taker[df.GetColumnType(weight_tensor_name), len(scaleidxs)](scaleidxs)
+
+                df = df.Define(tensor_name, scale_idx_helper, [weight_tensor_name])
+
+            axis_PtDepScales = hist.axis.StrCategory([var_axis[idx] for idx in scaleidxs], name = var_axis.name)
+            
+            axes_PtDepScales = axes[:]
+            cols_PtDepScales = cols[:]
+            if "ptVgen" not in cols:
+                axes_PtDepScales += [hist.axis.Variable(common.ptV_binning, name = "ptVgen", underflow=False)]
+                cols_PtDepScales += ["ptVgen"]
+            name = Datagroups.histName(base_name, syst=tensor_name)
+            add_syst_hist(results, df, name, axes_PtDepScales, cols_PtDepScales, tensor_name, axis_PtDepScales, **kwargs)
+
+
+def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
+    what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False, **kwargs
+    ):
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
         muon_columns_stat = ["goodMuons_pt0", "goodMuons_eta0",
@@ -732,27 +791,18 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
             
         df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
         name = Datagroups.histName(base_name, syst=f"effStatTnP_{key}")
-        if addhelicity:
-            helper_helicity, helper_helicity_axes = make_muon_eff_stat_helpers_helicity(helper)
-            df = df.Define(f"effStatTnP_{key}_ByHelicity_tensor", helper_helicity, [f"effStatTnP_{key}_tensor", "helWeight_tensor"])
-            effStatTnP = df.HistoBoost(name, axes, [*cols, f"effStatTnP_{key}_ByHelicity_tensor"], tensor_axes = helper_helicity_axes, storage=storage_type)
-        else:
-            effStatTnP = df.HistoBoost(name, axes, [*cols, f"effStatTnP_{key}_tensor"], tensor_axes = helper.tensor_axes, storage=storage_type)
-        results.append(effStatTnP)
-    
+        add_syst_hist(results, df, name, axes, cols, f"effStatTnP_{key}_tensor", helper.tensor_axes, **kwargs)
+
     df = df.Define("effSystTnP_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
     name = Datagroups.histName(base_name, syst=f"effSystTnP")
-    if addhelicity:
-        helper_syst_helicity, helper_syst_helicity_axes = make_muon_eff_syst_helper_helicity(helper_syst)
-        df = df.Define("effSystTnP_weight_ByHelicity_tensor", helper_syst_helicity, ["effSystTnP_weight", "helWeight_tensor"])
-        effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_weight_ByHelicity_tensor"], tensor_axes = helper_syst_helicity_axes, storage=storage_type)
-    else:
-        effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
-    results.append(effSystTnP)
-    
+    add_syst_hist(results, df, name, axes, cols, "effSystTnP_weight", helper_syst.tensor_axes, **kwargs)
+
     return df
 
-def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", what_analysis=ROOT.wrem.AnalysisType.Wmass, step="tracking", storage_type=hist.storage.Double()):
+
+def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
+    what_analysis=ROOT.wrem.AnalysisType.Wmass, step="tracking", **kwargs
+    ):
 
     SAvarTag = "SA" if step == "tracking" else "" 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
@@ -771,87 +821,61 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
     
     df = df.Define(f"effSystTnP_altBkg_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
     name = Datagroups.histName(base_name, syst=f"effSystTnP_altBkg_{step}")
-    effSystTnP = df.HistoBoost(name, axes, [*cols, f"effSystTnP_altBkg_{step}_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
-    results.append(effSystTnP)
+    add_syst_hist(results, df, name, axes, cols, f"effSystTnP_altBkg_{step}_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
-def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", storage_type=hist.storage.Double()):
+
+def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs):
     # TODO: update for dilepton
     muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
     muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
             
     df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
     name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
-    effStatTnP = df.HistoBoost(name, axes, [*cols, "effStatTnP_veto_tensor"], tensor_axes = helper_stat.tensor_axes, storage=storage_type)
-    results.append(effStatTnP)
-    
+    add_syst_hist(results, df, name, axes, cols, "effStatTnP_veto_tensor", helper_stat.tensor_axes, **kwargs)
+
     df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
     name = Datagroups.histName(base_name, syst="effSystTnP_veto")
-    effSystTnP = df.HistoBoost(name, axes, [*cols, "effSystTnP_veto_weight"], tensor_axes = helper_syst.tensor_axes, storage=storage_type)
-    results.append(effSystTnP)
-    
+    add_syst_hist(results, df, name, axes, cols, "effSystTnP_veto_weight", helper_syst.tensor_axes, **kwargs)
+
     return df
 
-def add_L1Prefire_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", addhelicity=False, storage_type=hist.storage.Double()):
-    df = df.Define("muonL1PrefireStat_tensor", helper_stat, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId", "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"muonL1PrefireStat")    
 
-    if addhelicity:
-        prefirebyhelicity_stat, prefire_axes_stat = make_muon_prefiring_helper_stat_byHelicity(helper_stat)
-        df = df.Define("muonL1PrefireStatByHelicity_tensor", prefirebyhelicity_stat, ["muonL1PrefireStat_tensor", "helWeight_tensor"])
-        muonL1PrefireStat = df.HistoBoost(name, axes, [*cols, "muonL1PrefireStatByHelicity_tensor"], tensor_axes = prefire_axes_stat, storage=storage_type)
-    else:
-        muonL1PrefireStat = df.HistoBoost(name, axes, [*cols, "muonL1PrefireStat_tensor"], tensor_axes = helper_stat.tensor_axes, storage=storage_type)
-    results.append(muonL1PrefireStat)
+def add_L1Prefire_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs):
+    df = df.Define("muonL1PrefireStat_tensor", helper_stat, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId", "nominal_weight"])
+    name = Datagroups.histName(base_name, syst="muonL1PrefireStat")    
+    add_syst_hist(results, df, name, axes, cols, "muonL1PrefireStat_tensor", helper_stat.tensor_axes, **kwargs)
 
     df = df.Define("muonL1PrefireSyst_tensor", helper_syst, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId", "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"muonL1PrefireSyst")
-    prefirebyhelicity_syst, prefire_axes_syst = make_muon_prefiring_helper_syst_byHelicity()
-    if addhelicity:
-        df = df.Define("muonL1PrefireSystByHelicity_tensor", prefirebyhelicity_syst, ["muonL1PrefireSyst_tensor", "helWeight_tensor"])
-        muonL1PrefireSyst = df.HistoBoost(name, axes, [*cols, "muonL1PrefireSystByHelicity_tensor"], tensor_axes = prefire_axes_syst, storage=storage_type)
-    else:
-        muonL1PrefireSyst = df.HistoBoost(name, axes, [*cols, "muonL1PrefireSyst_tensor"], tensor_axes = [common.down_up_axis], storage=storage_type)
-    results.append(muonL1PrefireSyst)
+    name = Datagroups.histName(base_name, syst="muonL1PrefireSyst")
+    add_syst_hist(results, df, name, axes, cols, "muonL1PrefireSyst_tensor", common.down_up_axis, **kwargs)
 
-    df = df.Define("ecalL1Prefire_tensor", f"wrem::twoPointScaling(nominal_weight/L1PreFiringWeight_ECAL_Nom, L1PreFiringWeight_ECAL_Dn, L1PreFiringWeight_ECAL_Up)")
-    name = Datagroups.histName(base_name, syst=f"ecalL1Prefire")
-    if addhelicity:
-        #can reuse the same helper since it's the tensor multiplication of same types
-        df = df.Define("ecalL1PrefireByHelicity_tensor", prefirebyhelicity_syst, ["ecalL1Prefire_tensor", "helWeight_tensor"])
-        ecalL1Prefire = df.HistoBoost(name, axes, [*cols, "ecalL1PrefireByHelicity_tensor"], tensor_axes = prefire_axes_syst, storage=storage_type)
-    else:
-        ecalL1Prefire = df.HistoBoost(name, axes, [*cols, "ecalL1Prefire_tensor"], tensor_axes = [common.down_up_axis], storage=storage_type)
-    results.append(ecalL1Prefire)
+    df = df.Define("ecalL1Prefire_tensor", "wrem::twoPointScaling(nominal_weight/L1PreFiringWeight_ECAL_Nom, L1PreFiringWeight_ECAL_Dn, L1PreFiringWeight_ECAL_Up)")
+    name = Datagroups.histName(base_name, syst="ecalL1Prefire")
+    add_syst_hist(results, df, name, axes, cols, "ecalL1Prefire_tensor", common.down_up_axis, **kwargs)
 
     return df
 
-def add_muonscale_hist(results, df, netabins, mag, isW, axes, cols, base_name="nominal", muon_eta="goodMuons_eta0", storage_type=hist.storage.Double()):
+
+def add_muonscale_hist(results, df, netabins, mag, isW, axes, cols, base_name="nominal", muon_eta="goodMuons_eta0", **kwargs):
     nweights = 21 if isW else 23
 
     df = df.Define(f"muonScaleDummy{netabins}Bins{muon_eta}", f"wrem::dummyScaleFromMassWeights<{netabins}, {nweights}>(nominal_weight, massWeight_tensor, {muon_eta}, {mag}, {str(isW).lower()})")
 
     scale_etabins_axis = hist.axis.Regular(netabins, -2.4, 2.4, name="scaleEtaSlice", underflow=False, overflow=False)
     name = Datagroups.histName(base_name, syst=f"muonScaleSyst")
-
-    dummyMuonScaleSyst = df.HistoBoost(name, axes, [*cols, f"muonScaleDummy{netabins}Bins{muon_eta}"], tensor_axes=[common.down_up_axis, scale_etabins_axis], storage=storage_type)
-    results.append(dummyMuonScaleSyst)
-
-    return df
+    add_syst_hist(results, df, name, axes, cols, f"muonScaleDummy{netabins}Bins{muon_eta}", [common.down_up_axis, scale_etabins_axis], **kwargs)
 
 
-def add_muonscale_smeared_hist(results, df, netabins, mag, isW, axes, cols, base_name="nominal", muon_eta="goodMuons_eta0", storage_type=hist.storage.Double()):
+def add_muonscale_smeared_hist(results, df, netabins, mag, isW, axes, cols, base_name="nominal", muon_eta="goodMuons_eta0", *kwargs):
     # add_muonscale_hist has to be called first such that "muonScaleDummy{netabins}Bins{muon_eta}" is defined
     nweights = 21 if isW else 23
 
     scale_etabins_axis = hist.axis.Regular(netabins, -2.4, 2.4, name="scaleEtaSlice", underflow=False, overflow=False)
-    name = Datagroups.histName(base_name, syst=f"muonScaleSyst_gen_smear")
+    name = Datagroups.histName(base_name, syst="muonScaleSyst_gen_smear")
+    add_syst_hist(results, df, name, axes, cols, f"muonScaleDummy{netabins}Bins{muon_eta}", [common.down_up_axis, scale_etabins_axis], **kwargs)
 
-    dummyMuonScaleSyst_gen_smear = df.HistoBoost(name, axes, [*cols, f"muonScaleDummy{netabins}Bins{muon_eta}"], tensor_axes=[common.down_up_axis, scale_etabins_axis], storage=storage_type)
-    results.append(dummyMuonScaleSyst_gen_smear)
-
-    return df
 
 def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
     hnew = hist.Hist(*h.axes[:-1], hist.axis.StrCategory(["central"]+scetlib_scale_vars(),
@@ -876,8 +900,9 @@ def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
                                     h.axes[syst_ax].index(resum_names), do_min=True).view(flow=True)
     return hnew
 
+
 def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, 
-    base_name="nominal", for_wmass=True, addhelicity=False, storage_type=hist.storage.Double()
+    base_name="nominal", for_wmass=True, addhelicity=False, nhelicity=6, storage_type=hist.storage.Double()
 ):
     logger.debug(f"Make theory histograms for {dataset_name} dataset, histogram {base_name}")
     axis_ptVgen = hist.axis.Variable(
@@ -904,14 +929,16 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
     if isZ:
         df = define_sin2theta_weights(df, dataset_name)
 
-    add_pdf_hists(results, df, dataset_name, axes, cols, args.pdfs, base_name=base_name, addhelicity=addhelicity, storage_type=storage_type)
-    add_qcdScale_hist(results, df, scale_axes, scale_cols, base_name=base_name, addhelicity=addhelicity, storage_type=storage_type)
+    # common kwargs
+    info = dict(base_name=base_name, addhelicity=addhelicity, nhelicity=nhelicity, storage_type=storage_type)
+
+    add_pdf_hists(results, df, dataset_name, axes, cols, args.pdfs, **info)
+    add_qcdScale_hist(results, df, scale_axes, scale_cols, **info)
 
     theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
     if theory_corrs and dataset_name in corr_helpers:
-        results.extend(theory_tools.make_theory_corr_hists(df, base_name, axes, cols, 
-            corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, storage_type=storage_type)
-        )
+        add_theory_corr_hists(results, df, axes, cols, 
+            corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, **info)
 
     if "gen" in base_name:
         df = df.Define("helicity_moments_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhigen, scaleWeights_tensor, nominal_weight)")
@@ -947,13 +974,12 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         # should probably remove the charge here, because the Z only has a single charge and the pt distribution does not depend on which charged lepton is selected
 
         if qcdScaleByHelicity_helper is not None:
-            add_qcdScaleByHelicityUnc_hist(results, df, qcdScaleByHelicity_helper, scale_axes, scale_cols, 
-                base_name=base_name, addhelicity=addhelicity, storage_type=storage_type)
+            add_qcdScaleByHelicityUnc_hist(results, df, qcdScaleByHelicity_helper, scale_axes, scale_cols, **info)
 
         # TODO: Should have consistent order here with the scetlib correction function
-        add_massweights_hist(results, df, axes, cols, proc=dataset_name, base_name=base_name, addhelicity=addhelicity, storage_type=storage_type)
-        add_widthweights_hist(results, df, axes, cols, proc=dataset_name, base_name=base_name, storage_type=storage_type)
+        add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
+        add_widthweights_hist(results, df, axes, cols, proc=dataset_name, **info)
         if isZ:
-            add_sin2thetaweights_hist(results, df, axes, cols, proc=dataset_name, base_name=base_name, storage_type=storage_type)
+            add_sin2thetaweights_hist(results, df, axes, cols, proc=dataset_name, **info)
 
     return df
