@@ -54,7 +54,7 @@ def make_parser(parser=None):
     parser.add_argument("-x", "--excludeNuisances", type=str, default="", help="Regular expression to exclude some systematics from the datacard")
     parser.add_argument("-k", "--keepNuisances", type=str, default="", help="Regular expression to keep some systematics, overriding --excludeNuisances. Can be used to keep only some systs while excluding all the others with '.*'")
     parser.add_argument("--absolutePathInCard", action="store_true", help="In the datacard, set Absolute path for the root file where shapes are stored")
-    parser.add_argument("-n", "--baseName", type=str, nargs='*', default="nominal", help="Histogram name in the file (e.g., 'nominal')")
+    parser.add_argument("-n", "--baseName", type=str, nargs='+', default=["nominal"], help="Histogram name in the file (e.g., 'nominal')")
     parser.add_argument("--noHist", action='store_true', help="Skip the making of 2D histograms (root file is left untouched if existing)")
     parser.add_argument("--qcdProcessName" , type=str, default=None, help="Name for QCD process (by default taken from datagroups object")
     # setting on the fit behaviour
@@ -64,7 +64,7 @@ def make_parser(parser=None):
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
     parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
-    parser.add_argument("--lumiScale", type=float, nargs='*', default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
+    parser.add_argument("--lumiScale", type=float, nargs='+', default=[1.0], help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
     parser.add_argument("--lumiScaleVarianceLinearly", type=str, nargs='*', default=[], choices=["data", "mc"], help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.")
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
@@ -1169,8 +1169,8 @@ def main(args, xnorm=False):
     checkSysts = forceNonzero
 
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
-    iBaseName = args.baseName[0] if isinstance(args.baseName, list) else args.baseName
-    iLumiScale = args.lumiScale[0] if isinstance(args.lumiScale, list) else args.lumiScale
+    iBaseName = args.baseName[0]
+    iLumiScale = args.lumiScale[0]
     cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm)
     cardTool.setOutput(outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool))
     cardTool.writeOutput(args=args, forceNonzero=forceNonzero, check_systs=checkSysts)
@@ -1213,8 +1213,8 @@ if __name__ == "__main__":
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            iBaseName = args.baseName[i] if isinstance(args.baseName, list) else args.baseName
-            iLumiScale = args.lumiScale[i] if isinstance(args.lumiScale, list) else args.lumiScale
+            iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
+            iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
             cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
