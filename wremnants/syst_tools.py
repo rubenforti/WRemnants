@@ -657,11 +657,12 @@ def add_luminosity_unc_hists(results, df, args, axes, cols, base_name="nominal",
 
 
 def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_central_weight, isW, base_name="nominal", **kwargs):
-    results = []
-    
+   
     for i, generator in enumerate(generators):
         if generator not in helpers:
             continue
+
+        logger.debug(f"Now ar generator {i}: {generator}")
         
         if i == 0 and modify_central_weight:
             add_syst_hist(results, df, f"{base_name}_uncorr", axes, cols, "nominal_weight_uncorr", **kwargs)
@@ -867,6 +868,8 @@ def add_muonscale_hist(results, df, netabins, mag, isW, axes, cols, base_name="n
     name = Datagroups.histName(base_name, syst=f"muonScaleSyst")
     add_syst_hist(results, df, name, axes, cols, f"muonScaleDummy{netabins}Bins{muon_eta}", [common.down_up_axis, scale_etabins_axis], **kwargs)
 
+    return df
+
 
 def add_muonscale_smeared_hist(results, df, netabins, mag, isW, axes, cols, base_name="nominal", muon_eta="goodMuons_eta0", *kwargs):
     # add_muonscale_hist has to be called first such that "muonScaleDummy{netabins}Bins{muon_eta}" is defined
@@ -875,6 +878,8 @@ def add_muonscale_smeared_hist(results, df, netabins, mag, isW, axes, cols, base
     scale_etabins_axis = hist.axis.Regular(netabins, -2.4, 2.4, name="scaleEtaSlice", underflow=False, overflow=False)
     name = Datagroups.histName(base_name, syst="muonScaleSyst_gen_smear")
     add_syst_hist(results, df, name, axes, cols, f"muonScaleDummy{netabins}Bins{muon_eta}", [common.down_up_axis, scale_etabins_axis], **kwargs)
+
+    return df
 
 
 def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
