@@ -36,13 +36,27 @@ from scripts.analysisTools.plotUtils.utility import *
 
 def getBetterLabel(k, isWlike):
     if k == "binByBinStat":
-        label = "MC_stat" if isWlike else "MCandFakes_stat"
+        label = "MC stat" if isWlike else "MC + QCD bkg stat"
     elif k == "stat":
-        label = "data_stat"
-    # elif k == "muon_eff_stat":
-    #     label = "Total eff_stat"
-    # elif k == "muon_eff_syst":
-    #     label = "Total eff_syst"
+        label = "Data stat"
+    elif k == "muon_eff_all":
+        label = "Muon efficiency"
+    elif k == "muonCalibration":
+        label = "Muon calibration"
+    elif k == "Fake":
+        label = "QCD bkg syst"
+    elif k == "angularCoeffs":
+        label = "Angular coefficients"
+    elif k == "pTModeling":
+        label = "p_{T}^{V} modeling"
+    elif k == "theory_ew":
+        label = "EW higher orders"
+    elif k == "Widthw":
+        label = "#Gamma_{W}"
+    elif k == "ZmassAndWidth":
+        label = "m_{Z} + #Gamma_{Z}"
+    elif k == "sin2thetaZ":
+        label = "sin^{2}#theta_{W}"
     elif "QCDscale" in k:
         if k == "QCDscaleWMiNNLO":
             label = "Angular coefficients W"
@@ -50,6 +64,8 @@ def getBetterLabel(k, isWlike):
             label = "Angular coefficients Z"
         else:
             label = "Angular coefficients" # "A_{i}"
+    elif all(x not in k for x in ["pdf", "CMS"]):
+        label = k.capitalize()
     else:
         label = k
     return label
@@ -234,7 +250,7 @@ if __name__ == "__main__":
         quit()
             
     if args.showTotal:
-        h1.GetXaxis().SetBinLabel(nbins,"total")
+        h1.GetXaxis().SetBinLabel(nbins,"Total")
         h1.SetBinContent(nbins,totalUncertainty_mW)
         if compare:
             h2.SetBinContent(nbins,totalUncertainty_mW_alt)

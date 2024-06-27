@@ -131,12 +131,14 @@ def prepareChargeFit(options, charges=["plus"]):
             metafilename = metafilename.replace('.hdf5','_%s.hdf5' % postfix)
 
         bbboptions = " --binByBinStat "
+        globImpTag = ""
         if not options.noCorrelateXsecStat: bbboptions += "--correlateXsecStat "
         combineCmd = 'combinetf.py -t -1 {bbb} {metafile} --doImpacts --saveHists --computeHistErrors '.format(metafile=metafilename, bbb="" if options.noBBB else bbboptions)
         if options.combinetfOption:
             combineCmd += " %s" % options.combinetfOption
         if args.globalImpacts:
             combineCmd += " --globalImpacts"
+            globImpTag = "_globImp"
         if args.theoryAgnostic:
             combineCmd += " --POIMode mu --allowNegativePOI"
         else:
@@ -156,9 +158,9 @@ def prepareChargeFit(options, charges=["plus"]):
         combineCmd_toys = combineCmd.replace("-t -1 ", "-t {} ".format(options.toys))
 
         bbbtext = "0" if options.noBBB else "1_cxs0" if options.noCorrelateXsecStat else "1_cxs1"
-        combineCmd_data   = combineCmd_data + " --postfix Data{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_data, b=bbbtext)
-        combineCmd_Asimov = combineCmd      + " --postfix Asimov{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_Asimov, b=bbbtext)
-        combineCmd_toys   = combineCmd_toys + " --postfix Toys{pf}_bbb{b} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_toys,  b=bbbtext)
+        combineCmd_data   = combineCmd_data + " --postfix Data{pf}_bbb{b}{git} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_data, b=bbbtext, git=globImpTag)
+        combineCmd_Asimov = combineCmd      + " --postfix Asimov{pf}_bbb{b}{git} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_Asimov, b=bbbtext, git=globImpTag)
+        combineCmd_toys   = combineCmd_toys + " --postfix Toys{pf}_bbb{b}{git} --outputDir {od} ".format(pf=fitPostfix, od=fitdir_toys,  b=bbbtext, git=globImpTag)
         if not options.skip_combinetf and not options.skipFitData:
             safeSystem(combineCmd_data, dryRun=options.dryRun)
         else:
