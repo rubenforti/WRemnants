@@ -1315,12 +1315,13 @@ def make_pixel_multiplicity_helpers(filename = f"{common.data_dir}/calibration/p
     h1var = h1.variances(flow=True)
     num = h0val
     den = h0val + h1val
-    p0 = num/den
-    p0var = 1./den**4*(h1val**2*h0var + h0val**2*h1var)
+
+    p0 = np.divide(num, den, out=np.zeros_like(num), where=den!=0)
+    p0var = np.divide(1., den**4, out=np.zeros_like(den), where=den!=0) * (h1val**2*h0var + h0val**2*h1var)
 
     hp0 = hist.Hist(*h0.axes, storage = hist.storage.Weight())
-    hp0.values(flow=True)[...] = np.where(den==0., 0., p0)
-    hp0.variances(flow=True)[...] = np.where(den==0., 0., p0var)
+    hp0.values(flow=True)[...] = p0
+    hp0.variances(flow=True)[...] = p0var
 
     axis_nvalidpixel = hist.axis.Variable([-0.5, 0.5, np.inf], name = "nvalidpixel")
 
