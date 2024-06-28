@@ -1,5 +1,5 @@
 from utilities import differential, common, logging
-from wremnants import syst_tools, theory_tools, theory_corrections
+from wremnants import syst_tools, theory_tools, theory_corrections, theoryAgnostic_tools
 from copy import deepcopy
 import hist
 import numpy as np
@@ -161,8 +161,10 @@ def add_xnorm_histograms(results, df, args, dataset_name, corr_helpers, qcdScale
     xnorm_cols = ["xnorm", *unfolding_cols]
 
     if add_helicity_axis:
-        from wremnants.helicity_utils import axis_helicit
-        results.append(df_xnorm.HistoBoost("xnorm", xnorm_axes, [*xnorm_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))  
+        df_xnorm = theoryAgnostic_tools.define_helicity_weights(df_xnorm)
+
+        from wremnants.helicity_utils import axis_helicity_multidim
+        results.append(df_xnorm.HistoBoost("xnorm", xnorm_axes, [*xnorm_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity_multidim]))  
     else:
         results.append(df_xnorm.HistoBoost("xnorm", xnorm_axes, [*xnorm_cols, "nominal_weight"]))
 
@@ -177,6 +179,7 @@ def add_xnorm_histograms(results, df, args, dataset_name, corr_helpers, qcdScale
         xnorm_cols, 
         base_name="xnorm", 
         addhelicity=add_helicity_axis,
+        nhelicity=9,
     )
 
 def reweight_to_fitresult(fitresult, axes, poi_type = "nois", cme = 13, process = "Z", expected = False, flow=True):

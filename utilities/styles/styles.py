@@ -111,7 +111,8 @@ common_groups = [
     "theory_ew",
     "normXsecW",
     "width",
-    "ZmassAndWidth"
+    "ZmassAndWidth",
+    "massAndWidth"
 ]
 nuisance_groupings = {
     "super":[
@@ -123,7 +124,7 @@ nuisance_groupings = {
         "muonCalibration",
     ],
     "max": common_groups + [
-        "massShift",
+        # "massShift",
         "QCDscale", 
         "pdfCT18Z",
         "resum",

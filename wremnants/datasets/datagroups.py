@@ -560,6 +560,7 @@ class Datagroups(object):
             return
 
         self.all_gen_axes = args.get("genAxes", [])
+        self.all_gen_axes = [n for n in self.all_gen_axes]
 
         if self.mode[0] == "w":
             self.all_gen_axes = ["qGen", *self.all_gen_axes]

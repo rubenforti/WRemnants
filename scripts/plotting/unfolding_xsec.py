@@ -34,7 +34,7 @@ parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
-parser.add_argument("--selectionAxes", type=str, default=["qGen", ], 
+parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig"], 
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
@@ -171,8 +171,9 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     rrange = args.rrange
 
     if args.ylim is None:
-        ymax = max((hist_xsec.values()+np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1))
-        ylim = (0, 1.4 * ymax)
+        ymax = max(0, max((hist_xsec.values()+np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1)))
+        ymin = min(0, min((hist_xsec.values()-np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1)))
+        ylim = (1.4 * ymin, 1.4 * ymax)
     else:
         ylim = args.ylim
 
@@ -771,7 +772,18 @@ for poi_type, poi_result in result.items():
                         if len(other_axes) == 0:
                             continue
                         logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
-                        suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs.items()])
+                        suffix = channel
+                        for a, i in idxs.items():
+                            if isinstance(hist_nominal.axes[a], hist.axis.Integer):
+                                label = int(hist_nominal.axes[a].edges[i])
+                                if a == "helicitySig":
+                                    if i == 0:
+                                        label = "SigmaUL"
+                                    else:
+                                        label = f"Sigma{label}"
+                            else:
+                                label = f"{a}{i}"
+                            suffix += f"_{label}"
                         h_nominal = hist_nominal[idxs]
                         h_stat = hist_stat[idxs]
                         if args.reference:

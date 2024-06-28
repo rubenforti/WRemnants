@@ -216,7 +216,7 @@ def set_subparsers(subparser, name, analysis_label):
         if analysis_label not in axmap:
             raise ValueError(f"Unknown analysis {analysis_label}!")
         subparser.add_argument("--genAxes", type=str, nargs="+", 
-                               default=axmap[analysis_label], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen", "helicity"],
+                               default=axmap[analysis_label], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen", "helicitySig"],
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
                                help="Generator level definition for unfolding")
