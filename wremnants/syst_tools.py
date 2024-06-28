@@ -343,7 +343,7 @@ def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], reb
     hist_in = hist_in[sum_expr]
     axisNames = hist_in.axes.name
 
-    gen_sum_expr = {genAxis : s[::hist.sum] for genAxis in gen_axes if genAxis in axisNames}
+    gen_sum_expr = {n : s[::hist.sum] for n in gen_axes if n in axisNames}
     if len(gen_sum_expr) == 0:
         # all the axes have already been projected out, nothing else to do
         return hist_in
@@ -351,7 +351,10 @@ def hist_to_variations(hist_in, gen_axes = [], sum_axes = [], rebin_axes=[], reb
     nom_hist = hist_in[{"vars" : 0}]
     nom_hist_sum = nom_hist[gen_sum_expr]
 
-    variation_data = hist_in.view(flow=True) - nom_hist.view(flow=True)[..., None] + nom_hist_sum.view(flow=True)[..., *len(gen_sum_expr)*[None], None]
+    # slices to broadcast nom_hist and nom_hist_sum to hist_in shape
+    slices_nom = [slice(None) if n in nom_hist.axes.name else np.newaxis for n in hist_in.axes.name]
+    slices_nom_sum = [slice(None) if n in nom_hist_sum.axes.name else np.newaxis for n in hist_in.axes.name]
+    variation_data = hist_in.view(flow=True) - nom_hist.view(flow=True)[*slices_nom] + nom_hist_sum.view(flow=True)[*slices_nom_sum]
 
     variation_hist = hist.Hist(*hist_in.axes, storage = hist_in._storage_type(),
                                      name = out_name, data = variation_data)
@@ -371,6 +374,12 @@ def uncertainty_hist_from_envelope(h, proj_ax, entries):
 def add_syst_hist(results, df, name, axes, cols, tensor_name=None, tensor_axes=[], addhelicity=False, nhelicity=6, storage_type=hist.storage.Double()):
     """
     Add hist to results list
+
+    Args:
+        tensor_name (str): name of tensor defined as column in df (scalar weight or multi dimensional tensor; none for unweighted)
+        tensor_axes (list): list of axes corresponding to the tensor
+        addhelicity (bool): Add the helicity axis to the histogram
+        nhelicity (int): Take first nhelicity bins of helicity tensor
     """
     if not isinstance(tensor_axes, (list, tuple)):
         tensor_axes = [tensor_axes]
@@ -650,10 +659,20 @@ def add_qcdScaleByHelicityUnc_hist(results, df, helper, axes, cols, base_name="n
     add_syst_hist(results, df, name, axes, cols, tensorName, helper.tensor_axes, **kwargs)
 
 
+def add_QCDbkg_jetPt_hist(results, df, axes, cols, base_name="nominal", jet_pt=30, **kwargs):
+    # branching the rdataframe to add special filter, no need to return dQCDbkGVar
+    name = Datagroups.histName(base_name, syst=f"qcdJetPt{str(jet_pt)}")
+    dQCDbkGVar = df.Define(f"goodCleanJetsPt{jet_pt}", f"goodCleanJetsNoPt && Jet_pt > {jet_pt}")
+    dQCDbkGVar = dQCDbkGVar.Filter(f"passMT || Sum(goodCleanJetsPt{jet_pt})>=1")
+    add_syst_hist(results, dQCDbkGVar, name, axes, cols, "nominal_weight", **kwargs)
+
+
 def add_luminosity_unc_hists(results, df, args, axes, cols, base_name="nominal", **kwargs):
     name = Datagroups.histName(base_name, syst="luminosity")
     df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
     add_syst_hist(results, df, name, axes, cols, "luminosityScaling", common.down_up_axis, **kwargs)
+
+    return df
 
 
 def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_central_weight, isW, base_name="nominal", **kwargs):
