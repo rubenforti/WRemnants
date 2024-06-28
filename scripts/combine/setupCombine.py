@@ -58,7 +58,7 @@ def make_parser(parser=None):
     parser.add_argument("-x", "--excludeNuisances", type=str, default="", help="Regular expression to exclude some systematics from the datacard")
     parser.add_argument("-k", "--keepNuisances", type=str, default="", help="Regular expression to keep some systematics, overriding --excludeNuisances. Can be used to keep only some systs while excluding all the others with '.*'")
     parser.add_argument("--absolutePathInCard", action="store_true", help="In the datacard, set Absolute path for the root file where shapes are stored")
-    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (e.g., 'nominal')", default="nominal")
+    parser.add_argument("-n", "--baseName", type=str, nargs='+', default=["nominal"], help="Histogram name in the file (e.g., 'nominal')")
     parser.add_argument("--noHist", action='store_true', help="Skip the making of 2D histograms (root file is left untouched if existing)")
     parser.add_argument("--qcdProcessName" , type=str, default=None, help="Name for QCD process (by default taken from datagroups object")
     # setting on the fit behaviour
@@ -68,7 +68,7 @@ def make_parser(parser=None):
     parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
     parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
     parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
-    parser.add_argument("--lumiScale", type=float, default=1.0, help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
+    parser.add_argument("--lumiScale", type=float, nargs='+', default=[1.0], help="Rescale equivalent luminosity by this value (e.g. 10 means ten times more data and MC)")
     parser.add_argument("--lumiScaleVarianceLinearly", type=str, nargs='*', default=[], choices=["data", "mc"], help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.")
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
@@ -103,9 +103,9 @@ def make_parser(parser=None):
     parser.add_argument("--massVariation", type=float, default=100, help="Variation of boson mass")
     parser.add_argument("--ewUnc", type=str, nargs="*", default=["renesanceEW", "powhegFOEW"], help="Include EW uncertainty (other than pure ISR or FSR)",
         choices=[x for x in theory_corrections.valid_theory_corrections() if ("ew" in x or "EW" in x) and "ISR" not in x and "FSR" not in x])
-    parser.add_argument("--isrUnc", type=str, nargs="*", default=["pythiaew_ISR",], help="Include ISR uncertainty", 
+    parser.add_argument("--isrUnc", type=str, nargs="*", default=["pythiaew_ISR",], help="Include ISR uncertainty",
         choices=[x for x in theory_corrections.valid_theory_corrections() if "ew" in x and "ISR" in x])
-    parser.add_argument("--fsrUnc", type=str, nargs="*", default=["horaceqedew_FSR", "horacelophotosmecoffew_FSR"], help="Include FSR uncertainty", 
+    parser.add_argument("--fsrUnc", type=str, nargs="*", default=["horaceqedew_FSR", "horacelophotosmecoffew_FSR"], help="Include FSR uncertainty",
         choices=[x for x in theory_corrections.valid_theory_corrections() if "ew" in x and "FSR" in x])
     parser.add_argument("--skipSignalSystOnFakes" , action="store_true", help="Do not propagate signal uncertainties on fakes, mainly for checks.")
     parser.add_argument("--noQCDscaleFakes", action="store_true", help="Do not apply QCd scale uncertainties on fakes, mainly for debugging")
@@ -142,7 +142,8 @@ def make_parser(parser=None):
 
     return parser
 
-def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
+
+def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, xnorm=False):
 
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -171,7 +172,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
         datagroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, args.rebinBeforeSelection, rename=False)
 
     wmass = datagroups.mode[0] == "w"
-    wlike = "wlike" in datagroups.mode 
+    wlike = "wlike" in datagroups.mode
     lowPU = "lowpu" in datagroups.mode
     # Detect lowpu dilepton
     dilepton = "dilepton" in datagroups.mode or any(x in ["ptll", "mll"] for x in fitvar)
@@ -201,6 +202,9 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
     if args.fitXsec:
         datagroups.unconstrainedProcesses.append(base_group)
 
+    if lowPU and ((args.fakeEstimation != 'simple') or (args.binnedFakeEstimation == False)):
+        logger.error(f"When running lowPU mode, fakeEstimation should be set to 'simple' and binnedFakeEstimation set.")
+
     if "run" in fitvar:
         # in case fit is split by runs/ cumulated lumi
         # run axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
@@ -223,13 +227,13 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             # creating the xnorm model (e.g. for the theory fit)
             if wmass and "qGen" in fitvar:
                 # add gen charge as additional axis
-                datagroups.groups[base_group].memberOp = [ (lambda h, m=member: hh.addGenChargeAxis(h, 
+                datagroups.groups[base_group].memberOp = [ (lambda h, m=member: hh.addGenChargeAxis(h,
                     idx=0 if "minus" in m.name else 1)) for member in datagroups.groups[base_group].members]
                 xnorm_axes = ["qGen", *datagroups.gen_axes_names]
             else:
                 xnorm_axes = datagroups.gen_axes_names[:]
             datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar])
-    
+
     if isPoiAsNoi:
         constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if genvar is None else genvar
@@ -241,7 +245,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
         if isTheoryAgnostic:
             constrainMass = False
             hasSeparateOutOfAcceptanceSignal = False
-            for g in datagroups.groups.keys():                
+            for g in datagroups.groups.keys():
                 logger.debug(f"{g}: {[m.name for m in datagroups.groups[g].members]}")
             # check if the out-of-acceptance signal process exists as an independent process
             if any(m.name.endswith("OOA") for m in datagroups.groups[base_group].members):
@@ -309,20 +313,20 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                 axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
-        
+
         # out of acceptance contribution
         to_del = [m for m in datagroups.groups[base_group].members if not m.name.endswith("OOA")]
         if len(datagroups.groups[base_group].members) == len(to_del):
             datagroups.deleteGroup(base_group)
         else:
-            datagroups.groups[base_group].deleteMembers(to_del)    
+            datagroups.groups[base_group].deleteMembers(to_del)
 
     if args.qcdProcessName:
         datagroups.fakeName = args.qcdProcessName
 
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(datagroups.getNames(), args.baseName, mode=args.fakeEstimation,
+        datagroups.set_histselectors(datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
                                      smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
                                      integrate_x="mt" not in fitvar,
                                      simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
@@ -356,14 +360,14 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
         if (isUnfolding or isTheoryAgnostic) and args.forceRecoChargeAsGen:
             cardTool.setExcludeProcessForChannel("plus", ".*qGen0")
             cardTool.setExcludeProcessForChannel("minus", ".*qGen1")
-    
+
     if xnorm:
         histName = "xnorm"
         cardTool.setHistName(histName)
         cardTool.setNominalName(histName)
     else:
-        cardTool.setHistName(args.baseName)
-        cardTool.setNominalName(args.baseName)
+        cardTool.setHistName(inputBaseName)
+        cardTool.setNominalName(inputBaseName)
         
     # define sumGroups for integrated cross section
     if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
@@ -398,7 +402,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
 
             if wmass and not xnorm:
                     pseudodataGroups.fakerate_axes=args.fakerateAxes
-                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, mode=args.fakeEstimation,
+                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
                     smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
                     integrate_x="mt" not in fitvar,
                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
@@ -412,7 +416,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
-            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), args.baseName, 
+            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, 
                 mode=args.fakeEstimation, fake_processes=["QCD",], smoothen=not args.binnedFakeEstimation, 
                 simultaneousABCD=simultaneousABCD, 
                 )
@@ -421,21 +425,21 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             pseudodataGroups.fakerate_axes=args.fakerateAxes
         if args.axlim or args.rebin or args.absval:
             pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
-        
+
         cardTool.setPseudodataDatagroups(pseudodataGroups)
 
-    cardTool.setLumiScale(args.lumiScale, args.lumiScaleVarianceLinearly)
+    cardTool.setLumiScale(inputLumiScale, args.lumiScaleVarianceLinearly)
 
     if not isTheoryAgnostic:
         logger.info(f"cardTool.allMCProcesses(): {cardTool.allMCProcesses()}")
-        
+
     passSystToFakes = wmass and not (simultaneousABCD or xnorm or args.skipSignalSystOnFakes) and cardTool.getFakeName() != "QCD" and (excludeGroup != None and cardTool.getFakeName() not in excludeGroup) and (filterGroup == None or args.qcdProcessName in filterGroup)
 
     # TODO: move to a common place if it is  useful
     def assertSample(name, startsWith=["W", "Z"], excludeMatch=[]):
         return any(name.startswith(init) for init in startsWith) and all(excl not in name for excl in excludeMatch)
 
-    dibosonMatch = ["WW", "WZ", "ZZ"] 
+    dibosonMatch = ["WW", "WZ", "ZZ"]
     WMatch = ["W"] # TODO: the name of out-of-acceptance might be changed at some point, maybe to WmunuOutAcc, so W will match it as well (and can exclude it using "OutAcc" if needed)
     ZMatch = ["Z"]
     signalMatch = WMatch if wmass else ZMatch
@@ -488,7 +492,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             systAxes=fakerate_axes_syst,
             action=syst_tools.make_fakerate_variation,
             actionArgs=dict(
-                fakerate_axes=args.fakerateAxes, 
+                fakerate_axes=args.fakerateAxes,
                 fakerate_axes_syst=fakerate_axes_syst),
         )
         # Normalization parameters
@@ -504,7 +508,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             noConstraint=True,
             mirror=True,
             systAxes=fakenorm_axes_syst,
-            action=lambda h: 
+            action=lambda h:
                 hh.addHists(h,
                     hh.expand_hist_by_duplicate_axes(h, fakenorm_axes, fakenorm_axes_syst),
                     scale2=0.1)
@@ -548,7 +552,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                     systAxes=["massShift", *new_names],
                     passToFakes=passSystToFakes,
                     actionRequiresNomi=True,
-                    action=syst_tools.decorrelateByAxes, 
+                    action=syst_tools.decorrelateByAxes,
                     actionArgs=dict(
                         axesToDecorrNames=args.fitMassDecorr, newDecorrAxesNames=new_names, axlim=args.decorrAxlim, rebin=args.decorrRebin, absval=args.decorrAbsval)
                 )
@@ -571,28 +575,28 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             if args.fitMassDiff == "charge":
                 cardTool.addSystematic(**mass_diff_args,
                     # # on gen level based on the sample, only possible for mW
-                    # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown")) 
+                    # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown"))
                     #     for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
                     # on reco level based on reco charge
-                    preOpMap={m.name: (lambda h: 
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0) 
+                    preOpMap={m.name: (lambda h:
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0)
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "cosThetaStarll":
-                cardTool.addSystematic(**mass_diff_args, 
-                    preOpMap={m.name: (lambda h: 
+                cardTool.addSystematic(**mass_diff_args,
+                    preOpMap={m.name: (lambda h:
                         hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):])
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "eta-sign":
-                cardTool.addSystematic(**mass_diff_args, 
-                    preOpMap={m.name: (lambda h: 
+                cardTool.addSystematic(**mass_diff_args,
+                    preOpMap={m.name: (lambda h:
                         hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):])
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
             elif args.fitMassDiff == "eta-range":
-                cardTool.addSystematic(**mass_diff_args, 
-                    preOpMap={m.name: (lambda h: 
+                cardTool.addSystematic(**mass_diff_args,
+                    preOpMap={m.name: (lambda h:
                         hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):])
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
@@ -600,16 +604,16 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                 # 3 bins, use 3 unconstrained parameters: mass; mass0 - mass2; mass0 + mass2 - mass1
                 mass_diff_args["rename"] = f"massDiff1{suffix}{label}"
                 mass_diff_args["systNameReplace"] = [("Shift",f"Diff1{suffix}")]
-                cardTool.addSystematic(**mass_diff_args, 
+                cardTool.addSystematic(**mass_diff_args,
                     preOpMap={m.name: (lambda h: hh.swap_histogram_bins(
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 2), # invert for mass2 
+                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 2), # invert for mass2
                         "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
                 mass_diff_args["rename"] = f"massDiff2{suffix}{label}"
                 mass_diff_args["systNameReplace"] = [("Shift",f"Diff2{suffix}")]
-                cardTool.addSystematic(**mass_diff_args, 
-                    preOpMap={m.name: (lambda h: 
+                cardTool.addSystematic(**mass_diff_args,
+                    preOpMap={m.name: (lambda h:
                         hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1)
                         ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
                 )
@@ -855,11 +859,11 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
     if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (not args.binnedFakeEstimation or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
         syst_axes = ["eta", "charge"] if (not args.binnedFakeEstimation or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
-            name=args.baseName, 
+            name=inputBaseName, 
             group="Fake",
-            processes=cardTool.getFakeName(), 
-            noConstraint=False, 
-            mirror=False, 
+            processes=cardTool.getFakeName(),
+            noConstraint=False,
+            mirror=False,
             scale=1,
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
@@ -912,7 +916,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                     else:
                         axes = ["SF eta", "nPtEigenBins", "SF charge"]
                     axlabels = ["eta", "pt", "q"]
-                    nameReplace = nameReplace + [("effStatTnP_sf_", "effStat_")]           
+                    nameReplace = nameReplace + [("effStatTnP_sf_", "effStat_")]
                     scale = 1
                     groupName = "muon_eff_stat"
                     splitGroupDict = {f"{groupName}_{x}" : f".*effStat.*{x}" for x in effStatTypes}
@@ -921,7 +925,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                     scale /= math.sqrt(args.effStatLumiScale)
 
                 cardTool.addSystematic(
-                    name, 
+                    name,
                     mirror=mirror,
                     mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                     group=groupName,
@@ -983,7 +987,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                         else:
                             axes = ["SF eta", "nPtEigenBins", "SF charge"]
                         axlabels = ["eta", "pt", "q"]
-                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]           
+                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
                         scale = 1.0
                         groupName = "muon_eff_stat_veto"
                         splitGroupDict = {"muon_eff_all" : ".*"}
@@ -991,7 +995,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                         scale /= math.sqrt(args.effStatLumiScale)
 
                     cardTool.addSystematic(
-                        name, 
+                        name,
                         mirror=mirror,
                         mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                         group=groupName,
@@ -1015,11 +1019,11 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                 cardTool.addSystematic(lepEff,
                     processes=cardTool.allMCProcesses(),
                     mirror = True,
-                    group="CMS_lepton_eff", 
+                    group="CMS_lepton_eff",
                     splitGroup = {"experiment": ".*"},
                     baseName=lepEff,
                     systAxes = ["tensor_axis_0"],
-                    labelsByAxis = [""], 
+                    labelsByAxis = [""],
                 )
 
     if (wmass or wlike) and input_tools.args_from_metadata(cardTool, "recoilUnc"):
@@ -1038,7 +1042,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                 splitGroup = {"experiment": ".*"},
                 baseName="CMS_prefire17",
                 systAxes = ["downUpVar"],
-                labelsByAxis = ["downUpVar"], 
+                labelsByAxis = ["downUpVar"],
             )
 
         return cardTool
@@ -1065,7 +1069,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
 
     # msv_config = msv_config_dict[args.muonScaleVariation]
 
-    # cardTool.addSystematic(msv_config['hist_name'], 
+    # cardTool.addSystematic(msv_config['hist_name'],
     #     processes=['single_v_samples' if wmass else 'single_vmu_samples'],
     #     group="muonCalibration",
     #     baseName="CMS_scale_m_",
@@ -1074,28 +1078,28 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
     #     passToFakes=passSystToFakes,
     #     scale = args.scaleMuonCorr,
     # )
-    cardTool.addSystematic("muonL1PrefireSyst", 
+    cardTool.addSystematic("muonL1PrefireSyst",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},        
+        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
         baseName="CMS_prefire_syst_m",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
         passToFakes=passSystToFakes,
     )
-    cardTool.addSystematic("muonL1PrefireStat", 
+    cardTool.addSystematic("muonL1PrefireStat",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},        
+        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
         baseName="CMS_prefire_stat_m_",
         systAxes=["downUpVar", "etaPhiRegion"],
         labelsByAxis=["downUpVar", "etaPhiReg"],
         passToFakes=passSystToFakes,
     )
-    cardTool.addSystematic("ecalL1Prefire", 
+    cardTool.addSystematic("ecalL1Prefire",
         processes=['MCnoQCD'],
         group="ecalPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},        
+        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
         baseName="CMS_prefire_ecal",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -1150,7 +1154,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             scale = scaleM,
         )
     if not input_tools.args_from_metadata(cardTool, "noSmearing"):
-        cardTool.addSystematic("muonResolutionSyst_responseWeights", 
+        cardTool.addSystematic("muonResolutionSyst_responseWeights",
             mirror = True,
             processes=['single_v_samples'],
             group="resolutionCrctn",
@@ -1183,7 +1187,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
         )
 
     if "run" in fitvar:
-        # add ad-hoc normalization uncertainty uncorrelated across run bins 
+        # add ad-hoc normalization uncertainty uncorrelated across run bins
         #   accounting for time instability (e.g. reflecting the corrections applied as average like pileup, prefiring, ...)
         cardTool.addSystematic(
             name=cardTool.nominalName,
@@ -1195,7 +1199,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             mirror=True,
             labelsByAxis=[f"run"],
             systAxes=["run_"],
-            action=lambda h: 
+            action=lambda h:
                 hh.addHists(h,
                     hh.expand_hist_by_duplicate_axis(h, "run", "run_"),
                     scale2=0.01)
@@ -1212,7 +1216,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             passToFakes=passSystToFakes,
             scale = args.calibrationStatScaling,
             actionRequiresNomi=True,
-            action=syst_tools.decorrelateByAxes, 
+            action=syst_tools.decorrelateByAxes,
             actionArgs=dict(
                 axesToDecorrNames=["run"], newDecorrAxesNames=["run_"])
         )
@@ -1226,13 +1230,13 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
             systAxes=["unc", "downUpVar", "run_"],
             passToFakes=passSystToFakes,
             actionRequiresNomi=True,
-            action=syst_tools.decorrelateByAxes, 
+            action=syst_tools.decorrelateByAxes,
             actionArgs=dict(
                 axesToDecorrNames=["run"], newDecorrAxesNames=["run_"])
         )
 
         if not input_tools.args_from_metadata(cardTool, "noSmearing"):
-            cardTool.addSystematic("muonResolutionSyst_responseWeights", 
+            cardTool.addSystematic("muonResolutionSyst_responseWeights",
                 rename="muonResolutionSyst_responseWeightsDecorr",
                 mirror = True,
                 processes=['single_v_samples'],
@@ -1243,7 +1247,7 @@ def setup(args, inputFile, fitvar, genvar=None, xnorm=False):
                 passToFakes=passSystToFakes,
                 scale = args.resolutionStatScaling,
                 actionRequiresNomi=True,
-                action=syst_tools.decorrelateByAxes, 
+                action=syst_tools.decorrelateByAxes,
                 actionArgs=dict(
                     axesToDecorrNames=["run"], newDecorrAxesNames=["run_"])
             )
@@ -1256,7 +1260,7 @@ def analysis_label(card_tool):
     analysis_name_map = {
         "w_mass" : "WMass",
         "vgen" : "ZGen" if len(card_tool.getProcesses()) > 0 and card_tool.getProcesses()[0][0] == "Z" else "WGen",
-        "z_wlike" : "ZMassWLike", 
+        "z_wlike" : "ZMassWLike",
         "z_dilepton" : "ZMassDilepton",
         "w_lowpu" : "WMass_lowPU",
         "z_lowpu" : "ZMass_lowPU",
@@ -1284,7 +1288,9 @@ def main(args, xnorm=False):
     checkSysts = forceNonzero
 
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
-    cardTool = setup(args, args.inputFile[0], fitvar, xnorm)
+    iBaseName = args.baseName[0]
+    iLumiScale = args.lumiScale[0]
+    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm)
     cardTool.setOutput(outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool))
     cardTool.writeOutput(args=args, forceNonzero=forceNonzero, check_systs=checkSysts)
     return
@@ -1292,9 +1298,9 @@ def main(args, xnorm=False):
 if __name__ == "__main__":
     parser = make_parser()
     args = parser.parse_args()
-    
+
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
-    
+
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
@@ -1318,8 +1324,8 @@ if __name__ == "__main__":
         # The following is temporary, just to avoid passing the option explicitly
         logger.warning("For now setting theory agnostic without POI as NOI activates --doStatOnly")
         args.doStatOnly = True
-    
-    if args.hdf5: 
+
+    if args.hdf5:
         writer = HDF5Writer.HDF5Writer(sparse=args.sparse)
 
         if args.baseName == "xnorm":
@@ -1330,13 +1336,16 @@ if __name__ == "__main__":
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
             genvar = args.genAxes[i].split("-") if hasattr(args,"genAxes") else None
-            cardTool = setup(args, ifile, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
+            iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
+            iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
+            
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
             if isFloatingPOIs or isUnfolding:
                 fitvar = genvar if isPoiAsNoi else ["count"] 
-                cardTool = setup(args, ifile, fitvar, xnorm=True)
+                cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=True)
                 writer.add_channel(cardTool)
 
         if not args.skipSumGroups:

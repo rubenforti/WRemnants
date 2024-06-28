@@ -147,17 +147,16 @@ class TheoryHelper(object):
                     # to avoid underestimating the correlated part of the uncertainty
                     # (but scale it down to avoid double counting)
                     if self.args.muRmuFPolVar:
-                        # TODO avoid hardcoding this, which corresponds to the number of nodes
-                        # in the chebychev polynomials (number of degrees + 1)
-                        nptfine = 6
+                        # orthogonality of chebychev polynomials means that there is no
+                        # double counting with fully correlated uncertainty
+                        scale_inclusive = 1.
                     else:
                         fine_pt_binning = common.ptV_binning[::2]
                         nptfine = len(fine_pt_binning) - 1
+                        scale_inclusive = np.sqrt((nptfine - 1)/nptfine)
 
                         self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=fine_pt_binning, helicities_to_exclude=helicities_to_exclude)
 
-
-                    scale_inclusive = 1./np.sqrt(1. + 1./nptfine)
                     self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude, scale = scale_inclusive)
 
             # additional uncertainty for effect of shower and intrinsic kt on angular coeffs

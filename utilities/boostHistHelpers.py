@@ -50,13 +50,23 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
 
     return hist.Hist(*h2.axes, data=new_vals, storage=h1.storage_type())
 
-# returns h1/h2
 def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_val=1., flow=True, createNew=True, by_ax_name=True):
+    """ 
+        Parameters:
+        rel_unc (bool): Treat the divisor as a constant
+
+        Returns:
+        hist: h1/h2
+    """
     if allowBroadcast:
         h1 = broadcastSystHist(h1, h2, flow, by_ax_name)
         h2 = broadcastSystHist(h2, h1, flow, by_ax_name)
-
-    storage = h1.storage_type() if h1.storage_type == h2.storage_type else hist.storage.Double()
+    
+    if rel_unc:
+        storage = h1.storage_type()
+    else:
+        storage = h1.storage_type() if h1.storage_type == h2.storage_type else hist.storage.Double()
+    
     outh = hist.Hist(*h1.axes, storage=storage) if createNew else h1
 
     h1vals,h2vals,h1vars,h2vars = valsAndVariances(h1, h2, flow=flow)
@@ -82,7 +92,6 @@ def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_
         relvars = relVariances(h1vals, h2vals, h1vars, h2vars, cutoff=cutoff)
         val2 = np.multiply(val, val)
         if rel_unc:
-            # Treat the divisor as a constant
             var = np.multiply(val2, relvars[0], out=val2)
         else:
             relsum = np.add(*relvars)

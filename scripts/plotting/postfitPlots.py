@@ -56,16 +56,6 @@ elif os.path.isfile(args.infile.replace(".hdf5",".root")):
 else:
     raise IOError("Unknown source, input file must be either from combinetf2 or combinetf1 (in case of combinetf1 both .root and .hdf5 files must exist)")
 
-# order of the processes in the plots
-procs_sort = ["Wmunu", "Fake", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced"][::-1]
-
-def get_labels_colors_procs_sorted(procs):
-    procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
-    logger.info(f"Found processes {procs} in fitresult")
-    labels = [styles.process_labels.get(p, p) for p in procs]
-    colors = [styles.process_colors.get(p, "red") for p in procs]
-    return labels, colors, procs
-
 translate_selection = {
     "charge": {
         0 : "minus",
@@ -256,7 +246,7 @@ if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
     meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
-    labels, colors, procs = get_labels_colors_procs_sorted(procs)
+    labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     chi2=None
     if f"chi2_{fittype}" in fitresult:
@@ -276,7 +266,7 @@ else:
     import ROOT
 
     procs = [k.replace("expproc_","").replace(f"_{fittype};1", "") for k in fitresult.keys() if fittype in k and k.startswith("expproc_") and "hybrid" not in k]
-    labels, colors, procs = get_labels_colors_procs_sorted(procs)
+    labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     if "meta" in fitresult_h5py:
         # the fit was probably done on a file generated via the hdf5 writer and we can use the axes information
