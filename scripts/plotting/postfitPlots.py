@@ -275,7 +275,6 @@ else:
         for channel, info in meta["channel_info"].items():
             if channel.endswith("masked"):
                 continue
-
             shape = [len(a) for a in info["axes"]]
 
             ch_end = ch_start+np.product(shape) # in combinetf1 the channels are concatenated and we need to index one after the other
@@ -376,4 +375,4 @@ else:
         make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
-    output_tools.copy_to_eos(args.outpath, args.outfolder)
+    output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)

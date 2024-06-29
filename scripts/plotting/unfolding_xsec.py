@@ -827,4 +827,4 @@ for poi_type, poi_result in result.items():
                             )
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
-    output_tools.copy_to_eos(args.outpath, args.outfolder)
+    output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)

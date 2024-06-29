@@ -90,7 +90,7 @@ def read_impacts_poi(fileobject, group, poi, sort=True, add_total=True, stat=0.0
     elif is_root_file(fileobject):
         impacts, labels, norm, total = read_impacts_poi_root(fileobject, group, poi=poi)
     else:
-        raise IOError(f"Unknown format of fitresult {fitresult}")
+        raise IOError(f"Unknown format of fitresult {fileobject}")
 
     if sort:
         order = np.argsort(impacts)
