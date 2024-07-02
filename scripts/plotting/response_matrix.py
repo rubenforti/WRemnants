@@ -137,10 +137,13 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
                     else:
                         label = f"$\sigma_{label}$"                    
             else:
-                lo, hi = h2d.axes[sel2].edges[idx2], h2d.axes[sel2].edges[idx2+1]
+                edges = h2d.axes[sel2].edges
                 var2 = translate_label[sel2].replace('[\mathrm{GeV}]', '')
-                label = f"{lo} < {var2} < {hi}"
-
+                if idx2 == hist.overflow:
+                    label = f"{var2} > {edges[-1]}"
+                elif idx2+1 < len(edges):
+                    lo, hi = edges[idx2], edges[idx2+1]
+                    label = f"{lo} < {var2} < {hi}"
             h1d = h2d[{sel2:idx2}]
             if len(axes_reco) > 1:
                 h1d = hh.unrolledHist(h1d, binwnorm=None, obs=axes_reco)
@@ -150,7 +153,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
                 values /= np.diff(h1d.axes[0].edges)
 
             if normalize:
-                values /= values.sum()
+                values /= abs(values).sum()
 
             ax.stairs(values, edges=h1d.axes[0].edges, label=label)
 
@@ -219,34 +222,38 @@ for g_name, group in datagroups.items():
             plot_resolution(
                 histo, axes_reco="ptll", axis_gen="ptVGen",
                 selections_global=(("absYVGen",0), ("absYVGen",3),),
-                selections_slices=(("ptVGen",0), ("ptVGen",8), ("ptVGen",19)),
+                selections_slices=(("ptVGen",0), ("ptVGen",8), ("ptVGen",hist.overflow)),
             )
         if all(x in histo.axes.name for x in ["ptll", "ptVGen", "absYVGen"]):
             plot_resolution(
                 histo, axes_reco="abs(yll)", axis_gen="absYVGen",
                 selections_global=(("ptVGen",0), ("ptVGen",10),),
-                selections_slices=(("absYVGen",0), ("absYVGen",2), ("absYVGen",3)),
+                selections_slices=(("absYVGen",0), ("absYVGen",2), ("absYVGen",hist.overflow)),
             )
 
         if all(x in histo.axes.name for x in ["cosThetaStarll", "helicitySig"]):
             plot_resolution(
                 histo, axes_reco="cosThetaStarll", axis_gen="helicitySig",
                 selections_global=((None, None),),
-                selections_slices=([("helicitySig",i) for i in range(0,8)]),
+                selections_slices=([("helicitySig",i) for i in range(0,9)]),
+                normalize=True,
             )
         if all(x in histo.axes.name for x in ["phiStarll", "helicitySig"]):
             plot_resolution(
                 histo, axes_reco="phiStarll", axis_gen="helicitySig",
                 selections_global=((None, None),),
-                selections_slices=([("helicitySig",i) for i in range(0,8)]),
+                selections_slices=([("helicitySig",i) for i in range(0,9)]),
+                normalize=True,
             )
+
         if all(x in histo.axes.name for x in ["cosThetaStarll","phiStarll", "helicitySig"]):
             plot_resolution(
                 histo, axes_reco=["cosThetaStarll","phiStarll"], axis_gen="helicitySig",
                 selections_global=((None, None),),
-                selections_slices=([("helicitySig",i) for i in range(0,8)]),
+                selections_slices=([("helicitySig",i) for i in range(0,9)]),
+                normalize=True,
             )
-            for i in range(0,8):
+            for i in range(0,9):
                 plot_resolution(
                     histo, axes_reco=["cosThetaStarll","phiStarll"], axis_gen="helicitySig",
                     selections_global=((None, None),),
@@ -265,6 +272,8 @@ for g_name, group in datagroups.items():
                     selections_slices=(("helicitySig",i),),
                     suffix=f"HelicityIdx{i}", normalize=False,
                 )
+
+        continue
 
         for axes_string in args.axes:
             axes = axes_string.split("-")

@@ -170,34 +170,24 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
 
     rrange = args.rrange
 
+    unc = np.sqrt(hist_xsec.variances())/binwidths
+    y = hist_xsec.values()/binwidths
+
     if args.ylim is None:
-        ymax = max(0, max((hist_xsec.values()+np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1)))
-        ymin = min(0, min((hist_xsec.values()-np.sqrt(hist_xsec.variances()))/(binwidths if binwnorm is not None else 1)))
-        ylim = (1.4 * ymin, 1.4 * ymax)
+        ymax = max(y+unc)
+        ymin = min(y-unc)
+        yrange = ymax-ymin
+        ylim = (min(0, ymin - 0.1 * yrange), max(0, ymax + 0.1 * yrange))
     else:
         ylim = args.ylim
 
     # make plots
     fig, ax1, ax2 = plot_tools.figureWithRatio(hist_xsec, xlabel, yLabel, ylim, rlabel, rrange, width_scale=2)
 
-    # hep.histplot(
-    #     hist_xsec,
-    #     yerr=False, #np.sqrt(hist_xsec.variances()),
-    #     histtype="step",
-    #     color="black",
-    #     label=args.name,
-    #     ax=ax1,
-    #     alpha=1.,
-    #     zorder=2,
-    #     binwnorm=binwnorm
-    # )    
-
-    unc = np.sqrt(hist_xsec.variances())/binwidths
-    y = hist_xsec.values()/binwidths
     ax1.hlines(y, edges[:-1], edges[1:], colors="black", label=args.name)
     ax1.bar(centers, height=2*unc, bottom=y-unc, width=edges[1:] - edges[:-1], color="silver", label="Total")
     if hist_xsec_stat is not None:
-        unc_stat = np.sqrt(hist_xsec_stat.variances())
+        unc_stat = np.sqrt(hist_xsec_stat.variances())/binwidths
         ax1.bar(centers, height=2*unc_stat, bottom=y-unc_stat, width=edges[1:] - edges[:-1], color="gold", label="Stat")
 
     if args.genFlow: #TODO TEST
@@ -208,10 +198,10 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
         ax2.fill([len(edges)-17.5, len(edges)+0.5, len(edges)+0.5, len(edges)-17.5, len(edges)-17.5], [rrange[0],*rrange,rrange[1],rrange[0]], color="grey", alpha=0.3)
 
     if ratioToData and not pulls:
-        unc_ratio = np.sqrt(hist_xsec.variances()) /hist_xsec.values() 
+        unc_ratio = unc / y
         ax2.bar(centers, height=2*unc_ratio, bottom=1-unc_ratio, width=edges[1:] - edges[:-1], color="silver", label="Total")
         if hist_xsec_stat is not None:
-            unc_ratio_stat = np.sqrt(hist_xsec_stat.variances()) / hist_xsec_stat.values() 
+            unc_ratio_stat = unc_stat / y
             ax2.bar(centers, height=2*unc_ratio_stat, bottom=1-unc_ratio_stat, width=edges[1:] - edges[:-1], color="gold", label="Stat")
 
     if pulls:
@@ -222,26 +212,10 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     if ratioToData:
         hden=hist_xsec
 
-    for i, (h, l, m, c) in enumerate(zip(hist_others, label_others, marker_others, color_others)):
-        # h_flat = hist.Hist(
-        #     hist.axis.Variable(edges, underflow=False, overflow=False), storage=hist.storage.Weight())
-        # h_flat.view(flow=False)[...] = np.stack([h.values(flow=args.genFlow).flatten()/bin_widths, h.variances(flow=args.genFlow).flatten()/bin_widths**2], axis=-1)
-
-        # hep.histplot(
-        #     h,
-        #     yerr=False,
-        #     histtype="errorbar",
-        #     color=c,
-        #     label=l,
-        #     marker=m,
-        #     ax=ax1,
-        #     alpha=1.,
-        #     zorder=2,
-        #     binwnorm=binwnorm
-        # )            
+    for i, (h, l, m, c) in enumerate(zip(hist_others, label_others, marker_others, color_others)):   
 
         y = h.values()/binwidths
-        ax1.hlines(y, edges[:-1], edges[1:], colors=c, label=l)
+        ax1.plot(centers, y, linewidth=0, marker=m, color=c, label=l)
 
         if not pulls:
             if i==0 and not ratioToData:
@@ -255,34 +229,14 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
                     zorder=2,
                 ) 
                 continue
-
-            # hep.histplot(
-            #     hh.divideHists(h, hden, cutoff=0, rel_unc=True),
-            #     yerr=False,
-            #     histtype="errorbar",
-            #     color=c,
-            #     marker=m,
-            #     ax=ax2,
-            #     zorder=2,
-            # )            
+        
             y = hh.divideHists(h, hden, cutoff=0, rel_unc=True).values()
-            ax2.hlines(y, edges[:-1], edges[1:], colors=c)
+            ax2.plot(centers, y, linewidth=0, marker=m, color=c)
 
 
     if hist_ref is not None:
-        # hep.histplot(
-        #     hist_ref,
-        #     yerr=False,
-        #     histtype="errorbar",
-        #     color="blue",
-        #     label=args.refName,
-        #     ax=ax1,
-        #     alpha=1.,
-        #     zorder=2,
-        #     binwnorm=binwnorm
-        # ) 
         y = hist_ref.values()/binwidths
-        ax1.hlines(y, edges[:-1], edges[1:], colors="blue", label=args.refName)
+        ax1.plot(centers, y, linewidth=0, marker='o', color="blue", label=args.refName)
 
         if pulls:
             hdiff = hh.addHists(hist_ref, hden, scale2=-1.)
@@ -301,20 +255,11 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
             )
         else:
             hr = hh.divideHists(hist_ref, hden, cutoff=0, rel_unc=True)
-            # hep.histplot(
-            #     hr,
-            #     yerr=False,
-            #     histtype="errorbar",
-            #     color="blue",
-            #     # label="Model",
-            #     ax=ax2,
-            # )
             y = hr.values()
-            ax2.hlines(y, edges[:-1], edges[1:], colors="blue")
+            ax2.plot(centers, y, linewidth=0, marker='o', color="blue")
 
 
     plot_tools.addLegend(ax1, ncols=2, text_size=15*args.scaleleg)
-    # plot_tools.addLegend(ax2, ncols=2, text_size=15*args.scaleleg)
     plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)

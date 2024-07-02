@@ -161,7 +161,7 @@ def add_xnorm_histograms(results, df, args, dataset_name, corr_helpers, qcdScale
     xnorm_cols = ["xnorm", *unfolding_cols]
 
     if add_helicity_axis:
-        df_xnorm = theoryAgnostic_tools.define_helicity_weights(df_xnorm)
+        df_xnorm = theoryAgnostic_tools.define_helicity_weights(df_xnorm, filename=f"{common.data_dir}/angularCoefficients/w_z_moments_unfoldingBinning.hdf5")
 
         from wremnants.helicity_utils import axis_helicity_multidim
         results.append(df_xnorm.HistoBoost("xnorm", xnorm_axes, [*xnorm_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity_multidim]))  

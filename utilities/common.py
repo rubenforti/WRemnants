@@ -146,20 +146,22 @@ def get_binning_fakes_relIso(high_iso_bins=False):
 
 
 def get_dilepton_ptV_binning(fine=False):
-    return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
+    # return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
+    return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13.5, 15, 17, 19, 21.5, 25, 30, 40, 100] if not fine else range(60)
 
 def get_gen_axes(dilepton_ptV_binning=None, inclusive=False, flow=False):
     if dilepton_ptV_binning is None:
         dilepton_ptV_binning = get_dilepton_ptV_binning()
 
     gen_axes = {
-        "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
+        "ptVGen": hist.axis.Variable(dilepton_ptV_binning[:-1], name = "ptVGen", underflow=False, overflow=flow),
         # "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
-        "absYVGen": hist.axis.Variable([0, 0.4, 0.8, 1.4, 2.5], name = "absYVGen", underflow=False, overflow=flow),
+        "absYVGen": hist.axis.Variable([0, 0.35, 0.7, 1.1, 1.5, 2.5], name = "absYVGen", underflow=False, overflow=flow),
     }
-    if inclusive:
-        binning = (*gen_axes["absYVGen"].edges[:-1], 5.)
-        gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
+    # if inclusive:
+    #     binning = (*gen_axes["absYVGen"].edges[:-1], 5.)
+    #     gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
+        
     return gen_axes
 
 

@@ -59,10 +59,11 @@ dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "mll": hist.axis.Variable([60,70,75,78,80,82,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,102,105,110,120], name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    # "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "yll": hist.axis.Variable([-2.5, -1.4, -0.8, -0.4, 0, 0.4, 0.8, 1.4, 2.5], name = "yll", underflow=not args.excludeFlow, overflow=not args.excludeFlow),
+    # "yll": hist.axis.Regular(100, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "yll": hist.axis.Variable([-2.5, -1.5, -1.1, -0.7, -0.35, 0, 0.35, 0.7, 1.1, 1.5, 2.5], name = "yll", underflow=not args.excludeFlow, overflow=not args.excludeFlow),
     # "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
     "absYll": hist.axis.Variable([0, 0.4, 0.8, 1.4, 2.5], name = "absYll", underflow=False, overflow=not args.excludeFlow),
+    # "ptll": hist.axis.Regular(200, 0., 100, name = "ptll", underflow=False, overflow=not args.excludeFlow),
     "ptll": hist.axis.Variable(dilepton_ptV_binning, name = "ptll", underflow=False, overflow=not args.excludeFlow),
     "etaPlus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaPlus"),
     "etaMinus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaMinus"),
@@ -75,8 +76,11 @@ all_axes = {
     "etaDiff": hist.axis.Variable([-4.8, -1.0, -0.6, -0.2, 0.2, 0.6, 1.0, 4.8], name = "etaDiff"),
     "ptPlus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptPlus"),
     "ptMinus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptMinus"),
-    "cosThetaStarll": hist.axis.Regular(6, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
-    "phiStarll": hist.axis.Regular(6, -math.pi, math.pi, circular = True, name = "phiStarll"),
+    # "cosThetaStarll": hist.axis.Regular(100, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
+    # "phiStarll": hist.axis.Regular(100, -math.pi, math.pi, circular = True, name = "phiStarll"),
+    # 8 quantiles
+    "cosThetaStarll": hist.axis.Variable([-1, -0.56, -0.375, -0.19, 0., 0.19, 0.375  0.56, 1.], name = "cosThetaStarll", underflow=False, overflow=False),
+    "phiStarll": hist.axis.Variable([-math.pi, -2.27, -1.57, -0.87, 0, 0.87, 1.57, 2.27, math.pi], name = "phiStarll", underflow=False, overflow=False), 
     #"charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
     "massVgen": hist.axis.Variable(ewMassBins, name = "massVgen", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "ewMll": hist.axis.Variable(ewMassBins, name = "ewMll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -233,8 +237,8 @@ def build_graph(df, dataset):
                 dataset.name, 
                 corr_helpers, 
                 qcdScaleByHelicity_helper, 
-                unfolding_axes, 
-                unfolding_cols, 
+                [a for a in unfolding_axes if a.name != "acceptance"], 
+                [c for c in unfolding_cols if c !="acceptance"], 
                 add_helicity_axis="helicitySig" in args.genAxes,
             )
             if not isPoiAsNoi:
@@ -389,8 +393,8 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
-        if "helicitySig" in args.genAxes:
-            df = theoryAgnostic_tools.define_helicity_weights(df)
+        if "helicitySig" in getattr(args, "genAxes",[]):
+            df = theoryAgnostic_tools.define_helicity_weights(df, filename=f"{common.data_dir}/angularCoefficients/w_z_moments_unfoldingBinning.hdf5")
 
     # histograms for corrections/uncertainties for pixel hit multiplicity
 
@@ -409,7 +413,7 @@ def build_graph(df, dataset):
     if isUnfolding and isPoiAsNoi and dataset.name == "ZmumuPostVFP":
         noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
         logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
-        if "helicitySig" in args.genAxes:
+        if "helicitySig" in getattr(args, "genAxes",[]):
             from wremnants.helicity_utils import axis_helicity_multidim
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity_multidim]))  
         else:
