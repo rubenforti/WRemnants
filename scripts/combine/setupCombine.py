@@ -368,7 +368,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     else:
         cardTool.setHistName(inputBaseName)
         cardTool.setNominalName(inputBaseName)
-        
+    
+    if isUnfolding and isPoiAsNoi:
+        cardTool.cardXsecGroups = noi_names
+
     # define sumGroups for integrated cross section
     if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
         # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
@@ -668,7 +671,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     noi_args["rename"] = f"noiW{sign}"
                     cardTool.addSystematic(**noi_args,
                         baseName=f"W_qGen{sign_idx}_",
-                        systAxesFlow=[n for n in poi_axes if n in ["ptGen",]],
+                        systAxesFlow=[n for n in poi_axes if n in ["ptGen", "ptVGen"]],
                         preOpMap={
                             m.name: (lambda h: hh.addHists(
                                 h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
@@ -685,7 +688,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             else:
                 cardTool.addSystematic(**noi_args,
                     baseName=f"{label}_",
-                    systAxesFlow=[n for n in poi_axes if n in ["ptGen",]],
+                    systAxesFlow=[n for n in poi_axes if n in ["ptGen", "ptVGen"]],
                     preOpMap={
                         m.name: (lambda h: hh.addHists(
                             h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
@@ -1350,6 +1353,7 @@ if __name__ == "__main__":
 
         if not args.skipSumGroups:
             combine_helpers.add_ratio_xsec_groups(writer)
+            combine_helpers.add_asym_xsec_groups(writer)
 
         if args.fitresult:
             writer.set_fitresult(args.fitresult, mc_stat=not (args.noMCStat or args.explicitSignalMCstat))

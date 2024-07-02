@@ -43,8 +43,11 @@ class CardTool(object):
         self.channels = ["inclusive"]
         self.cardContent = {}
         self.cardGroups = {}
-        self.cardSumXsecGroups = {} # cross section sum groups
-        self.cardRatioXsecGroups = {} # cross section ratio groups
+        self.cardXsecGroups = [] # cross section sum xsec groups
+        self.cardSumXsecGroups = {} # cross section sum xsec groups
+        self.cardRatioSumXsecGroups = {} # cross section ratio based on sum xsec groups
+        self.cardAsymXsecGroups = {} # cross section asymmetry based on xsec groups
+        self.cardAsymSumXsecGroups = {} # cross section asymmetry based on sum xsec groups
         self.nominalTemplate = f"{pathlib.Path(__file__).parent}/../scripts/combine/Templates/datacard.txt"
         self.spacing = 28
         self.systTypeSpacing = 16

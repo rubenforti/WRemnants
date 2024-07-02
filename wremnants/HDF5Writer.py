@@ -722,11 +722,11 @@ class HDF5Writer(object):
         maskednoigroups, maskednoigroupidxs = self.get_noigroups(masked=True)
         systgroups, systgroupidxs = self.get_systgroups()
         sumgroups, sumgroupsegmentids, sumgroupidxs = self.get_sumgroups(self.get_systsnoimasked() if hasattr(args, "poiAsNoi") and args.poiAsNoi else procs)
-        chargegroups, chargegroupidxs = self.get_chargegroups()
+        chargegroups, chargegroupidxs = self.get_pairmetagroups(noigroups, chanInfo.cardAsymXsecGroups)
         polgroups, polgroupidxs = self.get_polgroups()
         helgroups, helgroupidxs = self.get_helgroups()
-        chargemetagroups, chargemetagroupidxs = self.get_chargemetagroups()
-        ratiometagroups, ratiometagroupidxs = self.get_ratiometagroups(sumgroups)
+        chargemetagroups, chargemetagroupidxs = self.get_pairmetagroups(sumgroups, chanInfo.cardAsymSumXsecGroups)
+        ratiometagroups, ratiometagroupidxs = self.get_pairmetagroups(sumgroups, chanInfo.cardRatioSumXsecGroups)
         helmetagroups, helmetagroupidxs = self.get_helmetagroups()
         reggroups, reggroupidxs = self.get_reggroups()
         poly1dreggroups, poly1dreggroupfirstorder, poly1dreggrouplastorder, poly1dreggroupnames, poly1dreggroupbincenters = self.get_poly1dreggroups()
@@ -938,10 +938,6 @@ class HDF5Writer(object):
                 sumgroupidxs.append(procs.index(proc))
         return sumgroups, sumgroupsegmentids, sumgroupidxs
 
-    def get_chargegroups(self):
-        #list of groups of signal processes by charge
-        return [], []
-
     def get_polgroups(self):
         #list of groups of signal processes by polarization
         return [], []
@@ -950,25 +946,21 @@ class HDF5Writer(object):
         #list of groups of signal processes by helicity xsec
         return [], []
 
-    def get_chargemetagroups(self):
-        #list of groups of signal processes by chargemeta
-        return [], []
-
-    def get_ratiometagroups(self, sumgroups):
-        ratiometagroups = []
-        ratiometagroupidxs = []
-        dict_ratioroups = {}
+    def get_pairmetagroups(self, groups, pairgroups):
+        pairmetagroups = []
+        pairmetagroupidxs = []
+        dict_pairroups = {}
         for chanInfo in self.get_channels().values():
-            dict_ratioroups.update(chanInfo.cardRatioXsecGroups)
+            dict_pairroups.update(pairgroups)
 
-        for group, members in dict_ratioroups.items():
-            ratiometagroups.append(group)
-            ratiometagroupidx = []
+        for group, members in dict_pairroups.items():
+            pairmetagroups.append(group)
+            pairmetagroupidx = []
             for proc in members:
-                ratiometagroupidx.append(sumgroups.index(proc))
-            ratiometagroupidxs.append(ratiometagroupidx)
+                pairmetagroupidx.append(groups.index(proc))
+            pairmetagroupidxs.append(pairmetagroupidx)
 
-        return ratiometagroups, ratiometagroupidxs
+        return pairmetagroups, pairmetagroupidxs
 
     def get_helmetagroups(self):
         #list of groups of signal processes by helmeta

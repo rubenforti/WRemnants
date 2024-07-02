@@ -151,22 +151,55 @@ def projectABCD(cardTool, h, return_variances=False, dtype="float64"):
 
     return flat, flat_variances
 
-def add_ratio_xsec_groups(writer, nums=["qGen1", "W"], dens=["qGen0", "Z"], prefixes=["r_qGen_", "r_WZ"]):
-    # add ratio groups across different card tools, 
-    # it doesn't matter which card tool to add the ratio groups, just use first one
-    cardTool = next(iter(writer.channels.values()))
+def add_xsec_pair_groups(groups, items1, items2, prefixes, axes_names=[[]]):
+    """
+    Add pair groups across different card tools
 
-    sum_groups_all = list(set([k for n, c in writer.channels.items() if not n.endswith("masked") for k in c.cardSumXsecGroups.keys()]))
-    for group in sum_groups_all:
-        # add charge ratios
-        for num, den, prefix in zip(nums, dens, prefixes):
-            if num not in group:
+    Args:
+        groups (list of str): groups to take items from
+        items1 (list of str): list of first items
+        items2 (list of str): list of second items
+        prefixes (list of str): Prefixes for naming of pair groups
+        axes_names (list of str): list of axes to make pair groups. If empty only 1 to 1 match between terms1 and terms2 are used
+
+    Returns:
+        pairgroups (dict): dictionary with pair groups and pairs
+    """
+    pairgroups = {}
+
+    for group in groups:
+        # add ratios
+        for item1, item2, prefix in zip(items1, items2, prefixes):
+            if item1 not in group:
                 continue
-            group_den = group.replace(num, den)
-            if group_den not in sum_groups_all:
+            parts = [re.sub(r'\d+$', '', s) for s in group.replace(item1, "").split("_") is s !=""]
+            for names in axes_names:
+                if set(names) == set(parts):
+                    break
+            else:
                 continue
-            name_ratio = f"{prefix}{group.replace(num, '')}"
+            group_item2 = group.replace(item1, item2)
+            if group_item2 not in groups:
+                continue
+            name_ratio = f"{prefix}{group.replace(item1, '')}"
             name_ratio = name_ratio.replace("__", "_")
             if name_ratio.endswith("_"):
                 name_ratio = name_ratio[:-1]
-            cardTool.cardRatioXsecGroups[name_ratio] = [group, group_den]
+            pairgroups[name_ratio] = [group, group_item2]
+
+    return pairgroups
+
+def add_ratio_xsec_groups(writer, nums=["W_qGen0", "W"], dens=["W_qGen1", "Z"], prefixes=["r_qGen_W", "r_WZ"], axes_names=[[]]):
+    sum_groups_all = list(set([k for n, c in writer.channels.items() if not n.endswith("masked") for k in c.cardSumXsecGroups.keys()]))
+    # it doesn't matter which card tool to add the ratio groups, just use first one
+    cardTool = next(iter(writer.channels.values()))
+    cardTool.cardRatioSumXsecGroups = add_xsec_pair_groups(sum_groups_all, nums, dens, prefixes, axes_names)
+
+def add_asym_xsec_groups(writer, a0s=["W_qGen0",], a1s=["W_qGen1",], prefixes=["r_qGen_W",], axes_names=[["ptGen"], ["absEtaGen"], ["ptGen", "absEtaGen"]]):
+
+    groups_all = list(set([k for n, c in writer.channels.items() if not n.endswith("masked") for k in c.cardXsecGroups]))
+    sum_groups_all = list(set([k for n, c in writer.channels.items() if not n.endswith("masked") for k in c.cardSumXsecGroups.keys()]))
+    # it doesn't matter which card tool to add the ratio groups, just use first one
+    cardTool = next(iter(writer.channels.values()))
+    cardTool.cardAsymXsecGroups = add_xsec_pair_groups(groups_all, a0s, a1s, prefixes, axes_names)
+    cardTool.cardAsymSumXsecGroups = add_xsec_pair_groups(sum_groups_all, a0s, a1s, prefixes, axes_names)
