@@ -454,7 +454,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
     xlabel="", ylabel="", zlabel="", colormap="RdBu", plot_title=None,
     ylim=None, xlim=None, zlim=None, zsymmetrize=None,
     logz=False, # logy=False, logx=False, #TODO implement
-    cms_label="Work in progress", automatic_scale=False, width_scale=1.2
+    cms_label="Work in progress", has_data=False, scaleleg=1.0, automatic_scale=False, width_scale=1.2
 ):
     if xedges is None or yedges is None:
         xbins, ybins = values.shape
@@ -481,7 +481,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
     if ylim is None:
         ylim = (yedges[0],yedges[-1])
 
-    fig, ax = figure(values, xlabel=xlabel, ylabel=ylabel, cms_label=cms_label, automatic_scale=automatic_scale, width_scale=width_scale, xlim=xlim, ylim=ylim)
+    fig, ax = figure(values, xlabel=xlabel, ylabel=ylabel, automatic_scale=automatic_scale, width_scale=width_scale, xlim=xlim, ylim=ylim)
 
     if zlim is None:
         if logz:
@@ -505,6 +505,10 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
     if plot_title:
         ax.text(1.0, 1.003, plot_title, transform=ax.transAxes, fontsize=30,
             verticalalignment='bottom', horizontalalignment="right")
+
+    scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
+    hep.cms.label(ax=ax, lumi=None, fontsize=20*scaleleg*scale, 
+        label=cms_label, data=has_data)
 
     return fig
 
