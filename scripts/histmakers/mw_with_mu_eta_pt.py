@@ -180,10 +180,10 @@ else:
     logger.info("Using smoothed scale factors and uncertainties")
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
     muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
-    wremnants.make_muon_efficiency_helpers_veto_TEST(antiveto=True)
+    #wremnants.make_muon_efficiency_helpers_veto_TEST(antiveto=True)
     
 logger.info(f"SF file: {args.sfFile}")
-quit()
+#quit()
 
 muon_efficiency_helper_syst_altBkg = {}
 for es in common.muonEfficiency_altBkgSyst_effSteps:
