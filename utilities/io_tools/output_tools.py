@@ -107,9 +107,9 @@ def is_eosuser_path(path):
     return path.startswith("/eos/user") or path.startswith("/eos/home-")
 
 def make_plot_dir(outpath, outfolder=None, eoscp=False, allowCreateLocalFolder=True):
-    # Create a unique temporary directory
-    unique_temp_dir = tempfile.mkdtemp()
     if eoscp and is_eosuser_path(outpath):
+        # Create a unique temporary directory
+        unique_temp_dir = tempfile.mkdtemp()
         outpath = os.path.join(unique_temp_dir, split_eos_path(outpath)[1])
         if not os.path.isdir(outpath):
             logger.info(f"Making temporary directory {outpath}")

@@ -33,7 +33,7 @@ def get_poi_names(fitresult_file, poi_type="mu"):
     elif is_root_file(fitresult_file):
         names = get_poi_names_root(fitresult_file, poi_type)
     else:
-        raise IOError(f"Unknown format of fitresult {fitresult_filename}")
+        raise IOError(f"Unknown format of fitresult {fitresult_file}")
 
     if len(names)==0:
         logger.warning('No free parameters found (neither signal strenght(s), nor W mass)')
