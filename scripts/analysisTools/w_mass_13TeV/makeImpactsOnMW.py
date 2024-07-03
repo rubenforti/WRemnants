@@ -346,4 +346,4 @@ if __name__ == "__main__":
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     for ext in ["pdf", "png"]:
         c1.SaveAs(f"{outdir}/impactsOnM{smallBoson}{postfix}.{ext}")
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
