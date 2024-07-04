@@ -341,10 +341,10 @@ jobs:
       - name: w mu/e combine mt setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation
-          -i $HIST_FILE_MU $HIST_FILE_E --baseName travsverseMass travsverseMass --fitvar mt-charge mt-charge --hdf5 -o $COMBINED_DIR
+          -i $HIST_FILE_MU $HIST_FILE_E --baseName transverseMass transverseMass --fitvar mt-charge mt-charge --hdf5 -o $COMBINED_DIR
 
       - name: lowpu combine mt fit 
-        run: |
+        run: >-
           mssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass $COMBINED_DIR Combination_WMass_lowPU//Combination.hdf5
 
       - name: wmass combine impacts
