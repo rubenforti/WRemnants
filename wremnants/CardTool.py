@@ -48,6 +48,8 @@ class CardTool(object):
         self.cardRatioSumXsecGroups = {} # cross section ratio based on sum xsec groups
         self.cardAsymXsecGroups = {} # cross section asymmetry based on xsec groups
         self.cardAsymSumXsecGroups = {} # cross section asymmetry based on sum xsec groups
+        self.cardHelXsecGroups = [] # helicity xsec groups
+        self.cardHelSumXsecGroups = [] # helicity sum xsec groups
         self.nominalTemplate = f"{pathlib.Path(__file__).parent}/../scripts/combine/Templates/datacard.txt"
         self.spacing = 28
         self.systTypeSpacing = 16
@@ -379,11 +381,13 @@ class CardTool(object):
         })
 
     # Read a specific hist, useful if you need to check info about the file
-    def getHistsForProcAndSyst(self, proc, syst):
+    def getHistsForProcAndSyst(self, proc, syst, nominal_name=None):
+        if nominal_name is None:
+            nominal_name=self.nominalName
         if not self.datagroups:
             raise RuntimeError("No datagroups defined! Must call setDatagroups before accessing histograms")
         self.datagroups.loadHistsForDatagroups(
-            baseName=self.nominalName, syst=syst, label="syst",
+            baseName=nominal_name, syst=syst, label="syst",
             procsToRead=[proc],
             scaleToNewLumi=self.lumiScale,
             lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly)

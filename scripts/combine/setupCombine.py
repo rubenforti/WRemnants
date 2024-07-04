@@ -88,6 +88,7 @@ def make_parser(parser=None):
     parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
+    parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
     # settings on the nuisances itself
     parser.add_argument("--doStatOnly", action="store_true", default=False, help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)")
     parser.add_argument("--noTheoryUnc", action="store_true", default=False, help="Set up fit without theory uncertainties")
@@ -575,51 +576,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 systAxes=["massShift"],
                 passToFakes=passSystToFakes,
             )
-            if args.fitMassDiff == "charge":
-                cardTool.addSystematic(**mass_diff_args,
-                    # # on gen level based on the sample, only possible for mW
-                    # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown"))
-                    #     for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
-                    # on reco level based on reco charge
-                    preOpMap={m.name: (lambda h:
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0)
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
-            elif args.fitMassDiff == "cosThetaStarll":
-                cardTool.addSystematic(**mass_diff_args,
-                    preOpMap={m.name: (lambda h:
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):])
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
-            elif args.fitMassDiff == "eta-sign":
-                cardTool.addSystematic(**mass_diff_args,
-                    preOpMap={m.name: (lambda h:
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):])
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
-            elif args.fitMassDiff == "eta-range":
-                cardTool.addSystematic(**mass_diff_args,
-                    preOpMap={m.name: (lambda h:
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):])
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
-            elif args.fitMassDiff.startswith("etaRegion"):
-                # 3 bins, use 3 unconstrained parameters: mass; mass0 - mass2; mass0 + mass2 - mass1
-                mass_diff_args["rename"] = f"massDiff1{suffix}{label}"
-                mass_diff_args["systNameReplace"] = [("Shift",f"Diff1{suffix}")]
-                cardTool.addSystematic(**mass_diff_args,
-                    preOpMap={m.name: (lambda h: hh.swap_histogram_bins(
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 2), # invert for mass2
-                        "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
-                mass_diff_args["rename"] = f"massDiff2{suffix}{label}"
-                mass_diff_args["systNameReplace"] = [("Shift",f"Diff2{suffix}")]
-                cardTool.addSystematic(**mass_diff_args,
-                    preOpMap={m.name: (lambda h:
-                        hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1)
-                        ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
-                )
+            combine_helpers.add_mass_diff_variations(cardTool, mass_diff_args)
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
@@ -638,65 +595,16 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             theoryAgnostic_helper.add_theoryAgnostic_uncertainty()
 
         elif isUnfolding:
-            poi_axes = poi_axes
-            poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
-            noi_args = dict(
-                group=f"normXsec{label}",
-                passToFakes=passSystToFakes,
-                name=f"xnorm" if xnorm else f"yieldsUnfolding",
-                rename="yieldsUnfolding",
-                systAxes=poi_axes_syst,
-                processes=["signal_samples"],
-                noConstraint=True,
-                noi=True,
-                mirror=True,
-                scale=1 if args.priorNormXsec < 0 else args.priorNormXsec, # histogram represents an (args.priorNormXsec*100)% prior
-                labelsByAxis=[f"_{p}" if p != poi_axes[0] else p for p in poi_axes],
+            combine_helpers.add_noi_unfolding_variations(
+                cardTool, 
+                label, 
+                passSystToFakes, 
+                xnorm, 
+                poi_axes, 
+                wmass=wmass,
+                prior_norm=args.priorNormXsec, 
+                scale_norm=args.scaleNormXsecHistYields,
             )
-            if xnorm:
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"{label}_",
-                    action=lambda h: 
-                        hh.addHists(h,
-                            hh.expand_hist_by_duplicate_axes(h, poi_axes, poi_axes_syst),
-                            scale2=args.scaleNormXsecHistYields)
-                )
-            elif wmass:
-                # add two sets of systematics, one for each charge
-                poi_axes = [p for p in poi_axes if p !="qGen"]
-                poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
-                noi_args["labelsByAxis"] = [f"_{p}" if p != poi_axes[0] else p for p in poi_axes]
-                noi_args["systAxes"] = poi_axes_syst
-                for sign, sign_idx in (("minus",0), ("plus",1)):
-                    noi_args["rename"] = f"noiW{sign}"
-                    cardTool.addSystematic(**noi_args,
-                        baseName=f"W_qGen{sign_idx}_",
-                        systAxesFlow=[n for n in poi_axes if n in ["ptGen", "ptVGen"]],
-                        preOpMap={
-                            m.name: (lambda h: hh.addHists(
-                                h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                    "acceptance": hist.tag.Slicer()[::hist.sum]}], 
-                                h[{"acceptance":True}], 
-                                scale2=args.scaleNormXsecHistYields)
-                            ) 
-                            if sign in m.name else (
-                                lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                    "acceptance": hist.tag.Slicer()[::hist.sum]}]
-                            )
-                            for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                    )
-            else:
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"{label}_",
-                    systAxesFlow=[n for n in poi_axes if n in ["ptGen", "ptVGen"]],
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(
-                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
-                                "acceptance": hist.tag.Slicer()[::hist.sum]}], 
-                            h[{"acceptance":True}], 
-                            scale2=args.scaleNormXsecHistYields))
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
         muRmuFPolVar_helper = combine_theoryAgnostic_helper.TheoryAgnosticHelper(cardTool, externalArgs=args)
@@ -1354,6 +1262,7 @@ if __name__ == "__main__":
         if not args.skipSumGroups:
             combine_helpers.add_ratio_xsec_groups(writer)
             combine_helpers.add_asym_xsec_groups(writer)
+            combine_helpers.add_helicty_xsec_groups(writer)
 
         if args.fitresult:
             writer.set_fitresult(args.fitresult, mc_stat=not (args.noMCStat or args.explicitSignalMCstat))
@@ -1366,7 +1275,7 @@ if __name__ == "__main__":
             outfolder = f"{args.outfolder}/Combination_{''.join(unique_names)}{dir_append}/"
             outfile = "Combination"
         logger.info(f"Writing HDF5 output to {outfile}")
-        writer.write(args, outfolder, outfile)
+        writer.write(args, outfolder, outfile, allowNegativeExpectation=args.allowNegativeExpectation)
     else:
         if len(args.inputFile) > 1:
             raise IOError(f"Multiple input files only supported within --hdf5 mode")
