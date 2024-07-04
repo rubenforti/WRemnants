@@ -181,7 +181,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             for proc, gen_axes_proc in info["gen_axes"].items():
                 logger.debug(f"Now at proc {proc}")
 
-                if poi_type.startswith("sum") or poi_type.startswith("ratio"):
+                if any(poi_type.startswith(x) for x in ["sum", "ratio", "chargemeta", "helmeta"]):
                     if len(gen_axes_proc)<=1:
                         logger.info(f"Skip POI type {poi_type} since there is only {len(gen_axes_proc)} gen axis")
                         continue
@@ -195,6 +195,13 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
                 for axes in gen_axes_permutations:
                     logger.debug(f"Now at axes {axes}")
+
+                    if poi_type in ["helpois", "helmetapois"]:
+                        if "helicitySig" not in [a.name for a in axes]:
+                            continue
+                        # replace helicity cross section axis by angular coefficient axis
+                        axis_coeffs = hist.axis.Integer(0, 8, name="A", overflow=False, underflow=False)
+                        axes = [axis_coeffs if a.name == "helicitySig" else a for a in axes]
 
                     axes_names = [a.name for a in axes]
                     shape = [a.extent if a.name in flow_axes else a.size for a in axes]

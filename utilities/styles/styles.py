@@ -188,6 +188,8 @@ poi_types = {
     "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
     "sumpoisnorm": "1/$\sigma$ d$\sigma$",
     "ratiometapois": "$\sigma(W^{+})/\sigma(W^{-})$",
+    "helpois": "Ai",
+    "helmetapois": "Ai",
 }
 
 axis_labels = {
@@ -277,6 +279,15 @@ def get_systematics_label(key, idx=0):
     # custom formatting
     if key in systematics_labels_idxs:
         return systematics_labels_idxs[key][idx]
+
+    if "helicity" in key.split("_")[-1]:
+        idx =int(key.split("_")[-1][-1])
+        if idx == 0:
+            label = "UL"
+        else:
+            label = str(idx-1)
+
+        return f"$\pm\sigma_\mathrm{{{label}}}$"        
 
     # default return key
     logger.info(f"No label found for {key}")

@@ -1,4 +1,5 @@
 import mplhep as hep
+import matplotlib.pyplot as plt
 import numpy as np
 import hist
 import itertools
@@ -90,7 +91,9 @@ def make_plots(hists_proc, hist_data, *opts, **info):
         make_plot(hists_proc, hist_data, axes_names=axes_names, *opts, **info)
 
 
-def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, suffix="", channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20):
+def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
+    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20
+):
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
@@ -244,6 +247,20 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
                     ax=ax2
                 )
 
+        scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
+
+        if selections is not None:
+            for i, (key, idx) in enumerate(selections.items()):
+                lo, hi = selection_edges[i]
+                label = styles.xlabels[key].replace(" (GeV)","")
+                if lo != None:
+                    label = f"{lo} < {label}"
+                if hi != None:
+                    label = f"{label} < {hi}"
+
+                ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+                    fontsize=20*args.scaleleg*scale)  
+
         plot_tools.addLegend(ax1, 2, text_size=legtext_size)
         if add_ratio:
             plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, logy=args.logy)
@@ -258,7 +275,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
 
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density else None
-            scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
+            
             hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
                 label= args.cmsDecor, data=hist_data is not None)
 
@@ -269,8 +286,8 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
             outfile += f"{procs[i]}_"
         outfile += "_".join(axes_names)
         outfile += f"_{channel}"
-        if suffix:
-            outfile += f"_{suffix}"
+        if selections is not None:
+            outfile += "_" + "_".join([f"{a}{i}" for a, i in selections.items()])
         if args.postfix:
             outfile += f"_{args.postfix}"
         plot_tools.save_pdf_and_png(outdir, outfile)
@@ -336,6 +353,8 @@ for channel, channel_info in indata.channel_info.items():
 
         for bins in bin_combinations:
             idxs = {a.name: i for a, i in zip(selection_axes, bins) }
+            selection_edges = [(a.edges[i],a.edges[i+1] if len(a.edges-1)>i else None) for a, i in zip(selection_axes, bins)]
+
             hs_proc = [h[idxs] for h in hists_proc]
 
             if hist_data is not None:
@@ -347,8 +366,7 @@ for channel, channel_info in indata.channel_info.items():
                 hs_syst_dn = [h[idxs] for h in hists_syst_dn]
                 hs_syst_up = [h[idxs] for h in hists_syst_up]
 
-            suffix = "_".join([f"{a}{i}" for a, i in idxs.items()])
-            make_plots(hs_proc, h_data, hs_syst_dn, hs_syst_up, suffix=suffix, **info)
+            make_plots(hs_proc, h_data, hs_syst_dn, hs_syst_up, selections=idxs, selection_edges=selection_edges, **info)
     else:
         make_plots(hists_proc, hist_data, hists_syst_dn, hists_syst_up, **info)
 

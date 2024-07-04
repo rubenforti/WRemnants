@@ -12,15 +12,14 @@ import json
 
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.styles import styles
-from utilities.io_tools import input_tools, output_tools
-from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
+from utilities.io_tools import input_tools, output_tools, conversion_tools
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import plot_tools
 import pdb
 
 hep.style.use(hep.style.ROOT)
 
-poi_type_choices = ["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
+poi_type_choices = ["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "chargepois", "ratiometapois", "helpois", "helmetapois"]
 
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")
@@ -34,7 +33,7 @@ parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
-parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig"], 
+parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig", "A"], 
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
@@ -68,14 +67,14 @@ if args.infile.endswith(".root"):
 if args.reference is not None and args.reference.endswith(".root"):
     args.reference = args.reference.replace(".root", ".hdf5")
 
-result, meta = fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, initial=args.initialFit, merge_gen_charge_W=False)    
+result, meta = conversion_tools.fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, initial=args.initialFit, merge_gen_charge_W=False)    
 
 if args.reference:
     if args.poiTypeReference is None:
         poi_types_ref = args.poiTypes
     else:
         poi_types_ref = [args.poiTypeReference,]
-    result_ref, meta_ref = fitresult_pois_to_hist(args.reference, poi_types=poi_types_ref, uncertainties=None, translate_poi_types=False, merge_gen_charge_W=False)
+    result_ref, meta_ref = conversion_tools.fitresult_pois_to_hist(args.reference, poi_types=poi_types_ref, uncertainties=None, translate_poi_types=False, merge_gen_charge_W=False)
 
 grouping = styles.nuisance_groupings.get(args.grouping, None)
 
@@ -139,7 +138,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     yLabel = args.ylabel if args.ylabel else styles.poi_types.get(poi_type, poi_type)
 
     # unroll histograms
-    binwnorm = 1 if poi_type not in ["nois", "mu", "ratiometapois"] else None
+    binwnorm = None if poi_type in ["nois", "mu", "chargepois", "ratiometapois", "helpois", "helmetapois"] else 1
     axes_names = hist_xsec.axes.name
     if len(axes_names) > 1:
         hist_xsec = hh.unrolledHist(hist_xsec, binwnorm=binwnorm, add_flow_bins=args.genFlow)
@@ -656,7 +655,6 @@ def plot_uncertainties_with_ratio(
 
     plt.close()
 
-
 for poi_type, poi_result in result.items():
 
     for channel, channel_result in poi_result.items():
@@ -726,6 +724,8 @@ for poi_type, poi_result in result.items():
                                         label = "SigmaUL"
                                     else:
                                         label = f"Sigma{label}"
+                                else:
+                                    label = f"{a}{label}"
                             else:
                                 label = f"{a}{i}"
                             suffix += f"_{label}"

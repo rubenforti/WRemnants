@@ -79,7 +79,7 @@ all_axes = {
     # "cosThetaStarll": hist.axis.Regular(100, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
     # "phiStarll": hist.axis.Regular(100, -math.pi, math.pi, circular = True, name = "phiStarll"),
     # 8 quantiles
-    "cosThetaStarll": hist.axis.Variable([-1, -0.56, -0.375, -0.19, 0., 0.19, 0.375  0.56, 1.], name = "cosThetaStarll", underflow=False, overflow=False),
+    "cosThetaStarll": hist.axis.Variable([-1, -0.56, -0.375, -0.19, 0., 0.19, 0.375, 0.56, 1.], name = "cosThetaStarll", underflow=False, overflow=False),
     "phiStarll": hist.axis.Variable([-math.pi, -2.27, -1.57, -0.87, 0, 0.87, 1.57, 2.27, math.pi], name = "phiStarll", underflow=False, overflow=False), 
     #"charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
     "massVgen": hist.axis.Variable(ewMassBins, name = "massVgen", overflow=not args.excludeFlow, underflow=not args.excludeFlow),

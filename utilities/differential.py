@@ -53,8 +53,8 @@ def get_dilepton_axes(gen_vars, gen_axes, add_out_of_acceptance_axis=False):
         axes.append(gen_axes[var])
         cols.append(var)
 
-    # selections for out of fiducial region
-    if "ptVGen" in gen_vars:
+    # selections for out of fiducial region, use overflow bin in ptVGen (i.e. not treated as out of acceptance)
+    if "ptVGen" in gen_vars and not gen_axes["ptVGen"].traits.overflow:
         selections.append("ptVGen < {0}".format(gen_axes["ptVGen"].edges[-1]))
 
     if "absYVGen" in gen_vars:
