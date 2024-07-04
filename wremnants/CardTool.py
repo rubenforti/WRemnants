@@ -1047,8 +1047,6 @@ class CardTool(object):
         # exit this function when a syst is applied to no process (can happen when some are excluded)
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
-            # lowPU does not include PhotonInduced as a process. skip it:
-            if ("lowpu" in self.datagroups.mode) and (name == 'CMS_PhotonInduced'): continue
             if all(x not in info["processes"] for x in nondata):
                 raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
             
