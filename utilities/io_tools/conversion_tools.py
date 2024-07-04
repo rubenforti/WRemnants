@@ -105,14 +105,13 @@ def combine_channels(meta, merge_gen_charge_W):
     return channel_info
 
 def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_types=True,
-    merge_channels=True, grouped=True, uncertainties=None, expected=False, initial=None, merge_gen_charge_W=True,
+    merge_channels=True, grouped=True, uncertainties=None, expected=False, merge_gen_charge_W=True,
 ):
     # convert POIs in fitresult into histograms
     # uncertainties, use None to get all, use [] to get none
     # grouped=True for grouped uncertainties 
     # Different channels can have different year, flavor final state, particle final state, sqrt(s), 
     #   if merge_channels=True the lumi is added up for final states with different flavors or eras with same sqrt(s)
-    # initial: results from an initial fit to set noi values
     
     # translate the name of the keys to be written out
     target_keys={
@@ -125,11 +124,6 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
     fitresult = combinetf_input.get_fitresult(infile.replace(".root",".hdf5"))
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
-
-    if initial:
-        fitresult_initial = combinetf_input.get_fitresult(initial.replace(".root",".hdf5"))
-        meta_initial = ioutils.pickle_load_h5py(fitresult_initial["meta"])
-        meta_info_initial = meta_initial["meta_info"]
 
     if poi_types is None:
         if meta_info["args"]["poiAsNoi"]:
@@ -157,13 +151,6 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
         action_val, action_err = transform_poi(poi_type, meta_info)
 
-        poi_type_initial="mu"
-        if initial:
-            action_val_initial, action_err_initial = transform_poi(poi_type_initial, meta_info_initial)
-            df_initial = combinetf_input.read_impacts_pois(fitresult_initial, poi_type=poi_type_initial, group=grouped, uncertainties=[])
-            if df_initial is None or len(df_initial)==0:
-                logger.warning(f"Initial fitresult specified but POI type {poi_type_initial} not found in histogram, skip using initial result")
-
         poi_key = target_keys.get(poi_type, poi_type) if translate_poi_types else poi_type
         if poi_key not in result:
             result[poi_key] = {}
@@ -172,10 +159,8 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 
             if poi_type in ["pmaskedexp", "sumpois"]:
                 channel_scale = 1./(info["lumi"]*1000)
-                channel_scale_initial = 1./(info["lumi"]*1000)
             else:
                 channel_scale = 1
-                channel_scale_initial = 1
             if channel not in result[poi_key]:
                 result[poi_key][channel] = {}
             for proc, gen_axes_proc in info["gen_axes"].items():
@@ -227,13 +212,6 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
                         logger.debug(f"No values found for the hist in poi {poi_key}, continue with next one")
                         continue
                     logger.debug(f"The values for the hist in poi {poi_key} are {data['value'].values}")
-
-                    if initial:
-                        data_initial = combinetf_input.select_pois(df_initial, axes_names, base_processes=proc, flow=True)
-                        values_initial = action_val_initial(data_initial["value"].values, channel_scale_initial)
-                        data.loc[:,"value"] = data["value"] * values_initial 
-                        for u in filter(lambda x: x.startswith("err_"), data.keys()):
-                            data.loc[:,u] = data[u] * values_initial
 
                     values = np.reshape(data["value"].values, shape)
                     variances = np.reshape(data["err_total"].values**2, shape)

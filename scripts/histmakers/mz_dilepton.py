@@ -26,7 +26,6 @@ parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+")
 parser.add_argument("--addRunAxis", action="store_true", help="Add axis with slices of luminosity based on run numbers (for data only)")
 
-
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analysis_label))
@@ -34,6 +33,7 @@ parser = common.set_parser_default(parser, "pt", common.get_default_ptbins(analy
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
+inclusive = hasattr(args, "inclusive") and args.inclusive
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -59,11 +59,8 @@ dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "mll": hist.axis.Variable([60,70,75,78,80,82,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,100,102,105,110,120], name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    # "yll": hist.axis.Regular(100, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "yll": hist.axis.Variable([-2.5, -1.5, -1.1, -0.7, -0.35, 0, 0.35, 0.7, 1.1, 1.5, 2.5], name = "yll", underflow=not args.excludeFlow, overflow=not args.excludeFlow),
-    # "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
-    "absYll": hist.axis.Variable([0, 0.4, 0.8, 1.4, 2.5], name = "absYll", underflow=False, overflow=not args.excludeFlow),
-    # "ptll": hist.axis.Regular(200, 0., 100, name = "ptll", underflow=False, overflow=not args.excludeFlow),
+    "yll": hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "absYll": hist.axis.Regular(10, 0., 2.5, name = "absYll", underflow=False, overflow=not args.excludeFlow),
     "ptll": hist.axis.Variable(dilepton_ptV_binning, name = "ptll", underflow=False, overflow=not args.excludeFlow),
     "etaPlus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaPlus"),
     "etaMinus": hist.axis.Variable([-2.4,-1.2,-0.3,0.3,1.2,2.4], name = "etaMinus"),
@@ -76,11 +73,8 @@ all_axes = {
     "etaDiff": hist.axis.Variable([-4.8, -1.0, -0.6, -0.2, 0.2, 0.6, 1.0, 4.8], name = "etaDiff"),
     "ptPlus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptPlus"),
     "ptMinus": hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "ptMinus"),
-    # "cosThetaStarll": hist.axis.Regular(100, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
-    # "phiStarll": hist.axis.Regular(100, -math.pi, math.pi, circular = True, name = "phiStarll"),
-    # 8 quantiles
-    "cosThetaStarll": hist.axis.Variable([-1, -0.56, -0.375, -0.19, 0., 0.19, 0.375, 0.56, 1.], name = "cosThetaStarll", underflow=False, overflow=False),
-    "phiStarll": hist.axis.Variable([-math.pi, -2.27, -1.57, -0.87, 0, 0.87, 1.57, 2.27, math.pi], name = "phiStarll", underflow=False, overflow=False), 
+    "cosThetaStarll": hist.axis.Regular(20, -1., 1., name = "cosThetaStarll", underflow=False, overflow=False),
+    "phiStarll": hist.axis.Regular(20, -math.pi, math.pi, circular = True, name = "phiStarll"),
     #"charge": hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge") # categorical axes in python bindings always have an overflow bin, so use a regular
     "massVgen": hist.axis.Variable(ewMassBins, name = "massVgen", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "ewMll": hist.axis.Variable(ewMassBins, name = "ewMll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -96,20 +90,13 @@ auxiliary_gen_axes = ["massVgen", # preFSR variables
     "ewMll", "ewMlly", "ewLogDeltaM" # ew variables
     ]
 
-for a in args.axes:
-    if a not in all_axes.keys():
-        logger.error(f" {a} is not a known axes! Supported axes choices are {list(all_axes.keys())}")
-
-nominal_cols = args.axes
-
-if args.csVarsHist:
-    nominal_cols += ["cosThetaStarll", "phiStarll"]
-
-nominal_axes = [all_axes[a] for a in nominal_cols] 
-
-inclusive = hasattr(args, "inclusive") and args.inclusive
-
 if isUnfolding:
+    # 8 quantiles
+    all_axes["cosThetaStarll"] = hist.axis.Variable([-1, -0.56, -0.375, -0.19, 0., 0.19, 0.375, 0.56, 1.], name = "cosThetaStarll", underflow=False, overflow=False)
+    all_axes["phiStarll"] = hist.axis.Variable([-math.pi, -2.27, -1.57, -0.87, 0, 0.87, 1.57, 2.27, math.pi], name = "phiStarll", underflow=False, overflow=False) 
+    # 10 quantiles
+    all_axes["yll"] = hist.axis.Variable([-2.5, -1.5, -1.1, -0.7, -0.35, 0, 0.35, 0.7, 1.1, 1.5, 2.5], name = "yll", underflow=not args.excludeFlow, overflow=not args.excludeFlow)
+
     unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
         args.genAxes, 
         common.get_gen_axes(dilepton_ptV_binning, inclusive, flow=isPoiAsNoi), 
@@ -121,6 +108,17 @@ if isUnfolding:
     if args.fitresult:
         noi_axes = [a for a in unfolding_axes if a.name != "acceptance"]
         unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult, noi_axes, process = "Z", poi_type = "nois")
+
+for a in args.axes:
+    if a not in all_axes.keys():
+        logger.error(f" {a} is not a known axes! Supported axes choices are {list(all_axes.keys())}")
+
+nominal_cols = args.axes
+
+if args.csVarsHist:
+    nominal_cols += ["cosThetaStarll", "phiStarll"]
+
+nominal_axes = [all_axes[a] for a in nominal_cols] 
 
 # define helpers
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)

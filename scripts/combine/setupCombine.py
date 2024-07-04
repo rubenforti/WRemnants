@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections, histselections
+from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections
 from wremnants.syst_tools import massWeightNames
 from wremnants.datasets.datagroups import Datagroups
 
@@ -11,6 +11,7 @@ import math, copy
 import h5py
 import narf.ioutils
 import numpy as np
+
 
 def make_subparsers(parser):
 
@@ -25,7 +26,7 @@ def make_subparsers(parser):
 
     parser.add_argument("--poiAsNoi", action='store_true', help="Make histogram to do the POIs as NOIs trick (some postprocessing will happen later in CardTool.py)")
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
-    parser.add_argument("--genAxes", type=str, default=None, nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
+    parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
     parser.add_argument("--scaleNormXsecHistYields", type=float, default=0.01, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
@@ -233,13 +234,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 xnorm_axes = ["qGen", *datagroups.gen_axes_names]
             else:
                 xnorm_axes = datagroups.gen_axes_names[:]
-            datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar])
+            datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar], base_group=base_group)
 
     if isPoiAsNoi:
         constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
-        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
+        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes], base_group=base_group)
 
         # FIXME: temporary customization of signal and out-of-acceptance process names for theory agnostic with POI as NOI
         # There might be a better way to do it more homogeneously with the rest.
@@ -261,44 +262,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     datagroups.groups[base_group].deleteMembers([m for m in datagroups.groups[base_group].members if m.name.endswith("OOA")])
             if any(x.endswith("OOA") for x in args.excludeProcGroups) and hasSeparateOutOfAcceptanceSignal:
                 datagroups.deleteGroup(f"{base_group}OOA") # remove out of acceptance signal
-
-        if isUnfolding:
-            # set gen axes to be stored in metadata for post processing
-            if wmass and "qGen" in datagroups.gen_axes_names:
-                # gen level bins, split by charge
-                noi_names = []
-                if "minus" in args.recoCharge:
-                    unfolding_hist = datagroups.getHistForUnfolding(
-                        base_group, 
-                        member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
-                        histToReadAxes = "xnorm"
-                    )
-                    gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
-                    datagroups.gen_axes["W_qGen0"] = gen_axes_to_read
-                    gen_bin_indices = datagroups.getGenBinIndices(unfolding_hist, axesToRead=[a.name for a in gen_axes_to_read])
-                    noi_names.extend(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen0", flow=False))
-                if "plus" in args.recoCharge:
-                    unfolding_hist = datagroups.getHistForUnfolding(
-                        base_group, 
-                        member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
-                        histToReadAxes= "xnorm"
-                    )
-                    gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in datagroups.gen_axes_names]
-                    datagroups.gen_axes["W_qGen1"] = gen_axes_to_read
-                    gen_bin_indices = datagroups.getGenBinIndices(unfolding_hist, axesToRead=[a.name for a in gen_axes_to_read])
-                    noi_names.extend(datagroups.getPOINames(gen_bin_indices, [a.name for a in gen_axes_to_read], "W_qGen1", flow=False))
-            else:
-                unfolding_hist = datagroups.getHistForUnfolding(base_group, member_filter=lambda x: not x.name.endswith("OOA"), histToReadAxes= "xnorm")
-                datagroups.gen_axes[base_group[0]] = [ax for ax in unfolding_hist.axes if ax.name in datagroups.gen_axes_names]
-
-                gen_bin_indices = datagroups.getGenBinIndices(unfolding_hist, axesToRead=datagroups.gen_axes_names)
-                noi_names = datagroups.getPOINames(gen_bin_indices, datagroups.gen_axes_names, base_group[0], flow=False)
-
-        logger.debug(f"New gen axes are: {datagroups.gen_axes}")
-
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
-        datagroups.setGenAxes(genvar)
+        datagroups.setGenAxes(genvar, base_group=base_group)
         logger.info(f"GEN axes are {genvar}")
         if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
@@ -371,7 +337,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.setNominalName(inputBaseName)
     
     if isUnfolding and isPoiAsNoi:
-        cardTool.cardXsecGroups = noi_names
+        cardTool.set_cardXsecGroups()
 
     # define sumGroups for integrated cross section
     if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
@@ -405,11 +371,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 pseudodataGroups.set_rebin_action(fitvar, args.axlim, args.rebin, args.absval, rename=False)
 
             if wmass and not xnorm:
-                    pseudodataGroups.fakerate_axes=args.fakerateAxes
-                    pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                    smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
-                    integrate_x="mt" not in fitvar,
-                    simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+                pseudodataGroups.fakerate_axes=args.fakerateAxes
+                pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
+                smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate,
+                integrate_x="mt" not in fitvar,
+                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
 
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     if args.pseudoDataFakes:
@@ -621,50 +587,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             # need to find the reco variables that correspond to the masked channel
             idx = args.inputFile.index(inputFile) 
             recovar = args.fitvar[idx].split("-")
-        recovar_syst = [f"_{n}" for n in recovar]
-        info=dict(
-            baseName="MCstat_"+"_".join(cardTool.procGroups['signal_samples'])+"_",
-            rename="statMC",
-            group=f"statMC",
-            passToFakes=False,
-            processes=["signal_samples"],
-            mirror=True,
-            labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
-        )
-        cardTool.setProcsNoStatUnc(cardTool.procGroups['signal_samples'])
-        if xnorm and not args.fitresult:
-            if wmass:
-                action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])  
-            else:
-                action_sel = lambda h, x: h[x] # signal region selection
 
-            integration_var = {a:hist.sum for a in datagroups.gen_axes_names} # integrate out gen axes for bin by bin uncertainties
-            cardTool.addSystematic(**info,
-                name="yieldsUnfolding",
-                nominalName="nominal",
-                systAxes=recovar,
-                actionRequiresNomi=True,
-                action=lambda hv, hn:
-                    hh.addHists(
-                        hn[{"count":hist.sum, "acceptance":hist.sum}].project(*datagroups.gen_axes_names),
-                        action_sel(hv, {"acceptance":True}).project(*recovar, *datagroups.gen_axes_names),
-                        scale2=(
-                            np.sqrt(action_sel(hv, {"acceptance":hist.sum, **integration_var}).variances(flow=True))
-                            / action_sel(hv, {"acceptance":hist.sum, **integration_var}).values(flow=True)
-                        )[...,*[np.newaxis] * len(datagroups.gen_axes_names)]
-                    )
-            )
+        if xnorm and not args.fitresult:
+            # use variations from reco histogram and apply them to xnorm 
+            source = ("nominal", "yieldsUnfolding")
         else:
-            if args.fitresult:
-                info["group"] = "binByBinStat"
-            cardTool.addSystematic(**info,
-                name=cardTool.nominalName,
-                systAxes=recovar_syst,
-                action=lambda h: 
-                    hh.addHists(h.project(*recovar),
-                        hh.expand_hist_by_duplicate_axes(h.project(*recovar), recovar, recovar_syst),
-                        scale2=np.sqrt(h.project(*recovar).variances(flow=True))/h.project(*recovar).values(flow=True))
-            )
+            None
+
+        combine_helpers.add_explicit_MCstat(cardTool, recovar, samples="signal_samples", wmass=wmass, source=source)
  
     if args.doStatOnly:
         # print a card with only mass weights
@@ -1201,7 +1131,7 @@ def main(args, xnorm=False):
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
     iBaseName = args.baseName[0]
     iLumiScale = args.lumiScale[0]
-    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm)
+    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm=xnorm)
     cardTool.setOutput(outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool))
     cardTool.writeOutput(args=args, forceNonzero=forceNonzero, check_systs=checkSysts)
     return
@@ -1246,7 +1176,7 @@ if __name__ == "__main__":
         outnames = []
         for i, ifile in enumerate(args.inputFile):
             fitvar = args.fitvar[i].split("-")
-            genvar = args.genAxes[i].split("-") if hasattr(args,"genAxes") else None
+            genvar = args.genAxes[i].split("-") if hasattr(args,"genAxes") and len(args.genAxes) else None
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             

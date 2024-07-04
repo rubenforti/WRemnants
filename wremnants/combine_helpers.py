@@ -1,5 +1,6 @@
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import input_tools
+from wremnants import histselections
 
 import numpy as np
 import hist
@@ -202,6 +203,63 @@ def projectABCD(cardTool, h, return_variances=False, dtype="float64"):
     flat_variances = np.append(flat_variances, flat_variances_highMT_passIso)
 
     return flat, flat_variances
+
+
+def add_explicit_MCstat(cardTool, recovar, samples='signal_samples', wmass=False, source=None):
+    """
+    add explicit bin by bin stat uncertainties 
+
+    Parameters:
+    source (tuple of str): take variations from histogram with name given by f"{source[0]}_{source[1]}" (E.g. used to correlate between masked channels). 
+        If None, use variations from nominal histogram 
+    """
+    datagroups = cardTool.datagroups
+
+    recovar_syst = [f"_{n}" for n in recovar]
+    info=dict(
+        baseName="MCstat_"+"_".join(cardTool.procGroups[samples])+"_",
+        rename="statMC",
+        group=f"statMC",
+        passToFakes=False,
+        processes=[samples],
+        mirror=True,
+        labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
+    )
+    cardTool.setProcsNoStatUnc(cardTool.procGroups[samples])    
+    if source is not None:
+        # signal region selection
+        if wmass:
+            action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])  
+        else:
+            action_sel = lambda h, x: h[x]
+
+        integration_var = {a:hist.sum for a in datagroups.gen_axes_names} # integrate out gen axes for bin by bin uncertainties
+        cardTool.addSystematic(**info,
+            nominalName=source[0],
+            name=source[1],
+            systAxes=recovar,
+            actionRequiresNomi=True,
+            action=lambda hv, hn:
+                hh.addHists(
+                    hn[{"count":hist.sum, "acceptance":hist.sum}].project(*datagroups.gen_axes_names),
+                    action_sel(hv, {"acceptance":True}).project(*recovar, *datagroups.gen_axes_names),
+                    scale2=(
+                        np.sqrt(action_sel(hv, {"acceptance":hist.sum, **integration_var}).variances(flow=True))
+                        / action_sel(hv, {"acceptance":hist.sum, **integration_var}).values(flow=True)
+                    )[...,*[np.newaxis] * len(datagroups.gen_axes_names)]
+                )
+        )
+    else:
+        if args.fitresult:
+            info["group"] = "binByBinStat"
+        cardTool.addSystematic(**info,
+            name=cardTool.nominalName,
+            systAxes=recovar_syst,
+            action=lambda h: 
+                hh.addHists(h.project(*recovar),
+                    hh.expand_hist_by_duplicate_axes(h.project(*recovar), recovar, recovar_syst),
+                    scale2=np.sqrt(h.project(*recovar).variances(flow=True))/h.project(*recovar).values(flow=True))
+        )
 
 
 def add_noi_unfolding_variations(

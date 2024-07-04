@@ -343,7 +343,7 @@ app = dash.Dash(__name__)
     [Input("groups", "on")],
 )
 
-def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_ref=None):
+def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_ref=None, grouping=None):
     poi_type = poi.split("_")[-1] if poi else None
 
     if poi is not None and "MeV" in poi:
@@ -387,10 +387,10 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
     if not (group and args.output_mode == 'output'):
         df = readFitInfoFromFile(fitresult, args.inputFile, poi, False, stat=args.stat/100., normalize=normalize, scale=scale)
     elif group:
-        df = readFitInfoFromFile(fitresult, args.inputFile, poi, True, stat=args.stat/100., normalize=normalize, scale=scale)
+        df = readFitInfoFromFile(fitresult, args.inputFile, poi, True, stat=args.stat/100., normalize=normalize, scale=scale, grouping=grouping)
 
     if fitresult_ref:
-        df_ref = readFitInfoFromFile(fitresult_ref, args.referenceFile, poi, group, stat=args.stat/100., normalize=normalize, scale=scale)
+        df_ref = readFitInfoFromFile(fitresult_ref, args.referenceFile, poi, group, stat=args.stat/100., normalize=normalize, scale=scale, grouping=grouping)
         df = df.merge(df_ref, how="outer", on="label", suffixes=("","_ref"))
 
         # Set default values for missing entries in respective columns
@@ -515,4 +515,4 @@ if __name__ == '__main__':
             producePlots(fitresult, args, poi, fitresult_ref=fitresult_ref)
         if args.mode in ["both", "group"]:
             logger.debug(f"Make impact my group")
-            producePlots(fitresult, args, poi, group=True, fitresult_ref=fitresult_ref)
+            producePlots(fitresult, args, poi, group=True, fitresult_ref=fitresult_ref, grouping=grouping)

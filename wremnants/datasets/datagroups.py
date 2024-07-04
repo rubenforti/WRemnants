@@ -544,7 +544,7 @@ class Datagroups(object):
                 raise ValueError(f"In setSelectOp(): process {proc} not found")
             self.groups[proc].selectOp = op
 
-    def setGenAxes(self, gen_axes_names=None, sum_gen_axes=None):
+    def setGenAxes(self, gen_axes_names=None, sum_gen_axes=None, base_group=None):
         # gen_axes_names are the axes names to be recognized as gen axes, e.g. for the unfolding
         # sum_gen_axes are all gen axes names that are potentially in the produced histogram and integrated over if not used
         if isinstance(gen_axes_names, str):
@@ -570,16 +570,33 @@ class Datagroups(object):
 
         logger.debug(f"Gen axes names are now {self.gen_axes_names}")
 
-    def getGenBinIndices(self, h, axesToRead=None):
-        gen_bins = []
-        for gen_axis in (self.gen_axes_names if axesToRead is None else axesToRead):
-            if gen_axis not in h.axes.name:
-                raise RuntimeError(f"Gen axis '{gen_axis}' not found in histogram axes '{h.axes.name}'!")
+        # set actual hist axes objects to be stored in metadata for post processing/plots/...
+        for group_name, group in self.groups.items():
+            if group_name != base_group:
+                continue
+            if group_name[0]=="W" and "qGen" in self.gen_axes_names:
+                for idx, sign in enumerate(["minus", "plus"]):
+                    # gen level bins, split by charge
+                    unfolding_hist = self.getHistForUnfolding(
+                        group_name, 
+                        member_filter=lambda x: x.name.startswith(f"W{sign}") and not x.name.endswith("OOA"), 
+                        histToReadAxes = "xnorm"
+                    )
+                    gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in self.gen_axes_names]
+                    self.gen_axes[f"W_qGen{idx}"] = gen_axes_to_read
+            else:
+                unfolding_hist = self.getHistForUnfolding(group_name, member_filter=lambda x: not x.name.endswith("OOA"), histToReadAxes= "xnorm")
+                self.gen_axes[group_name[0]] = [ax for ax in unfolding_hist.axes if ax.name in self.gen_axes_names]
 
-            gen_bin_list = [i for i in range(h.axes[gen_axis].size)]
-            if h.axes[gen_axis].traits.underflow:
+        logger.debug(f"New gen axes are: {self.gen_axes}")
+
+    def getGenBinIndices(self, axes=None):
+        gen_bins = []
+        for axis in axes:
+            gen_bin_list = [i for i in range(axis.size)]
+            if axis.traits.underflow:
                 gen_bin_list.append(hist.underflow)
-            if h.axes[gen_axis].traits.overflow:
+            if axis.traits.overflow:
                 gen_bin_list.append(hist.overflow)
             gen_bins.append(gen_bin_list)
         return gen_bins
@@ -623,7 +640,7 @@ class Datagroups(object):
         self.gen_axes[new_name] = [ax for ax in nominal_hist.axes if ax.name in axesToRead]
         logger.debug(f"New gen axes are: {self.gen_axes}")
 
-        gen_bin_indices = self.getGenBinIndices(nominal_hist, axesToRead=axesToRead)
+        gen_bin_indices = self.getGenBinIndices([a for a in nominal_hist.axes if a.name in axesToRead])
 
         for indices, proc_name in zip(
             itertools.product(*gen_bin_indices), 

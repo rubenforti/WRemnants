@@ -24,7 +24,6 @@ poi_type_choices = ["nois", "mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "su
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")
 parser.add_argument("--name",  type=str, default="Unfolded data", help="Name for main source")
-parser.add_argument("--initialFit", type=str, default=None, help="Combine fitresult file from initial fit")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], help="y range for ratio plot")
 parser.add_argument("--ylabel", type=str, default=None, help="Specify a y-axis label (if not it will be set automatic)")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
@@ -67,7 +66,7 @@ if args.infile.endswith(".root"):
 if args.reference is not None and args.reference.endswith(".root"):
     args.reference = args.reference.replace(".root", ".hdf5")
 
-result, meta = conversion_tools.fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, initial=args.initialFit, merge_gen_charge_W=False)    
+result, meta = conversion_tools.fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, merge_gen_charge_W=False)    
 
 if args.reference:
     if args.poiTypeReference is None:

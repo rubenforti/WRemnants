@@ -1004,6 +1004,14 @@ class CardTool(object):
         else:
             self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
 
+    def set_cardXsecGroups(self):
+        noi_names=[]
+        datagroups = self.datagroups
+        for proc, axes in datagroups.gen_axes:
+            gen_bin_indices = datagroups.getGenBinIndices(axes)
+            noi_names.extend(datagroups.getPOINames(gen_bin_indices, axes, proc, flow=False))
+        self.cardXsecGroups = noi_names
+
     def addSumXsecGroups(self, gen_axes=None, additional_axes=None, genCharge=None, all_param_names=None):
         if all_param_names is None:
             all_param_names = self.unconstrainedProcesses
