@@ -38,7 +38,6 @@ class CardTool(object):
         self.outfile = None
         self.systematics = {}
         self.lnNSystematics = {}
-        self.predictedProcs = []
         self.fakeEstimate = None
         self.channels = ["inclusive"]
         self.cardContent = {}
@@ -232,8 +231,6 @@ class CardTool(object):
         self.nominalTemplate = template
 
     def predictedProcesses(self):
-        if self.predictedProcs:
-            return self.predictedProcs
         return list(filter(lambda x: x != self.getDataName(), self.datagroups.groups.keys()))
 
     def setHistName(self, histName):
@@ -1050,9 +1047,11 @@ class CardTool(object):
         # exit this function when a syst is applied to no process (can happen when some are excluded)
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
+            # lowPU does not include PhotonInduced as a process. skip it:
+            if ("lowpu" in self.datagroups.mode) and (name == 'CMS_PhotonInduced'): continue
             if all(x not in info["processes"] for x in nondata):
-                logger.warning(f"Skipping syst {name}, procs to apply it to would be {info['processes']}, and predicted processes are {nondata}")
-                return
+                raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
+            
             group = info["group"]
             groupFilter = info["groupFilter"]
             for chan in self.channels:
