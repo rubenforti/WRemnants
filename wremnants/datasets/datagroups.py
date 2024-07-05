@@ -544,7 +544,7 @@ class Datagroups(object):
                 raise ValueError(f"In setSelectOp(): process {proc} not found")
             self.groups[proc].selectOp = op
 
-    def setGenAxes(self, gen_axes_names=None, sum_gen_axes=None, base_group=None):
+    def setGenAxes(self, gen_axes_names=None, sum_gen_axes=None, base_group=None, histToReadAxes="xnorm"):
         # gen_axes_names are the axes names to be recognized as gen axes, e.g. for the unfolding
         # sum_gen_axes are all gen axes names that are potentially in the produced histogram and integrated over if not used
         if isinstance(gen_axes_names, str):
@@ -580,12 +580,16 @@ class Datagroups(object):
                     unfolding_hist = self.getHistForUnfolding(
                         group_name, 
                         member_filter=lambda x: x.name.startswith(f"W{sign}") and not x.name.endswith("OOA"), 
-                        histToReadAxes = "xnorm"
+                        histToReadAxes=histToReadAxes,
                     )
+                    if unfolding_hist is None:
+                        continue
                     gen_axes_to_read = [ax for ax in unfolding_hist.axes if ax.name != "qGen" and ax.name in self.gen_axes_names]
                     self.gen_axes[f"W_qGen{idx}"] = gen_axes_to_read
             else:
-                unfolding_hist = self.getHistForUnfolding(group_name, member_filter=lambda x: not x.name.endswith("OOA"), histToReadAxes= "xnorm")
+                unfolding_hist = self.getHistForUnfolding(group_name, member_filter=lambda x: not x.name.endswith("OOA"), histToReadAxes=histToReadAxes)
+                if unfolding_hist is None:
+                    continue
                 self.gen_axes[group_name[0]] = [ax for ax in unfolding_hist.axes if ax.name in self.gen_axes_names]
 
         logger.debug(f"New gen axes are: {self.gen_axes}")
@@ -609,7 +613,8 @@ class Datagroups(object):
             base_members = [m for m in filter(lambda x, f=member_filter: f(x), base_members)]            
 
         if histToReadAxes not in self.results[base_members[0].name]["output"]:
-            raise ValueError(f"Results for member {base_members[0].name} does not include xnorm. Found {self.results[base_members[0].name]['output'].keys()}")
+            logger.warning(f"Results for member {base_members[0].name} does not include histogram {histToReadAxes}. Found {self.results[base_members[0].name]['output'].keys()}")
+            return None
         nominal_hist = self.results[base_members[0].name]["output"][histToReadAxes].get()
         return nominal_hist
 

@@ -37,7 +37,6 @@ inclusive = hasattr(args, "inclusive") and args.inclusive
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-
 thisAnalysis = ROOT.wrem.AnalysisType.Dilepton if args.useDileptonTriggerSelection else ROOT.wrem.AnalysisType.Wlike
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
