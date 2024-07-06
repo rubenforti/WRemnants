@@ -618,11 +618,11 @@ class Datagroups(object):
         nominal_hist = self.results[base_members[0].name]["output"][histToReadAxes].get()
         return nominal_hist
 
-    def getPOINames(self, gen_bin_indices, axes, base_name, flow=True):
+    def getPOINames(self, gen_bin_indices, axes_names, base_name, flow=True):
         poi_names = []
         for indices in itertools.product(*gen_bin_indices):
             poi_name = base_name
-            for idx, var in zip(indices, axes):
+            for idx, var in zip(indices, axes_names):
                 if idx in [hist.overflow, hist.underflow] and not flow:
                     break
                 elif idx == hist.underflow:
@@ -637,23 +637,25 @@ class Datagroups(object):
         
         return poi_names
 
-    def defineSignalBinsUnfolding(self, group_name, new_name=None, member_filter=None, histToReadAxes="xnorm", axesToRead=None):
+    def defineSignalBinsUnfolding(self, group_name, new_name=None, member_filter=None, histToReadAxes="xnorm", axesNamesToRead=None):
         nominal_hist = self.getHistForUnfolding(group_name, member_filter, histToReadAxes)
-        if axesToRead is None:
-            axesToRead = self.gen_axes_names
+        if axesNamesToRead is None:
+            axesNamesToRead = self.gen_axes_names
 
-        self.gen_axes[new_name] = [ax for ax in nominal_hist.axes if ax.name in axesToRead]
+        axesToRead = [nominal_hist.axes[n] for n in axesNamesToRead]
+
+        self.gen_axes[new_name] = axesToRead
         logger.debug(f"New gen axes are: {self.gen_axes}")
 
-        gen_bin_indices = self.getGenBinIndices([a for a in nominal_hist.axes if a.name in axesToRead])
+        gen_bin_indices = self.getGenBinIndices(axesToRead)
 
         for indices, proc_name in zip(
             itertools.product(*gen_bin_indices), 
-            self.getPOINames(gen_bin_indices, axesToRead, base_name=group_name if new_name is None else new_name)
+            self.getPOINames(gen_bin_indices, axesNamesToRead, base_name=group_name if new_name is None else new_name)
         ):
+            logger.debug(f"Now at {proc_name} with indices {indices}")
             self.copyGroup(group_name, proc_name, member_filter=member_filter)
-
-            memberOp = lambda x, indices=indices, genvars=axesToRead: x[{var : i for var, i in zip(genvars, indices)}]
+            memberOp = lambda x, indices=indices, genvars=axesNamesToRead: x[{var : i for var, i in zip(genvars, indices)}]
             self.groups[proc_name].memberOp = [memberOp for m in self.groups[group_name].members[:]]
 
             self.unconstrainedProcesses.append(proc_name)

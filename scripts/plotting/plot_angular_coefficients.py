@@ -4,35 +4,9 @@ from utilities.styles import styles
 from wremnants import theory_tools, plot_tools
 
 import numpy as np
-import matplotlib as mpl
-import hist
-import math
 import mplhep as hep
 import h5py
 
-# def load_moments(filename, process="Z"):
-
-#     return moments
-
-
-    
-
-#     if 'muRfact' in corrh.axes.name:
-#         corrh = corrh[{'muRfact' : 1.j,}]
-#     if 'muFfact' in corrh.axes.name:
-#         corrh = corrh[{'muFfact' : 1.j,}]
-    
-#     # axes_names = ['massVgen','absYVgen','ptVgen','chargeVgen', 'helicity']
-#     # if not list(corrh.axes.name) == axes_names:
-#     #     raise ValueError (f"Axes [{corrh.axes.name}] are not the ones this functions expects ({axes_names})")
-    
-#     if np.count_nonzero(corrh[{"helicity" : -1.j}] == 0):
-#         logger.warning("Zeros in sigma UL for the angular coefficients will give undefined behaviour!")
-#     # histogram has to be without errors to load the tensor directly
-#     corrh_noerrs = hist.Hist(*corrh.axes, storage=hist.storage.Double())
-#     corrh_noerrs.values(flow=True)[...] = corrh.values(flow=True)
-
-#     return corrh_noerrs
 
 if __name__ == '__main__':
     parser = common.plot_parser()
@@ -42,19 +16,55 @@ if __name__ == '__main__':
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-    if args.moments is not None:
-        # raise NotImplementedError("Using moments file from histmaker output is not yet supported")
-        with h5py.File(args.moments, "r") as ff:
-            out = input_tools.load_results_h5py(ff)
-        hhelicity = out[args.process]
-
-        hcoefficients = theory_tools.moments_to_angular_coeffs(hhelicity)
-
-        import pdb
-        pdb.set_trace()
-
     outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
+    with h5py.File(args.moments, "r") as ff:
+        out = input_tools.load_results_h5py(ff)
+    hhelicity = out[args.process]
+    hhelicity = hhelicity[{"muRfact":1j, "muFfact":1j, "chargeVgen":0}]
+
+    for var in ("absYVGen", "ptVGen"):
+
+        hhelicities_1D = hhelicity.project(var, "helicity")
+    
+        hcoeffs = theory_tools.moments_to_angular_coeffs(hhelicities_1D)
+
+        for i in hcoeffs.axes["helicity"]:
+            if i == -1:
+                continue
+
+            # idx = hcoeffs.axes["helicity"].index(0)
+
+            hcoeff = hcoeffs[{"helicity":complex(0,i)}]
+
+            fig, ax1 = plot_tools.figure(hcoeff, xlabel=styles.xlabels.get(var, var), ylabel=f"$\mathrm{{A}}_{i}$",
+                grid=False, automatic_scale=False, width_scale=1.2, logy=False)    
+        
+            hep.histplot(
+                hcoeff,
+                histtype="step",
+                color="black",
+                label="Prediction",
+                yerr=True,
+                ax=ax1,
+                zorder=3,
+                density=False,
+                binwnorm=None,
+            )
+
+            plot_tools.addLegend(ax1, ncols=2, text_size=12, loc="upper left")
+            plot_tools.fix_axes(ax1, logy=False)
+
+            scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
+            hep.cms.label(ax=ax1, lumi=None, fontsize=20*args.scaleleg*scale, 
+                label=args.cmsDecor, data=False)
+
+            outfile = f"angular_coefficient_{i}"
+            outfile += f"_{var}"
+            if args.postfix:
+                outfile += f"_{args.postfix}"
+            plot_tools.save_pdf_and_png(outdir, outfile)
+            plot_tools.write_index_and_log(outdir, outfile, args=args)
 
     if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
         output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)

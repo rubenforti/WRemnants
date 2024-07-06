@@ -1001,30 +1001,30 @@ class CardTool(object):
         else:
             self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
 
-    def set_cardXsecGroups(self):
+    def addXsecGroups(self):
         noi_names=[]
         datagroups = self.datagroups
-        for proc, axes in datagroups.gen_axes:
+        for proc, axes in datagroups.gen_axes.items():
             gen_bin_indices = datagroups.getGenBinIndices(axes)
-            noi_names.extend(datagroups.getPOINames(gen_bin_indices, axes, proc, flow=False))
+            noi_names.extend(datagroups.getPOINames(gen_bin_indices, axes_names=[a.name for a in axes], base_name=proc, flow=False))
         self.cardXsecGroups = noi_names
 
-    def addSumXsecGroups(self, gen_axes=None, additional_axes=None, genCharge=None, all_param_names=None):
+    def addSumXsecGroups(self, gen_axes_names=None, additional_axes=None, genCharge=None, all_param_names=None):
         if all_param_names is None:
             all_param_names = self.unconstrainedProcesses
-        if gen_axes is None:
-            gen_axes = self.datagroups.gen_axes_names.copy()
+        if gen_axes_names is None:
+            gen_axes_names = self.datagroups.gen_axes_names.copy()
         if additional_axes is not None:
-            gen_axes += additional_axes
+            gen_axes_names += additional_axes
         # make a sum group for inclusive cross section
         axes_combinations = [[]]
         # if only one or none gen axes, it is already included as main Param and no further sumXsecGroups are needed
-        if len(gen_axes) > 1:
+        if len(gen_axes_names) > 1:
             # make a sum group for each gen axis
-            axes_combinations.extend(gen_axes)
+            axes_combinations.extend(gen_axes_names)
         # also include combinations of axes in case there are more than 2 axes
-        for n in range(2, len(self.datagroups.gen_axes_names)):
-            axes_combinations += [k for k in itertools.combinations(self.datagroups.gen_axes_names, n)]
+        for n in range(2, len(gen_axes_names)):
+            axes_combinations += [k for k in itertools.combinations(gen_axes_names, n)]
         
         for axes in axes_combinations:
             logger.debug(f"Add sum group for {axes}{' with ' + genCharge if genCharge else ''}")

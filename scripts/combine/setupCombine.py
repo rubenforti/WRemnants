@@ -28,7 +28,7 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parser.add_argument("--scaleNormXsecHistYields", type=float, default=0.01, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
+    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
 
     if "theoryAgnostic" in subparserName:
@@ -272,12 +272,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 datagroups.defineSignalBinsUnfolding(
                     base_group, f"W_qGen0", 
                     member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
-                    axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                    axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
             if "plus" in args.recoCharge:
                 datagroups.defineSignalBinsUnfolding(base_group, 
-                f"W_qGen1", 
-                member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
-                axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                    f"W_qGen1", 
+                    member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
+                    axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
 
@@ -337,7 +337,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.setNominalName(inputBaseName)
     
     if isUnfolding and isPoiAsNoi:
-        cardTool.set_cardXsecGroups()
+        cardTool.addXsecGroups()
 
     # define sumGroups for integrated cross section
     if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
@@ -348,7 +348,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             if "minus" in args.recoCharge:
                 cardTool.addSumXsecGroups(genCharge="qGen0")
         else:
-            cardTool.addSumXsecGroups(all_param_names=noi_names if isUnfolding and isPoiAsNoi else None)
+            cardTool.addSumXsecGroups(all_param_names=cardTool.cardXsecGroups if isUnfolding and isPoiAsNoi else None)
 
     if args.noHist:
         cardTool.skipHistograms()
@@ -602,20 +602,18 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         return cardTool
 
     if not args.noTheoryUnc:
-        cardTool.addSystematic(f"sin2thetaWeightZ",
-                                rename=f"Sin2thetaZ0p00003",
-                                processes= ['z_samples'],
-                                action=lambda h: h[{"sin2theta" : ['sin2thetaZ0p23151', 'sin2thetaZ0p23157']}],
-                                group=f"sin2thetaZ",
-                                mirror=False,
-                                systAxes=["sin2theta"],
-                                outNames=[f"sin2thetaZDown", f"sin2thetaZUp"],
-                                passToFakes=passSystToFakes,
-        )
+        if wmass and not xnorm:
+            cardTool.addSystematic(f"massWeightZ",
+                                    processes=['single_v_nonsig_samples'],
+                                    group="ZmassAndWidth",
+                                    splitGroup = {"theory": ".*"},
+                                    skipEntries=massWeightNames(proc="Z", exclude=2.1),
+                                    mirror=False,
+                                    noConstraint=False,
+                                    systAxes=["massShift"],
+                                    passToFakes=passSystToFakes,
+            )
 
-        combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
-            samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
-        
         # Experimental range
         #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
         # Variation from EW fit (mostly driven by alphas unc.)    
@@ -646,6 +644,20 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                                     outNames=["widthWDown", "widthWUp"],
                                     passToFakes=passSystToFakes,
             )
+
+        cardTool.addSystematic(f"sin2thetaWeightZ",
+                                rename=f"Sin2thetaZ0p00003",
+                                processes= ['z_samples'],
+                                action=lambda h: h[{"sin2theta" : ['sin2thetaZ0p23151', 'sin2thetaZ0p23157']}],
+                                group=f"sin2thetaZ",
+                                mirror=False,
+                                systAxes=["sin2theta"],
+                                outNames=[f"sin2thetaZDown", f"sin2thetaZUp"],
+                                passToFakes=passSystToFakes,
+        )
+
+        combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
+            samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
         
@@ -1130,9 +1142,10 @@ def main(args, xnorm=False):
     checkSysts = forceNonzero
 
     fitvar = args.fitvar[0].split("-") if not xnorm else ["count"]
+    genvar = args.genAxes[0].split("-") if hasattr(args,"genAxes") and len(args.genAxes) else None
     iBaseName = args.baseName[0]
     iLumiScale = args.lumiScale[0]
-    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, xnorm=xnorm)
+    cardTool = setup(args, args.inputFile[0], iBaseName, iLumiScale, fitvar, genvar, xnorm=xnorm)
     cardTool.setOutput(outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool))
     cardTool.writeOutput(args=args, forceNonzero=forceNonzero, check_systs=checkSysts)
     return
@@ -1156,8 +1169,8 @@ if __name__ == "__main__":
         raise ValueError("Options unfolding and --fitXsec are incompatible. Please choose one or the other")
 
     if isTheoryAgnostic:
-        if args.genAxes is None:
-            args.genAxes = ["ptVgenSig", "absYVgenSig", "helicitySig"]
+        if len(args.genAxes) == 0:
+            args.genAxes = ["ptVgenSig-absYVgenSig-helicitySig"]
             logger.warning(f"Automatically setting '--genAxes {' '.join(args.genAxes)}' for theory agnostic analysis")
             if args.poiAsNoi:
                 logger.warning("This is only needed to properly get the systematic axes")

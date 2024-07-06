@@ -273,7 +273,6 @@ def add_noi_unfolding_variations(
     scale_norm=0.01,
     poi_axes_flow=[],#["ptGen", "ptVGen"],
 ):
-    poi_axes = poi_axes
     poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
     noi_args = dict(
         group=f"normXsec{label}",
@@ -289,44 +288,48 @@ def add_noi_unfolding_variations(
         labelsByAxis=[f"_{p}" if p != poi_axes[0] else p for p in poi_axes],
     )
 
-    # make sure each gen bin variation has a similar effect in the reco space so that 
-    #  we have similar sensitivity to all parameters within the given up/down variations
-    signal_samples = cardTool.procGroups['signal_samples']
-    hScale = cardTool.getHistsForProcAndSyst(signal_samples[0], "yieldsUnfolding", nominal_name="nominal")
-    hScale = hScale[{"acceptance": True}]   
-    hScale.values(flow=True)[...] = abs(hScale.values(flow=True)[...])
-    hScale = hScale.project(*poi_axes)
-    if "absYVGen" in hScale.axes.name:
-        # disable flow for absYVGen axis as these events are in out of acceptance
-        hScale = hh.disableFlow(hScale, "absYVGen")
-    scalemap = hScale.sum(flow=True).value/hScale.values(flow=True)
+    def disable_flow(h, axes_names = ["absYVGen", "absEtaGen"]):
+        # disable flow for gen axes as these events are in out of acceptance
+        for var in axes_names:
+            if var in h.axes.name:
+                h = hh.disableFlow(h, var)
+        return h
+
+    def get_scalemap(axes, scale=None, select={}):
+        # make sure each gen bin variation has a similar effect in the reco space so that 
+        #  we have similar sensitivity to all parameters within the given up/down variations
+        signal_samples = cardTool.procGroups['signal_samples']
+        hScale = cardTool.getHistsForProcAndSyst(signal_samples[0], "yieldsUnfolding", nominal_name="nominal")
+        hScale = hScale[{"acceptance": True, **select}]   
+        hScale.values(flow=True)[...] = abs(hScale.values(flow=True))
+        hScale = hScale.project(*axes)
+        hScale = disable_flow(hScale)
+        scalemap = hScale.sum(flow=True).value/hScale.values(flow=True)
+        this_scale = scale*scalemap if scale is not None else scalemap
+        return this_scale
 
     if xnorm:
-        def make_poi_xnorm_variations(h, poi_axes, poi_axes_syst, scale, scalemap=None):
-            if "absYVGen" in h.axes.name:
-                h = hh.disableFlow(h, "absYVGen")
-            this_scale = scale*scalemap if scalemap is not None else scale
+        def make_poi_xnorm_variations(h, poi_axes, poi_axes_syst, scale):
+            h = disable_flow(h)
             hVar = hh.expand_hist_by_duplicate_axes(h, poi_axes[::-1], poi_axes_syst[::-1])
             slices = [np.newaxis if a in h.axes else slice(None) for a in hVar.axes]
-            hVar.values(flow=True)[...] = hVar.values(flow=True) * this_scale[*slices]
-
+            hVar.values(flow=True)[...] = hVar.values(flow=True) * scale[*slices]
             return hh.addHists(h, hVar)
+
+        scalemap = get_scalemap(poi_axes, scale_norm)
 
         cardTool.addSystematic(**noi_args,
             baseName=f"{label}_",
             action=make_poi_xnorm_variations,
-            actionArgs=dict(poi_axes=poi_axes, poi_axes_syst=poi_axes_syst, scale=scale_norm, scalemap=scalemap)
+            actionArgs=dict(poi_axes=poi_axes, poi_axes_syst=poi_axes_syst, scale=scalemap)
         )
     else:
-        def make_poi_variations(h, poi_axes, scale, scalemap=None):
+        def make_poi_variations(h, poi_axes, scale):
             hNom = h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes},"acceptance": hist.tag.Slicer()[::hist.sum]}]
             hVar = h[{"acceptance": True}]   
-            if "absYVGen" in hVar.axes.name:
-                hVar = hh.disableFlow(hVar, "absYVGen")
-            this_scale = scale*scalemap if scalemap is not None else scale
+            hVar = disable_flow(hVar)
             slices = [np.newaxis if a in hNom.axes else slice(None) for a in hVar.axes]
-            hVar.values(flow=True)[...] = hVar.values(flow=True) * this_scale[*slices]
-
+            hVar.values(flow=True)[...] = hVar.values(flow=True) * scale[*slices]
             return hh.addHists(hNom, hVar)
 
         if wmass:
@@ -336,24 +339,27 @@ def add_noi_unfolding_variations(
             noi_args["labelsByAxis"] = [f"_{p}" if p != poi_axes[0] else p for p in poi_axes]
             noi_args["systAxes"] = poi_axes_syst
             for sign, sign_idx in (("minus",0), ("plus",1)):
+                scalemap = get_scalemap(poi_axes, scale_norm, select={"charge":sign_idx})
                 noi_args["rename"] = f"noiW{sign}"
                 cardTool.addSystematic(**noi_args,
                     baseName=f"W_qGen{sign_idx}_",
                     systAxesFlow=[n for n in poi_axes if n in poi_axes_flow],
                     preOpMap={
                         m.name: make_poi_variations if sign in m.name else (
-                            lambda h: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                            lambda h, poi_axes, scale: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
                                 "acceptance": hist.tag.Slicer()[::hist.sum]}]
                             )
                             for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
+                    preOpArgs=dict(poi_axes=poi_axes, scale=scalemap)
                 )
         else:
+            scalemap = get_scalemap(poi_axes, scale_norm)
             cardTool.addSystematic(**noi_args,
                 baseName=f"{label}_",
                 systAxesFlow=[n for n in poi_axes if n in poi_axes_flow],
                 preOpMap={m.name: make_poi_variations
                     for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                preOpArgs=dict(poi_axes=poi_axes, scale=scale_norm, scalemap=scalemap)
+                preOpArgs=dict(poi_axes=poi_axes, scale=scalemap)
             )
 
 

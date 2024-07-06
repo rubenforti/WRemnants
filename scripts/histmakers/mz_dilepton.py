@@ -98,7 +98,7 @@ if isUnfolding:
 
     unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
         args.genAxes, 
-        common.get_gen_axes(dilepton_ptV_binning, inclusive, flow=isPoiAsNoi), 
+        common.get_gen_axes(dilepton_ptV_binning, inclusive, flow=True), 
         add_out_of_acceptance_axis=isPoiAsNoi,
     )
     if not isPoiAsNoi:

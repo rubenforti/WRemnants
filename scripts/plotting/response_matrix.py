@@ -109,6 +109,8 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
 
     for sel, idx in selections_global:
         if sel is not None:
+            if histo.axes[sel].size-1 < idx:
+                continue
             h2d = histo[{sel:idx}].project(axis_gen, *axes_reco)
         else:
             h2d = histo.project(axis_gen, *axes_reco)
@@ -129,6 +131,9 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
 
         xedges = None
         for sel2, idx2 in selections_slices:
+            if h2d.axes[sel2].size-1 < idx2:
+                continue
+
             if isinstance(h2d.axes[sel2], hist.axis.Integer):
                 label = int(h2d.axes[sel2].edges[idx2])
                 if sel2 == "helicitySig":
@@ -273,12 +278,13 @@ for g_name, group in datagroups.items():
                     suffix=f"HelicityIdx{i}", normalize=False,
                 )
 
-        continue
-
         for axes_string in args.axes:
             axes = axes_string.split("-")
 
-            if (groups.mode[0] == "w" or "wlike" in groups.mode) and axes[0] == "pt":
+            if (
+                ((groups.mode[0] == "w" or "wlike" in groups.mode) and axes[1] == "ptGen") or 
+                ((groups.mode[0] == "z") and axes[1] == "ptVGen")
+            ):
                 genFlow=True
             else:
                 genFlow=False
@@ -299,8 +305,10 @@ for g_name, group in datagroups.items():
                 values[values<0] = 0
 
             ybins = hist2d.axes[1].edges
-            if genFlow:
-                ybins = np.array([ybins[0]-(ybins[1]-ybins[0]), *ybins, ybins[-1]+(ybins[-1]-ybins[-2])])
+            if genFlow and hist2d.axes[1].traits.underflow:
+                ybins = np.array([xbins[0], *ybins])
+            if genFlow and hist2d.axes[1].traits.overflow:
+                ybins = np.array([*ybins, xbins[-1]])
 
             outname = g_name+"_"+"_".join([a.replace("(","").replace(")","") for a in axes])
 
