@@ -128,7 +128,6 @@ nuisance_groupings = {
         "muonCalibration",
     ],
     "max": common_groups + [
-        # "massShift",
         "QCDscale", 
         "pdfCT18Z",
         "resum",

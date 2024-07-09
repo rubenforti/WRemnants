@@ -31,6 +31,7 @@ class HDF5Writer(object):
         self.theoryFitMCStat = True # Whether or not to include the MC stat uncertainty in the thoery fit (in the covariance matrix)
 
         self.dict_noigroups = defaultdict(lambda: set())
+        self.dict_noigroups_masked = defaultdict(lambda: set())
         self.dict_systgroups = defaultdict(lambda: set())
 
         self.dict_noigroups_masked = defaultdict(lambda: set())
@@ -847,7 +848,7 @@ class HDF5Writer(object):
             self.systsnoi.add(name)
             if masked:
                 self.systsnoimasked.add(name)
-        elif syst.get("noConstraint", False): 
+        elif syst.get("noConstraint", False):
             self.systsnoconstraint.add(name)
         else:
             self.systsstandard.add(name)
