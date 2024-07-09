@@ -20,7 +20,6 @@ class HDF5Writer(object):
     # keeps multiple card tools and writes them out in a single file to fit (appending the histograms)
     def __init__(self, card_name="card", sparse=False):
         self.cardName = card_name
-        self.cardTools = []
         # settings for writing out hdf5 files
         self.dtype="float64"
         self.chunkSize=4*1024**2
@@ -32,9 +31,12 @@ class HDF5Writer(object):
         self.theoryFitMCStat = True # Whether or not to include the MC stat uncertainty in the thoery fit (in the covariance matrix)
 
         self.dict_noigroups = defaultdict(lambda: set())
+        self.dict_noigroups_masked = defaultdict(lambda: set())
         self.dict_systgroups = defaultdict(lambda: set())
 
         self.systsstandard = set()
+        self.systsnoi = set()
+        self.systsnoimasked = set()
         self.systsnoconstraint = set()
         self.systsnoprofile = set()
 
@@ -91,7 +93,7 @@ class HDF5Writer(object):
             logger.warning("Theoryfit for more than one channels is currently experimental")
         self.theoryFit = True
         self.theoryFitMCStat = mc_stat
-        base_processes = ["W" if c.datagroups.mode[0] == "w" else "Z" for c in self.get_channels().values()]
+        base_processes = ["W" if c.datagroups.mode == "w_mass" else "Z" for c in self.get_channels().values()]
         axes = [c.fit_axes for c in self.get_channels().values()]
         fitresult = combinetf_input.get_fitresult(fitresult_filename)
         data, self.theoryFitDataCov = combinetf_input.get_theoryfit_data(fitresult, axes=axes, base_processes=base_processes, poi_type=poi_type, flow=gen_flow)
@@ -122,7 +124,7 @@ class HDF5Writer(object):
             bkgs.update([p for p in chanInfo.predictedProcesses() if p not in chanInfo.unconstrainedProcesses])      
         return list(common.natural_sort(bkgs))
 
-    def get_flat_values(self, h, chanInfo, axes, return_variances=True):
+    def get_flat_values(self, h, chanInfo, axes, return_variances=True, flow=False):
         # check if variances are available
         if return_variances and (h.storage_type != hist.storage.Weight):
             raise RuntimeError(f"Sumw2 not filled for {h} but needed for binByBin uncertainties")
@@ -133,11 +135,11 @@ class HDF5Writer(object):
             h = h.project(*axes)
 
         if return_variances:
-            val = h.values(flow=False).flatten().astype(self.dtype)
-            var = h.variances(flow=False).flatten().astype(self.dtype)
+            val = h.values(flow=flow).flatten().astype(self.dtype)
+            var = h.variances(flow=flow).flatten().astype(self.dtype)
             return val, var
         else:
-            return h.values(flow=False).flatten().astype(self.dtype)
+            return h.values(flow=flow).flatten().astype(self.dtype)
 
     def write(self, 
         args,
@@ -168,8 +170,8 @@ class HDF5Writer(object):
             dg = chanInfo.datagroups
             if masked:
                 self.masked_channels.append(chan)
-                axes = ["count"]
-                nbinschan = 1
+                axes = chanInfo.fit_axes[:]
+                nbinschan = 1 if len(axes) == 1 and axes[0] == "count" else None
             else:
                 axes = chanInfo.fit_axes[:]
                 nbinschan = None
@@ -239,6 +241,11 @@ class HDF5Writer(object):
 
                     # release memory
                     del chanInfo.pseudodata_datagroups
+                    for proc in chanInfo.datagroups.groups:
+                        for pseudo in chanInfo.pseudoData:
+                            if pseudo in dg.groups[proc].hists:
+                                logger.debug(f"Delete pseudodata histogram {pseudo}")
+                                del dg.groups[proc].hists[pseudo]
 
             # nominal predictions (after pseudodata because some pseudodata changes the nominal model)
             for proc in procs_chan:
@@ -249,12 +256,16 @@ class HDF5Writer(object):
 
                 if not masked:                
                     norm_proc, sumw2_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes)
+                    if proc in chanInfo.noStatUncProcesses:
+                        logger.info(f"Skip sumw2 for proc {proc}")
+                        sumw2_proc = 0
                 else:
                     norm_proc = self.get_flat_values(norm_proc_hist, chanInfo, axes, return_variances=False)
 
                 if nbinschan is None:
                     nbinschan = norm_proc.shape[0]
-                    nbins += nbinschan
+                    if not masked:                
+                        nbins += nbinschan
                 elif nbinschan != norm_proc.shape[0]:
                     raise Exception(f"Mismatch between number of bins in channel {chan} and process {proc} for expected ({nbinschan}) and ({norm_proc.shape[0]})")
              
@@ -275,9 +286,7 @@ class HDF5Writer(object):
 
             if not masked:                
                 # data
-                if self.theoryFit:
-                    if self.theoryFitData is None or self.theoryFitDataCov is None:
-                        raise RuntimeError("No data or covariance found to perform theory fit")
+                if self.theoryFit and self.theoryFitData is not None and self.theoryFitDataCov is not None:
                     data_obs = self.theoryFitData[chan]
                 elif chanInfo.real_data and dg.dataName in dg.groups:
                     data_obs_hist = dg.groups[dg.dataName].hists[chanInfo.nominalName]
@@ -345,7 +354,7 @@ class HDF5Writer(object):
                     if asymmetric:
                         self.book_logk_halfdiff(logkhalfdiff_proc, chan, proc, var_name)
 
-                self.book_systematic(syst, var_name)
+                self.book_systematic(syst, var_name, masked=masked)
 
             # shape systematics
             for systKey, syst in chanInfo.systematics.items():
@@ -443,7 +452,7 @@ class HDF5Writer(object):
 
                                 #special case, book the extra systematic
                                 self.book_logk_avg(logkdiffavg_proc, chan, proc, var_name_out_diff)
-                                self.book_systematic(syst, var_name_out_diff)
+                                self.book_systematic(syst, var_name_out_diff, masked=masked)
                         else:
                             logkup_proc = get_logk(var_name, "Up")
                             logkdown_proc = -get_logk(var_name, "Down")
@@ -457,7 +466,7 @@ class HDF5Writer(object):
                             self.book_logk_halfdiff(logkhalfdiff_proc, chan, proc, var_name_out)
 
                         self.book_logk_avg(logkavg_proc, chan, proc, var_name_out)
-                        self.book_systematic(syst, var_name_out)
+                        self.book_systematic(syst, var_name_out, masked=masked)
 
                     # free memory
                     for var in var_map.keys():
@@ -708,9 +717,10 @@ class HDF5Writer(object):
 
         systsnoprofile = self.get_systsnoprofile()
         systsnoconstraint = self.get_systsnoconstraint()
-
         noigroups, noigroupidxs = self.get_noigroups()
+        maskednoigroups, maskednoigroupidxs = self.get_noigroups(masked=True)
         systgroups, systgroupidxs = self.get_systgroups()
+        poigroups = self.get_systsnoimasked() if hasattr(args, "poiAsNoi") and args.poiAsNoi else procs
         sumgroups, sumgroupsegmentids, sumgroupidxs = self.get_sumgroups(procs)
         chargegroups, chargegroupidxs = self.get_chargegroups()
         polgroups, polgroupidxs = self.get_polgroups()
@@ -736,20 +746,20 @@ class HDF5Writer(object):
         create_dataset("systgroups", systgroups)
         create_dataset("systgroupidxs", systgroupidxs, dtype=h5py.special_dtype(vlen=np.dtype('int32')))
         create_dataset("chargegroups", chargegroups)
-        create_dataset("chargegroupidxs", chargegroups, 2, dtype='int32')
+        create_dataset("chargegroupidxs", chargegroupidxs, 2, dtype='int32')
         create_dataset("polgroups", polgroups)
-        create_dataset("polgroupidxs", polgroups, 3, dtype='int32')
+        create_dataset("polgroupidxs", polgroupidxs, 3, dtype='int32')
         create_dataset("helgroups", helgroups)
-        create_dataset("helgroupidxs", helgroups, 6, dtype='int32')
+        create_dataset("helgroupidxs", helgroupidxs, 6, dtype='int32')
         create_dataset("sumgroups", sumgroups)
         create_dataset("sumgroupsegmentids", sumgroupsegmentids, dtype='int32')
         create_dataset("sumgroupidxs", sumgroupidxs, dtype='int32')
         create_dataset("chargemetagroups", chargemetagroups)
-        create_dataset("chargemetagroupidxs", chargemetagroups, 2, dtype='int32')
+        create_dataset("chargemetagroupidxs", chargemetagroupidxs, 2, dtype='int32')
         create_dataset("ratiometagroups", ratiometagroups)
-        create_dataset("ratiometagroupidxs", ratiometagroups, 2, dtype='int32')
+        create_dataset("ratiometagroupidxs", ratiometagroupidxs, 2, dtype='int32')
         create_dataset("helmetagroups", helmetagroups)
-        create_dataset("helmetagroupidxs", helmetagroups, 6, dtype='int32')
+        create_dataset("helmetagroupidxs", helmetagroupidxs, 6, dtype='int32')
         create_dataset("reggroups", reggroups)
         create_dataset("reggroupidxs", reggroupidxs, dtype=h5py.special_dtype(vlen=np.dtype('int32')))
         create_dataset("poly1dreggroups", poly1dreggroups)
@@ -767,6 +777,7 @@ class HDF5Writer(object):
         create_dataset("noigroups", noigroups)
         create_dataset("noigroupidxs", noigroupidxs, dtype='int32')
         create_dataset("maskedchans", self.masked_channels)
+        create_dataset("maskednoigroupidxs", maskednoigroupidxs, dtype='int32')
         create_dataset("pseudodatanames", pseudoDataNames)
 
         #create h5py datasets with optimized chunk shapes
@@ -782,7 +793,7 @@ class HDF5Writer(object):
         nbytes += writeFlatInChunks(pseudodata, f, "hpseudodata", maxChunkBytes = self.chunkSize)
         pseudodata = None
 
-        if self.theoryFit:
+        if self.theoryFitDataCov is not None:
             data_cov = self.theoryFitDataCov
             if data_cov.shape != (nbins,nbins):
                 raise RuntimeError(f"covariance matrix has incompatible shape of {data_cov.shape}, expected is {(nbins,nbins)}!")
@@ -827,11 +838,15 @@ class HDF5Writer(object):
         else:
             dict_logk[chan][proc][syst_name] = logk
 
-    def book_systematic(self, syst, name):
+    def book_systematic(self, syst, name, masked=False):
         logger.debug(f"book systematic {name}")
         if syst.get('noProfile', False):
             self.systsnoprofile.add(name)
-        elif syst.get("noConstraint", False) or syst.get("noi", False):
+        elif syst.get("noi", False):
+            self.systsnoi.add(name)
+            if masked:
+                self.systsnoimasked.add(name)
+        elif syst.get("noConstraint", False):
             self.systsnoconstraint.add(name)
         else:
             self.systsstandard.add(name)
@@ -845,6 +860,13 @@ class HDF5Writer(object):
         split_groups = syst.get("splitGroup", {group: re.compile(".*")})
         matched_groups = [grp for grp, matchre in split_groups.items() if matchre.match(name)]
 
+        if syst.get("noi", False) and not masked:
+            target_dict = self.dict_noigroups 
+        elif syst.get("noi", False):
+            target_dict = self.dict_noigroups_masked
+        else:
+            target_dict = self.dict_systgroups
+
         target_dict = self.dict_noigroups if syst.get("noi", False) else self.dict_systgroups
 
         for matched_group in matched_groups:
@@ -856,11 +878,17 @@ class HDF5Writer(object):
     def get_systsnoprofile(self):
         return list(common.natural_sort(self.systsnoprofile))
 
+    def get_systsnoi(self):
+        return list(common.natural_sort(self.systsnoi))
+
     def get_systsnoconstraint(self):
-        return list(common.natural_sort(self.systsnoconstraint))
+        return self.get_systsnoi() + list(common.natural_sort(self.systsnoconstraint))
 
     def get_systs(self):
         return self.get_systsnoconstraint() + self.get_systsstandard() + self.get_systsnoprofile()
+
+    def get_systsnoimasked(self):
+        return list(common.natural_sort(self.systsnoimasked))
 
     def get_constraintweights(self, dtype):
         systs = self.get_systs()
@@ -881,12 +909,13 @@ class HDF5Writer(object):
             idxs.append(idx)
         return groups, idxs
 
-    def get_noigroups(self):
+    def get_noigroups(self, masked=False):
         #list of groups of systematics to be treated as additional outputs for impacts, etc (aka "nuisances of interest")
         systs = self.get_systs()
+        groupdict = self.dict_noigroups if masked is False else self.dict_noigroups_masked
         groups = []
         idxs = []
-        for group, members in common.natural_sort_dict(self.dict_noigroups).items():
+        for group, members in common.natural_sort_dict(groupdict).items():
             groups.append(group)
             for syst in members:
                 idxs.append(systs.index(syst))
