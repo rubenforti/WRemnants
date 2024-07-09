@@ -1,4 +1,5 @@
 import mplhep as hep
+import matplotlib.pyplot as plt
 import numpy as np
 import hist
 import itertools
@@ -28,10 +29,15 @@ parser.add_argument("--noRatio", action='store_true', help="Don't plot the ratio
 parser.add_argument("--noStack", action='store_true', help="Don't plot the individual processes")
 parser.add_argument("--processes", type=str, nargs='*', default=[], help="Select processes")
 parser.add_argument("--splitByProcess", action='store_true', help="Make a separate plot for each of the selected processes")
-parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT"], 
+parser.add_argument("--selectionAxes", type=str, nargs="*", default=["charge", "passIso", "passMT"], 
     help="List of axes where for each bin a seperate plot is created")
+parser.add_argument("--select", type=int, nargs="*", default=[], 
+    help="Select specific bins of the selectionAxis e.g. '0 1' to select the first bin of the first axis and second bin of the second axis")
+parser.add_argument("--hists", type=str, nargs='*', default=None, 
+    help="List of hists to plot; dash separated for unrolled hists")
+
 # variations
-parser.add_argument("--varName", type=str, nargs='+', required=True, help="Name of variation hist")
+parser.add_argument("--varName", type=str, nargs='*', default=[], help="Name of variation hist")
 parser.add_argument("--varLabel", type=str, nargs='*', default=[], help="Label(s) of variation hist for plotting")
 parser.add_argument("--varColor", type=str, nargs='*', default=[], help="Variation colors")
 
@@ -75,12 +81,19 @@ def make_plots(hists_proc, hist_data, *opts, **info):
     for axes_names in axes_combinations:
         if isinstance(axes_names, str):
             axes_names = [axes_names]
+
+        if args.hists:
+            if not any(set(axes_names) == set(h.split("-")) for h in args.hists):
+                continue
+        
         logger.info(f"Make plot(s) with axes {axes_names}")
 
         make_plot(hists_proc, hist_data, axes_names=axes_names, *opts, **info)
 
 
-def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, suffix="", channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20):
+def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
+    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20
+):
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
@@ -234,6 +247,20 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
                     ax=ax2
                 )
 
+        scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
+
+        if selections is not None:
+            for i, (key, idx) in enumerate(selections.items()):
+                lo, hi = selection_edges[i]
+                label = styles.xlabels[key].replace(" (GeV)","")
+                if lo != None:
+                    label = f"{lo} < {label}"
+                if hi != None:
+                    label = f"{label} < {hi}"
+
+                ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+                    fontsize=20*args.scaleleg*scale)  
+
         plot_tools.addLegend(ax1, 2, text_size=legtext_size)
         if add_ratio:
             plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, logy=args.logy)
@@ -248,7 +275,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
 
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density else None
-            scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
+            
             hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
                 label= args.cmsDecor, data=hist_data is not None)
 
@@ -259,8 +286,8 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, s
             outfile += f"{procs[i]}_"
         outfile += "_".join(axes_names)
         outfile += f"_{channel}"
-        if suffix:
-            outfile += f"_{suffix}"
+        if selections is not None:
+            outfile += "_" + "_".join([f"{a}{i}" for a, i in selections.items()])
         if args.postfix:
             outfile += f"_{args.postfix}"
         plot_tools.save_pdf_and_png(outdir, outfile)
@@ -315,13 +342,18 @@ for channel, channel_info in indata.channel_info.items():
     info = dict(channel=channel, labels=labels,colors=colors, procs=procs)
 
     # make plots in slices (e.g. for charge plus an minus separately)
-    selection_axes = [a for a in hists_proc[0].axes if a.name in args.selectionAxes]
+    selection_axes = [hists_proc[0].axes[n] for n in args.selectionAxes if n in hists_proc[0].axes.name]
     if len(selection_axes) > 0:
-        selection_bins = [np.arange(a.size) for a in hists_proc[0].axes if a.name in args.selectionAxes]
         other_axes = [a for a in hists_proc[0].axes if a not in selection_axes]
+        if len(args.select):
+            bin_combinations = [args.select]
+        else:
+            selection_bins = [np.arange(a.size) for a in hists_proc[0].axes if a.name in args.selectionAxes]
+            bin_combinations = itertools.product(*selection_bins)
 
-        for bins in itertools.product(*selection_bins):
+        for bins in bin_combinations:
             idxs = {a.name: i for a, i in zip(selection_axes, bins) }
+            selection_edges = [(a.edges[i],a.edges[i+1] if len(a.edges-1)>i else None) for a, i in zip(selection_axes, bins)]
 
             hs_proc = [h[idxs] for h in hists_proc]
 
@@ -334,8 +366,7 @@ for channel, channel_info in indata.channel_info.items():
                 hs_syst_dn = [h[idxs] for h in hists_syst_dn]
                 hs_syst_up = [h[idxs] for h in hists_syst_up]
 
-            suffix = "_".join([f"{a}{i}" for a, i in idxs.items()])
-            make_plots(hs_proc, h_data, hs_syst_dn, hs_syst_up, suffix=suffix, **info)
+            make_plots(hs_proc, h_data, hs_syst_dn, hs_syst_up, selections=idxs, selection_edges=selection_edges, **info)
     else:
         make_plots(hists_proc, hist_data, hists_syst_dn, hists_syst_up, **info)
 

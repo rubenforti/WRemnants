@@ -8,7 +8,7 @@ parser,initargs = common.common_parser(analysis_label)
 
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections,unfolding_tools
+from wremnants import helicity_utils, theory_tools,syst_tools, theory_corrections, unfolding_tools
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
 import math
@@ -163,7 +163,7 @@ def build_graph(df, dataset):
         axis_lheCosThetaStar = hist.axis.Regular(50, -1, 1, name = "cosThetaStarlhe")
         axis_lhePhiStar = hist.axis.Regular(8, -np.pi, np.pi, circular=True, name="phiStarlhe")
         axis_weak = hist.axis.StrCategory(syst_tools.weakWeightNames(), name="weak")
-        axis_helicity = wremnants.helicity_utils.axis_helicity
+        axis_helicity = helicity_utils.axis_helicity
 
         results.append(df.HistoBoost("lhe_massVptV", [axis_lheMV, axis_lhePtV], ["massVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("lhe_absYVptV", [axis_lheAbsYV, axis_lhePtV], ["absYVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
@@ -287,7 +287,7 @@ def build_graph(df, dataset):
     if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
             "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames() and "MEParamWeight" in df.GetColumnNames():
 
-        qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
+        qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
 
         df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen")
 
