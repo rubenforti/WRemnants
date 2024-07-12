@@ -26,12 +26,13 @@ parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
-isUnfolding = initargs.analysisMode == "unfolding"
-
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
 
 args = parser.parse_args()
+
+isUnfolding = args.analysisMode == "unfolding"
+isPoiAsNoi = isUnfolding and args.poiAsNoi
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
