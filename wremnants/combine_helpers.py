@@ -85,7 +85,7 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
         )
 
 
-def add_explicit_MCstat(cardTool, recovar, samples='signal_samples', wmass=False, source=None):
+def add_explicit_BinByBinStat(cardTool, recovar, samples='signal_samples', wmass=False, source=None, label="Z"):
     """
     add explicit bin by bin stat uncertainties 
     Parameters:
@@ -96,9 +96,9 @@ def add_explicit_MCstat(cardTool, recovar, samples='signal_samples', wmass=False
 
     recovar_syst = [f"_{n}" for n in recovar]
     info=dict(
-        baseName="MCstat_"+"_".join(cardTool.procGroups[samples])+"_",
-        rename="statMC",
-        group=f"statMC",
+        baseName="binByBinStat_"+"_".join(cardTool.procGroups[samples])+"_",
+        rename=f"binByBinStat{label}",
+        group=f"binByBinStat{label}",
         passToFakes=False,
         processes=[samples],
         mirror=True,

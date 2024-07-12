@@ -12,7 +12,6 @@ import h5py
 import narf.ioutils
 import numpy as np
 
-
 def make_subparsers(parser):
 
     parser.add_argument("--analysisMode", type=str, default=None,
@@ -29,7 +28,6 @@ def make_subparsers(parser):
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
     parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
-
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
@@ -74,7 +72,6 @@ def make_parser(parser=None):
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
     parser.add_argument("--fitWidth", action='store_true', help="Fit boson width")
-    parser.add_argument("--fitAlphaS", action='store_true', help="Fit alphaS")
     parser.add_argument("--fitMassDiff", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the boson mass")
     parser.add_argument("--fitMassDecorr", type=str, default=[], nargs='*', help="Decorrelate POI for given axes, fit multiple POIs for the different POIs")
     parser.add_argument("--decorrRebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
@@ -335,7 +332,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     else:
         cardTool.setHistName(inputBaseName)
         cardTool.setNominalName(inputBaseName)
-    
+
     if isUnfolding and isPoiAsNoi:
         cardTool.addXsecGroups()
 
@@ -594,8 +591,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         else:
             None
 
-        combine_helpers.add_explicit_MCstat(cardTool, recovar, samples="signal_samples", wmass=wmass, source=source)
- 
+        combine_helpers.add_explicit_BinByBinStat(cardTool, recovar, samples="signal_samples", wmass=wmass, source=source, label=label)
+
     if args.doStatOnly:
         # print a card with only mass weights
         logger.info("Using option --doStatOnly: the card was created with only mass nuisance parameter")
@@ -616,7 +613,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         # Experimental range
         #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
-        # Variation from EW fit (mostly driven by alphas unc.)    
+        # Variation from EW fit (mostly driven by alphas unc.)
         cardTool.addSystematic("widthWeightZ",
                                 rename="WidthZ0p8MeV",
                                 processes= ['single_v_nonsig_samples'] if wmass else signal_samples_forMass,
@@ -656,13 +653,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                                 passToFakes=passSystToFakes,
         )
 
-        combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc], 
+        combine_helpers.add_electroweak_uncertainty(cardTool, [*args.ewUnc, *args.fsrUnc, *args.isrUnc],
             samples="single_v_samples", flavor=datagroups.flavor, passSystToFakes=passSystToFakes)
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
-        
+
         theory_helper = combine_theory_helper.TheoryHelper(cardTool, args, hasNonsigSamples=(wmass and not xnorm))
-        theory_helper.configure(resumUnc=args.resumUnc, 
+        theory_helper.configure(resumUnc=args.resumUnc,
             transitionUnc = not args.noTransitionUnc,
             propagate_to_fakes=to_fakes,
             np_model=args.npUnc,
@@ -671,7 +668,6 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pdf_from_corr=args.pdfUncFromCorr,
             scale_pdf_unc=args.scalePdf,
             minnlo_unc=args.minnloScaleUnc,
-            fitAlphaS=args.fitAlphaS,
         )
 
         theorySystSamples = ["signal_samples_inctau"]
@@ -691,7 +687,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     if not lowPU: # lowPU does not include PhotonInduced as a process. skip it:
         cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
     if wmass:
-        if args.logNormalWmunu > 0.0:            
+        if args.logNormalWmunu > 0.0:
             cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
         if args.logNormalFake > 0.0:
             cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*"})
@@ -700,7 +696,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addSystematic("luminosity",
                                 processes=['MCnoQCD'],
                                 outNames=["lumiDown", "lumiUp"],
-                                group="luminosity", 
+                                group="luminosity",
                                 splitGroup = {"experiment": ".*"},
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],

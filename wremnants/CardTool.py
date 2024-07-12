@@ -822,7 +822,6 @@ class CardTool(object):
         processes = self.expandProcesses(processes)
 
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
-
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
             if pseudoData in ["closure", "truthMC"]:
@@ -860,7 +859,7 @@ class CardTool(object):
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
                 processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
                 if len(processesFromNomiToLoad):
-                    logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
+                    logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomiToLoad}")
                     datagroupsFromNomi.loadHistsForDatagroups(
                         baseName=self.nominalName, syst=self.nominalName,
                         procsToRead=processesFromNomiToLoad, 
@@ -1033,7 +1032,7 @@ class CardTool(object):
                 axes = [axes]
 
             param_names = [x for x in all_param_names if all([a in x for a in axes])]
-            
+
             # in case of multiple base processes (e.g. in simultaneous unfoldings) loop over all base processes
             base_processes = set(map(lambda x: x.split("_")[0], param_names))
 
@@ -1046,7 +1045,6 @@ class CardTool(object):
                     if genCharge is not None:                
                         membersList = list(filter(lambda x: genCharge in x, membersList))
                         sum_group_name += f"_{genCharge}"
-
                     if len(membersList):                            
                         self.addSumXsecGroup(sum_group_name, membersList)
                         

@@ -34,8 +34,6 @@ class HDF5Writer(object):
         self.dict_noigroups_masked = defaultdict(lambda: set())
         self.dict_systgroups = defaultdict(lambda: set())
 
-        self.dict_noigroups_masked = defaultdict(lambda: set())
-
         self.systsstandard = set()
         self.systsnoi = set()
         self.systsnoimasked = set()

@@ -17,8 +17,6 @@ import re
 import json
 from narf import ioutils
 
-from narf import ioutils
-
 from utilities.styles.styles import nuisance_groupings as groupings
 
 logger = logging.child_logger(__name__)
@@ -264,6 +262,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
 def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[], stat=0.0, normalize=False, scale=1):    
     logger.debug("Read impacts for poi from file")
     impacts, labels, norm = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
+
     if (group and grouping) or filters:
         filtimpacts = []
         filtlabels = []
@@ -277,7 +276,7 @@ def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[
         impacts = filtimpacts
         labels = filtlabels
 
-    df = pd.DataFrame(np.array(impacts, dtype=np.float64).T*scale, columns=["impact"])    
+    df = pd.DataFrame(np.array(impacts, dtype=np.float64).T*scale, columns=["impact"])
     df['label'] = [translate_label.get(l, l) for l in labels]
     df['absimpact'] = np.abs(df['impact'])
     if not group:
