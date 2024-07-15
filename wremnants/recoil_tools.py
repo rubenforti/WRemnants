@@ -15,7 +15,7 @@ import tensorflow as tf
 
 ROOT.gInterpreter.Declare('#include "recoil_tools.h"')
 ROOT.gInterpreter.Declare('#include "recoil_helper.h"')
-logger = logging.getLogger("wremnants").getChild(__name__.split(".")[-1])
+logger = logging.child_logger(__name__)
 
 
 def RecoilCalibrationHelper(fIn, args):

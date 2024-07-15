@@ -10,7 +10,7 @@ parser,initargs = common.common_parser(analysis_label)
 import ROOT
 import narf
 from wremnants import (theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, muon_prefiring, 
-    muon_efficiencies_binned, muon_efficiencies_smooth, unfolding_tools, theoryAgnostic_tools, helicity_utils)
+    muon_efficiencies_binned, muon_efficiencies_smooth, unfolding_tools, theoryAgnostic_tools, helicity_utils, pileup, vertex)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar 
