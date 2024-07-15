@@ -2,13 +2,12 @@ import ROOT
 import hist
 import numpy as np
 import copy
-import logging
 import sys
 import decimal
 import json
 import os
 import array
-from utilities import common as common
+from utilities import common, logging
 from utilities.io_tools import input_tools
 
 import tensorflow as tf
