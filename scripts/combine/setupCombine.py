@@ -825,7 +825,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         if useGlobalOrTrackerVeto:
                             axes = ["veto_reco-veto_tracking-veto_idip-veto_trackerreco-veto_trackertracking", "n_syst_variations"]
                         else:
-                            axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
+                            #axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
+                            axes = ["vetoreco-vetotracking-vetoidip", "n_syst_variations"]
                         axlabels = ["WPSYST", "_etaDecorr"]
                         if useGlobalOrTrackerVeto:
                             nameReplace = [("WPSYST0", "reco"), ("WPSYST1", "tracking"), ("WPSYST2", "idip"), ("WPSYST3", "trackerreco"), ("WPSYST4", "trackertracking"), ("effSystTnP_veto", "effSyst_veto"), ("etaDecorr0", "fullyCorr") ]
@@ -846,10 +847,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         mirrorDownVarEqualToNomi=False
                         if args.binnedScaleFactors:
                             axes = ["SF eta", "nPtBins", "SF charge"]
+                            axlabels = ["eta", "pt", "q"]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
                         else:
-                            axes = ["SF eta", "nPtEigenBins", "SF charge"]
-                        axlabels = ["eta", "pt", "q"]
-                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
+                            #axes = ["SF eta", "nPtEigenBins", "SF charge"]
+                            axes = ["vetoreco-vetotracking-vetoidip", "SF eta", "nPtEigenBins", "SF charge"]
+                            axlabels = ["WPSTEP", "eta", "pt", "q"]
+                            #nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_"), ("WPSTEP0", "reco"), ("WPSTEP1", "tracking"), ("WPSTEP2", "idip")]
                         scale = 1.0
                         groupName = "muon_eff_stat_veto"
                         splitGroupDict = {"muon_eff_all" : ".*"}
