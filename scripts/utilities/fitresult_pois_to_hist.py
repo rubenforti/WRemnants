@@ -21,7 +21,7 @@ if not args.observed and not args.expected:
     raise IOError(f"Result from expected or observed fit must be specified with '--observed' or '--expected'")
 result = {}
 meta = None
-
+meta_exp = None
 if args.observed:
     result, meta = fitresult_pois_to_hist(args.observed.replace(".root",".hdf5"), result, uncertainties=None)
 if args.expected:

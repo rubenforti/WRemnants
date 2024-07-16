@@ -422,14 +422,14 @@ jobs:
         # run with a reduced binning
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH --excludeFlow
           --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --genAxes ptVGen
 
       - name: dilepton analysis
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH --excludeFlow
           --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding
 
 
