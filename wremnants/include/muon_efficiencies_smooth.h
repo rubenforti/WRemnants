@@ -151,19 +151,20 @@ namespace wrem {
         
         muon_efficiency_smooth_helper(const base_t &other) : base_t(other) {}
 
-        double operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,    int trig_charge,
-                           float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta, int nontrig_charge) {
+        double operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,
+                           int trig_charge,  bool trig_passiso,
+                           float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta,
+                           int nontrig_charge, bool nontrig_passiso) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
             const double sftrig = base_t::scale_factor_product(trig_pt, trig_eta, trig_sapt, trig_saeta,
                                                                trig_charge,
-                                                               pass_iso, pass_trigger, iso_with_trigger,
+                                                               trig_passiso, pass_trigger, iso_with_trigger,
                                                                base_t::idx_nom_);
             const double sfnontrig = base_t::scale_factor_product(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
                                                                   nontrig_charge,
-                                                                  pass_iso, pass_trigger, iso_without_trigger,
+                                                                  nontrig_passiso, pass_trigger, iso_without_trigger,
                                                                   base_t::idx_nom_);
             return sftrig*sfnontrig;
         }
@@ -186,18 +187,17 @@ namespace wrem {
         // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
         // keeping both flags is redundant but more flexible since there is no assumption on the sorting
         double operator() (float first_pt, float first_eta, float first_sapt, float first_saeta,
-                           int first_charge,  bool first_passtrigger,
+                           int first_charge,  bool first_passiso, bool first_passtrigger,
                            float second_pt, float second_eta, float second_sapt, float second_saeta,
-                           int second_charge, bool second_passtrigger) {
+                           int second_charge, bool second_passiso, bool second_passtrigger) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
-            constexpr bool pass_iso = true;
             const double sftrig = base_t::scale_factor_product(first_pt, first_eta, first_sapt, first_saeta,
                                                                first_charge,
-                                                               pass_iso, first_passtrigger, iso_with_trigger,
+                                                               first_passiso, first_passtrigger, iso_with_trigger,
                                                                base_t::idx_nom_);
             const double sfnontrig = base_t::scale_factor_product(second_pt, second_eta, second_sapt, second_saeta,
                                                                   second_charge,
-                                                                  pass_iso, second_passtrigger, iso_with_trigger,
+                                                                  second_passiso, second_passtrigger, iso_with_trigger,
                                                                   base_t::idx_nom_);
             return sftrig*sfnontrig;
         }
@@ -249,19 +249,20 @@ namespace wrem {
         
         muon_efficiency_smooth_helper_syst(const base_t &other) : base_t(other) {}
 
-        tensor_t operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,    int trig_charge,
-                             float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta, int nontrig_charge,
+        tensor_t operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,
+                             int trig_charge, bool trig_passiso,
+                             float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta,
+                             int nontrig_charge, bool nontrig_passiso,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
             const tensor_t variation_trig = base_t::sf_syst_var(trig_pt, trig_eta, trig_sapt, trig_saeta,
                                                                 trig_charge,
-                                                                pass_iso, pass_trigger, iso_with_trigger);
+                                                                trig_passiso, pass_trigger, iso_with_trigger);
             const tensor_t variation_nontrig = base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
                                                                    nontrig_charge,
-                                                                   pass_iso, pass_trigger, iso_without_trigger);
+                                                                   nontrig_passiso, pass_trigger, iso_without_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
         }
 
@@ -285,18 +286,17 @@ namespace wrem {
         // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
         // keeping both flags is redundant but more flexible since there is no assumption on the sorting
         tensor_t operator() (float first_pt, float first_eta, float first_sapt, float first_saeta,
-                             int first_charge,  bool first_passtrigger,
+                             int first_charge, bool first_passiso, bool first_passtrigger,
                              float second_pt, float second_eta, float second_sapt, float second_saeta,
-                             int second_charge, bool second_passtrigger,
+                             int second_charge, bool second_passiso, bool second_passtrigger,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
-            constexpr bool pass_iso = true;
             const tensor_t variation_trig = base_t::sf_syst_var(first_pt, first_eta, first_sapt, first_saeta,
                                                                 first_charge,
-                                                                pass_iso, first_passtrigger, iso_with_trigger);
+                                                                first_passiso, first_passtrigger, iso_with_trigger);
             const tensor_t variation_nontrig = base_t::sf_syst_var(second_pt, second_eta, second_sapt, second_saeta,
                                                                    second_charge,
-                                                                   pass_iso, second_passtrigger, iso_with_trigger);
+                                                                   second_passiso, second_passtrigger, iso_with_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
         }
 
@@ -464,20 +464,19 @@ namespace wrem {
         muon_efficiency_smooth3D_helper(const base_t &other) : base_t(other) {}
 
         double operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,
-                           float trig_ut,    int trig_charge,
+                           float trig_ut,    int trig_charge, bool trig_passiso,
                            float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta,
-                           float nontrig_ut, int nontrig_charge) {
+                           float nontrig_ut, int nontrig_charge, bool nontrig_passiso) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
             const double sftrig = base_t::scale_factor_product(trig_pt, trig_eta, trig_sapt, trig_saeta,
                                                                trig_ut, trig_charge,
-                                                               pass_iso, pass_trigger, iso_with_trigger,
+                                                               trig_passiso, pass_trigger, iso_with_trigger,
                                                                base_t::idx_nom_);
             const double sfnontrig = base_t::scale_factor_product(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
                                                                   nontrig_ut, nontrig_charge,
-                                                                  pass_iso, pass_trigger, iso_without_trigger,
+                                                                  nontrig_passiso, pass_trigger, iso_without_trigger,
                                                                   base_t::idx_nom_);
             return sftrig*sfnontrig;
         }
@@ -498,19 +497,18 @@ namespace wrem {
         muon_efficiency_smooth3D_helper(const base_t &other) : base_t(other) {}
 
         double operator() (float first_pt,  float first_eta,  float first_sapt,  float first_saeta,
-                           float first_ut,  int first_charge, bool first_passtrigger,
+                           float first_ut,  int first_charge, bool first_passiso, bool first_passtrigger,
                            float second_pt, float second_eta, float second_sapt, float second_saeta,
-                           float second_ut, int second_charge, bool second_passtrigger) {
+                           float second_ut, int second_charge, bool second_passiso, bool second_passtrigger) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger
-            constexpr bool pass_iso = true;
 
             const double sftrig = base_t::scale_factor_product(first_pt, first_eta, first_sapt, first_saeta,
                                                                first_ut, first_charge,
-                                                               pass_iso, first_passtrigger, iso_with_trigger,
+                                                               first_passiso, first_passtrigger, iso_with_trigger,
                                                                base_t::idx_nom_);
             const double sfnontrig = base_t::scale_factor_product(second_pt, second_eta, second_sapt, second_saeta,
                                                                   second_ut, second_charge,
-                                                                  pass_iso, second_passtrigger, iso_with_trigger,
+                                                                  second_passiso, second_passtrigger, iso_with_trigger,
                                                                   base_t::idx_nom_);
             return sftrig*sfnontrig;
         }
@@ -560,20 +558,19 @@ namespace wrem {
         muon_efficiency_smooth3D_helper_syst(const base_t &other) : base_t(other) {}
 
         tensor_t operator() (float trig_pt,    float trig_eta,    float trig_sapt,    float trig_saeta,
-                             float trig_ut,    int trig_charge,
+                             float trig_ut,    int trig_charge,   bool trig_passiso,
                              float nontrig_pt, float nontrig_eta, float nontrig_sapt, float nontrig_saeta,
-                             float nontrig_ut, int nontrig_charge,
+                             float nontrig_ut, int nontrig_charge, bool nontrig_passiso,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // can be true also for second lepton, since it will be overridden by iso_without_trigger anyway
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
             const tensor_t variation_trig = base_t::sf_syst_var(trig_pt, trig_eta, trig_sapt, trig_saeta,
                                                                 trig_ut, trig_charge,
-                                                                pass_iso, pass_trigger, iso_with_trigger);
+                                                                trig_passiso, pass_trigger, iso_with_trigger);
             const tensor_t variation_nontrig = base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_sapt, nontrig_saeta,
                                                                    nontrig_ut, nontrig_charge,
-                                                                   pass_iso, pass_trigger, iso_without_trigger);
+                                                                   nontrig_passiso, pass_trigger, iso_without_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
         }
 
@@ -595,18 +592,17 @@ namespace wrem {
         muon_efficiency_smooth3D_helper_syst(const base_t &other) : base_t(other) {}
 
         tensor_t operator() (float first_pt,  float first_eta,  float first_sapt,  float first_saeta,
-                             float first_ut,  int first_charge,  bool first_passtrigger,
+                             float first_ut,  int first_charge,  bool first_passiso, bool first_passtrigger,
                              float second_pt, float second_eta, float second_sapt, float second_saeta,
-                             float second_ut, int second_charge, bool second_passtrigger,
+                             float second_ut, int second_charge, bool second_passiso, bool second_passtrigger,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger
-            constexpr bool pass_iso = true;
             const tensor_t variation_trig = base_t::sf_syst_var(first_pt, first_eta, first_sapt, first_saeta,
                                                                 first_ut, first_charge,
-                                                                pass_iso, first_passtrigger, iso_with_trigger);
+                                                                first_passiso, first_passtrigger, iso_with_trigger);
             const tensor_t variation_nontrig = base_t::sf_syst_var(second_pt, second_eta, second_sapt, second_saeta,
                                                                    second_ut, second_charge,
-                                                                   pass_iso, second_passtrigger, iso_with_trigger);
+                                                                   second_passiso, second_passtrigger, iso_with_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
         }
 
@@ -960,18 +956,17 @@ namespace wrem {
 
         using stat_base_t::stat_base_t;
 
-        tensor_t operator() (float trig_pt, float trig_eta, int trig_charge,
-                             float nontrig_pt, float nontrig_eta, int nontrig_charge,
+        tensor_t operator() (float trig_pt, float trig_eta, int trig_charge, bool trig_passiso,
+                             float nontrig_pt, float nontrig_eta, int nontrig_charge, bool nontrig_passiso,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true; // overridden by iso_without_trigger for nontrig lepton
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
 
             const tensor_t variation_trig    = stat_base_t::sf_stat_var_iso(trig_pt, trig_eta, trig_charge,
-                                                                            pass_iso, pass_trigger, iso_with_trigger);
+                                                                            trig_passiso, pass_trigger, iso_with_trigger);
             const tensor_t variation_nontrig = stat_base_t::sf_stat_var_iso(nontrig_pt, nontrig_eta, nontrig_charge,
-                                                                            pass_iso, pass_trigger, iso_without_trigger);
+                                                                            nontrig_passiso, pass_trigger, iso_without_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
             
         }
@@ -990,19 +985,18 @@ namespace wrem {
 
         using stat_base_t::stat_base_t;
 
-        tensor_t operator() (float first_pt,  float first_eta,  int first_charge,  bool first_passtrigger,
-                             float second_pt, float second_eta, int second_charge, bool second_passtrigger,
+        tensor_t operator() (float first_pt,  float first_eta,  int first_charge,  bool first_passiso, bool first_passtrigger,
+                             float second_pt, float second_eta, int second_charge, bool second_passiso, bool second_passtrigger,
                              double nominal_weight = 1.0) {
-            
+
             constexpr bool iso_with_trigger = true; // for both leptons, then each lepton can pass or fail the trigger
-            constexpr bool pass_iso = true;
-            
+
             const tensor_t variation_first = stat_base_t::sf_stat_var_iso(first_pt, first_eta, first_charge,
-                                                                          pass_iso, first_passtrigger, iso_with_trigger);
+                                                                          first_passiso, first_passtrigger, iso_with_trigger);
             const tensor_t variation_second = stat_base_t::sf_stat_var_iso(second_pt, second_eta, second_charge,
-                                                                           pass_iso, second_passtrigger, iso_with_trigger);
+                                                                           second_passiso, second_passtrigger, iso_with_trigger);
             return nominal_weight * variation_first * variation_second;
-            
+
         }
 
     };
@@ -1121,22 +1115,21 @@ namespace wrem {
 
         using stat_base_t::stat_base_t;
 
-        tensor_t operator() (float trig_pt, float trig_eta, float trig_ut, int trig_charge,
-                             float nontrig_pt, float nontrig_eta, float nontrig_ut, int nontrig_charge,
+        tensor_t operator() (float trig_pt, float trig_eta, float trig_ut, int trig_charge, bool trig_passiso,
+                             float nontrig_pt, float nontrig_eta, float nontrig_ut, int nontrig_charge, bool nontrig_passiso,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true;
             constexpr bool pass_trigger = true;
             constexpr bool iso_without_trigger = false;
-            constexpr bool pass_iso = true;
 
             const tensor_t variation_trig    = stat_base_t::sf_stat_var_iso(trig_pt, trig_eta,
                                                                             trig_ut, trig_charge,
-                                                                            pass_iso, pass_trigger, iso_with_trigger);
+                                                                            trig_passiso, pass_trigger, iso_with_trigger);
             const tensor_t variation_nontrig = stat_base_t::sf_stat_var_iso(nontrig_pt, nontrig_eta,
                                                                             nontrig_ut, nontrig_charge,
-                                                                            pass_iso, pass_trigger, iso_without_trigger);
+                                                                            nontrig_passiso, pass_trigger, iso_without_trigger);
             return nominal_weight * variation_trig * variation_nontrig;
-            
+
         }
 
     };
@@ -1153,20 +1146,222 @@ namespace wrem {
 
         using stat_base_t::stat_base_t;
 
-        tensor_t operator() (float first_pt, float first_eta, float first_ut, int first_charge, bool first_passtrigger,
-                             float second_pt, float second_eta, float second_ut, int second_charge, bool second_passtrigger,
+        tensor_t operator() (float first_pt, float first_eta, float first_ut, int first_charge,
+                             bool first_passiso, bool first_passtrigger,
+                             float second_pt, float second_eta, float second_ut, int second_charge,
+                             bool second_passiso, bool second_passtrigger,
                              double nominal_weight = 1.0) {
             constexpr bool iso_with_trigger = true;
-            constexpr bool pass_iso = true;
 
             const tensor_t variation_first  = stat_base_t::sf_stat_var_iso(first_pt, first_eta,
                                                                            first_ut, first_charge,
-                                                                           pass_iso, first_passtrigger, iso_with_trigger);
+                                                                           first_passiso, first_passtrigger, iso_with_trigger);
             const tensor_t variation_second = stat_base_t::sf_stat_var_iso(second_pt, second_eta,
                                                                            second_ut, second_charge,
-                                                                           pass_iso, second_passtrigger, iso_with_trigger);
+                                                                           second_passiso, second_passtrigger, iso_with_trigger);
             return nominal_weight * variation_first * variation_second;
-            
+
+        }
+
+    };
+
+    ///////////
+    // ADDITIONAL UTILITY HELPERS TO MANAGE A SINGLE EFFICIENCY STEP
+    // originally conceived to deal with additional systematic uncertainties on the tracking step
+    // the "nominal" helper is also implemented so one can add special additional scale factors if ever useful
+    ///////////
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_base_oneStep {
+    public:
+
+        muon_efficiency_smooth_helper_base_oneStep(HIST_SF &&sf_type) :
+            sf_type_(std::make_shared<const HIST_SF>(std::move(sf_type))) {
+        }
+
+        double scale_factor_byCell(int pt_idx, int eta_idx, int charge_idx, int idx_nom_alt) const {
+            const double sf = sf_type_->at(eta_idx, pt_idx, charge_idx, idx_nom_alt);
+            // std::cout << "Scale factor " << sf << std::endl;
+            return sf;
+        }
+
+        double scale_factor(float pt, float eta, int charge, int idx_nom_alt) const {
+
+            auto const eta_idx = sf_type_->template axis<0>().index(eta);
+            auto const pt_idx = sf_type_->template axis<1>().index(pt);
+            auto const charge_idx = sf_type_->template axis<2>().index(charge);
+            return scale_factor_byCell(pt_idx, eta_idx, charge_idx, idx_nom_alt);
+
+        }
+
+        using syst_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<NSysts>>;
+
+        syst_tensor_t sf_syst_var(float pt, float eta, int charge) const {
+
+            syst_tensor_t res;
+
+            auto const eta_idx =     sf_type_->template axis<0>().index(eta);
+            auto const pt_idx =      sf_type_->template axis<1>().index(pt);
+            auto const charge_idx =  sf_type_->template axis<2>().index(charge);
+
+            double sf_nomi = scale_factor_byCell(pt_idx, eta_idx, charge_idx, idx_nom_);
+
+            for(int ns = 0; ns < NSysts; ns++) {
+                
+                double sf_alt  = scale_factor_byCell(pt_idx, eta_idx, charge_idx, sf_type_->template axis<3>().index(ns+1) ); // 0 is the nominal, systs starts from 1
+                res(ns) = sf_alt / sf_nomi; 
+
+            }
+
+            return res;
+
+        }
+
+    protected:
+
+        std::shared_ptr<const HIST_SF> sf_type_;
+        // cache the bin indices since the string category lookup is slow
+        int idx_nom_ = sf_type_->template axis<3>().index(0); // input effStat axis is organized as nomi - UpVar, with nomi centered at 0
+
+    };
+
+    // base template for one-lepton case
+    template<AnalysisType analysisType, int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep:
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+        
+        double operator() (float pt, float eta, int charge) {
+            return base_t::scale_factor(pt, eta, charge, base_t::idx_nom_);
+        }
+
+    };
+
+    // specialization for two-lepton case Wlike
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep<AnalysisType::Wlike, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+
+        double operator() (float trig_pt,    float trig_eta,    int trig_charge,
+                           float nontrig_pt, float nontrig_eta, int nontrig_charge) {
+            const double sftrig    = base_t::scale_factor(   trig_pt,    trig_eta,    trig_charge, base_t::idx_nom_);
+            const double sfnontrig = base_t::scale_factor(nontrig_pt, nontrig_eta, nontrig_charge, base_t::idx_nom_);
+            return sftrig*sfnontrig;
+        }
+
+    };
+
+    // specialization for two-lepton case Dilepton
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_oneStep<AnalysisType::Dilepton, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_oneStep(const base_t &other) : base_t(other) {}
+
+        // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
+        // keeping both flags is redundant but more flexible since there is no assumption on the sorting
+        double operator() (float first_pt, float first_eta, int first_charge,
+                           float second_pt, float second_eta, int second_charge) {
+            const double sftrig = base_t::scale_factor(first_pt, first_eta, first_charge, base_t::idx_nom_);
+            const double sfnontrig = base_t::scale_factor(second_pt, second_eta, second_charge, base_t::idx_nom_);
+            return sftrig*sfnontrig;
+        }
+
+    };
+
+    // Now the syst, which is similar to the nominal
+    //
+    // base template for one lepton case
+    template<AnalysisType analysisType, int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+        
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+        
+        tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
+            return nominal_weight*base_t::sf_syst_var(pt, eta, charge);
+        }
+
+    };
+
+    // specialization for two-lepton case Wlike
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep<AnalysisType::Wlike, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+
+        tensor_t operator() (float trig_pt,    float trig_eta,    int trig_charge,
+                             float nontrig_pt, float nontrig_eta, int nontrig_charge,
+                             double nominal_weight = 1.0) {
+            const tensor_t variation_trig = base_t::sf_syst_var(trig_pt, trig_eta, trig_charge);
+            const tensor_t variation_nontrig = base_t::sf_syst_var(nontrig_pt, nontrig_eta, nontrig_charge);
+            return nominal_weight * variation_trig * variation_nontrig;
+        }
+
+    };
+    
+    // specialization for two-lepton case Dilepton
+    template<int NSysts, typename HIST_SF>
+    class muon_efficiency_smooth_helper_syst_oneStep<AnalysisType::Dilepton, NSysts, HIST_SF> :
+        public muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF> {
+
+    public:
+
+        using base_t = muon_efficiency_smooth_helper_base_oneStep<NSysts, HIST_SF>;
+        using tensor_t = typename base_t::syst_tensor_t;
+
+        // inherit constructor
+        using base_t::base_t;
+        
+        muon_efficiency_smooth_helper_syst_oneStep(const base_t &other) : base_t(other) {}
+
+        // may also assume the first is the one passing the trigger for sure, but it depends on how these operators are called in the loop
+        // keeping both flags is redundant but more flexible since there is no assumption on the sorting
+        tensor_t operator() (float first_pt, float first_eta, int first_charge,
+                             float second_pt, float second_eta, int second_charge,
+                             double nominal_weight = 1.0) {
+            constexpr bool iso_with_trigger = true; // will be P(iso|passTrigger) or P(iso|failTrigger) depending on first_passtrigger and second_passtrigger 
+            constexpr bool pass_iso = true;
+            const tensor_t variation_trig = base_t::sf_syst_var(first_pt, first_eta, first_charge);
+            const tensor_t variation_nontrig = base_t::sf_syst_var(second_pt, second_eta, second_charge);
+            return nominal_weight * variation_trig * variation_nontrig;
         }
 
     };

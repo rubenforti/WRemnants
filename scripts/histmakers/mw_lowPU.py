@@ -1,21 +1,20 @@
 import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
 
-args = parser.parse_args()
 
 import narf
-import wremnants
 from wremnants import theory_tools, syst_tools, theory_corrections, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
@@ -23,7 +22,6 @@ import math
 import hist
 import ROOT
 import wremnants.lowpu as lowpu
-
 
 ###################################
 flavor = args.flavor # mu, e
@@ -37,8 +35,9 @@ else:
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="e" else ["singleelectron"])),
+                        base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
-                        mode="lowpu")
+                        mode=analysis_label)
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -46,21 +45,19 @@ for d in datasets: logger.info(f"Dataset {d.name}")
 
 mtw_min=40 # for Wmass (roughly half the boson mass)
 
-
-
 # axes used in fakerate calculation
-axis_fakerate_pt = hist.axis.Variable([26., 27., 28., 29., 30., 32., 34., 37., 40., 44., 49., 56.], name = "pt", underflow=False)
-axis_fakerate_eta = hist.axis.Regular(12, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(args.pt[1], args.pt[2]), name = "pt", underflow=False)
+axis_fakes_eta = hist.axis.Regular(int((args.eta[2]-args.eta[1])*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 # standard regular axes
 axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
-axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False)
-axis_phi = hist.axis.Regular(50, -4, 4, name = "phi")
+axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
+axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "iso")
 
 axis_lin = hist.axis.Regular(5, 0, 5, name = "lin")
 
-qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity()
+qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity()
 axis_ptVgen = qcdScaleByHelicity_helper.hist.axes["ptVgen"]
 axis_chargeVgen = qcdScaleByHelicity_helper.hist.axes["chargeVgen"]
 
@@ -77,7 +74,7 @@ if isUnfolding:
 
 # axes for final cards/fitting
 nominal_axes = [
-    axis_fakerate_pt, axis_fakerate_eta, common.axis_charge, 
+    axis_fakes_pt, axis_fakes_eta, common.axis_charge, 
     hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptW", underflow=False, overflow=True),    
     common.axis_passIso, common.axis_passMT]
 
@@ -85,10 +82,10 @@ nominal_axes = [
 nominal_cols = ["lep_pt", "lep_eta", "lep_charge", "ptW", "passIso",  "passMT"]
 
 # mt final cards/fitting
-axis_mT = hist.axis.Variable([0] + list(range(40, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
+axis_mT = hist.axis.Variable([0] + list(range(mtw_min, 100, 1)) + [100, 102, 104, 106, 108, 112, 116, 120, 130, 150, 200], name = "mt",underflow=False, overflow=True)
 # axis_mT = hist.axis.Regular(100, 0, 200, name = "mt", underflow=False)
 
-axes_mT = [axis_fakerate_pt, axis_fakerate_eta, common.axis_charge, axis_mT, common.axis_passIso]
+axes_mT = [axis_fakes_pt, axis_fakes_eta, common.axis_charge, axis_mT, common.axis_passIso]
 cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
 
 # reco_mT_axes = [common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, common.axis_charge, common.axis_passMT, common.axis_passIso]
@@ -125,7 +122,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name in sigProcs:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wmass")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
@@ -269,9 +266,7 @@ def build_graph(df, dataset):
     df = df.Alias("transverseMass", "mT_corr_rec")
     df = df.Define("passMT", f"transverseMass > {mtw_min}")
 
-    results.append(df.HistoBoost("lep_pt", [axis_pt, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_eta", [axis_eta, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_eta", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    results.append(df.HistoBoost("lep_phi", [axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
+    results.append(df.HistoBoost("lep_pt_eta_phi", [axis_pt, axis_eta, axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_eta", "lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
     results.append(df.HistoBoost("lep_iso", [axis_iso], ["lep_iso", "nominal_weight"]))
    
     # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, common.axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))  

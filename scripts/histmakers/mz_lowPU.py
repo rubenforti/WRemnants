@@ -1,20 +1,21 @@
 import argparse
 from utilities import common, logging, differential
 from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
+import os
 
-parser,initargs = common.common_parser()
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+parser,initargs = common.common_parser(analysis_label)
 parser.add_argument("--flavor", type=str, choices=["ee", "mumu"], help="Flavor (ee or mumu)", default="mumu")
 
 parser = common.set_parser_default(parser, "pt", [34, 26, 60])
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"])
 
+analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
+
 args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 
-if isUnfolding:
-    parser = common.set_parser_default(parser, "genAxes", ["ptVGen"])
-
-args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 import narf
@@ -38,8 +39,9 @@ mass_max = 120
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="ee" else ["singleelectron"])),
+                        base_path=args.dataPath, 
                         extended = "msht20an3lo" not in args.pdfs,
-                        mode="lowpu"
+                        mode=analysis_label
                         )
 
 
@@ -117,7 +119,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if isUnfolding and dataset.name in sigProcs:
-        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode="wlike")
+        df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")

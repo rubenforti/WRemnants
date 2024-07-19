@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ## make study using a histogram created specifically for QCD MC (but in principle it can be used for other processes too if the histograms exist
-## axes should be these ones ('eta', 'pt', 'charge', 'mt', 'passIso', 'Njets', 'leadjetPt', 'DphiMuonMet')
+## axes should be these ones ('eta', 'pt', 'charge', 'mt', 'passIso', 'NjetsClean', 'leadjetPt', 'DphiMuonMet')
 
 # example
 # python scripts/analysisTools/w_mass_13TeV/makeQCDMCstudy.py /scratch/mciprian/CombineStudies/TRASHTEST/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_extMC_noSF.hdf5 scripts/analysisTools/plots/fromMyWremnants/testFakes_studies/  -v 4
@@ -67,7 +67,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             logger.info(f"Running on process {d}")
             hin = histInfo[d].hists[inputHistName]
             logger.debug(hin.axes)
-            # ('eta', 'pt', 'charge', 'mt', 'passIso', 'Njets', 'leadjetPt', 'DphiMuonMet')
+            # ('eta', 'pt', 'charge', 'mt', 'passIso', 'NjetsClean', 'leadjetPt', 'DphiMuonMet')
             hin = hin[{"charge" : s[::hist.sum]}] # integrate charges for now
             # make eta inot abseta for now
             makeAbsEta = True # make an option for this
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
             ptEdges = htest.axes["pt"].edges
             newPtEdges = [ptEdges[0], ptEdges[1], *ptEdges[2::3]]
-            logger.warning(f"For test with Njets, rebinning pt to {newPtEdges}")
+            logger.warning(f"For test with NjetsClean, rebinning pt to {newPtEdges}")
             htest = hh.rebinHist(htest, "pt", newPtEdges)
 
             etaEdges = htest.axes[etaAxisName].edges
@@ -237,22 +237,22 @@ if __name__ == "__main__":
                                           "DphiMuonMet" : s[::hist.sum],
                                       }]
 
-                    h_0jet_pass = htestReduced[{"Njets" : s[0],
+                    h_0jet_pass = htestReduced[{"NjetsClean" : s[0],
                                                 "passIso": True,
                                                 }]
-                    h_1orMoreJet_pass = htestReduced[{"Njets" : s[1::hist.sum],
+                    h_1orMoreJet_pass = htestReduced[{"NjetsClean" : s[1::hist.sum],
                                                       "passIso": True,
                                                       }]
-                    h_2orMoreJet_pass = htestReduced[{"Njets" : s[2::hist.sum],
+                    h_2orMoreJet_pass = htestReduced[{"NjetsClean" : s[2::hist.sum],
                                                       "passIso": True,
                                                       }]
-                    h_0jet_fail = htestReduced[{"Njets" : s[0],
+                    h_0jet_fail = htestReduced[{"NjetsClean" : s[0],
                                                 "passIso": False,
                                                 }]
-                    h_1orMoreJet_fail = htestReduced[{"Njets" : s[1::hist.sum],
+                    h_1orMoreJet_fail = htestReduced[{"NjetsClean" : s[1::hist.sum],
                                                       "passIso": False,
                                                       }]
-                    h_2orMoreJet_fail = htestReduced[{"Njets" : s[2::hist.sum],
+                    h_2orMoreJet_fail = htestReduced[{"NjetsClean" : s[2::hist.sum],
                                                       "passIso": False,
                                                       }]
 
@@ -271,7 +271,7 @@ if __name__ == "__main__":
                     drawNTH1([hroot_0jet_FRF, hroot_1orMoreJet_FRF, hroot_2orMoreJet_FRF],
                              ["0 jets", ">= 1 jets", ">= 2 jets"],
                              "DeepMet m_{T} (GeV)", "Fakerate factor",
-                             f"FRFvsNjets_ipt{ipt}_ieta{ieta}", outdirTest,
+                             f"FRFvsNjetsClean_ipt{ipt}_ieta{ieta}", outdirTest,
                              topMargin=0.05, leftMargin=0.16, rightMargin=0.05, labelRatioTmp=">= N-j / 0-jet::0.5,1.5",
                              legendCoords="0.7,0.94,0.76,0.94;1", transparentLegend=True,
                              lowerPanelHeight=0.4, skipLumi=True, passCanvas=canvas1D,
@@ -280,7 +280,7 @@ if __name__ == "__main__":
                              setOnlyLineRatio=True, lineWidth=2,
                              moreTextLatex=f"{etaRangeText}      {ptRangeText}::0.18,0.97,0.05,0.035")
 
-        copyOutputToEos(outdir_original, eoscp=args.eoscp)
+        copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
     ###############################################################################################
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -339,7 +339,7 @@ if __name__ == "__main__":
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
-        copyOutputToEos(outdir_original, eoscp=args.eoscp)
+        copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
     ###############################################################################################
 
@@ -359,7 +359,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -448,7 +448,7 @@ if __name__ == "__main__":
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                         nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
-        copyOutputToEos(outdir_original, eoscp=args.eoscp)
+        copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
     ###############################################################################################
 
@@ -468,7 +468,7 @@ if __name__ == "__main__":
         adjustSettings_CMS_lumi()
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
-        groups = Datagroups(fname, mode="wmass")
+        groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
             datasets = list(filter(lambda x: x in args.processes, datasets))
@@ -521,7 +521,7 @@ if __name__ == "__main__":
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
-        copyOutputToEos(outdir_original, eoscp=args.eoscp)
+        copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
     ###############################################################################################
     ###############################################################################################

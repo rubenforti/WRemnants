@@ -56,7 +56,38 @@ class TheoryAgnosticHelper(object):
                                        #splitGroup={f"{groupName}_{coeffKey}" : f"{groupName}_{coeffKey}"}
                                        )
 
-    def add_theoryAgnostic_normVar_uncertainty(self):
+    def add_muRmuF_polVar_uncertainty(self):
+        coeffs = [f"A{i}" for i in range(8)]
+        signalGroupName = "muRmuFPolVarW" if self.label == "W" else "muRmuFPolVarZ"
+        nonSignalGroupName = "muRmuFPolVarZ" if self.label == "W" else "muRmuFPolVarW"
+        for coeffKey in coeffs:
+            self.card_tool.addSystematic(f"{signalGroupName}_{coeffKey}",
+                                   group=signalGroupName,
+                                   mirror=False,
+                                   passToFakes=self.passSystToFakes,
+                                   processes=["signal_samples_inctau_noOutAcc" if self.separateOutOfAccSignal else "signal_samples_inctau"],
+                                   baseName=f"{signalGroupName}_{coeffKey}_",
+                                   noConstraint=False,
+                                   systAxes=["nPolVarSyst", "downUpVar"], 
+                                   labelsByAxis=["v", "downUpVar"],
+                                   #splitGroup={f"{groupName}_{coeffKey}" : f"{groupName}_{coeffKey}"}
+                                   )
+        
+        for coeffKey in coeffs:
+            self.card_tool.addSystematic(f"{nonSignalGroupName}_{coeffKey}",
+                                   group=nonSignalGroupName,
+                                   mirror=False,
+                                   passToFakes=self.passSystToFakes,
+                                   processes=["nonsignal_samples_inctau_noOutAcc" if self.separateOutOfAccSignal else "nonsignal_samples_inctau"],
+                                   baseName=f"{nonSignalGroupName}_{coeffKey}_",
+                                   noConstraint=False,
+                                   systAxes=["nPolVarSyst", "downUpVar"], 
+                                   labelsByAxis=["v", "downUpVar"],
+                                   #splitGroup={f"{groupName}_{coeffKey}" : f"{groupName}_{coeffKey}"}
+                                   )
+        
+
+    def add_theoryAgnostic_normVar_uncertainty(self, flow=True):
 
         common_noi_args = dict(
             group = f"normXsec{self.label}",
@@ -89,7 +120,8 @@ class TheoryAgnosticHelper(object):
                                 systAxesFlow=[], # only bins in acceptance in this call
                                 skipEntries=[{"helicitySig" : [6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
                                 preOpMap={
-                                    m.name: (lambda h, scale_hist=scale_hists[m.name]: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}], hh.multiplyHists(hh.addGenericAxis(h,common.down_up_axis, flow=False), hh.rescaleBandVariation(scale_hist,self.args.theoryAgnosticBandSize),flow=False))) if sign in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}]) for g in self.card_tool.procGroups["signal_samples"] for m in self.card_tool.datagroups.groups[g].members},
+                                    m.name: (
+                                        lambda h, scale_hist=scale_hists[m.name]: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}], hh.multiplyHists(hh.addGenericAxis(h,common.down_up_axis, flow=flow), hh.rescaleBandVariation(scale_hist,self.args.theoryAgnosticBandSize),flow=flow))) if sign in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in self.poi_axes}]) for g in self.card_tool.procGroups["signal_samples"] for m in self.card_tool.datagroups.groups[g].members},
                                 )
             # now OOA
             nuisanceBaseNameOOA = f"{nuisanceBaseName}OOA_"
@@ -165,5 +197,7 @@ class TheoryAgnosticHelper(object):
     def add_theoryAgnostic_uncertainty(self):
         if self.args.analysisMode == "theoryAgnosticPolVar":
             self.add_theoryAgnostic_polVar_uncertainty()
+        elif self.args.muRmuFPolVar == True:
+            self.add_muRmuF_polVar_uncertainty()
         else:
             self.add_theoryAgnostic_normVar_uncertainty()

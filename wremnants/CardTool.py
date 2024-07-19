@@ -32,13 +32,12 @@ def checkFiniteBinValues(h, hname, flow=True, throw=True):
         return 1
 
 class CardTool(object):
-    def __init__(self, outpath="./", xnorm=False, ABCD=False, real_data=False):
+    def __init__(self, outpath="./", xnorm=False, simultaneousABCD=False, real_data=False):
     
         self.skipHist = False # don't produce/write histograms, file with them already exists
         self.outfile = None
         self.systematics = {}
         self.lnNSystematics = {}
-        self.predictedProcs = []
         self.fakeEstimate = None
         self.channels = ["inclusive"]
         self.cardContent = {}
@@ -66,9 +65,10 @@ class CardTool(object):
         self.unroll = False # unroll final histogram before writing to root
         self.keepSyst = None # to override previous one with exceptions for special cases
         self.lumiScale = 1.
+        self.lumiScaleVarianceLinearly = []
         self.fit_axes = None
         self.xnorm = xnorm
-        self.ABCD = ABCD
+        self.simultaneousABCD = simultaneousABCD
         self.real_data = real_data
         self.absolutePathShapeFileInCard = False
         self.excludeProcessForChannel = {} # can be used to exclue some POI when runnig a specific name (use case, force gen and reco charges to match)
@@ -113,20 +113,6 @@ class CardTool(object):
             
     def setFitAxes(self, axes):
         self.fit_axes = axes[:]
-        self._setFakerateIntegrationAxes()
-
-    def setFakerateAxes(self, fakerate_axes=["eta", "pt", "charge"]):
-        self.datagroups.fakerate_axes = fakerate_axes
-        self._setFakerateIntegrationAxes()
-
-    def getFakerateAxes(self):
-        return self.datagroups.fakerate_axes
-
-    def _setFakerateIntegrationAxes(self):
-        self.datagroups.setFakerateIntegrationAxes([x for x in self.fit_axes if x not in self.datagroups.fakerate_axes])
-        
-    def getFakerateIntegrationAxes(self):
-        return self.datagroups.fakerate_integration_axes
 
     def setProcsNoStatUnc(self, procs, resetList=True):
         if self.skipHist:
@@ -140,8 +126,9 @@ class CardTool(object):
         else:
             raise ValueError("In setNoStatUncForProcs(): expecting string or list argument")
     
-    def setLumiScale(self, lumiScale):
+    def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly=[]):
         self.lumiScale = lumiScale
+        self.lumiScaleVarianceLinearly = lumiScaleVarianceLinearly
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
@@ -231,7 +218,7 @@ class CardTool(object):
         self.pseudodata_datagroups = datagroups 
         if self.nominalName:
             self.pseudodata_datagroups.setNominalName(self.nominalName)
-        
+
     def setChannels(self, channels):
         self.channels = channels
         
@@ -244,8 +231,6 @@ class CardTool(object):
         self.nominalTemplate = template
 
     def predictedProcesses(self):
-        if self.predictedProcs:
-            return self.predictedProcs
         return list(filter(lambda x: x != self.getDataName(), self.datagroups.groups.keys()))
 
     def setHistName(self, histName):
@@ -303,11 +288,12 @@ class CardTool(object):
     def addSystematic(self, name, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None, 
                       baseName="", mirror=False, mirrorDownVarEqualToUp=False, mirrorDownVarEqualToNomi=False, symmetrize = "average",
                       scale=1, processes=None, group=None, noi=False, noConstraint=False, noProfile=False,
-                      preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, actionRequiresNomi=False,
+                      preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, actionRequiresNomi=False, selectionArgs={},
                       systNameReplace=[], systNamePrepend=None, groupFilter=None, passToFakes=False,
                       rename=None, splitGroup={}, formatWithValue=None,
-                      customizeNuisanceAttributes={},
+                      customizeNuisanceAttributes={}, applySelection=True,
                       ):
+        logger.debug(f"Add systematic {name}")
         # note: setting Up=Down seems to be pathological for the moment, it might be due to the interpolation in the fit
         # for now better not to use the options, although it might be useful to keep it implemented
         if mirrorDownVarEqualToUp or mirrorDownVarEqualToNomi:
@@ -334,7 +320,7 @@ class CardTool(object):
         if preOp:
             preOpMap = {name : preOp for name in set([m.name for g in procs_to_add for m in self.datagroups.groups[g].members])}
 
-        if passToFakes and self.getFakeName() not in procs_to_add and not self.ABCD:
+        if passToFakes and self.getFakeName() not in procs_to_add and not self.simultaneousABCD:
             procs_to_add.append(self.getFakeName())
 
         # protection when the input list is empty because of filters but the systematic is built reading the nominal
@@ -370,6 +356,7 @@ class CardTool(object):
                 "action" : action,
                 "actionArgs" : actionArgs,
                 "actionRequiresNomi" : actionRequiresNomi,
+                "applySelection" : applySelection,
                 "systNameReplace" : systNameReplace,
                 "noConstraint" : noConstraint,
                 "noProfile" : noProfile,
@@ -387,7 +374,8 @@ class CardTool(object):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=syst, label="syst",
             procsToRead=[proc],
-            scaleToNewLumi=self.lumiScale)
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly)
         return self.datagroups.getDatagroups()[proc].hists["syst"]
 
     def getNominalHistForSignal(self):
@@ -521,7 +509,7 @@ class CardTool(object):
         # Jan: moved above the mirror action, as this action can cause mirroring
         if systInfo["action"]:
             if systInfo["actionRequiresNomi"]:
-               hvar = systInfo["action"](hvar, hnom, **systInfo["actionArgs"])
+                hvar = systInfo["action"](hvar, hnom, **systInfo["actionArgs"])
             else:
                 hvar = systInfo["action"](hvar, **systInfo["actionArgs"])
         if self.outfile:
@@ -555,6 +543,7 @@ class CardTool(object):
                     if "systNameReplace" in systInfo and systInfo["systNameReplace"]:
                         for rep in systInfo["systNameReplace"]:
                             name = name.replace(*rep)
+                            logger.debug(f"Replacement {rep} yields new name {name}")
                     if name and "systNamePrepend" in systInfo and systInfo["systNamePrepend"]:
                         name = systInfo["systNamePrepend"]+name
                     # Obviously there is a nicer way to do this...
@@ -755,7 +744,67 @@ class CardTool(object):
             if name != "":
                 self.writeHist(var, proc, name, setZeroStatUnc=setZeroStatUnc, hnomi=hnom)
 
-    def loadPseudodata(self, forceNonzero=True):
+    def loadPseudodataFakes(self, datagroups, forceNonzero=False):
+        # get the nonclosure for fakes/multijet background from QCD MC
+        datagroups.loadHistsForDatagroups(
+            baseName=self.nominalName, syst=self.nominalName, label="syst",
+            procsToRead=datagroups.groups.keys(),
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+            forceNonzero=forceNonzero,
+            sumFakesPartial=False,
+            applySelection=False 
+            )
+        procDict = datagroups.getDatagroups()
+        gTruth = procDict["QCDTruth"]
+        hTruth = gTruth.histselector.get_hist(gTruth.hists["syst"])
+
+        # now load the nominal histograms
+        # only load nominal histograms that are not already loaded
+        processesFromNomiToLoad = [proc for proc in self.datagroups.groups.keys() if self.nominalName not in procDictFromNomi[proc].hists]
+        if len(processesFromNomiToLoad):
+            self.datagroups.loadHistsForDatagroups(
+                baseName=self.nominalName, syst=self.nominalName,
+                procsToRead=processesFromNomiToLoad,
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                forceNonzero=forceNonzero,
+                sumFakesPartial=not self.simultaneousABCD)
+        procDictFromNomi = self.datagroups.getDatagroups()
+
+        if "QCD" not in procDict:
+            # use truth MC as QCD
+            logger.info(f"Have MC QCD truth {hTruth.sum()}")
+            hFake = hTruth
+        elif self.simultaneousABCD:
+            # TODO: Make if work for simultaneous ABCD fit, apply the correction in the signal region (D) only
+            raise NotImplementedError("The multijet closure test is not implemented for simultaneous ABCD fit")
+        else:
+            # compute the nonclosure correction
+            gPred = procDict["QCD"]
+            hPred = gPred.histselector.get_hist(gPred.hists["syst"])
+            logger.info(f"Have MC QCD truth {hTruth.sum()} and predicted {hPred.sum()}")
+            histCorr = hh.divideHists(hTruth, hPred)
+
+            # apply the nonclosure to fakes derived from data
+            hFake = procDictFromNomi[self.datagroups.fakeName].hists[self.nominalName]
+            if any([a not in hFake.axes for a in histCorr.axes]):
+                # TODO: Make if work for arbitrary axes (maybe as an action when loading nominal histogram, before fakerate axes are integrated e.g. in mt fit)
+                raise NotImplementedError(f"The multijet closure test is not implemented for arbitrary axes, the required axes are {histCorr.axes.name}")
+            hFake = hh.multiplyHists(hFake, histCorr)
+
+            # apply variances from hCorr to fakes to account for stat uncertainty
+            hFakeNominal = procDictFromNomi[self.getFakeName()].hists[self.nominalName]
+            hFakeNominal.variances(flow=True)[...] = hFake.variances(flow=True)
+            procDictFromNomi[self.getFakeName()].hists[self.nominalName] = hFakeNominal
+
+        # done, now sum all histograms
+        hists_data = [procDictFromNomi[x].hists[self.nominalName] for x in self.predictedProcesses() if x != self.getFakeName()]
+        hdata = hh.sumHists([*hists_data, hFake]) if len(hists_data)>0 else hFake
+
+        return hdata
+
+    def loadPseudodata(self, forceNonzero=False):
         datagroups = self.pseudodata_datagroups
         processes = [x for x in datagroups.groups.keys() if x != self.getDataName() and self.pseudoDataProcsRegexp.match(x)]
         processes = self.expandProcesses(processes)
@@ -763,28 +812,50 @@ class CardTool(object):
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
         hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
+            if pseudoData in ["closure", "truthMC"]:
+                # pseudodata for fakes [using closure from QCD MC as correction, using QCD MC as prediction]
+                if pseudoData == "truthMC":
+                    datagroups.deleteGroup("QCD")
+                hdatas.append(self.loadPseudodataFakes(datagroups, forceNonzero=forceNonzero))
+                continue
+
+            if pseudoData in ["simple", "extended1D", "extended2D"]:
+                # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
+                datagroups.set_histselectors(datagroups.getNames(), self.nominalName, 
+                    mode=pseudoData,
+                    simultaneousABCD=self.simultaneousABCD,
+                )
+                syst=self.nominalName
+            else:
+                syst=pseudoData
+ 
             datagroups.loadHistsForDatagroups(
-                baseName=self.nominalName, syst=pseudoData, label=pseudoData,
+                baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
-                scaleToNewLumi=self.lumiScale, 
+                scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
-                sumFakesPartial=not self.ABCD)
+                sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
+
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
             if len(processesFromNomi):
+                # only load nominal histograms that are not already loaded
+                processesFromNomiToLoad = [proc for proc in processesFromNomi if self.nominalName not in procDictFromNomi[proc].hists]
                 logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomi}")
                 datagroupsFromNomi = self.datagroups
-                datagroupsFromNomi.loadHistsForDatagroups(
-                    baseName=self.nominalName, syst=self.nominalName,
-                    procsToRead=processesFromNomi, 
-                    label=pseudoData,
-                    scaleToNewLumi=self.lumiScale,
-                    forceNonzero=forceNonzero,
-                    sumFakesPartial=not self.ABCD)
+                if len(processesFromNomiToLoad):
+                    datagroupsFromNomi.loadHistsForDatagroups(
+                        baseName=self.nominalName, syst=self.nominalName,
+                        procsToRead=processesFromNomiToLoad, 
+                        scaleToNewLumi=self.lumiScale,
+                        lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                        forceNonzero=forceNonzero,
+                        sumFakesPartial=not self.simultaneousABCD)
                 procDictFromNomi = datagroupsFromNomi.getDatagroups()
-                hists.extend([procDictFromNomi[proc].hists[pseudoData] for proc in processesFromNomi])
+                hists.extend([procDictFromNomi[proc].hists[self.nominalName] for proc in processesFromNomi])
             # done, now sum all histograms
             hdata = hh.sumHists(hists)
             if self.pseudoDataAxes[idx] is None:
@@ -798,6 +869,7 @@ class CardTool(object):
             if self.pseudoDataAxes[idx] is not None and self.pseudoDataAxes[idx] not in hdata.axes.name:
                 raise RuntimeError(f"Pseudodata axis {self.pseudoDataAxes[idx]} not found in {hdata.axes.name}.")
             hdatas.append(hdata)
+
         return hdatas
 
     def addPseudodata(self):
@@ -847,19 +919,20 @@ class CardTool(object):
         self.cardName = (f"{self.outfolder}/{basename}_{{chan}}{suffix}.txt")
         self.setOutfile(os.path.abspath(f"{self.outfolder}/{basename}CombineInput{suffix}.root"))
             
-    def writeOutput(self, args=None, forceNonzero=True, check_systs=True):
+    def writeOutput(self, args=None, forceNonzero=False, check_systs=True):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
             label=self.nominalName, 
-            scaleToNewLumi=self.lumiScale, 
+            scaleToNewLumi=self.lumiScale,
+            lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
-            sumFakesPartial=not self.ABCD)
+            sumFakesPartial=not self.simultaneousABCD)
         
         self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
 
-        if not self.real_data and not self.xnorm:
+        if not self.pseudoData and not self.real_data and not self.xnorm:
             # If real data is not explicitly requested, use pseudodata instead (but still store read data in root writer)
             self.setPseudodata([self.nominalName])
         if self.pseudoData and not self.xnorm:
@@ -867,10 +940,13 @@ class CardTool(object):
 
         self.writeLnNSystematics()
         for syst in self.systematics.keys():
-            if self.isExcludedNuisance(syst): continue
+            if self.isExcludedNuisance(syst): 
+                continue
             systMap = self.systematics[syst]
             systName = syst if not systMap["name"] else systMap["name"]
             processes = systMap["processes"]
+            if len(processes) == 0:
+                continue
             # Needed to avoid always reading the variation for the fakes, even for procs not specified
             forceToNominal=[x for x in self.datagroups.getProcNames() if x not in 
                 self.datagroups.getProcNames([p for g in processes for p in self.expandProcesses(g) if p != self.getFakeName()])]
@@ -878,10 +954,11 @@ class CardTool(object):
                 self.nominalName, systName, label="syst",
                 procsToRead=processes, 
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
-                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], 
+                preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
                 scaleToNewLumi=self.lumiScale,
+                lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceToNominal=forceToNominal,
-                sumFakesPartial=not self.ABCD
+                sumFakesPartial=not self.simultaneousABCD
             )
             self.writeForProcesses(syst, label="syst", processes=processes, check_systs=check_systs)
 
@@ -971,8 +1048,8 @@ class CardTool(object):
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
             if all(x not in info["processes"] for x in nondata):
-                logger.warning(f"Skipping syst {name}, procs to apply it to would be {info['processes']}, and predicted processes are {nondata}")
-                return
+                raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
+            
             group = info["group"]
             groupFilter = info["groupFilter"]
             for chan in self.channels:
@@ -1096,7 +1173,7 @@ class CardTool(object):
             return
         if self.fit_axes:
             axes = self.fit_axes[:]
-            if self.ABCD and not self.xnorm:
+            if self.simultaneousABCD and not self.xnorm:
                 if common.passIsoName not in axes:
                     axes.append(common.passIsoName)
                 if self.nameMT not in axes:
@@ -1111,7 +1188,7 @@ class CardTool(object):
 
         if self.unroll:
             logger.debug(f"Unrolling histogram")
-            h = sel.unrolledHist(h, axes)
+            h = hh.unrolledHist(h, axes)
 
         if not self.nominalDim:
             self.nominalDim = h.ndim

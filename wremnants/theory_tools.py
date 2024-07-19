@@ -26,9 +26,6 @@ axis_absYVgen = hist.axis.Variable(
     name = "absYVgenNP", underflow=False
 )
 
-axis_chargeWgen = hist.axis.Regular(2, -2, 2, name="chargeVgenNP", underflow=False, overflow=False)
-axis_chargeZgen = hist.axis.Integer(0, 1, name="chargeVgenNP", underflow=False, overflow=False)
-
 scale_tensor_axes = (axis_muRfact, axis_muFfact)
 
 pdfMap = {
@@ -189,7 +186,6 @@ def expand_pdf_entries(pdf, alphas=False, renorm=False):
         vals = [f"std::clamp<float>({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
     else:
         vals = [f"std::clamp<float>({x}, -theory_weight_truncate, theory_weight_truncate)" for x in vals]
-
     return vals
 
 def define_scale_tensor(df):
@@ -206,7 +202,7 @@ theory_corr_weight_map = {
         "scetlib_dyturboMSHT20_pdfas" : expand_pdf_entries("msht20", alphas=True),
         "scetlib_dyturboMSHT20Vars" : expand_pdf_entries("msht20"),
         "scetlib_dyturboCT18ZVars" : expand_pdf_entries("ct18z"),
-        "scetlib_dyturboCT18Z_pdfas" : expand_pdf_entries("ct18z", alphas=True),
+        "scetlib_dyturboCT18Z_pdfas" : expand_pdf_entries("ct18z", alphas=True, renorm=True),
         "scetlib_dyturboMSHT20an3lo_pdfas" : expand_pdf_entries("msht20an3lo", alphas=True),
         "scetlib_dyturboMSHT20an3loVars" : expand_pdf_entries("msht20an3lo"),
         # Tested this, better not to treat this way unless using MSHT20nnlo as central set
@@ -270,6 +266,47 @@ def define_dressed_vars(df, mode, flavor="mu"):
 
     return df
 
+def define_lhe_vars(df, mode=None):
+    if "lheLeps" in df.GetColumnNames():
+        logger.debug("LHE leptons are already defined, do nothing here.")
+        return df
+
+    logger.info("Defining LHE variables")
+
+    df = df.Define("lheLeps", "LHEPart_status == 1 && abs(LHEPart_pdgId) >= 11 && abs(LHEPart_pdgId) <= 16")
+    df = df.Define("lheLep", "lheLeps && LHEPart_pdgId>0")
+    df = df.Define("lheAntiLep", "lheLeps && LHEPart_pdgId<0")
+    df = df.Define("lheLep_idx", 'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found."); return ROOT::VecOps::ArgMax(lheLep);')
+    df = df.Define("lheAntiLep_idx", 'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found."); return ROOT::VecOps::ArgMax(lheAntiLep);')
+
+    df = df.Define("lheVs", "abs(LHEPart_pdgId) >=23 && abs(LHEPart_pdgId)<=24")
+    df = df.Define("lheV_idx", 'if (Sum(lheVs) != 1) throw std::runtime_error("LHE V not found."); return ROOT::VecOps::ArgMax(lheVs);')
+    df = df.Define("lheV_pdgId", "LHEPart_pdgId[lheV_idx]")
+    df = df.Define("lheV_pt", "LHEPart_pt[lheV_idx]")
+
+
+    df = df.Define("lheLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheLep_idx], LHEPart_eta[lheLep_idx], LHEPart_phi[lheLep_idx], LHEPart_mass[lheLep_idx])")
+    df = df.Define("lheAntiLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheAntiLep_idx], LHEPart_eta[lheAntiLep_idx], LHEPart_phi[lheAntiLep_idx], LHEPart_mass[lheAntiLep_idx])")
+    df = df.Define("lheV", "ROOT::Math::PxPyPzEVector(lheLep_mom)+ROOT::Math::PxPyPzEVector(lheAntiLep_mom)")
+    df = df.Define("ptVlhe", "lheV.pt()")
+    df = df.Define("massVlhe", "lheV.mass()")
+    df = df.Define("ptqVlhe", "lheV.pt()/lheV.mass()")
+    df = df.Define("yVlhe", "lheV.Rapidity()")
+    df = df.Define("phiVlhe", "lheV.Phi()")
+    df = df.Define("absYVlhe", "std::fabs(yVlhe)")
+    df = df.Define("chargeVlhe", "LHEPart_pdgId[lheLep_idx] + LHEPart_pdgId[lheAntiLep_idx]")
+    df = df.Define("csSineCosThetaPhilhe", "wrem::csSineCosThetaPhi(lheAntiLep_mom, lheLep_mom)")
+    df = df.Define("csCosThetalhe", "csSineCosThetaPhilhe.costheta")
+    df = df.Define("csPhilhe", "csSineCosThetaPhilhe.phi()")
+    df = df.Define("csAngularMomentslhe", "wrem::csAngularMoments(csSineCosThetaPhilhe)")
+
+    if "LHEWeight_originalXWGTUP" in df.GetColumnNames():
+        df = df.Define("csAngularMomentslhe_wnom", "auto res = csAngularMomentslhe; res = LHEWeight_originalXWGTUP*res; return res;")
+    else:
+        df = df.Alias("csAngularMomentslhe_wnom", "csAngularMomentslhe")
+
+    return df
+
 def define_prefsr_vars(df, mode=None):
     if "prefsrLeps" in df.GetColumnNames():
         logger.debug("PreFSR leptons are already defined, do nothing here.")
@@ -288,12 +325,34 @@ def define_prefsr_vars(df, mode=None):
     df = df.Define("phiVgen", "genV.Phi()")
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define("chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]")
-    df = df.Define("csSineCosThetaPhi", "wrem::csSineCosThetaPhi(genlanti, genl)")
+    df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
+    df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")
+    df = df.Define("csPhigen", "csSineCosThetaPhigen.phi()")
 
-    # define gen lepton in wlike case for ew corrections
+    # define w and w-like variables 
+    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
     df = df.Define("ptgen", "isEvenEvent ? genl.pt() : genlanti.pt()")
     df = df.Define("etagen", "isEvenEvent ? genl.eta() : genlanti.eta()")
-    df = df.Define("qgen", "isEvenEvent ? -1 : 1")
+    df = df.Define("absetagen", "std::fabs(etagen)")
+    df = df.Define("ptOthergen", "isEvenEvent ? genlanti.pt() : genl.pt()")
+    df = df.Define("etaOthergen", "isEvenEvent ? genlanti.eta() : genl.eta()")
+    df = df.Define("absetaOthergen", "std::fabs(etaOthergen)")
+    df = df.Define("mTVgen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
+
+    return df
+
+def define_intermediate_gen_vars(df, label, statusMin, statusMax):
+    # define additional variables corresponding to intermediate states in the pythia history
+    df = df.Define(f"idxV{label}", f"wrem::selectGenPart(GenPart_status, GenPart_pdgId, 23, 24, {statusMin}, {statusMax})")
+    df = df.Define(f"mom4V{label}", f"ROOT::Math::PtEtaPhiMVector(GenPart_pt[idxV{label}], GenPart_eta[idxV{label}], GenPart_phi[idxV{label}], GenPart_mass[idxV{label}])")
+    df = df.Define(f"ptV{label}", f"mom4V{label}.pt()")
+    df = df.Define(f"massV{label}", f"mom4V{label}.mass()")
+    df = df.Define(f"ptqV{label}",  f"mom4V{label}.pt()/mom4V{label}.mass()")
+    df = df.Define(f"yV{label}", f"mom4V{label}.Rapidity()")
+    df = df.Define(f"phiV{label}", f"mom4V{label}.Phi()")
+    df = df.Define(f"absYV{label}", f"std::fabs(yV{label})")
+    df = df.Define(f"chargeV{label}", "chargeVgen")
+    df = df.Define(f"csSineCosThetaPhi{label}", f"wrem::csSineCosThetaPhiTransported(genlanti, genl, mom4V{label})")
 
     return df
 
@@ -315,7 +374,7 @@ def define_postfsr_vars(df, mode=None):
     if mode is not None:
         # defition of more complex postfsr object 
         # use fiducial gen met, see: https://twiki.cern.ch/twiki/bin/viewauth/CMS/ParticleLevelProducer
-        if mode in ["wlike", "dilepton"]:
+        if mode[0] == "z":
             # find the leading charged lepton and antilepton idx
             df = df.Define("postfsrLep", "postfsrLeptons && (GenPart_pdgId==11 || GenPart_pdgId==13)")
             df = df.Define("postfsrAntiLep", "postfsrLeptons && (GenPart_pdgId==-11 || GenPart_pdgId==-13)")
@@ -344,13 +403,12 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrLep_eta", "GenPart_eta[postfsrLep][postfsrLep_idx]")
             df = df.Define("postfsrLep_phi", "GenPart_phi[postfsrLep][postfsrLep_idx]")
             df = df.Define("postfsrLep_mass", "wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx])")
-            
             df = df.Define("postfsrLep_charge", "GenPart_pdgId[postfsrLep][postfsrLep_idx] > 0 ? -1 : 1")
 
         df = df.Define("postfsrLep_absEta", "static_cast<double>(std::fabs(postfsrLep_eta))")
         
-        if mode in ["wmass", "wlike"]:
-            if mode == "wlike":
+        if mode[0] == "w" or "wlike" in mode:
+            if "wlike" in mode:
                 # for wlike selection
                 df = df.Define("postfsrMET_wlike", "wrem::get_met_wlike(postfsrOtherLep_pt, postfsrOtherLep_phi, MET_fiducialGenPt, MET_fiducialGenPhi)")
                 df = df.Define("postfsrMET_pt", "postfsrMET_wlike.Mod()")
@@ -358,12 +416,13 @@ def define_postfsr_vars(df, mode=None):
             else:
                 df = df.Alias("postfsrMET_pt", "MET_fiducialGenPt")
                 df = df.Alias("postfsrMET_phi", "MET_fiducialGenPhi")
+                df = df.Define("postfsrPTV", "wrem::pt_2(postfsrLep_pt, postfsrLep_phi, postfsrMET_pt, postfsrMET_phi)")
 
             df = df.Define("postfsrMT", "wrem::mt_2(postfsrLep_pt, postfsrLep_phi, postfsrMET_pt, postfsrMET_phi)")
             df = df.Define("postfsrDeltaPhiMuonMet", "std::fabs(wrem::deltaPhi(postfsrLep_phi, postfsrMET_phi))")
 
         # definition of boson kinematics
-        if mode in ["dilepton", "wlike"]:
+        if mode[0] == "z":
             # four vectors
             df = df.Define("postfsrLep_mom4", "ROOT::Math::PtEtaPhiMVector(postfsrLep_pt, postfsrLep_eta, postfsrLep_phi, postfsrLep_mass)")
             df = df.Define("postfsrAntiLep_mom4", "ROOT::Math::PtEtaPhiMVector(postfsrOtherLep_pt, postfsrOtherLep_eta, postfsrOtherLep_phi, postfsrOtherLep_mass)")
@@ -371,10 +430,8 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define('postfsrGenV_mom4', 'postfsrLep_mom4 + postfsrAntiLep_mom4')
             df = df.Define('postfsrMV', 'postfsrGenV_mom4.mass()')
             df = df.Define('postfsrYV', 'postfsrGenV_mom4.Rapidity()')
+            df = df.Define('postfsrabsYV', 'std::fabs(postfsrYV)')
             df = df.Define('postfsrPTV', 'postfsrGenV_mom4.pt()')
-
-        if mode == "wmass":
-            df = df.Define("postfsrPTV", "wrem::pt_2(postfsrLep_pt, postfsrLep_phi, postfsrMET_pt, postfsrMET_phi)")
 
     return df
 
@@ -414,7 +471,7 @@ def make_ew_binning(mass = 91.1535, width = 2.4932, initialStep = 0.1, bin_edges
     if bin_edges_low:
         bins = bin_edges_low + [b for b in bins if b > bin_edges_low[-1]][1:]
     if bin_edges_high:
-        bins = [b for b in bins if b < bin_edges_high[-1]][:-1] + bin_edges_high
+        bins = [b for b in bins if b < bin_edges_high[0]][:-1] + bin_edges_high
 
     return bins
 
@@ -489,17 +546,24 @@ def define_central_pdf_weight(df, dataset_name, pdf):
     return df.Define("central_pdf_weight", f"std::clamp<float>({pdfBranch}[{first_entry}], -theory_weight_truncate, theory_weight_truncate)")
 
 def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
+    if "LHEPart_status" in df.GetColumnNames():
+        df = define_lhe_vars(df)
+
     if not 'powheg' in dataset_name:
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
+        df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
+        df = define_intermediate_gen_vars(df, "postShower", 21, 59)
+        df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
 
-    df = define_ew_vars(df)
+    if "GenPart_status" in df.GetColumnNames():
+        df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
     df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
     df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr, 
         modify_central_weight=not args.theoryCorrAltOnly)
-    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr)
+    df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr, modify_central_weight=False)
 
     if args.highptscales:
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
@@ -536,12 +600,14 @@ def define_nominal_weight(df):
     return df.Define(f"nominal_weight", build_weight_expr(df))
 
 def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_weight=False):
+    logger.debug("define_ew_theory_corr")
+
+    if modify_central_weight:
+        raise ValueError("Modifying central weight not currently supported for EW corrections.")
+
     df = df.Define(f"nominal_weight_ew_uncorr", build_weight_expr(df, exclude_weights=["ew_theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
-
-    if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
-        df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
 
     for i, generator in enumerate(generators):
         if generator not in dataset_helpers:
@@ -550,14 +616,25 @@ def define_ew_theory_corr(df, dataset_name, helpers, generators, modify_central_
         logger.debug(f"Now at generator {i}: {generator}")
         helper = dataset_helpers[generator]
         df = df.Define(f"ew_{generator}corr_weight", build_weight_expr(df))
-        df = df.Define(f"{generator}Weight_tensor", helper, [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]) # multiplying with nominal QCD weight
+        # hack for column names
+        if generator == "powhegFOEW":
+            ew_cols = ["massVgen", "absYVgen", "csCosThetagen", "chargeVgen", f"ew_{generator}corr_weight"]
+        else:
+            ew_cols = [*helper.hist.axes.name[:-2], "chargeVgen", f"ew_{generator}corr_weight"]
 
-        if i == 0 and modify_central_weight:
+        df = df.Define(f"{generator}Weight_tensor", helper, ew_cols) # multiplying with nominal QCD weight
+
+        if generator in ["renesanceEW", "powhegFOEW"] and modify_central_weight:
+            logger.debug(f"applying central value correction for {generator}")
             df = df.Define("ew_theory_corr_weight", f"nominal_weight_ew_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_ew_uncorr")
+
+    if "ew_theory_corr_weight" not in df.GetColumnNames():
+        df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
 
     return df
 
 def define_theory_corr(df, dataset_name, helpers, generators, modify_central_weight):
+    logger.debug("define_theory_corr")
     df = df.Define(f"nominal_weight_uncorr", build_weight_expr(df, exclude_weights=["theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
@@ -574,12 +651,14 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
         helper = dataset_helpers[generator]
 
         if "Helicity" in generator:
-            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhi", "nominal_weight_uncorr"])
+            # TODO check carefully if the weight below should instead be f"{generator}_corr_weight"  (though it's irrelevant as long as there's only one theory correction)
+            df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight_uncorr"])
         else:
             df = define_theory_corr_weight_column(df, generator)
             df = df.Define(f"{generator}Weight_tensor", helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", f"{generator}_corr_weight"])
 
-        if i == 0 and modify_central_weight:
+        if (i == 0) and modify_central_weight:
+            logger.debug(f"applying central value correction for {generator}")
             df = df.Define("theory_corr_weight", f"nominal_weight_uncorr == 0 ? 0 : {generator}Weight_tensor(0)/nominal_weight_uncorr")
 
     return df
@@ -592,86 +671,8 @@ def define_theory_corr_weight_column(df, generator):
             "; return res;")
     else:
         df = df.Alias(f"{generator}_corr_weight", "nominal_weight_uncorr")
-
     return df
 
-def make_theory_corr_hists(df, name, axes, cols, helpers, generators, modify_central_weight, isW):
-    res = []
-    
-    for i, generator in enumerate(generators):
-        if generator not in helpers:
-            continue
-        
-        if i == 0 and modify_central_weight:
-            res.append(df.HistoBoost(f"{name}_uncorr", axes, [*cols, "nominal_weight_uncorr"], storage=hist.storage.Double()))
-            if name == "nominal":
-                res.append(df.HistoBoost(f"weight_uncorr", [hist.axis.Regular(100, -2, 2)], ["nominal_weight_uncorr"], storage=hist.storage.Double()))
-
-        var_axis = helpers[generator].tensor_axes[-1]
-
-        hist_name = f"{name}_{generator}Corr"
-        weight_tensor_name = f"{generator}Weight_tensor"
-        unc = df.HistoBoost(hist_name, axes, [*cols, weight_tensor_name], tensor_axes=[var_axis], storage=hist.storage.Double())
-        res.append(unc)
-
-        def is_flavor_dependent_np(var_label):
-            return var_label.startswith("Omega") \
-                    or var_label.startswith("Delta_Omega") \
-                    or var_label.startswith("Lambda2") \
-                    or var_label.startswith("Delta_Lambda2")
-
-        # special treatment for Lambda2/Omega since they need to be decorrelated in charge and possibly rapidity
-        if isinstance(var_axis, hist.axis.StrCategory) and any(is_flavor_dependent_np(var_label) for var_label in var_axis):
-            omegaidxs = [var_axis.index(var_label) for var_label in var_axis if is_flavor_dependent_np(var_label)]
-
-            # include nominal as well
-            omegaidxs = [0] + omegaidxs
-
-            if f"{generator}FlavDepNP" not in df.GetColumnNames():
-                np_idx_helper = ROOT.wrem.index_taker[df.GetColumnType(weight_tensor_name), len(omegaidxs)](omegaidxs)
-
-                df = df.Define(f"{generator}FlavDepNP", np_idx_helper, [weight_tensor_name])
-
-            axis_FlavDepNP = hist.axis.StrCategory([var_axis[idx] for idx in omegaidxs], name = var_axis.name)
-
-            hist_name_FlavDepNP = f"{name}_{generator}FlavDepNP"
-            axis_chargegen = axis_chargeWgen if isW else axis_chargeZgen
-            axes_FlavDepNP = axes + [axis_absYVgen, axis_chargegen]
-            cols_FlavDepNP = cols + ["absYVgen", "chargeVgen", f"{generator}FlavDepNP"]
-            unc_FlavDepNP = df.HistoBoost(hist_name_FlavDepNP, axes_FlavDepNP, cols_FlavDepNP, tensor_axes = [axis_FlavDepNP])
-            res.append(unc_FlavDepNP)
-
-        def is_pt_dependent_scale(var_label):
-            return var_label.startswith("renorm_fact_resum_transition_scale_envelope") \
-                    or var_label.startswith("renorm_fact_resum_scale_envelope")
-
-        # special treatment for envelope of scale variations since they need to be decorrelated in pt
-        if isinstance(var_axis, hist.axis.StrCategory) and any(is_pt_dependent_scale(var_label) for var_label in var_axis):
-
-            scaleidxs = [var_axis.index(var_label) for var_label in var_axis if is_pt_dependent_scale(var_label)]
-
-            # include nominal as well
-            scaleidxs = [0] + scaleidxs
-
-            if f"{generator}PtDepScales" not in df.GetColumnNames():
-                scale_idx_helper = ROOT.wrem.index_taker[df.GetColumnType(weight_tensor_name), len(scaleidxs)](scaleidxs)
-
-                df = df.Define(f"{generator}PtDepScales", scale_idx_helper, [weight_tensor_name])
-
-            axis_PtDepScales = hist.axis.StrCategory([var_axis[idx] for idx in scaleidxs], name = var_axis.name)
-
-            hist_name_PtDepScales = f"{name}_{generator}PtDepScales"
-            axis_ptVgen = hist.axis.Variable(common.ptV_binning, name = "ptVgen", underflow=False)
-
-            axes_PtDepScales = axes[:]
-            cols_PtDepScales = cols[:]
-            if "ptVgen" not in cols:
-                axes_PtDepScales += [axis_ptVgen]
-                cols_PtDepScales += ["ptVgen", f"{generator}PtDepScales"]
-            unc_PtDepScales = df.HistoBoost(hist_name_PtDepScales, axes_PtDepScales, cols_PtDepScales, tensor_axes = [axis_PtDepScales])
-            res.append(unc_PtDepScales)
-
-    return res
 
 def replace_by_neighbors(vals, replace):
     if np.count_nonzero(replace) == vals.size:
@@ -680,13 +681,13 @@ def replace_by_neighbors(vals, replace):
     indices = ndimage.distance_transform_edt(replace, return_distances=False, return_indices=True)
     return vals[tuple(indices)]
 
-def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5):
-    if hist_moments_scales.empty():
+def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
+    if hist_helicity_xsec_scales.empty():
        raise ValueError("Cannot make coefficients from empty hist")
     # broadcasting happens right to left, so move to rightmost then move back
-    hel_ax = hist_moments_scales.axes["helicity"]
-    hel_idx = hist_moments_scales.axes.name.index("helicity")
-    vals = np.moveaxis(hist_moments_scales.view(flow=True), hel_idx, -1)
+    hel_ax = hist_helicity_xsec_scales.axes["helicity"]
+    hel_idx = hist_helicity_xsec_scales.axes.name.index("helicity")
+    vals = np.moveaxis(hist_helicity_xsec_scales.view(flow=True), hel_idx, -1)
     values = vals.value if hasattr(vals,"value") else vals
     
     # select constant term, leaving dummy axis for broadcasting
@@ -698,8 +699,11 @@ def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5):
 
     coeffs = np.moveaxis(coeffs, -1, hel_idx)
 
-    hist_coeffs_scales = hist.Hist(*hist_moments_scales.axes, storage = hist_moments_scales._storage_type(),
-        name = "hist_coeffs_scales", data = coeffs
+    hist_coeffs_scales = hist.Hist(
+        *hist_helicity_xsec_scales.axes, 
+        storage = hist_helicity_xsec_scales._storage_type(),
+        name = "hist_coeffs_scales", 
+        data = coeffs,
     )
 
     return hist_coeffs_scales

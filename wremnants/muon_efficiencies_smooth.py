@@ -54,7 +54,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
         
     eradict = { "2016PreVFP" : "BtoF",
                 "2016PostVFP" : "GtoH",
-                "2017" : "GtoH", #FIXME: update later when SF for 2018 is available
+                "2017" : "GtoH",
                 "2018" : "GtoH" }
     eratag = eradict[era]
 
@@ -85,6 +85,8 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
 
     dict_SF3D = None
     if len(eff_types_3D):
+        if era == "2018" or era == "2017":
+            raise NotImplementedError(f"3D Efficiency SFs not implemented for {era}")
         if isoDefinition == "iso04vtxAgn":
             fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
         elif isoDefinition == "iso04":
@@ -112,7 +114,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
             hist_name = f"SF_{nameTag}_{eratag}_{eff_type}_{chargeTag}"
             ## temporary patch for some missing SF histograms relevant only for dilepton (no warning needed otherwise)
-            if isoDefinition != "iso04vtxAgn":
+            if isoDefinition != "iso04vtxAgn" or era != "2016PostVFP":
                 if eff_type == "antitrigger":
                     hist_name = hist_name.replace("antitrigger", "trigger")
                     if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
@@ -345,7 +347,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
 
                     # temporary patch for some missing SF histograms in 2D (for the 3D case we have everything)
                     # only relevant for dilepton (no warning needed otherwise)
-                    if isoDefinition != "iso04vtxAgn":
+                    if isoDefinition != "iso04vtxAgn" or era!="2016PostVFP":
                         if eff_type == "antitrigger":
                             hist_name = hist_name.replace("antitrigger", "trigger")
                             if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
@@ -448,3 +450,137 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
     ####
     # return nomi, effsyst, and a dictionary with effStat to use them by name
     return helper, helper_syst, {k : effStat_manager[k]["helper"] for k in effStat_manager.keys()}
+
+
+#### the following only deal with special additional systematics, no effStat
+def make_muon_efficiency_helpers_smooth_altSyst(filename = data_dir + "/muonSF/allSmooth_GtoHout_vtxAgnIso_altBkg.root",
+                                                era = None,
+                                                what_analysis = ROOT.wrem.AnalysisType.Wmass,
+                                                max_pt = np.inf,
+                                                effStep="tracking"):
+
+    allEff_types = [effStep] # if isinstance(effStep, str) else effStep[:] # for now it's only a single step, in the future it could be used for multiple steps
+
+    validEffSteps = ["reco", "tracking"]
+    for es in allEff_types:
+        if es not in validEffSteps:
+            raise NotImplementedError(f"Step {es} not implemented for alternate background systematics")
+
+    logger.debug(f"Make efficiency helper smooth for altBkg syst with {effStep}")
+
+    # need the following hack to call the helpers with this enum class from python
+    if what_analysis == ROOT.wrem.AnalysisType.Wmass:
+        templateAnalysisArg = "wrem::AnalysisType::Wmass"
+    elif what_analysis == ROOT.wrem.AnalysisType.Wlike:
+        templateAnalysisArg = "wrem::AnalysisType::Wlike"
+    elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
+        templateAnalysisArg = "wrem::AnalysisType::Dilepton"
+    else:
+        logger.error(f"Analysis {what_analysis} not implemented. Please check")
+        quit()
+    logger.debug(f"Running {templateAnalysisArg.split('::')[-1]} analysis")
+        
+    eradict = { "2016PreVFP" : "BtoF",
+                "2016PostVFP" : "GtoH",
+                "2017" : "GtoH",
+                "2018" : "GtoH" }
+    eratag = eradict[era]
+
+    axis_eta_eff = None
+    axis_pt_eff = None
+    # categorical axes in python bindings always have an overflow bin, so use a regular
+    # axis for the charge
+    axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "SF charge")
+    effSyst_decorrEtaEdges = [round(-2.4 + 0.1*i,1) for i in range(49)]
+    Nsyst = 1 + (len(effSyst_decorrEtaEdges) - 1) # 1 inclusive variation + all decorrelated bins
+    axis_nom_syst = hist.axis.Integer(0, 1+Nsyst, underflow = False, overflow =False, name = "nom-systs") # nominal in first bin
+
+    charges = { -1. : "minus", 1. : "plus" }
+    chargeDependentSteps = common.muonEfficiency_chargeDependentSteps
+
+    fin = input_tools.safeOpenRootFile(filename)
+
+    ## start with NOMI and SYST
+    sf_syst_2D = None
+    for charge, charge_tag in charges.items():
+        for eff_type in allEff_types:
+            chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
+            hist_name = f"SF_nomiAndAlt_{eratag}_{eff_type}_{chargeTag}_altBkg"
+            hist_root = input_tools.safeGetRootObject(fin, hist_name)
+
+            hist_hist = narf.root_to_hist(hist_root, axis_names = ["SF eta", "SF pt", "nomi-statUpDown-syst"])
+            axis_nomiAlt_eff = hist_hist.axes[2]
+
+            if sf_syst_2D is None:
+                axis_eta_eff = hist_hist.axes[0]
+                axis_pt_eff = hist_hist.axes[1]
+                # store all systs (currently only 1) with the nominal, for all efficiency steps
+                # following line is if len(allEff_types) > 1:
+                # sf_syst_2D = hist.Hist(axis_eta_eff, axis_pt_eff, axis_charge, axis_eff_type_2D, axis_nom_syst, name = "sf_syst_2D", storage = hist.storage.Double()) # storage.Double() affects how the C++ helper reads cells
+                # but now it is one step
+                sf_syst_2D = hist.Hist(axis_eta_eff, axis_pt_eff, axis_charge, axis_nom_syst, name = "sf_syst_2D", storage = hist.storage.Double())
+            # extract nominal (first bin that is not underflow) and put in corresponding bin of destination
+            sf_syst_2D.values(flow=False)[:, :, axis_charge.index(charge), 0] = hist_hist.values(flow=False)[:,:,0]
+            # extract syst (last bin except overflow) and put in corresponding bin of destination (bin 1 is the second bin because no underflow)
+            sf_syst_2D.values(flow=False)[:, :, axis_charge.index(charge), 1] = hist_hist.values(flow=False)[:,:,axis_nomiAlt_eff.size-1]
+            for isyst in range(len(effSyst_decorrEtaEdges)-1):
+                # first copy the nominal
+                sf_syst_2D.values(flow=False)[:, :, axis_charge.index(charge), 2+isyst] = hist_hist.values(flow=False)[:,:,0]
+                # now update with actual syst all eta bins inside interval [effSyst_decorrEtaEdges[isyst], effSyst_decorrEtaEdges[isyst+1]]
+                # add epsilon to ensure picking the bin on the right of the edge (for the right edge given by
+                # effSyst_decorrEtaEdges[isyst+1]] the range selection in boost later on will stop at the left
+                #edge of the chosen bin number, e.g. h[b:b+1] will pick the range containing the single bin b, unlike in ROOT
+                indexEtaLow = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge
+                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001) 
+                sf_syst_2D.values(flow=False)[indexEtaLow:indexEtaHigh, :, axis_charge.index(charge), 2+isyst] = hist_hist.values(flow=False)[indexEtaLow:indexEtaHigh, :,axis_nomiAlt_eff.size-1]
+
+    # set overflow and underflow eta-pt bins equal to adjacent bins
+    sf_syst_2D.values(flow=True)[0, ...] = sf_syst_2D.values(flow=True)[1, ...]
+    sf_syst_2D.values(flow=True)[axis_eta_eff.extent-1, ...] = sf_syst_2D.values(flow=True)[axis_eta_eff.extent-2, ...]
+    sf_syst_2D.values(flow=True)[:, 0, ...] = sf_syst_2D.values(flow=True)[:, 1, ...]
+    sf_syst_2D.values(flow=True)[:, axis_pt_eff.extent-1, ...] = sf_syst_2D.values(flow=True)[:, axis_pt_eff.extent-2, ...]
+
+    # ### TEST
+    # s = hist.tag.Slicer()
+    # from scripts.analysisTools.plotUtils.utility import createPlotDirAndCopyPhp, adjustSettings_CMS_lumi, drawCorrelationPlot, copyOutputToEos
+    # outdir_original = "scripts/analysisTools/plots/TESTPLOTS/altBkgSF/"
+    # outdir_local = createPlotDirAndCopyPhp(outdir_original, eoscp=True)
+    # adjustSettings_CMS_lumi()
+    # canvas = ROOT.TCanvas("canvas","",800,800)
+    # for js in range(1+Nsyst):
+    #     hplot = sf_syst_2D[{2: s[1],
+    #                         3: s[js],
+    #                         }] # take syst js (0 is the nominal), and charge plus for now
+    #     logger.error(f"hplot.axes.name = {hplot.axes.name}")
+    #     hroot = narf.hist_to_root(hplot)
+    #     hroot.SetName(f"hroot_plus_js_{js}")
+    #     hroot.SetTitle("Nominal" if js == 0 else "Inclusive syst" if js == 1 else f"Syst #eta bin {js-1}")
+    #     drawCorrelationPlot(hroot,
+    #                         "Standalone muon #eta",
+    #                         "Standalone muon p_{T} (GeV)",
+    #                         "Scale factor",
+    #                         hroot.GetName(), plotLabel="ForceTitle", outdir=outdir_local,
+    #                         draw_both0_noLog1_onlyLog2=1, nContours=51, palette=87,
+    #                         invertPalette=False, passCanvas=canvas, skipLumi=True)
+    # copyOutputToEos(outdir_original, eoscp=True)
+    # logger.warning("STOP HERE")
+    # quit()
+    # ####
+
+    # case with only 2D histograms
+    sf_syst_2D_pyroot = narf.hist_to_pyroot_boost(sf_syst_2D)
+    helper_syst = ROOT.wrem.muon_efficiency_smooth_helper_syst_oneStep[templateAnalysisArg, Nsyst, type(sf_syst_2D_pyroot)]( ROOT.std.move(sf_syst_2D_pyroot) )
+    # define axis for syst variations with all steps
+    #axis_all = hist.axis.Integer(0, len(allEff_types), underflow = False, overflow = False, name = "altBkgEffSteps")
+    #helper_syst.tensor_axes = [axis_all, axis_nsyst]
+    axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
+    helper_syst.tensor_axes = [axis_nsyst]
+    #
+
+    fin.Close()
+
+    logger.debug(f"Return efficiency helper for altBkg systematics!")
+
+    ####
+    # return nomi, effsyst
+    return helper_syst

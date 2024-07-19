@@ -9,7 +9,7 @@ import pickle
 import re
 import glob
 import h5py
-from .correctionsTensor_helper import makeCorrectionsTensor
+from wremnants.correctionsTensor_helper import makeCorrectionsTensor
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import input_tools
 from wremnants import theory_tools
@@ -22,7 +22,7 @@ def valid_theory_corrections():
     return [m[1] for m in matches if m]+["none"]
 
 def valid_ew_theory_corrections():
-    corr_files = glob.glob(common.data_dir+"TheoryCorrections/*ew*Corr*.pkl.lz4")
+    corr_files = glob.glob(common.data_dir+"TheoryCorrections/*[eE][wW]*Corr*.pkl.lz4")
     matches = [re.match("(^.*)Corr[W|Z]\.pkl\.lz4", os.path.basename(c)) for c in corr_files]
     return [m[1] for m in matches if m]+["none"]
 
@@ -115,10 +115,7 @@ def compute_envelope(h, name, entries, axis_name="vars", slice_axis = None, slic
 def postprocess_corr_hist(corrh):
     # extend variations with some envelopes and special kinematic slices
 
-    if "vars" not in corrh.axes.name:
-        return corrh
-
-    if type(corrh.axes["vars"]) != hist.axis.StrCategory:
+    if "vars" not in corrh.axes.name or type(corrh.axes["vars"]) != hist.axis.StrCategory:
         return corrh
 
     additional_var_hists = {}
@@ -131,7 +128,7 @@ def postprocess_corr_hist(corrh):
     resum_scale_vars_exclusive = [var for var in corrh.axes["vars"] if any(resum_scale in var for resum_scale in resum_scales)]
     resum_scale_vars = ["pdf0"] + resum_scale_vars_exclusive
 
-    if len(resum_scale_vars) == 1:
+    if len(renorm_fact_scale_vars) == 1:
         return corrh
 
     transition_vars_exclusive = ["transition_points0.2_0.35_1.0", "transition_points0.2_0.75_1.0"]
@@ -158,7 +155,7 @@ def postprocess_corr_hist(corrh):
         additional_var_hists.update(compute_envelope(corrh, "renorm_fact_resum_scale_envelope", renorm_fact_resum_scale_vars))
     if all(var in corrh.axes["vars"] for var in renorm_fact_resum_transition_scale_vars):
         additional_var_hists.update(compute_envelope(corrh, "renorm_fact_resum_transition_scale_envelope", renorm_fact_resum_transition_scale_vars))
-    if all(var in corrh.axes["vars"] for var in resum_scale_vars):
+    if len(resum_scale_vars) > 1 and all(var in corrh.axes["vars"] for var in resum_scale_vars):
         additional_var_hists.update(compute_envelope(corrh, "resum_scale_envelope", resum_scale_vars))
 
 
@@ -184,7 +181,7 @@ def postprocess_corr_hist(corrh):
 def get_corr_name(generator):
     # Hack for now
     label = generator.replace("1D", "")
-    if "dataPtll" in generator:
+    if "dataPtll" in generator or "dataRecoPtll" in generator:
         return "MC_data_ratio"
     return f"{label}_minnlo_ratio" if "Helicity" not in generator else f"{label.replace('Helicity', '')}_minnlo_coeffs"
 
@@ -193,7 +190,7 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
     ndims = min([x.ndim for x in hists]) if ndim < 0 else ndim
     if binning:
         try:
-            hists = [h if not h else hh.rebinHistMultiAx(h, binning) for h in hists]
+            hists = [h if not h else hh.rebinHistMultiAx(h, binning.keys(), binning.values()) for h in hists]
         except ValueError as e:
             logger.warning("Can't rebin axes to predefined binning")
         return hists
@@ -237,7 +234,7 @@ def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, coef
                                    flow=False, by_ax_name=False).values()[np.newaxis,...,np.newaxis,:] \
                             if target_sigmaul else np.ones_like(ref_helicity_hist)[...,np.newaxis]
 
-    ref_coeffs = theory_tools.moments_to_angular_coeffs(ref_helicity_hist)
+    ref_coeffs = theory_tools.helicity_xsec_to_angular_coeffs(ref_helicity_hist)
 
     corr_ax = hist.axis.Boolean(name="corr")
     vars_ax = target_sigmaul.axes["vars"] if target_sigmaul else hist.axis.Regular(1 ,0, 1, name="vars")
@@ -267,21 +264,32 @@ def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
     if filename is None:
         filename = f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
 
-    # load moments from file
+    # load helicity cross sections from file
     with h5py.File(filename, "r") as h5file:
         results = input_tools.load_results_h5py(h5file)
-        moments = results["Z"] if is_w_like else results["W"]
+        helicity_xsecs = results["Z"] if is_w_like else results["W"]
+        helicity_xsecs_lhe = results["Z_lhe"] if is_w_like else results["W_lhe"]
 
-    moments_nom = moments[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
+
+    # Common.ptV_binning is the approximate 5% quantiles, rounded to integers
+    helicity_xsecs = hh.rebinHist(helicity_xsecs, "ptVgen", common.ptV_binning)
+    helicity_xsecs_lhe = hh.rebinHist(helicity_xsecs_lhe, "ptVgen", common.ptV_binning)
+
+    if is_w_like:
+        axis_massVgen = helicity_xsecs.axes["massVgen"]
+        helicity_xsecs = hh.rebinHist(helicity_xsecs, "massVgen", axis_massVgen.edges[::2])
+        helicity_xsecs_lhe = hh.rebinHist(helicity_xsecs_lhe, "massVgen", axis_massVgen.edges[::2])
+
+    helicity_xsecs_nom = helicity_xsecs[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
 
     # set disallowed combinations of mur/muf equal to nominal
-    moments.values()[..., 0, 2] = moments_nom
-    moments.values()[..., 2, 0] = moments_nom
+    helicity_xsecs.values()[..., 0, 2] = helicity_xsecs_nom
+    helicity_xsecs.values()[..., 2, 0] = helicity_xsecs_nom
 
     # flatten scale variations and compute envelope
-    moments_flat = np.reshape(moments.values(), (*moments.values().shape[:-2], -1))
-    moments_min = np.min(moments_flat, axis=-1)
-    moments_max = np.max(moments_flat, axis=-1)
+    helicity_xsecs_flat = np.reshape(helicity_xsecs.values(), (*helicity_xsecs.values().shape[:-2], -1))
+    helicity_xsecs_min = np.min(helicity_xsecs_flat, axis=-1)
+    helicity_xsecs_max = np.max(helicity_xsecs_flat, axis=-1)
 
     # build variation histogram in the format expected by the corrector
     corr_ax = hist.axis.Boolean(name="corr")
@@ -295,23 +303,28 @@ def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
     for ihel in range(-1, 8):
         var_names.extend(get_names(ihel))
 
+    var_names.append("pythia_shower_kt")
+
     vars_ax = hist.axis.StrCategory(var_names, name="vars")
 
-    axes_no_scale = moments.axes[:-2]
+    axes_no_scale = helicity_xsecs.axes[:-2]
     corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, vars_ax)
 
-    # set all moments, including overflow/underflow to default safe value (leads to weight of 1.0 by construction)
+    # set all helicity_xsecs, including overflow/underflow to default safe value (leads to weight of 1.0 by construction)
     corr_coeffs.values(flow=True)[...] = 1.
 
-    # set all moments equal to nominal
-    corr_coeffs.values()[...] = moments_nom[..., None, None]
+    # set all helicity_xsecs equal to nominal
+    corr_coeffs.values()[...] = helicity_xsecs_nom[..., None, None]
 
     # set envelope variations
     for ihel in range(-1, 8):
         downvar, upvar = get_names(ihel)
 
-        corr_coeffs.values()[..., ihel+1, 1, var_names.index(downvar)] = moments_min[..., ihel+1]
-        corr_coeffs.values()[..., ihel+1, 1, var_names.index(upvar)] = moments_max[..., ihel+1]
+        corr_coeffs.values()[..., ihel+1, 1, var_names.index(downvar)] = helicity_xsecs_min[..., ihel+1]
+        corr_coeffs.values()[..., ihel+1, 1, var_names.index(upvar)] = helicity_xsecs_max[..., ihel+1]
+
+    corr_coeffs[{"corr" : False, "vars" : "pythia_shower_kt"}] = helicity_xsecs[{"muRfact" : 1.j, "muFfact" : 1.j}].values()/helicity_xsecs[{"muRfact" : 1.j, "muFfact" : 1.j, "helicity" : -1.j}].values()[..., None]
+    corr_coeffs[{"corr" : True, "vars" : "pythia_shower_kt"}] = helicity_xsecs_lhe[{"muRfact" : 1.j, "muFfact" : 1.j}].values()/helicity_xsecs_lhe[{"muRfact" : 1.j, "muFfact" : 1.j, "helicity" : -1.j}].values()[..., None]
 
     helper = makeCorrectionsTensor(corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3)
 
@@ -322,12 +335,12 @@ def make_qcd_uncertainty_helper_by_helicity(is_w_like = False, filename=None):
 
 def make_helicity_test_corrector(is_w_like = False, filename = None):
 
-    # load moments from file
+    # load hist_helicity cross sections from file
     with h5py.File(filename, "r") as h5file:
         results = input_tools.load_results_h5py(h5file)
-        moments = results["Z"] if is_w_like else results["W"]
+        hist_helicity_xsec = results["Z"] if is_w_like else results["W"]
 
-    coeffs = theory_tools.moments_to_angular_coeffs(moments)
+    coeffs = theory_tools.helicity_xsec_to_angular_coeffs(hist_helicity_xsec)
 
     coeffs_nom = coeffs[{"muRfact" : 1.j, "muFfact" : 1.j}].values()
 
@@ -383,7 +396,7 @@ def read_combined_corrs(procNames, generator, corr_files, axes=[], absy=True, re
         h = hh.makeAbsHist(h, "Y")
 
     if rebin:
-        h = hh.rebinHistMultiAx(h, rebin)
+        h = hh.rebinHistMultiAx(h, rebin.keys(), rebin.values())
 
     return h
 

@@ -59,18 +59,22 @@ def plotDistribution2D(args, groups, datasets, histname, outdir, canvas2Dshapes=
 
 def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=None,
                        xAxisName="variable", plotName="variable_failIso_jetInclusive",
-                       draw_both0_noLog1_onlyLog2=1, ratioPadYaxisTitle="Data/pred::0.9,1.1"):
+                       draw_both0_noLog1_onlyLog2=1, ratioPadYaxisTitle="Data/pred::0.9,1.1",
+                       scaleToUnitArea=False, noRatioPanel=False):
     
     createPlotDirAndCopyPhp(outfolder_dataMC)
     if not canvas1Dshapes:
         canvas1Dshapes = ROOT.TCanvas("canvas1Dshapes","",700,800)
-                
-    legend = ROOT.TLegend(0.2,0.72,0.95,0.92)
+
+    nColumns = 3
+    legendLowY = 0.82 if len(hmc) < nColumns else 0.72
+    legend = ROOT.TLegend(0.2,legendLowY,0.95,0.92)
     legend.SetFillColor(0)
     legend.SetFillStyle(0)
     legend.SetBorderSize(0)
-    legend.SetNColumns(3)
+    legend.SetNColumns(nColumns)
 
+    stackIntegral = 0.0
     for d in datasets:
         if d == "Data":
             legend.AddEntry(hdata, "Data", "EP")
@@ -80,20 +84,25 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
             hmc[d].SetLineColor(ROOT.kBlack)
             hmc[d].SetMarkerSize(0)
             hmc[d].SetMarkerStyle(0)
+            stackIntegral += hmc[d].Integral()
+
+    if scaleToUnitArea:
+        hdata.Scale(1.0/hdata.Integral())
 
     stack_1D = ROOT.THStack("stack_1D", "signal and backgrounds")
     hmcSortedKeys = sorted(hmc.keys(), key= lambda x: hmc[x].Integral())
     for i in hmcSortedKeys:
+        if scaleToUnitArea:
+            hmc[i].Scale(1.0/stackIntegral)
         stack_1D.Add(hmc[i])
     # reverse sorting for legend, first the ones with larger integral
     for i in list(reversed(hmcSortedKeys)):
         legend.AddEntry(hmc[i], legEntries_plots_[i], "LF")
 
-    drawTH1dataMCstack(hdata, stack_1D, xAxisName, "Events", plotName,
+    drawTH1dataMCstack(hdata, stack_1D, xAxisName, "Fraction of events" if scaleToUnitArea else "Events", plotName,
                        outfolder_dataMC, legend, ratioPadYaxisNameTmp=ratioPadYaxisTitle, passCanvas=canvas1Dshapes,
-                       lumi="16.8", drawLumiLatex=True, xcmsText=0.3, noLegendRatio=True,
-                       draw_both0_noLog1_onlyLog2=draw_both0_noLog1_onlyLog2)
-
+                       xcmsText=-1 if scaleToUnitArea else 0.3, lumi="16.8", drawLumiLatex=True, noLegendRatio=True,
+                       draw_both0_noLog1_onlyLog2=draw_both0_noLog1_onlyLog2, noRatioPanel=noRatioPanel, topMargin=0.06)
 
 if __name__ == "__main__":
 
@@ -109,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument(     '--plot2D', action='store_true',   help='To plot 2D histograms and 1D projections')
     parser.add_argument("-y", "--yAxisName", nargs='+', type=str, help="y axis name (only for 2D plots)")
     parser.add_argument("-l", "--lumi", type=float, default=None, help="Normalization for 2D plots (if the input does not have data the luminosity is set to 1/fb)")
-    parser.add_argument(     '--normUnitArea', action='store_true',   help='Scale 2D histogram to unit area')
+    parser.add_argument(     '--normUnitArea', action='store_true',   help='Scale histogram to unit area')
     args = parser.parse_args()
     
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -138,6 +147,7 @@ if __name__ == "__main__":
             xAxisName=args.xAxisName[ip]
             yAxisName=args.yAxisName[ip]
             plotDistribution2D(args, groups, datasets, p, outdir, canvas2D, xAxisName, yAxisName, scaleToUnitArea=args.normUnitArea)
+        copyOutputToEos(outdir_original, eoscp=args.eoscp)
         quit()
 
     ratioMin = args.ratioRange[0]
@@ -157,9 +167,10 @@ if __name__ == "__main__":
             rootHists[d] = narf.hist_to_root(hnarf)
             rootHists[d].SetName(f"{p}_{d}")
 
-        hdata = rootHists["Data"]
+        hdata = rootHists["Data"] if "Data" in rootHists.keys() else copy.deepcopy(rootHists[datasets[0]].Clone("dummyData"))
         hmc = {d : rootHists[d] for d in datasets if d != "Data"}
         plotDistribution1D(hdata, hmc, datasets, outdir, canvas1Dshapes=canvas1D,
-                           xAxisName=args.xAxisName[ip], plotName=p, ratioPadYaxisTitle=ratioPadYaxisTitle)
+                           xAxisName=args.xAxisName[ip], plotName=p, ratioPadYaxisTitle=ratioPadYaxisTitle, scaleToUnitArea=args.normUnitArea,
+                           noRatioPanel="Data" not in rootHists.keys())
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

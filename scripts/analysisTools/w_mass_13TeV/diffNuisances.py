@@ -42,6 +42,9 @@ def sortEffSyst(name):
             return v
     return -1
 
+def sortByCharge(name):
+    return 0 if "minus" in name else 1 if "plus" in name else 2
+
 def sortParameters(params):
     
     params = sorted(params)
@@ -66,10 +69,11 @@ def sortParameters(params):
         params = sorted(params, key = lambda x: utilities.getNFromString(x,chooseIndex=0))
         params = sorted(params, key = lambda x: 0 if "_A_" in x else 1)
     elif any(re.match('.*polVar.*',x) for x in params):
-        #params = sorted(params, key = lambda x: (-1,utilities.getNFromString(x,chooseIndex=0)) if "_UL_" else (utilities.getNFromString(x,chooseIndex=0), utilities.getNFromString(x,chooseIndex=1)))
-        pass
+        params = sorted(params, key = lambda x: (sortByCharge(x), 8, utilities.getNFromString(x,chooseIndex=0)) if "_UL_" in x else (sortByCharge(x), utilities.getNFromString(x,chooseIndex=0), utilities.getNFromString(x,chooseIndex=1)))
     elif any(re.match('.*ZmuonVeto.*',x) for x in params):
         params = sorted(params, key= lambda x: utilities.getNFromString(x), reverse=False)
+    elif any(re.match('.*FakeRate.*',x) for x in params):
+        params = sorted(params, key = lambda x: (utilities.getNFromString(x,chooseIndex=1), utilities.getNFromString(x,chooseIndex=0), utilities.getNFromString(x,chooseIndex=2)))
     return params
 
 if __name__ == "__main__":
@@ -116,7 +120,7 @@ if __name__ == "__main__":
         print("You must pass an output folder with option -o")
         quit()
 
-    outdir_original = args.outdir:
+    outdir_original = args.outdir
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     #valuesPrefit = dict((k,v) for k,v in valuesAndErrorsAll.items() if k.endswith('_gen'))
     pois_regexps = list(args.pois.split(','))
@@ -568,5 +572,5 @@ if __name__ == "__main__":
             for ext in ['png', 'pdf']:
                 canvas_nuis.SaveAs("{noext}.{ext}".format(noext=outnameNoExt, ext=ext))
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

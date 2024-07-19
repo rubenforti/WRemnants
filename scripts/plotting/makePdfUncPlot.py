@@ -1,4 +1,4 @@
-from wremnants import plot_tools,theory_tools,histselections as sel
+from wremnants import plot_tools,theory_tools
 from utilities import boostHistHelpers as hh
 from utilities.io_tools import input_tools, output_tools
 import hist
@@ -125,7 +125,7 @@ for dataset in args.datasets:
         #     alphaHists = input_tools.read_all_and_scale(args.infile, args.datasets, alphaNames)
         #     alphaHists_hel = []
         #     for alphaHist in alphaHists:
-        #         alphaHists_hel.append(theory_tools.moments_to_angular_coeffs(alphaHist.project('helicity','absYVgen','ptVgen',axis_label)))
+        #         alphaHists_hel.append(theory_tools.helicity_xsec_to_angular_coeffs(alphaHist.project('helicity','absYVgen','ptVgen',axis_label)))
         #     uncHists[ipdf].extend([alphaHists_hel[ipdf][...,0],alphaHists_hel[ipdf][...,1]])
         #     names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
         #     colors[ipdf].extend([[cmap(i)]*2 for i in range(len(args.pdfs),2*len(args.pdfs))][0])
@@ -159,7 +159,7 @@ for dataset in args.datasets:
                     hists1D = [action(x) for x in hists]
                 else:
                     obs2unroll = ["ptVgen","absYVgen"] if "unrolled_gen" in obs else ["pt","eta"]
-                    action = sel.unrolledHist
+                    action = hh.unrolledHist
                     if not "hel" in obs:
                         hists1D = [action(x,obs2unroll,binwnorm=True) for x in hists]
                     else:

@@ -1,13 +1,16 @@
-#!/bin/env python
+#!/usr/bin/env python3
 
 # plot impacts on mW or mZ from groups of nuisance parameters
 
-# example for wlike (need --wlike)
-# python w-mass-13TeV/makeImpactsOnMW.py /scratch/mciprian/CombineStudies/Wlike/20Sept2022/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root  -o plots/fromMyWremnants/Wlike_fit/10Sept2022/qcdScale_byHelicityPt/makeImpactsOnMW/ --set-stat 0.071 --showTotal --scaleToMeV --wlike
+# example for W
+# only main groups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --showTotal --postfix asimov -x ".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower"
 #
-# wlike with charge + (assuming root file with fit results exists)
-# python w-mass-13TeV/makeImpactsOnMW.py /scratch/mciprian/CombineStudies/Wlike/20Sept2022/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_onlyplus_bbb1_cxs0.root  -o plots/fromMyWremnants/Wlike_fit/10Sept2022/qcdScale_byHelicityPt/makeImpactsOnMW/ --set-stat 0.100 --showTotal --scaleToMeV --postfix chargePlus --wlike
-
+# only theory subgroups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_theorySplit -x ".*" -k ".*pdf.*Alpha|.*resum.+|.*QCDscale.+|bcQuark|theory_ew.+|sin2|Zmass|width|helicity_shower" --margin 0.55,0.12,0.1,0.1
+#
+# only efficiency subgroups
+# python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_efficiencySplit -x ".*" -k ".*eff_(all|stat|syst)" --margin 0.45,0.12,0.1,0.1
 
 import os, datetime, re, operator, math
 import argparse
@@ -33,13 +36,36 @@ from scripts.analysisTools.plotUtils.utility import *
 
 def getBetterLabel(k, isWlike):
     if k == "binByBinStat":
-        label = "MC_stat" if isWlike else "MCandFakes_stat"
+        label = "MC stat" if isWlike else "MC + QCD bkg stat"
     elif k == "stat":
-        label = "data_stat"
-    # elif k == "muon_eff_stat":
-    #     label = "Total eff_stat"
-    # elif k == "muon_eff_syst":
-    #     label = "Total eff_syst"
+        label = "Data stat"
+    elif k == "muon_eff_all":
+        label = "Muon efficiency"
+    elif k == "muonCalibration":
+        label = "Muon calibration"
+    elif k == "Fake":
+        label = "QCD bkg syst"
+    elif k == "angularCoeffs":
+        label = "Angular coefficients"
+    elif k == "pTModeling":
+        label = "p_{T}^{V} modeling"
+    elif k == "theory_ew":
+        label = "EW higher orders"
+    elif k == "widthW":
+        label = "#Gamma_{W}"
+    elif k == "ZmassAndWidth":
+        label = "m_{Z} + #Gamma_{Z}"
+    elif k == "sin2thetaZ":
+        label = "sin^{2}#theta_{W}"
+    elif "QCDscale" in k:
+        if k == "QCDscaleWMiNNLO":
+            label = "Angular coefficients W"
+        elif k == "QCDscaleZMiNNLO":
+            label = "Angular coefficients Z"
+        else:
+            label = "Angular coefficients" # "A_{i}"
+    elif all(x not in k for x in ["pdf", "CMS"]):
+        label = k.capitalize()
     else:
         label = k
     return label
@@ -103,19 +129,19 @@ if __name__ == "__main__":
 
     parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=1)
-    parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')    
+    parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
     parser.add_argument('-k',  '--keepNuisgroups', default=None,   type=str, help='nuis groups for which you want to show the impacts, using regular expressions')
-    parser.add_argument('-x', '--excludeNuisgroups', default=None,   type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
+    parser.add_argument('-x', '--excludeNuisgroups', default=".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ", type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
     parser.add_argument(     '--setStat',   default=-1.0, type=float, help='If positive, use this value for stat (this is before scaling to MeV) until combinetf is fixed')
     parser.add_argument(     '--postfix',     default='',   type=str, help='postfix for the output name')
     parser.add_argument(     '--canvasSize', default='800,1200', type=str, help='Pass canvas dimensions as "width,height" ')
     # parser.add_argument(     '--draw-option', dest='drawOption', default='COLZ TEXT', type=str, help='Options for drawing TH2')
     parser.add_argument(     '--margin',   default='', type=str, help='Pass canvas margin as "left,right,top,bottom" ')
-    parser.add_argument(     '--scaleToMeV', default=False , action='store_true',   help='Report numbers in terms of uncertainty on mW in MeV (default is to report percentage of prefit uncertainty)')
-    parser.add_argument(     '--showTotal', default=False , action='store_true',   help='Show total uncertainty in plot')
+    parser.add_argument(     '--scaleToMeV', action='store_true',   help='Report numbers in terms of uncertainty on mW in MeV (default is to report percentage of prefit uncertainty)')
+    parser.add_argument(     '--showTotal', action='store_true',   help='Show total uncertainty in plot')
     parser.add_argument(     '--prefitUncertainty',      default=100.0, type=float, help='prefit uncertainty on mW in MeV')
-    parser.add_argument(     '--wlike', dest='isWlike', action="store_true", default=False, help="impacts for W-like analysis (it prints mZ accordingly). Default is Wmass");
+    parser.add_argument(     '--wlike', dest='isWlike', action="store_true", help="impacts for W-like analysis (it prints mZ accordingly). Default is Wmass");
     parser.add_argument(     '--compareFile', default='', type=str, help='Additional file to compare impacts with (must have the same impact labels)')
     parser.add_argument(     '--setStatAlt', default=-1.0, type=float, help='If positive, use this value for stat of the file passed with compareFile, otherwise use the same as the other file')
     parser.add_argument(     '--legendEntries', nargs=2, type=str, help="Legend entries when comparing files", default=["Nominal", "Alternate"])
@@ -140,6 +166,10 @@ if __name__ == "__main__":
     # 56 kInvertedDarkBodyRadiator
     # 100 kSolar + inverted
 
+    if "ZMassWLike" in args.rootfile[0] and not args.isWlike:
+        logger.warning(f"ZMassWLike found in input path {args.rootfile[0]}, but option --wlike not specified, please check")
+        quit()
+    
     ROOT.TColor.CreateGradientColorTable(3,
                                          array ("d", [0.00, 0.50, 1.00]),
                                          ##array ("d", [1.00, 1.00, 0.00]),
@@ -220,7 +250,7 @@ if __name__ == "__main__":
         quit()
             
     if args.showTotal:
-        h1.GetXaxis().SetBinLabel(nbins,"total")
+        h1.GetXaxis().SetBinLabel(nbins,"Total")
         h1.SetBinContent(nbins,totalUncertainty_mW)
         if compare:
             h2.SetBinContent(nbins,totalUncertainty_mW_alt)
@@ -231,17 +261,17 @@ if __name__ == "__main__":
 
     h1.SetBarWidth(0.8);
     h1.SetBarOffset(0.1);
-    h1.SetFillColor(ROOT.kGreen-5)
+    h1.SetFillColor(ROOT.TColor.GetColor("#5790fc"))   # used to be ROOT.kGreen-5
     h1.SetLineColor(ROOT.kBlack)
     #h1.SetFillStyle(3001)
-    h1.SetFillColorAlpha(ROOT.kGreen-5, 0.5)
+    #h1.SetFillColorAlpha(ROOT.TColor.GetColor("#5790fc"), 0.5)
     if compare:
         h2.SetBarWidth(0.4);
         h2.SetBarOffset(0.2);
-        h2.SetFillColor(ROOT.kPink-6)
+        h2.SetFillColor(ROOT.TColor.GetColor("#bd1f01")) # "#f89c20" is orange, used to be ROOT.kPink-6
         h2.SetLineColor(ROOT.kBlack)
         #h2.SetFillStyle(3001)
-        h2.SetFillColorAlpha(ROOT.kPink-6, 0.5)
+        h2.SetFillColorAlpha(ROOT.TColor.GetColor("#f89c20"), 0.9)
         h1.GetYaxis().SetRangeUser(0.0, 1.1* max(totalUncertainty_mW_alt, totalUncertainty_mW))
         
     cw,ch = args.canvasSize.split(',')
@@ -316,4 +346,4 @@ if __name__ == "__main__":
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     for ext in ["pdf", "png"]:
         c1.SaveAs(f"{outdir}/impactsOnM{smallBoson}{postfix}.{ext}")
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

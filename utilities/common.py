@@ -13,6 +13,7 @@ data_dir =  f"{pathlib.Path(__file__).parent}/../wremnants-data/data/"
 
 BR_TAUToMU = 0.1739
 BR_TAUToE = 0.1782
+# cross sections in pb
 xsec_ZmmPostVFP = 2001.9
 xsec_WpmunuPostVFP = 11765.9
 xsec_WmmunuPostVFP = 8703.87
@@ -66,7 +67,7 @@ calib_filepaths = {
     # 'tflite_file': f"{calib_dir}/muon_response_nosmearing.tflite"
 }
 closure_filepaths = {
-    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_newres_MCstat_new.root",
+    'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_fullres.root",
     # 'parametrized': f"{closure_dir}/parametrizedClosureZ_ORkinweight_binsel_MCstat_simul.root",
     'binned': f"{closure_dir}/closureZ_LBL_smeared_v721.root"
 }
@@ -92,6 +93,12 @@ axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, nam
 down_up_axis = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "downUpVar")
 down_nom_up_axis = hist.axis.Regular(3, -1.5, 1.5, underflow=False, overflow=False, name = "downNomUpVar")
 
+# run edges chosen to separate eras (era F post VFP: [278769, 278808], era G [278820, 280385], era F [281613, 284044])
+run_edges = np.array([278768, 278808, 279588, 279767, 280017, 280385, 282037, 283270, 283478, 283934, 284044])
+run_edges_lumi = np.array([0.0, 0.419, 2.332, 4.329, 6.247, 8.072, 10.152, 12.265, 14.067, 15.994, 16.812])
+
+# for fake estimation
+# binary categories for simple ABCD method
 passIsoName = "passIso"
 passMTName = "passMT"
 
@@ -102,18 +109,101 @@ failMT = {passMTName: False}
 
 axis_passIso = hist.axis.Boolean(name = passIsoName)
 axis_passMT = hist.axis.Boolean(name = passMTName)
-    
+
+# axes with only a few bins for beyond simple ABCD methods
+axis_isoCat = hist.axis.Variable([0,4,8], name = "iso",underflow=False, overflow=True)
+axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=False, overflow=True)
+
+
+def get_binning_fakes_pt(min_pt, max_pt):
+    edges = np.arange(min_pt,32,1)
+    edges = np.append(edges, [e for e in [33,36,40,46,56] if e<max_pt][:-1])
+    edges = np.append(edges, [max_pt])
+    ## the following lines are used to replace the previous ones when studying different pT binning and the MC stat
+    #edges = np.arange(min_pt,32.1,1.2)  
+    #edges = np.append(edges, [e for e in [34.4, 38, 44, 56] if e<max_pt][:-1])
+    #edges = np.append(edges, [max_pt])
+    #edges = np.arange(min_pt,32,2)
+    #edges = np.append(edges, [e for e in [32, 36, 40, 46, 56] if e<max_pt][:-1])
+    #edges = np.append(edges, [max_pt])
+    return edges
+
+
+def get_binning_fakes_mt(mt_cut=40, high_mt_bins=False):
+    edges = np.array([0, int(mt_cut/2.), mt_cut])
+    if high_mt_bins:
+        # needed for extended 2D method
+        edges = np.append(edges, [e for e in [30,32,34,36,38,40,44,49,55,62] if e>mt_cut])
+    return edges
+
+
+def get_binning_fakes_relIso(high_iso_bins=False):
+    edges = [0,0.15]
+    if high_iso_bins:
+        # needed for extended 2D method
+        edges.append(0.3)
+    return edges
+
+
+def get_dilepton_ptV_binning(fine=False):
+    return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
+
+
+def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
+    if dilepton_ptV_binning is None:
+        dilepton_ptV_binning = get_dilepton_ptV_binning()
+
+    gen_axes = {
+        "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
+        "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
+    }
+    if inclusive:
+        binning = (*gen_axes["absYVGen"].edges[:-1], 5.)
+        gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
+    return gen_axes
+
+
+def get_default_ptbins(analysis_label, unfolding=False, gen=False):
+    vals = [30,26.,56.] if analysis_label[0] == "w" else [34,26.,60.]
+    if unfolding and gen:
+        raise ValueError("Inconsistent arguments for 'unfolding' and 'gen.' Must be unique")
+
+    if unfolding:
+        vals[0] += 2
+        vals[2] += 2
+    elif gen:
+        vals[0] -= 2
+        vals[1] += 2
+    return vals
+
+
+def get_default_etabins(analysis_label=None):
+    return (48,-2.4,2.4)
+
+
+def get_default_mtcut(analysis_label=None):
+    return 40. if analysis_label[0] == "w" else 45.
+
+
+def get_default_mz_window():
+    return 60, 120
+
+
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)
+muonEfficiency_altBkgSyst_effSteps = ["tracking"]
 muonEfficiency_standaloneNumberOfValidHits = 1 # to use as "var >= this" (if this=0 the define for the cut is not used at all)
+
 
 def getIsoMtRegionID(passIso=True, passMT=True):
     return passIso * 1 + passMT * 2
 
+
 def getIsoMtRegionFromID(regionID):
     return {passIsoName : regionID & 1,
             passMTName  : regionID & 2}
+
 
 def set_parser_default(parser, argument, newDefault):
     # change the default argument of the parser, must be called before parse_arguments
@@ -126,7 +216,8 @@ def set_parser_default(parser, argument, newDefault):
         logger.warning(f" Parser argument {argument} not found!")
     return parser
 
-def set_subparsers(subparser, name):
+
+def set_subparsers(subparser, name, analysis_label):
 
     if name is None:
         return subparser
@@ -137,12 +228,23 @@ def set_subparsers(subparser, name):
 
     if name == "unfolding":
         # specific for unfolding
-        subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptGen", "absEtaGen"], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen"],
+        axmap = {
+            "w_lowpu" : ["ptVGen"],
+            "w_mass" : ["ptGen", "absEtaGen"],
+            "z_dilepton" : ["ptVGen", "absYVGen"],
+        }
+        axmap["z_lowpu"] = axmap["w_lowpu"]
+        axmap["z_wlike"] = ["qGen", *axmap["w_mass"]]
+        if analysis_label not in axmap:
+            raise ValueError(f"Unknown analysis {analysis_label}!")
+        subparser.add_argument("--genAxes", type=str, nargs="+", 
+                               default=axmap[analysis_label], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen", "helicitySig"],
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
                                help="Generator level definition for unfolding")
-        subparser.add_argument("--genBins", type=int, nargs="+", default=[16, 0],
+        subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label else [16, 0],
                                help="Number of generator level bins")
+        subparser.add_argument("--inclusive", action='store_true', help="No fiducial selection (mass window only)")
     elif "theoryAgnostic" in name:
         # specific for theory agnostic
         subparser.add_argument("--genAxes", type=str, nargs="+", default=["ptVgenSig", "absYVgenSig", "helicitySig"], choices=["qGen", "ptVgenSig", "absYVgenSig", "helicitySig"], help="Generator level variable")
@@ -153,7 +255,7 @@ def set_subparsers(subparser, name):
         if name == "theoryAgnosticPolVar":
             subparser.add_argument("--theoryAgnosticFilePath", type=str, default=".",
                                    help="Path where input files are stored")
-            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V4", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6"],
+            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V9", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6", "x0p30_y3p00_V7", "x0p30_y3p00_V8", "x0p30_y3p00_V9"],
                                    help="Tag for input files")
             subparser.add_argument("--theoryAgnosticSplitOOA", action='store_true',
                                    help="Define out-of-acceptance signal template as an independent process")
@@ -163,16 +265,21 @@ def set_subparsers(subparser, name):
 
     return subparser
 
-def common_histmaker_subparsers(parser):
+
+def common_histmaker_subparsers(parser, analysis_label):
 
     parser.add_argument("--analysisMode", type=str, default=None,
                         choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
                         help="Select analysis mode to run. Default is the traditional analysis")
     
     tmpKnownArgs,_ = parser.parse_known_args()
-    parser = set_subparsers(parser, tmpKnownArgs.analysisMode)
+    unfolding = tmpKnownArgs.analysisMode == "unfolding"
+    parser.add_argument("--eta", nargs=3, type=float, help="Eta binning as 'nbins min max' (only uniform for now)", default=get_default_etabins(analysis_label))
+    parser.add_argument("--pt", nargs=3, type=float, help="Pt binning as 'nbins,min,max' (only uniform for now)", default=get_default_ptbins(analysis_label, unfolding=unfolding))
+    parser = set_subparsers(parser, tmpKnownArgs.analysisMode, analysis_label)
 
     return parser
+
 
 def base_parser():
     parser = argparse.ArgumentParser()
@@ -181,7 +288,9 @@ def base_parser():
     parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
     return parser
 
-def common_parser(for_reco_highPU=False):
+
+def common_parser(analysis_label=""):
+    for_reco_highPU = "gen" not in analysis_label and "lowpu" not in analysis_label
     parser = base_parser()
     parser.add_argument("-j", "--nThreads", type=int, default=0, help="number of threads (0 or negative values use all available threads)")
     initargs,_ = parser.parse_known_args()
@@ -219,15 +328,13 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
     parser.add_argument("--forceDefaultName", action='store_true', help="Don't modify the name of the output file with some default strings")
     parser.add_argument("--theoryCorr", nargs="*", type=str, action=NoneFilterAction,
-        default=["scetlib_dyturbo", ], choices=theory_corrections.valid_theory_corrections(), 
+        default=["scetlib_dyturbo", "scetlib_dyturboCT18ZVars", "scetlib_dyturboCT18Z_pdfas"], choices=theory_corrections.valid_theory_corrections(), 
         help="Apply corrections from indicated generator. First will be nominal correction.")
     parser.add_argument("--theoryCorrAltOnly", action='store_true', help="Save hist for correction hists but don't modify central weight")
     parser.add_argument("--ewTheoryCorr", nargs="*", type=str, action=NoneFilterAction, choices=theory_corrections.valid_ew_theory_corrections(), 
-        default=["winhacnloew", "virtual_ew_wlike", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR", ],
+        default=["renesanceEW", "powhegFOEW", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR", ],
         help="Add EW theory corrections without modifying the default theoryCorr list. Will be appended to args.theoryCorr")
     parser.add_argument("--skipHelicity", action='store_true', help="Skip the qcdScaleByHelicity histogram (it can be huge)")
-    parser.add_argument("--eta", nargs=3, type=float, help="Eta binning as 'nbins min max' (only uniform for now)", default=[48,-2.4,2.4])
-    parser.add_argument("--pt", nargs=3, type=float, help="Pt binning as 'nbins,min,max' (only uniform for now)", default=[30,26.,56.])
     parser.add_argument("--noRecoil", action='store_true', help="Don't apply recoild correction")
     parser.add_argument("--recoilHists", action='store_true', help="Save all recoil related histograms for calibration and validation")
     parser.add_argument("--recoilUnc", action='store_true', help="Run the recoil calibration with uncertainties (slower)")
@@ -236,7 +343,7 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--noVertexWeight", action='store_true', help="Do not apply reweighting of vertex z distribution in MC to match data")
     parser.add_argument("--validationHists", action='store_true', help="make histograms used only for validations")
     parser.add_argument("--onlyMainHistograms", action='store_true', help="Only produce some histograms, skipping (most) systematics to run faster when those are not needed")
-    parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET"], help="MET (DeepMETReso or RawPFMET)", default="DeepMETReso")
+    parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"], help="Choice of MET", default="DeepMETPVRobust")
     parser.add_argument("-o", "--outfolder", type=str, default="", help="Output folder")
     parser.add_argument("--appendOutputFile", type=str, default="", help="Append analysis output to specified output file")
     parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP", "2017", "2018"], help="Data set to process", default="2016PostVFP")
@@ -251,6 +358,8 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--dummyNonClosureMMag", default=0., type=float, help="magnitude of the dummy value for the alignment part of the Z non-closure")
     parser.add_argument("--noScaleToData", action="store_true", help="Do not scale the MC histograms with xsec*lumi/sum(gen weights) in the postprocessing step")
     parser.add_argument("--aggregateGroups", type=str, nargs="*", default=["Diboson", "Top"], help="Sum up histograms from members of given groups in the postprocessing step")
+    parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
+    parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5ExtYdep_Trad", choices=["x0p50_y4p00_ConstrPol5ExtYdep_Trad","x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)
@@ -275,7 +384,13 @@ def common_parser(for_reco_highPU=False):
         parser.add_argument("--noSmooth3dsf", dest="smooth3dsf", action='store_false', help="If true (default) use smooth 3D scale factors instead of the original 2D ones (but eff. systs are still obtained from 2D version)")
         parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing") 
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
-        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
+        parser.add_argument("--isolationThreshold", default=0.15, type=float, help="Threshold for isolation cut")
+        parser.add_argument("--reweightPixelMultiplicity", action='store_true', help="Reweight events based on number of valid pixel hits for the muons")
+        parser.add_argument("--requirePixelHits", action='store_true', help="Require good muons to have at least one valid pixel hit used in the track refit.")
+        parser.add_argument("--pixelMultiplicityStat", action='store_true', help="Include (very small) statistical uncertainties for pixel multiplicity variation")
+
+
 
     commonargs,_ = parser.parse_known_args()
 
@@ -289,14 +404,27 @@ def common_parser(for_reco_highPU=False):
             # since the dataAltSig tag-and-probe fits were not run in 3D (it is assumed for simplicity that the syst/nomi ratio is independent from uT)
             #
             # 2D SF without ut-dependence, still needed to compute systematics when uing 3D SF
-            sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            if commonargs.era == "2016PostVFP":
+                sfFile = "allSmooth_GtoHout.root" if commonargs.isolationDefinition == "iso04" else "allSmooth_GtoHout_vtxAgnIso.root"
+            elif commonargs.era == "2018":
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2018_vtxAgnIso.root"
+            elif commonargs.era == "2017": 
+                if commonargs.isolationDefinition == "iso04":
+                    raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
+                else:
+                    sfFile = "allSmooth_2017_vtxAgnIso.root"
+            else:
+                raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
 
         sfFile = f"{data_dir}/muonSF/{sfFile}"
     else:
         sfFile = ""
 
     parser.add_argument("--sfFile", type=str, help="File with muon scale factors", default=sfFile)
-    parser = common_histmaker_subparsers(parser)
+    parser = common_histmaker_subparsers(parser, analysis_label)
 
     class PrintParserAction(argparse.Action):                                            
         def __init__(self, option_strings, dest, nargs=0, **kwargs):
@@ -315,31 +443,37 @@ def common_parser(for_reco_highPU=False):
     parser.add_argument("--printParser", action=PrintParserAction, help="Print the whole parser with its arguments (use it as the last argument or default values might not be displayed correctly)")
     
     return parser,initargs
-    
+
+
 def plot_parser():
     parser = base_parser()
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
     parser.add_argument("-f", "--outfolder", type=str, default="./test", help="Subfolder for output")
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")
-    parser.add_argument("--cmsDecor", default="Preliminary", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
+    parser.add_argument("--cmsDecor", default="Work in progress", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
     parser.add_argument("--lumi", type=float, default=16.8, help="Luminosity used in the fit, needed to get the absolute cross section")
     parser.add_argument("--eoscp", action='store_true', help="Override use of xrdcp and use the mount instead")
     parser.add_argument("--scaleleg", type=float, default=1.0, help="Scale legend text")
 
     return parser
 
+
 def natural_sort_key(s):
     # Sort string in a number aware way by plitting the string into alphabetic and numeric parts
     parts = re.split(r'(\d+)', s)
     return [int(part) if part.isdigit() else part.lower() for part in parts]
 
+
 def natural_sort(strings):
     return sorted(strings, key=natural_sort_key)
-    
+
+
 def natural_sort_dict(dictionary):
     sorted_keys = natural_sort(dictionary.keys())
     sorted_dict = {key: dictionary[key] for key in sorted_keys}
     return sorted_dict
+
+
 '''
 INPUT -------------------------------------------------------------------------
 |* (str) string: the string to be converted to list
@@ -362,6 +496,7 @@ def string_to_list(string):
             "string_to_list(): cannot convert an input that is"
             "neither a single string nor a list of strings to a list"
         )
+
 
 '''
 INPUT -------------------------------------------------------------------------
