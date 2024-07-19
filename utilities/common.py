@@ -192,7 +192,7 @@ def get_default_mz_window():
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)
-muonEfficiency_altBkgSyst_effSteps = ["tracking"]
+muonEfficiency_altBkgSyst_effSteps = ["reco", "tracking"]
 muonEfficiency_standaloneNumberOfValidHits = 1 # to use as "var >= this" (if this=0 the define for the cut is not used at all)
 
 
