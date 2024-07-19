@@ -247,8 +247,9 @@ if not args.noRecoil:
 seed_data = 2*args.randomSeedForToys
 seed_mc = 2*args.randomSeedForToys + 1
 
-toy_helper_data = ROOT.wrem.ToyHelper(args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize())
-toy_helper_mc = ROOT.wrem.ToyHelper(args.nToysMC, seed_mc, args.varianceScalingForToys, ROOT.ROOT.GetThreadPoolSize())
+if args.nToysMC > 0:
+    toy_helper_data = ROOT.wrem.ToyHelper(args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize())
+    toy_helper_mc = ROOT.wrem.ToyHelper(args.nToysMC, seed_mc, args.varianceScalingForToys, ROOT.ROOT.GetThreadPoolSize())
 
 ######################################################
 ######################################################
