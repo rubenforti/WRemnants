@@ -186,12 +186,13 @@ else:
 logger.info(f"SF file: {args.sfFile}")
 
 muon_efficiency_helper_syst_altBkg = {}
-for es in common.muonEfficiency_altBkgSyst_effSteps:
-    altSFfile = args.sfFile.replace(".root", "_altBkg.root")
-    logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
-    muon_efficiency_helper_syst_altBkg[es] = wremnants.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
-                                                                                                   what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
-                                                                                                   effStep=es)
+if not args.noScaleFactors:
+    for es in common.muonEfficiency_altBkgSyst_effSteps:
+        altSFfile = args.sfFile.replace(".root", "_altBkg.root")
+        logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
+        muon_efficiency_helper_syst_altBkg[es] = wremnants.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
+                                                                                                       what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
+                                                                                                       effStep=es)
 
 pileup_helper = wremnants.make_pileup_helper(era = era)
 vertex_helper = wremnants.make_vertex_helper(era = era)
@@ -459,11 +460,11 @@ def build_graph(df, dataset):
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
             
             if isZveto and not args.noGenMatchMC:
-                pass
-                #df = df.Define("weight_vetoSF_nominal_def", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])                
+                # pass
+                df = df.Define("weight_vetoSF_nominal_def", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])                
                 ## weight for veto to be applied only when there are 2 muons in acceptance
-                #df = df.Define("weight_vetoSF_nominal", "(Sum(postfsrMuons_inAcc) >= 2) ? weight_vetoSF_nominal_def : 1.0")
-                #weight_expr += "*weight_vetoSF_nominal"
+                df = df.Define("weight_vetoSF_nominal", "(Sum(postfsrMuons_inAcc) >= 2) ? weight_vetoSF_nominal_def : 1.0")
+                weight_expr += "*weight_vetoSF_nominal"
 
         # prepare inputs for pixel multiplicity helpers
         cvhName = "cvhideal"

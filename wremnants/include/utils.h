@@ -250,18 +250,18 @@ Vec_i charge_from_pdgid(const Vec_i& pdgid) {
 template <typename T>
 T unmatched_postfsrMuon_var(const ROOT::VecOps::RVec<T>& var, const Vec_f& pt, int hasMatchDR2idx) {
 
+    T retVar = -99;
     if (hasMatchDR2idx < 0) {
-        std::cout << "Warning: no gen-reco match found" << std::endl;
-        return -99;
+        // std::cout << "Warning: no gen-reco match found" << std::endl;
+        return retVar;
     }
 
     if (var.size() < 2) {
-        std::cout << "Warning: only one matched postFSR muon found" << std::endl;
-        return -99;
+        // std::cout << "Warning: only one matched postFSR muon found" << std::endl;
+        return retVar;
     }
 
     float maxPt = -1;
-    T retVar = -99;
     // no need to require OS charge for the matched and unmatched muons (with Z->4mu due to PHOTOS one can get same charge, but it is fine for the veto)
     for (unsigned int i = 0; i < var.size(); i++) {
         if (i != hasMatchDR2idx and pt[i] > maxPt) {
@@ -276,18 +276,18 @@ T unmatched_postfsrMuon_var(const ROOT::VecOps::RVec<T>& var, const Vec_f& pt, i
 template <typename T> 
 T unmatched_postfsrMuon_var_withCharge(const ROOT::VecOps::RVec<T>& var, const Vec_f& pt, const Vec_i& charge, int hasMatchDR2idx) {
 
+    T retVar = -99;
     if (hasMatchDR2idx < 0) {
         std::cout << "Warning: no gen-reco match found" << std::endl;
-        return -99;
+        return retVar;
     }
 
     if (var.size() < 2) {
         std::cout << "Warning: only one matched postFSR muon found" << std::endl;
-        return -99;
+        return retVar;
     }
 
     float maxPt = -1;
-    T retVar = -99;
     int matchedCharge = charge[hasMatchDR2idx];
     for (unsigned int i = 0; i < var.size(); i++) {
         if (i != hasMatchDR2idx and ((charge[i] + matchedCharge) == 0) and pt[i] > maxPt) {
