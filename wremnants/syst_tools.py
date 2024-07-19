@@ -681,7 +681,7 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
         if generator not in helpers:
             continue
 
-        logger.debug(f"Now ar generator {i}: {generator}")
+        logger.debug(f"Now at generator {i}: {generator}")
         
         if i == 0 and modify_central_weight:
             add_syst_hist(results, df, f"{base_name}_uncorr", axes, cols, "nominal_weight_uncorr", **kwargs)
@@ -851,13 +851,13 @@ def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, ax
     muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
     muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
             
-    df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
-    add_syst_hist(results, df, name, axes, cols, "effStatTnP_veto_tensor", helper_stat.tensor_axes, **kwargs)
+    #df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
+    #name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
+    #add_syst_hist(results, df, name, axes, cols, "effStatTnP_veto_tensor", helper_stat.tensor_axes, **kwargs)
 
-    df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effSystTnP_veto")
-    add_syst_hist(results, df, name, axes, cols, "effSystTnP_veto_weight", helper_syst.tensor_axes, **kwargs)
+    # df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    # name = Datagroups.histName(base_name, syst="effSystTnP_veto")
+    # add_syst_hist(results, df, name, axes, cols, "effSystTnP_veto_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
