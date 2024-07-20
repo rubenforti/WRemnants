@@ -12,7 +12,7 @@ import ROOT
 import narf
 import wremnants
 from wremnants import (helicity_utils, theory_tools, syst_tools,theory_corrections, muon_calibration, muon_prefiring, muon_selections, 
-    muon_efficiencies_binned, muon_efficiencies_smooth, muon_efficiencies_veto, muon_validation, unfolding_tools, theoryAgnostic_tools, pileup, vertex)
+    muon_efficiencies_binned, muon_efficiencies_smooth, muon_validation, unfolding_tools, theoryAgnostic_tools, pileup, vertex)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
