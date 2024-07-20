@@ -845,19 +845,18 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         nameReplace = []
                         mirror = True
                         mirrorDownVarEqualToNomi=False
-                        if args.binnedScaleFactors:
-                            axes = ["SF eta", "nPtBins", "SF charge"]
-                            axlabels = ["eta", "pt", "q"]
-                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
-                        else:
-                            #axes = ["SF eta", "nPtEigenBins", "SF charge"]
-                            axes = ["vetoreco-vetotracking-vetoidip", "SF eta", "nPtEigenBins", "SF charge"]
-                            axlabels = ["WPSTEP", "eta", "pt", "q"]
-                            #nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
-                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_"), ("WPSTEP0", "reco"), ("WPSTEP1", "tracking"), ("WPSTEP2", "idip")]
+                        ## for previous implementation where stat had a single overall component
+                        # axes = ["SF eta", "nPtEigenBins", "SF charge"]
+                        # axlabels = ["eta", "pt", "q"]
+                        # nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
+                        ##
+                        axes = ["vetoreco-vetotracking-vetoidip", "SF eta", "nPtEigenBins", "SF charge"]
+                        axlabels = ["WPSTEP", "eta", "pt", "q"]
+                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_"), ("WPSTEP0", "reco"), ("WPSTEP1", "tracking"), ("WPSTEP2", "idip")]
                         scale = 1.0
                         groupName = "muon_eff_stat_veto"
-                        splitGroupDict = {"muon_eff_all" : ".*"}
+                        splitGroupDict = {f"{groupName}{x}" : f".*effStat_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        splitGroupDict["muon_eff_all"] = ".*"
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
 
