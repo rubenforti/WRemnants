@@ -359,7 +359,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
     def __init__(self, h, *args, 
         smoothing_mode="full",
         smoothing_order_fakerate=2,
-        polynomial="power", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
@@ -373,8 +372,15 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         self.h_nominal = None
         self.global_scalefactor = global_scalefactor
 
-        ### interpolate/smooth in x-axis in application region
-        self.polynomial = polynomial 
+        # select appropriate polynomial depending on type of smoothing
+        if smoothing_mode == "fakerate":
+            self.polynomial = "bernstein"
+        else:
+            self.polynomial = "power"
+
+        # rebinning doesn't make sense for binned estimation
+        if smoothing_mode == "binned":
+            self.rebin_smoothing_axis = None
 
         self.throw_toys = throw_toys
 
@@ -619,12 +625,11 @@ class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
 class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
     # extrapolate the fakerate in the abcd x axis by finding an analytic description in the dx region
     def __init__(self, h, *args, 
-        polynomial="power",
         extrapolation_order=1,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
         **kwargs
     ):
-        super().__init__(h, *args, polynomial=polynomial, **kwargs)
+        super().__init__(h, *args, **kwargs)
         self.set_selections_x()
 
         self.extrapolation_order = extrapolation_order
