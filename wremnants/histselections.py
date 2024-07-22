@@ -382,6 +382,10 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         if smoothing_mode == "binned":
             self.rebin_smoothing_axis = None
 
+        if hasattr(self, "fakerate_integration_axes"):
+            if smoothing_mode == "full" and self.fakerate_integration_axes:
+                raise NotImplementedError("Smoothing of full fake prediction is not currently supported together with integration axes.")
+
         self.throw_toys = throw_toys
 
         # fakerate factor
