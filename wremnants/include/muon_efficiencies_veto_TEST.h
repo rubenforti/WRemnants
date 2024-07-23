@@ -22,10 +22,11 @@ namespace wrem {
 
         // the nominal SF stored in the first bin of the syst axis is the same for all steps
         // because it is already the product of all steps,
-        // while the splitting by step is only really relevant for the syst variations, where each step produces its own uncertainty
+        // while the splitting by step is only really relevant for the stat/syst variations, where each step produces its own uncertainty
 
         std::array<int,3> pt_eta_charge_idxs_fromValues(float pt, float eta, int charge) const {
 
+            // clamping here should not be really necessary since the overflow bins already have the SF set equal to the closest inner bins of the SF histograms
             const int eta_idx = std::clamp(sf_all_->template axis<0>().index(eta), 0, hsfNeta_ -1);
             const int pt_idx = std::clamp(sf_all_->template axis<1>().index(pt), 0, hsfNpt_ -1);
             const int charge_idx = std::clamp(sf_all_->template axis<2>().index(charge), 0, hsfNcharge_ -1);
@@ -44,9 +45,6 @@ namespace wrem {
 
 		double scale_factor(float pt, float eta, int charge, int idx_step, int idx_nom_alt) const {
 
-            // auto const eta_idx = sf_all_->template axis<0>().index(eta);
-            // auto const pt_idx = sf_all_->template axis<1>().index(pt);
-            // auto const charge_idx = sf_all_->template axis<2>().index(charge);
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -68,9 +66,6 @@ namespace wrem {
 
         double scale_factor_nomi(float pt, float eta, int charge) const {
 
-            // auto const eta_idx = sf_all_->template axis<0>().index(eta);
-            // auto const pt_idx = sf_all_->template axis<1>().index(pt);
-            // auto const charge_idx = sf_all_->template axis<2>().index(charge);
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -89,9 +84,6 @@ namespace wrem {
 			syst_tensor_t res;
 			res.setConstant(1.0);
 
-            // auto const eta_idx =     sf_all_->template axis<0>().index(eta);
-            // auto const pt_idx =      sf_all_->template axis<1>().index(pt);
-            // auto const charge_idx =  sf_all_->template axis<2>().index(charge);
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -117,9 +109,6 @@ namespace wrem {
 			stat_tensor_t res;
 			res.setConstant(1.0);
 
-            // auto const eta_idx = sf_all_->template axis<0>().index(eta);
-            // auto const pt_idx = sf_all_->template axis<1>().index(pt);
-            // auto const charge_idx = sf_all_->template axis<2>().index(charge);
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -177,8 +166,11 @@ namespace wrem {
 
 		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
 
-		double operator() (float pt, float eta, int charge) {
-			return base_t::scale_factor_nomi(pt, eta, charge);
+		double operator() (float pt, float eta, int charge, int nUnmatchGenMuonInAccept) {
+            if (nUnmatchGenMuonInAccept > 0)
+                return base_t::scale_factor_nomi(pt, eta, charge);
+            else
+                return 1.0;
 		}
 
 	};
@@ -197,7 +189,10 @@ namespace wrem {
 		muon_efficiency_veto_helper_syst(const base_t &other) : base_t(other) {}
 		
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-			return nominal_weight*base_t::sf_syst_var(pt, eta, charge);
+            if (charge > -99)
+                return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
+            else
+                return nominal_weight;
 		}
 
 	};
@@ -216,7 +211,10 @@ namespace wrem {
 		muon_efficiency_veto_helper_stat(const base_t &other) : base_t(other) {}
 
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-			return nominal_weight*base_t::sf_stat_var(pt, eta, charge);
+            if (charge > -99)
+                return nominal_weight * base_t::sf_stat_var(pt, eta, charge);
+            else
+                return nominal_weight;
 		}
 
 	};

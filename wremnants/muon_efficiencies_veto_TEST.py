@@ -36,9 +36,9 @@ def make_muon_efficiency_helpers_veto_TEST(antiveto = False):
     logger.info(f"{veto_tag} SF steps in 2D (eta-pt): {eff_types_2D}")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name = "eff_types_2D_etapt")
 
-    #fileVetoSF = f"{data_dir}/muonSF/allVetoSF_global_plus.pkl.lz4"
-    fileVetoSF = {"plus"  : f"veto_global_SF/allVetoSF_global_plus.pkl.lz4",
-                  "minus"  : f"veto_global_SF/allVetoSF_global_minus.pkl.lz4"
+    ## TODO: move these files to wremnants-data
+    fileVetoSF = {"plus"  : f"{data_dir}/muonSF/veto_global_SF/allVetoSF_global_plus.pkl.lz4",
+                  "minus"  : f"{data_dir}/muonSF/veto_global_SF/allVetoSF_global_minus.pkl.lz4"
     }
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1*i,1) for i in range(49)]
     NsystDecorr = (len(effSyst_decorrEtaEdges) - 1)

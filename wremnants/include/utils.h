@@ -234,6 +234,21 @@ int hasMatchDR2idx(const float& eta, const float& phi, const Vec_f& vec_eta, con
 
 }
 
+int hasMatchDR2idx_closest(const float& eta, const float& phi, const Vec_f& vec_eta, const Vec_f& vec_phi, const float dr2 = 0.09) {
+
+  double minDR2 = 1000.0;
+  int ret = -1;
+  for (unsigned int jvec = 0; jvec < vec_eta.size(); ++jvec) {
+      double thisDR2 = deltaR2(eta, phi, vec_eta[jvec], vec_phi[jvec]);
+      if (thisDR2 < dr2 and thisDR2 < minDR2) {
+          minDR2 = thisDR2;
+          ret = jvec;
+      }
+  }
+  return ret;
+
+}
+
 Vec_i charge_from_pdgid(const Vec_i& pdgid) {
 
     // start by assigning negative charge, and set to +1 for negative pdgId
@@ -278,12 +293,12 @@ T unmatched_postfsrMuon_var_withCharge(const ROOT::VecOps::RVec<T>& var, const V
 
     T retVar = -99;
     if (hasMatchDR2idx < 0) {
-        std::cout << "Warning: no gen-reco match found" << std::endl;
+        // std::cout << "Warning: no gen-reco match found" << std::endl;
         return retVar;
     }
 
     if (var.size() < 2) {
-        std::cout << "Warning: only one matched postFSR muon found" << std::endl;
+        // std::cout << "Warning: only one matched postFSR muon found" << std::endl;
         return retVar;
     }
 

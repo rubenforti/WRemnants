@@ -101,7 +101,10 @@ namespace wrem {
 		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
 
 		double operator() (float pt, float eta, int charge) {
-			return base_t::scale_factor(pt, eta, charge);
+            if (charge > -99)
+                return base_t::scale_factor(pt, eta, charge);
+            else
+                return 1.0;
 		}
 
 	};
@@ -120,7 +123,10 @@ namespace wrem {
 		muon_efficiency_veto_helper_syst(const base_t &other) : base_t(other) {}
 		
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-			return nominal_weight*base_t::sf_syst_var(pt, eta, charge);
+            if (charge > -99)
+                return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
+            else
+                return nominal_weight;
 		}
 
 	};
@@ -139,7 +145,10 @@ namespace wrem {
 		muon_efficiency_veto_helper_stat(const base_t &other) : base_t(other) {}
 
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-			return nominal_weight*base_t::sf_stat_var(pt, eta, charge);
+            if (charge > -99)
+                return nominal_weight * base_t::sf_stat_var(pt, eta, charge);
+            else
+                return nominal_weight;
 		}
 
 	};
