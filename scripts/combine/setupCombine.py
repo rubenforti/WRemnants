@@ -378,7 +378,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, 
                 mode=args.fakeEstimation, fake_processes=["QCD",], smoothing_mode=args.fakeSmoothingMode,
-                simultaneousABCD=simultaneousABCD, 
+                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
                 )
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup)
