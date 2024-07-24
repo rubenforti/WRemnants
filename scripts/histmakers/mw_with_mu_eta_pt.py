@@ -51,7 +51,7 @@ if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
     raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
 
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
-    raise ValueError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together.")
+    raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 
 if args.useRefinedVeto:
     from wremnants.muon_efficiencies_veto_TEST import make_muon_efficiency_helpers_veto_TEST
@@ -489,7 +489,7 @@ def build_graph(df, dataset):
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
             
             if isZveto and not args.noGenMatchMC:
-                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge", "n_unmatched_postfsrMuon"])
+                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
                 weight_expr += "*weight_vetoSF_nominal"
 
         # prepare inputs for pixel multiplicity helpers
