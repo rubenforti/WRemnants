@@ -212,12 +212,13 @@ using helicity_helicity_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N
     Eigen::TensorFixedSize<double, Eigen::Sizes<nhelicity, 1>> moments = csAngularMoments(csvars).reshape(broadcasthels);
     helicity_helicity_tensor_t hel_hel_tensor = original_weight * hel_tensor.reshape(reshapehelicities).broadcast(broadcasthels) * moments.broadcast(broadcasthelicities);
 
-    // Set all off-diagonal elements to 1
+    // Set all off-diagonal elements to 0
     for (int i = 0; i < NHELICITY; ++i) {
         for (int j = 0; j < NHELICITY; ++j) {
             if (i != j) {
                 hel_hel_tensor(i, j) = 0.0;
             }
+            else hel_hel_tensor(i, i) = original_weight*moments(i);
         }
     }
     // std::cout<< hel_hel_tensor << std::endl;

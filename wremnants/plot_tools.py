@@ -33,7 +33,7 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
     width = math.ceil(raw_width)
 
-    return plt.figure(figsize=(width_scale*8*width,8)), xlim
+    return plt.figure(figsize=(width_scale*8*width,width_scale*8)), xlim
 
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
@@ -366,7 +366,7 @@ def makePlotWithRatioToRef(
     rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2, binwnorm=None, alpha=1.,
     baseline=True, dataIdx=None, autorrange=None, grid = False, extra_text=None, extra_text_loc=(0.8, 0.7),
     yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None,
-    logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, cutoff=1e-6, only_ratio = False
+    logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, cutoff=1e-6, only_ratio = False, width_scale = 1
 ):
     if len(hists) != len(labels) or len(hists) != len(colors):
         raise ValueError(f"Number of hists ({len(hists)}), colors ({len(colors)}), and labels ({len(labels)}) must agree!")
@@ -374,7 +374,9 @@ def makePlotWithRatioToRef(
     
     if not only_ratio:
         fig, ax1, ax2 = figureWithRatio(
-        logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, only_ratio = False
+        hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
+            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
     else:
         fig, ax2 = figureWithRatio(

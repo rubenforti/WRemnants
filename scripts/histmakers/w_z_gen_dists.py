@@ -35,8 +35,7 @@ args = parser.parse_args()
 if not args.theoryCorrections:
     parser = common.set_parser_default(parser, "theoryCorr", [])
     parser = common.set_parser_default(parser, "ewTheoryCorr", [])
-
-
+args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -52,6 +51,7 @@ axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True
 
 axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
 
+<<<<<<< HEAD
 theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes()
 axis_ptV_thag = theoryAgnostic_axes[0]
 axis_yV_thag = theoryAgnostic_axes[1]
@@ -89,6 +89,8 @@ axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
 axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
 col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
+=======
+>>>>>>> f9f7f4f4 (latest advancements on theory agnostic including wlike)
 axis_ptqVgen = hist.axis.Variable(
     [round(x, 4) for x in list(np.arange(0, 0.1 + 0.0125, 0.0125))]+[round(x, 4) for x in list(np.arange(0.1+0.025, 0.5 + 0.025, 0.025))], 
     name = "ptqVgen", underflow=False
@@ -118,6 +120,39 @@ def build_graph(df, dataset):
 
     isW = dataset.name.startswith("W") and dataset.name[1] not in ["W", "Z"] #in common.wprocs
     isZ = dataset.name.startswith("Z") and dataset.name[1] not in ["W", "Z"] #in common.zprocs
+
+    theoryAgnostic_axes, _ = get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike="Z" in dataset.name)
+    axis_ptV_thag = theoryAgnostic_axes[0]
+    axis_yV_thag = theoryAgnostic_axes[1]
+
+    if not args.useTheoryAgnosticBinning:
+        axis_absYVgen = hist.axis.Variable(
+            [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
+            name = "absYVgen", underflow=False
+        )
+    else:
+        axis_absYVgen = hist.axis.Variable(
+            axis_yV_thag.edges, #same axis as theory agnostic norms
+            name = "absYVgen", underflow=False
+        )
+
+    axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
+    axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
+    col_rapidity =  "yVgen" if args.signedY else "absYVgen"
+
+    if not args.useTheoryAgnosticBinning:
+        axis_ptVgen = hist.axis.Variable(
+        (*common.get_dilepton_ptV_binning(fine=False), 13000.),
+        name = "ptVgen", underflow=False,
+    )
+    else:
+        axis_ptVgen = hist.axis.Variable(
+        axis_ptV_thag.edges, #same axis as theory agnostic norms, 
+        #common.ptV_binning,
+        name = "ptVgen", underflow=False,
+    )
+
+
 
     axis_chargeVgen = axis_chargeZgen if isZ else axis_chargeWgen
 

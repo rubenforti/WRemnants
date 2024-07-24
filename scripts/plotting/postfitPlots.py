@@ -234,6 +234,11 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
 
         for bins in itertools.product(*selection_bins):
             idxs = {a.name: i for a, i in zip(selection_axes, bins) }
+            idxs_centers = {
+                a.name: a.centers[i] if isinstance(a, (hist.axis.Regular, hist.axis.Variable)) else a.edges[i]
+                for a, i in zip(selection_axes, bins)
+            }
+
 
             h_data = hist_data[idxs]
             h_inclusive = hist_inclusive[idxs]
@@ -245,8 +250,9 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
                 lumi = np.diff(lumis)[idx]
                 logger.info(f"Axis 'run' found in histogram selection_axes, set lumi to {lumi}")
                 kwopts["run"] = lumi
-
-            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs.items()])
+            for a, i in idxs_centers.items():
+                print(a,i)
+            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
             make_plot(h_data, h_inclusive, h_stack, other_axes, suffix=suffix, *opts, **kwopts)
     else:
