@@ -197,7 +197,9 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
     ndf = y.shape[-1] - nparams
     ndf_total = y.size - chi2.size*nparams
 
-    logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total}")
+    from scipy import stats
+
+    logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
     return chi2, ndf    
 
 def extend_edges(traits, x):
@@ -357,9 +359,9 @@ class SignalSelectorABCD(HistselectorABCD):
 class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
-        smoothing_mode="full",
+        smoothing_mode="full", # 'binned', 'fakerate', or 'full'
         smoothing_order_fakerate=2,
-        throw_toys=None,#"normal", # None, 'normal' or 'poisson'
+        throw_toys=None, #"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
     ):

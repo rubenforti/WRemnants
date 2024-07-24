@@ -36,7 +36,7 @@ parser.add_argument("--vetoGenPartPt", type=float, default=15.0, help="Minimum p
 parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt preFSR muons in acceptance")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
-parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
+parser.add_argument("--selectNonPromptFromLightMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 
 #
@@ -47,8 +47,8 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 useGlobalOrTrackerVeto = args.useGlobalOrTrackerVeto
 
-if args.selectNonPromptFromLighMesonDecay and args.selectNonPromptFromSV:
-    raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLighMesonDecay cannot be used together.")
+if args.selectNonPromptFromLightMesonDecay and args.selectNonPromptFromSV:
+    raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLightMesonDecay cannot be used together.")
 
 isUnfolding = args.analysisMode == "unfolding"
 isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
@@ -375,7 +375,7 @@ def build_graph(df, dataset):
     df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
                                            use_trackerMuons=args.trackerMuons, use_isolation=False,
                                            nonPromptFromSV=args.selectNonPromptFromSV,
-                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLighMesonDecay,
+                                           nonPromptFromLighMesonDecay=args.selectNonPromptFromLightMesonDecay,
                                            requirePixelHits=args.requirePixelHits)
 
     # the corrected RECO muon kinematics, which is intended to be used as the nominal
