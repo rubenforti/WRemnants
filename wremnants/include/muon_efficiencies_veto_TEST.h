@@ -166,7 +166,7 @@ namespace wrem {
 
 		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
 
-		double operator() (float pt, float eta, int charge, int nUnmatchGenMuonInAccept) {
+		double operator() (float pt, float eta, int charge) {
             if (nUnmatchGenMuonInAccept > 0)
                 return base_t::scale_factor_nomi(pt, eta, charge);
             else
