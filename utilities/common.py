@@ -393,7 +393,7 @@ def common_parser(analysis_label=""):
         parser.add_argument("--reweightPixelMultiplicity", action='store_true', help="Reweight events based on number of valid pixel hits for the muons")
         parser.add_argument("--requirePixelHits", action='store_true', help="Require good muons to have at least one valid pixel hit used in the track refit.")
         parser.add_argument("--pixelMultiplicityStat", action='store_true', help="Include (very small) statistical uncertainties for pixel multiplicity variation")
-
+        parser.add_argument("--vetoRecoPt", default=15, type=float, help="Lower threshold for muon pt in the veto definition")
 
 
     commonargs,_ = parser.parse_known_args()

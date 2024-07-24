@@ -66,6 +66,7 @@ namespace wrem {
 
         double scale_factor_nomi(float pt, float eta, int charge) const {
 
+            if (charge <= -99) return 1.0;
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -83,7 +84,8 @@ namespace wrem {
 
 			syst_tensor_t res;
 			res.setConstant(1.0);
-
+            if (charge <= -99) return res;
+            
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
             auto const eta_idx = pt_eta_charge_idxs[1];
@@ -108,6 +110,7 @@ namespace wrem {
 		stat_tensor_t sf_stat_var(float pt, float eta, int charge) const {
 			stat_tensor_t res;
 			res.setConstant(1.0);
+            if (charge <= -99) return res;
 
             std::array<int,3> pt_eta_charge_idxs = pt_eta_charge_idxs_fromValues(pt, eta, charge);
             auto const pt_idx = pt_eta_charge_idxs[0];
@@ -167,10 +170,7 @@ namespace wrem {
 		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
 
 		double operator() (float pt, float eta, int charge) {
-            if (nUnmatchGenMuonInAccept > 0)
-                return base_t::scale_factor_nomi(pt, eta, charge);
-            else
-                return 1.0;
+            return base_t::scale_factor_nomi(pt, eta, charge);
 		}
 
 	};
@@ -189,10 +189,7 @@ namespace wrem {
 		muon_efficiency_veto_helper_syst(const base_t &other) : base_t(other) {}
 		
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-            if (charge > -99)
-                return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
-            else
-                return nominal_weight;
+            return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
 		}
 
 	};
@@ -211,10 +208,7 @@ namespace wrem {
 		muon_efficiency_veto_helper_stat(const base_t &other) : base_t(other) {}
 
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-            if (charge > -99)
-                return nominal_weight * base_t::sf_stat_var(pt, eta, charge);
-            else
-                return nominal_weight;
+            return nominal_weight * base_t::sf_stat_var(pt, eta, charge);            
 		}
 
 	};

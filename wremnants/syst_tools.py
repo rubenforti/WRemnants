@@ -756,16 +756,12 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
 
 
 def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
-    what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False, **kwargs
+                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", customHistNameTag="", smooth3D=False, **kwargs
     ):
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_stat = ["goodMuons_pt0", "goodMuons_eta0",
-                             "goodMuons_uT0", "goodMuons_charge0"]
-        muon_columns_syst = ["goodMuons_pt0", "goodMuons_eta0",
-                             "goodMuons_SApt0", "goodMuons_SAeta0",
-                             "goodMuons_uT0", "goodMuons_charge0",
-                             "passIso"]
+        muon_columns_stat = [f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "uT0", "charge0"]]
+        muon_columns_syst = [f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]]
     else:
         muvars_stat = ["pt0", "eta0", "uT0", "charge0"] # passIso0 required only for iso stat variations, added later
         muon_columns_stat_trig    = [f"trigMuons_{v}" for v in muvars_stat]
@@ -799,7 +795,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
         elif "iso" in key:
             if what_analysis == ROOT.wrem.AnalysisType.Wmass:
                  # iso variable called passIso rather than goodMuons_passIso0 in W histmaker
-                muon_columns_stat_step = [*muon_columns_stat, "passIso"]
+                muon_columns_stat_step = [*muon_columns_stat, f"{singleMuonCollection}_passIso0"]
             elif what_analysis == ROOT.wrem.AnalysisType.Wlike:
                 muon_columns_stat_step = [*muon_columns_stat_trig, "trigMuons_passIso0",
                                           *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0"]
@@ -808,25 +804,31 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
                                           *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0", "nonTrigMuons_passTrigger0"]
         else:
             muon_columns_stat_step = muon_columns_stat
-            
-        df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
-        name = Datagroups.histName(base_name, syst=f"effStatTnP_{key}")
-        add_syst_hist(results, df, name, axes, cols, f"effStatTnP_{key}_tensor", helper.tensor_axes, **kwargs)
 
-    df = df.Define("effSystTnP_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"effSystTnP")
-    add_syst_hist(results, df, name, axes, cols, "effSystTnP_weight", helper_syst.tensor_axes, **kwargs)
+        statNameBase = "effStatTnP"
+        if len(customHistNameTag):
+            statNameBase += f"_{customHistNameTag}"
+        df = df.Define(f"{statNameBase}_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
+        name = Datagroups.histName(base_name, syst=f"{statNameBase}_{key}")
+        add_syst_hist(results, df, name, axes, cols, f"{statNameBase}_{key}_tensor", helper.tensor_axes, **kwargs)
+
+    systNameBase = "effSystTnP"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+    df = df.Define(f"{systNameBase}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
 
 def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
-    what_analysis=ROOT.wrem.AnalysisType.Wmass, step="tracking", **kwargs
+                                         what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
     ):
 
     SAvarTag = "SA" if step == "tracking" else "" 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_syst = [f"goodMuons_{SAvarTag}pt0", f"goodMuons_{SAvarTag}eta0", "goodMuons_charge0"]
+        muon_columns_syst = [f"{singleMuonCollection}_{SAvarTag}pt0", f"{singleMuonCollection}_{SAvarTag}eta0", f"{singleMuonCollection}_charge0"]
     else:
         muvars_syst = [f"{SAvarTag}pt0", f"{SAvarTag}eta0", "charge0"]
         muon_columns_syst_trig    = [f"trigMuons_{v}" for v in muvars_syst]
@@ -837,27 +839,39 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
         elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         else:
-            raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")            
-    
-    df = df.Define(f"effSystTnP_altBkg_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"effSystTnP_altBkg_{step}")
-    add_syst_hist(results, df, name, axes, cols, f"effSystTnP_altBkg_{step}_weight", helper_syst.tensor_axes, **kwargs)
+            raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")
+
+    systNameBase = "effSystTnP_altBkg"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+
+    df = df.Define(f"{systNameBase}_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}_{step}")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_{step}_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
 
-def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs):
+def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", muons="vetoMuons", customHistNameTag="", **kwargs):
     # TODO: update for dilepton
-    muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
-    muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
-            
-    df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
-    add_syst_hist(results, df, name, axes, cols, "effStatTnP_veto_tensor", helper_stat.tensor_axes, **kwargs)
+    muon_columns_stat = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
+    muon_columns_syst = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
 
-    df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effSystTnP_veto")
-    add_syst_hist(results, df, name, axes, cols, "effSystTnP_veto_weight", helper_syst.tensor_axes, **kwargs)
+    statNameBase = "effStatTnP"
+    if len(customHistNameTag):
+        statNameBase += f"_{customHistNameTag}"
+    
+    df = df.Define(f"{statNameBase}_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{statNameBase}_veto_sf")
+    add_syst_hist(results, df, name, axes, cols, f"{statNameBase}_veto_tensor", helper_stat.tensor_axes, **kwargs)
+
+    systNameBase = "effSystTnP"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+
+    df = df.Define(f"{systNameBase}_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}_veto")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_veto_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 

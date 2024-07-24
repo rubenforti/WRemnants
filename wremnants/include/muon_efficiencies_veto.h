@@ -23,6 +23,7 @@ namespace wrem {
 		double scale_factor(float pt, float eta, int charge) const {
 
 			double sf = 1.0;
+            if (charge <= -99) return sf;
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
 				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
@@ -41,6 +42,7 @@ namespace wrem {
 
 			syst_tensor_t res;
 			res.setConstant(1.0);
+            if (charge <= -99) return res;
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
 				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
@@ -64,6 +66,7 @@ namespace wrem {
 		stat_tensor_t sf_stat_var(float pt, float eta, int charge) const {
 			stat_tensor_t res;
 			res.setConstant(1.0);
+            if (charge <= -99) return res;
 
 			if ((pt > minpt_) && (pt < maxpt_) && (eta > mineta_) && (eta < maxeta_)) {
 				auto const ix = sf_veto_plus_->template axis<0>().index(eta);
@@ -101,10 +104,7 @@ namespace wrem {
 		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
 
 		double operator() (float pt, float eta, int charge) {
-            if (charge > -99)
-                return base_t::scale_factor(pt, eta, charge);
-            else
-                return 1.0;
+            return base_t::scale_factor(pt, eta, charge);
 		}
 
 	};
@@ -123,10 +123,7 @@ namespace wrem {
 		muon_efficiency_veto_helper_syst(const base_t &other) : base_t(other) {}
 		
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-            if (charge > -99)
-                return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
-            else
-                return nominal_weight;
+            return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
 		}
 
 	};
@@ -145,10 +142,7 @@ namespace wrem {
 		muon_efficiency_veto_helper_stat(const base_t &other) : base_t(other) {}
 
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
-            if (charge > -99)
-                return nominal_weight * base_t::sf_stat_var(pt, eta, charge);
-            else
-                return nominal_weight;
+            return nominal_weight * base_t::sf_stat_var(pt, eta, charge);
 		}
 
 	};

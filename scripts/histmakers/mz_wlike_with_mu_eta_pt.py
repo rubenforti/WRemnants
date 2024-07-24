@@ -9,6 +9,7 @@ parser,initargs = common.common_parser(analysis_label)
 
 import ROOT
 import narf
+import wremnants
 from wremnants import (theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_selections, muon_prefiring, 
     muon_efficiencies_binned, muon_efficiencies_smooth, unfolding_tools, theoryAgnostic_tools, helicity_utils, pileup, vertex)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
@@ -22,6 +23,9 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
+parser.add_argument("--validateVetoSF", action="store_true", help="Add histogram for validation of veto SF, loading all necessary helpers. This requires using the veto selection on the non-triggering muon, with reduced pt cut")
+parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
+parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
@@ -34,7 +38,15 @@ args = parser.parse_args()
 isUnfolding = args.analysisMode == "unfolding"
 isPoiAsNoi = isUnfolding and args.poiAsNoi
 
-thisAnalysis = ROOT.wrem.AnalysisType.Wlike
+if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
+    raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
+if args.validateVetoSF:
+    if args.useGlobalOrTrackerVeto or not args.useRefinedVeto:
+    raise NotImplementedError("Option --validateVetoSF cannot be used with --useGlobalOrTrackerVeto, and requires --useRefinedVeto at the moment.")
+
+# thisAnalysis flag identifies the analysis for the purpose of applying single or dilepton scale factors
+# when validating the veto SF only the triggering muon has to be considered to apply the standard SF, so the helpers for a single muon selection are used
+thisAnalysis =  ROOT.wrem.AnalysisType.Wmass if args.validateVetoSF else ROOT.wrem.AnalysisType.Wlike
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
@@ -93,6 +105,7 @@ if args.binnedScaleFactors:
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_binned.make_muon_efficiency_helpers_binned(filename = args.sfFile, era = era, max_pt = axis_pt.edges[-1], is_w_like = True) 
 else:
     logger.info("Using smoothed scale factors and uncertainties")
+    # if validating veto SF will use the main SF only on triggering muon, so it needs the helper of the single lepton analysis, otherwise it will normally use the one for the Wlike Z
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
 logger.info(f"SF file: {args.sfFile}")
 
@@ -104,6 +117,17 @@ for es in common.muonEfficiency_altBkgSyst_effSteps:
                                                                                                    what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
                                                                                                    effStep=es)
 
+if args.validateVetoSF:
+    logger.warning("Validating veto SF using Wlike workflow: it will apply single muon scale factors on the triggering muon, and veto SF on the non triggering one")
+    logger.warning("Note: single muon SF uncertainties are propagated using the triggering muon, and veto SF uncertainties are propagated using the non triggering one")
+    if args.useRefinedVeto:
+        from wremnants.muon_efficiencies_veto_TEST import make_muon_efficiency_helpers_veto_TEST
+        muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto_TEST.make_muon_efficiency_helpers_veto_TEST(antiveto=False)
+    else:
+        pass
+    # we don't store the veto SF for this version at the moment, I think
+    #    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
+        
 pileup_helper = pileup.make_pileup_helper(era = era)
 vertex_helper = vertex.make_vertex_helper(era = era)
 
@@ -190,17 +214,30 @@ def build_graph(df, dataset):
 
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
-    df = muon_selections.select_veto_muons(df, nMuons=2)
+    df = muon_selections.select_veto_muons(df, nMuons=2, ptCut=args.vetoRecoPt)
 
     isoThreshold = args.isolationThreshold
-    passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
-    df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold, requirePixelHits=args.requirePixelHits)
-    
-    df = muon_selections.define_trigger_muons(df)
 
-    # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
-    if not passIsoBoth:
-        df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
+    # when validating isolation only one muon (the triggering one) has to pass the tight selection
+    if args.validateVetoSF:
+
+        # use lower pt cut from veto, and apply tighter pt cut, medium ID, and isolation later on only on triggering muon
+        df = muon_selections.select_good_muons(df, args.vetoRecoPt, template_maxpt, dataset.group, nMuons=2, condition="==", use_trackerMuons=args.trackerMuons, use_isolation=False, isoBranch=isoBranch, isoThreshold=isoThreshold, requirePixelHits=args.requirePixelHits, requireID=False)
+        df = muon_selections.define_trigger_muons(df)
+        # apply lower pt cut and medium ID on triggering muon
+        df = df.Filter(f"trigMuons_pt0 > {template_minpt} && Muon_mediumId[trigMuons][0]")
+        df = muon_selections.apply_iso_muons(df, 1, 0, isoBranch, isoThreshold)
+
+    else:
+
+        passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
+        df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold, requirePixelHits=args.requirePixelHits)
+        
+        df = muon_selections.define_trigger_muons(df)
+
+        # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
+        if not passIsoBoth:
+            df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
 
     df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
     df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
@@ -235,10 +272,17 @@ def build_graph(df, dataset):
         if not args.smooth3dsf:
             columnsForSF.remove("trigMuons_uT0")
             columnsForSF.remove("nonTrigMuons_uT0")
-        
+            
         if not args.noScaleFactors:
-            df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
-            weight_expr += "*weight_fullMuonSF_withTrackingReco"
+            if args.validateVetoSF:
+                columnsForSF[:] = [x for x in columnsForSF if "nonTrigMuons" not in x]
+                # apply standard SF only on triggering muon using helper for single lepton, and then apply veto SF for non triggering muon
+                df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
+                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["nonTrigMuons_pt0","nonTrigMuons_eta0","nonTrigMuons_charge0"])
+                weight_expr += "*weight_fullMuonSF_withTrackingReco*weight_vetoSF_nominal"
+            else:
+                df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
+                weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
         # prepare inputs for pixel multiplicity helpers
         cvhName = "cvhideal"
@@ -305,6 +349,13 @@ def build_graph(df, dataset):
         nominal_bothMuons = df.HistoBoost("nominal_bothMuons", [*axes, axis_eta_nonTrig, axis_pt_nonTrig, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
         results.append(nominal_bothMuons)
 
+        if args.validateVetoSF:
+            axis_pt_nonTrig_veto = hist.axis.Regular(round(template_maxpt - args.vetoRecoPt), args.vetoRecoPt, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
+            # nonTriggering muon charge can be assumed to be opposite of triggering one
+            nominal_vetoValidation = df.HistoBoost("nominal_vetoValidation", [*axes, axis_eta_nonTrig, axis_pt_nonTrig_veto, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
+            results.append(nominal_vetoValidation)
+
+
     # cutting after storing mt distributions for plotting, since the cut is only on corrected met
     if args.dphiMuonMetCut > 0.0:
         df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
@@ -347,10 +398,12 @@ def build_graph(df, dataset):
 
     if not dataset.is_data and not args.onlyMainHistograms:
 
-        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
+        df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, singleMuonCollection="trigMuons", smooth3D=args.smooth3dsf)
         for es in common.muonEfficiency_altBkgSyst_effSteps:
             df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
-                                                                 what_analysis=thisAnalysis, step=es)
+                                                                 singleMuonCollection="trigMuons", what_analysis=thisAnalysis, step=es)
+        if args.validateVetoSF:
+            df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, muons="nonTrigMuons")
 
         df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols)
 

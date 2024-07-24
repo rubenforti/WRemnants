@@ -53,7 +53,7 @@ def make_muon_efficiency_helpers_veto_TEST(antiveto = False):
         fileSF = fileVetoSF[charge_tag] 
         if not os.path.isfile(fileSF):
             raise IOError(f"Couldn't read veto/antiveto SF file {fileSF}, make sure you have it.")
-        logger.info(f"Veto/antiveto SF read from {fileSF}")
+        logger.info(f"Veto/antiveto SF read from {fileSF} for charge {charge_tag}")
         with lz4.frame.open(fileSF) as fveto:
             dict_veto = pickle.load(fveto)
         # for veto or antiveto the histogram is nomi-stat-syst, but there are three of such histograms

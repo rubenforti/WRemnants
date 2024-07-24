@@ -383,7 +383,7 @@ def build_graph(df, dataset):
 
     df = muon_calibration.define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper)
 
-    df = muon_selections.select_veto_muons(df, nMuons=1, useGlobalOrTrackerVeto = useGlobalOrTrackerVeto)
+    df = muon_selections.select_veto_muons(df, nMuons=1, ptCut=args.vetoRecoPt, useGlobalOrTrackerVeto = useGlobalOrTrackerVeto)
     df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=1,
                                            use_trackerMuons=args.trackerMuons, use_isolation=False,
                                            nonPromptFromSV=args.selectNonPromptFromSV,
@@ -445,6 +445,7 @@ def build_graph(df, dataset):
     # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
     df = df.Define("passIso", f"goodMuons_relIso0 < {args.isolationThreshold}")
+    df = df.Alias("goodMuons_passIso0", "passIso") # for more flexible handling of efficiency helpers, coherently with Wlike and dilepton histmakers
 
     ########################################################################
     # gen match to bare muons to select only prompt muons from MC processes, but also including tau decays (defined here because needed for veto SF)
@@ -457,9 +458,9 @@ def build_graph(df, dataset):
             df = df.Filter("Sum(postfsrMuons_inAcc) >= 2")
         df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx_closest(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
         df = df.Define("GenPart_charge","wrem::charge_from_pdgid(GenPart_pdgId[postfsrMuons_inAcc])")
-        df = df.Define("unmatched_postfsrMuon_pt",  "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
-        df = df.Define("unmatched_postfsrMuon_eta", "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
-        df = df.Define("unmatched_postfsrMuon_charge", "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+        df = df.Define(f"vetoMuons_pt0",  "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+        df = df.Define(f"vetoMuons_eta0", "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+        df = df.Define(f"vetoMuons_charge0", "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
@@ -489,7 +490,7 @@ def build_graph(df, dataset):
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
             
             if isZveto and not args.noGenMatchMC:
-                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"])
+                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["vetoMuons_pt0","vetoMuons_eta0","vetoMuons_charge0"])
                 weight_expr += "*weight_vetoSF_nominal"
 
         # prepare inputs for pixel multiplicity helpers
