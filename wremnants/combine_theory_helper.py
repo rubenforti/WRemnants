@@ -9,10 +9,11 @@ logger = logging.child_logger(__name__)
 
 class TheoryHelper(object):
     valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Delta_Omega", "binned_Omega", "none"]
-    def __init__(self, card_tool, args, hasNonsigSamples=False):
+    def __init__(self, label, card_tool, args, hasNonsigSamples=False):
         toCheck = ['signal_samples', 'signal_samples_inctau', 'single_v_samples']
         if hasNonsigSamples:
-            toCheck.extend(['single_v_nonsig_samples', 'wtau_samples'])
+            if label == "W":
+                toCheck.extend(['single_v_nonsig_samples', 'wtau_samples'])
         for group in toCheck:
             if group not in card_tool.procGroups:
                 raise ValueError(f"Must define '{group}' procGroup in CardTool for theory uncertainties")
@@ -65,8 +66,9 @@ class TheoryHelper(object):
         self.samples = []
         self.skipFromSignal = False
 
-    def add_all_theory_unc(self, samples, skipFromSignal=False):
+    def add_all_theory_unc(self, samples, label, skipFromSignal=False):
         self.samples = samples
+        self.label = label
         self.skipFromSignal = skipFromSignal
         self.add_nonpert_unc(model=self.np_model)
         self.add_resum_unc(scale=self.tnp_scale)
@@ -267,8 +269,11 @@ class TheoryHelper(object):
         else:
             op = lambda h: h[{"ptVgen" : hist.sum, self.syst_ax : ["pythia_shower_kt"]}]
 
+        processesZ = [] if self.skipFromSignal else ['single_v_samples']
+        processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        processes = processesW if self.label=="W" else processesZ
         self.card_tool.addSystematic(name="qcdScaleByHelicity",
-            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            processes=processes,
             passToFakes=self.propagate_to_fakes,
             systAxes=[self.syst_ax],
             preOp=op,
@@ -361,9 +366,12 @@ class TheoryHelper(object):
         name_replace = [(f"-{x}", "Down") for x in tnp_magnitudes]+[(x, "Up") for x in tnp_magnitudes]
 
         logger.debug(f"Selected TNP nuisances: {self.tnp_nuisance_names}")
-
+        processesZ = [] if self.skipFromSignal else ['single_v_samples']
+        processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        processes = processesW if self.label=="W" else processesZ
+        
         self.card_tool.addSystematic(name=self.corr_hist_name,
-            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            processes=processes,
             group="resumTNP",
             splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
             systAxes=["vars"],
@@ -424,9 +432,14 @@ class TheoryHelper(object):
 
         logger.debug(f"Adding gamma uncertainties from syst entries {gamma_vals}")
 
+        # processesZ = [] if self.skipFromSignal else ['single_v_samples']
+        # processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        processesZ = ['single_v_samples']
+        processesW = ['single_v_samples']
+        processes = processesW if self.label=="W" else processesZ
 
         self.card_tool.addSystematic(name=self.corr_hist_name,
-            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            processes=processes,
             passToFakes=self.propagate_to_fakes,
             systAxes=[self.syst_ax],
             preOp=lambda h: h[{self.syst_ax : var_vals}],
@@ -546,8 +559,13 @@ class TheoryHelper(object):
 
         pdf_ax = self.syst_ax if self.pdf_from_corr else "pdfVar"
         symHessian = pdfInfo["combine"] == "symHessian"
+
+        processesZ = [] if self.skipFromSignal else ['single_v_samples']
+        processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        processes = processesW if self.label=="W" else processesZ
+
         pdf_args = dict(
-            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            processes=processes,
             mirror=True if symHessian else False,
             group=pdfName,
             splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
@@ -570,7 +588,7 @@ class TheoryHelper(object):
             if pdfName == 'pdfHERAPDF20':
                 self.card_tool.addSystematic(pdf_hist+'ext',
                     skipEntries=[{pdf_ax : "^pdf0[a-z]*"}],
-                    processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+                    processes=processes,
                     mirror=True,
                     group=pdfName,
                     splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
@@ -585,7 +603,7 @@ class TheoryHelper(object):
         asname = f"{pdfName}alphaS{asRange}" if not self.as_from_corr else pdf_corr_hist.replace("Vars", "_pdfas")
         as_replace = [("as", "pdfAlphaS")]+[("0116", "Down"), ("0120", "Up")] if asRange == "002" else [("0117", "Down"), ("0119", "Up")]
         as_args = dict(name=asname,
-            processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
+            processes=processes,
             mirror=False,
             group=pdfName,
             splitGroup={f"{pdfName}AlphaS": '.*', "theory": ".*"},

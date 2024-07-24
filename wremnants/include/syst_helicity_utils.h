@@ -55,7 +55,8 @@ class WeightByHelicityHelper : public TensorCorrectionsHelper<T> {
        helWeights(i) = coeffs(i) * moments(i);
        sum += coeffs(i) * moments(i);//full sum of all components
      }
-     double factor = 1./sum;
+     double factor = 1.; //protection against non-covered gen phase space
+     if(sum!=0.) factor = 1./sum;
      helweight_tensor_t helWeights_tensor = factor*helWeights;
      return helWeights_tensor;
   }

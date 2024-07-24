@@ -128,7 +128,7 @@ class HDF5Writer(object):
         # check if variances are available
         if return_variances and (h.storage_type != hist.storage.Weight):
             # raise RuntimeError(f"Sumw2 not filled for {h} but needed for binByBin uncertainties")
-            logger.Info(f"Sumw2 not filled for {h} but needed for binByBin uncertainties, variances are set to 0")
+            logger.warning(f"Sumw2 not filled for {h} but needed for binByBin uncertainties, variances are set to 0")
 
         if chanInfo.simultaneousABCD and set(chanInfo.getFakerateAxes()) != set(chanInfo.fit_axes[:len(chanInfo.getFakerateAxes())]):
             h = projectABCD(chanInfo, h, return_variances=return_variances)
@@ -257,7 +257,7 @@ class HDF5Writer(object):
 
                 # nominal histograms of prediction
                 norm_proc_hist = dg.groups[proc].hists[chanInfo.nominalName]
-                if "helicity" in channel_info[chan]["axes"]:
+                if "helicity" in chanInfo.nominalName:
                     def exponential(h):
                         h.values()[...] = np.exp(h.values()/100000)
                         return h
@@ -408,7 +408,7 @@ class HDF5Writer(object):
                     # Deduplicate while keeping order
                     var_names = list(dict.fromkeys(var_names))
                     norm_proc = self.dict_norm[chan][proc]
-                    if "helicity" in channel_info[chan]["axes"]:
+                    if "helicity" in chanInfo.nominalName:
                         norm_proc = 100000*np.log(norm_proc)
 
                     for var_name in var_names:
@@ -423,9 +423,10 @@ class HDF5Writer(object):
                                 raise RuntimeError(f"{len(_syst)-sum(np.isfinite(_syst))} NaN or Inf values encountered in systematic {var_name}!")
 
                             # check if there is a sign flip between systematic and nominal
-                            _logk = kfac*np.log(_syst/norm_proc)
-                            if "helicity" in channel_info[chan]["axes"]:
+                            if "helicity" in chanInfo.nominalName:
                                 _logk = kfac*(_syst - norm_proc)/100000
+                            else:
+                                _logk = kfac*np.log(_syst/norm_proc)
                             _logk_view = np.where(np.equal(np.sign(norm_proc*_syst),1), _logk, self.logkepsilon*np.ones_like(_logk))
                             _syst = None
 
@@ -433,8 +434,10 @@ class HDF5Writer(object):
                                 _logk = np.clip(_logk,-self.clip,self.clip)
                             if self.clipSystVariationsSignal>0. and proc in signals:
                                 _logk = np.clip(_logk,-self.clipSig,self.clipSig)
-
-                            return _logk_view
+                            if "helicity" in chanInfo.nominalName:
+                                return _logk
+                            else:
+                                return _logk_view
 
                         var_name_out = var_name
 

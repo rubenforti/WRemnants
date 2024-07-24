@@ -150,7 +150,7 @@ def multiplyHists(h1, h2, allowBroadcast=True, createNew=True, flow=True):
         h1 = broadcastSystHist(h1, h2, flow=flow)
         h2 = broadcastSystHist(h2, h1, flow=flow)
 
-    if h1.storage_type == hist.storage.Double and h2.storage_type == hist.storage.Double:
+    if h1.storage_type == hist.storage.Double and h2.storage_type == hist.storage.Double and createNew==False:
         return h1*h2 
 
     with_variance = h1.storage_type == hist.storage.Weight and h2.storage_type == hist.storage.Weight

@@ -708,16 +708,6 @@ def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
 
     return hist_coeffs_scales
 
-def moments_to_helicities(hist_moments_scales):
-    factors = np.array([1., 1./2., 1./(2.*sqrt(2.)), 1./4, 1./(4.*sqrt(2.)),1./2.,1./2.,1./(2.*sqrt(2.)),1./(4.*sqrt(2.))])
-    
-    hfactors = hist.Hist(hist_moments_scales.axes["helicity"],
-        data = factors
-            )
-    hist_moments_scales_new = hh.multiplyHists(hfactors,hist_moments_scales)
-
-    return hist_moments_scales_new
-
 def qcdByHelicityLabels():
     coeffs = ["const"]+[f"a{i}" for i in range(8)]
     scaleVars = ["muRmuF", "muR", "muF"]
