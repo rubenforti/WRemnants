@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 # example
-# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ -n nominal_muonsonly --plotNonTrig
+# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ --plotNonTrig
 
 # histogram template:
-#      nominal_muonsonly
-# Axes = ('trigMuons_eta0', 'trigMuons_pt0', 'trigMuons_charge0', 'nonTrigMuons_eta0', 'nonTrigMuons_pt0', 'nonTrigMuons_charge0')
-# Regular(24, -2.4, 2.4, name='trigMuons_eta0')
-# Regular(34, 26, 60, name='trigMuons_pt0')
-# Regular(2, -2, 2, underflow=False, overflow=False, name='trigMuons_charge0')
-# Regular(24, -2.4, 2.4, name='nonTrigMuons_eta0')
-# Regular(50, 15, 65, name='nonTrigMuons_pt0')
-# Regular(2, -2, 2, underflow=False, overflow=False, name='nonTrigMuons_charge0')
+# nominal_vetoValidation
+# Axes = ('eta', 'pt', 'charge', 'etaNonTrig', 'ptNonTrig', 'passMT')
+# Regular(48, -2.4, 2.4, underflow=False, overflow=False, name='eta')
+# Regular(34, 26, 60, underflow=False, overflow=False, name='pt')
+# Regular(2, -2, 2, underflow=False, overflow=False, name='charge')
+# Regular(48, -2.4, 2.4, underflow=False, overflow=False, name='etaNonTrig')
+# Regular(45, 15, 60, underflow=False, overflow=False, name='ptNonTrig')
+# Boolean(name='passMT')
 
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
