@@ -42,7 +42,7 @@ if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 if args.validateVetoSF:
     if args.useGlobalOrTrackerVeto or not args.useRefinedVeto:
-    raise NotImplementedError("Option --validateVetoSF cannot be used with --useGlobalOrTrackerVeto, and requires --useRefinedVeto at the moment.")
+        raise NotImplementedError("Option --validateVetoSF cannot be used with --useGlobalOrTrackerVeto, and requires --useRefinedVeto at the moment.")
 
 # thisAnalysis flag identifies the analysis for the purpose of applying single or dilepton scale factors
 # when validating the veto SF only the triggering muon has to be considered to apply the standard SF, so the helpers for a single muon selection are used
