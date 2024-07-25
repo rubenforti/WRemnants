@@ -403,12 +403,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     signalMatch = WMatch if wmass else ZMatch
     nonSignalMatch = ZMatch if wmass else WMatch
 
+    wlike_vetoValidation = wlike and input_tools.args_from_metadata(cardTool, "validateVetoSF")
     cardTool.addProcessGroup("single_v_samples", lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=dibosonMatch))
     # TODO consistently treat low mass drell yan as signal across full analysis
     cardTool.addProcessGroup("z_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
+    if wmass or wlike_vetoValidation:
+        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
     if wmass:
         cardTool.addProcessGroup("w_samples", lambda x: assertSample(x, startsWith=WMatch, excludeMatch=dibosonMatch))
-        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
         cardTool.addProcessGroup("wtau_samples", lambda x: assertSample(x, startsWith=["Wtaunu"]))
         if not xnorm:
             cardTool.addProcessGroup("single_v_nonsig_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
@@ -817,7 +819,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
                         )
-            if wmass:
+            if wmass or wlike_vetoValidation:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
                 useRefinedVeto = input_tools.args_from_metadata(cardTool, "useRefinedVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
@@ -873,7 +875,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         labelsByAxis=axlabels,
                         baseName=name+"_",
                         processes=['Zveto_samples'],
-                        passToFakes=passSystToFakes,
+                        passToFakes=passSystToFakes if wmass else False,
                         systNameReplace=nameReplace,
                         scale=scale,
                     )

@@ -3,8 +3,10 @@
 # example
 # python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ --plotNonTrig
 
+# right now this has become an effective copy of scripts/analysisTools/w_mass_13TeV/validateWlike.py because the input histogram can be the same
+
 # histogram template:
-# nominal_vetoValidation
+# nominal_bothMuons
 # Axes = ('eta', 'pt', 'charge', 'etaNonTrig', 'ptNonTrig', 'passMT')
 # Regular(48, -2.4, 2.4, underflow=False, overflow=False, name='eta')
 # Regular(34, 26, 60, underflow=False, overflow=False, name='pt')
@@ -53,7 +55,7 @@ if __name__ == "__main__":
     parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (it depends on what study you run)", default="nominal_vetoValidation")
+    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (it depends on what study you run)", default="nominal_bothMuons")
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     #parser.add_argument("--mtRange", type=float, nargs=2, default=[0,40], choices=[-1.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.], help="Apply mT cut, if upper edge is negative integrate the overflow")

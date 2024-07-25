@@ -26,6 +26,7 @@ parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices
 parser.add_argument("--validateVetoSF", action="store_true", help="Add histogram for validation of veto SF, loading all necessary helpers. This requires using the veto selection on the non-triggering muon, with reduced pt cut")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
+parser.add_argument("--fillHistNonTrig", action="store_true", help="Fill histograms with non triggering muon (for tests)")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
@@ -75,10 +76,18 @@ logger.info(f"Pt binning: {template_npt} bins from {template_minpt} to {template
 
 # standard regular axes
 axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta", overflow=False, underflow=False)
-axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+if args.fillHistNonTrig:
+    if args.validateVetoSF:
+        axis_pt = hist.axis.Regular(round(template_maxpt-args.vetoRecoPt), args.vetoRecoPt, template_maxpt, name = "pt", overflow=False, underflow=False)
+    else:
+        axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+    nominal_axes = [axis_eta, axis_pt, common.axis_charge]
+    nominal_cols = ["nonTrigMuons_eta0", "nonTrigMuons_pt0", "nonTrigMuons_charge0"]
+else:
+    axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+    nominal_axes = [axis_eta, axis_pt, common.axis_charge]
+    nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
 
-nominal_axes = [axis_eta, axis_pt, common.axis_charge]
-nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
 
 if isUnfolding:
     template_wpt = (template_maxpt-template_minpt)/args.genBins[0]
@@ -344,17 +353,20 @@ def build_graph(df, dataset):
         results.append(nominal_bin)
 
         axis_eta_nonTrig = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "etaNonTrig", overflow=False, underflow=False)
-        axis_pt_nonTrig = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
+        ptMin_nonTrig = args.vetoRecoPt if args.validateVetoSF else template_minpt
+        nPtBins_nonTrig = round(template_maxpt - args.vetoRecoPt) if args.validateVetoSF else template_npt
+        axis_pt_nonTrig = hist.axis.Regular(nPtBins_nonTrig, ptMin_nonTrig, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
         # nonTriggering muon charge can be assumed to be opposite of triggering one
-        nominal_bothMuons = df.HistoBoost("nominal_bothMuons", [*axes, axis_eta_nonTrig, axis_pt_nonTrig, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
+        if args.fillHistNonTrig:
+            # cols are already the nonTriggering variables, must invert axes to fill histogram (and rename them)
+            axis_eta_trig = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta", overflow=False, underflow=False)
+            axis_pt_trig = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
+            nominal_bothMuons = df.HistoBoost("nominal_bothMuons",
+                                              [axis_eta_trig, axis_pt_trig, common.axis_charge, axis_eta_nonTrig, axis_pt_nonTrig, common.axis_passMT],
+                                              ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0", "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
+        else:
+            nominal_bothMuons = df.HistoBoost("nominal_bothMuons", [*axes, axis_eta_nonTrig, axis_pt_nonTrig, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
         results.append(nominal_bothMuons)
-
-        if args.validateVetoSF:
-            axis_pt_nonTrig_veto = hist.axis.Regular(round(template_maxpt - args.vetoRecoPt), args.vetoRecoPt, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
-            # nonTriggering muon charge can be assumed to be opposite of triggering one
-            nominal_vetoValidation = df.HistoBoost("nominal_vetoValidation", [*axes, axis_eta_nonTrig, axis_pt_nonTrig_veto, common.axis_passMT], [*cols, "nonTrigMuons_eta0", "nonTrigMuons_pt0", "passWlikeMT", "nominal_weight"])
-            results.append(nominal_vetoValidation)
-
 
     # cutting after storing mt distributions for plotting, since the cut is only on corrected met
     if args.dphiMuonMetCut > 0.0:
