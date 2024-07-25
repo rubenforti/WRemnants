@@ -807,6 +807,32 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         self.sel_d2x = None    
         self.set_selections_x(integrate_x=self.integrate_x)
 
+        # histogram with nonclosure corrections
+        self.hCorr = None
+
+    def set_correction(self, hQCD, flow=True):
+        # hQCD is QCD MC histogram before selection (should contain variances)
+        hQCD_rebin = hh.rebinHist(hQCD, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
+
+        # mirror charge and eta axes to cope with limited QCD MC stat
+        hQCD_rebin = hh.mirrorAxes(hQCD_rebin, ["charge", "eta"])
+
+        # prediction without smoothing
+        d, dvar = self.calculate_fullABCD(hQCD_rebin, flow=flow)
+        hPred = hist.Hist(*hQCD_rebin[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hQCD_rebin.storage_type())
+        hPred.values(flow=flow)[...] = d
+        if hPred.storage_type == hist.storage.Weight:
+            hPred.variances(flow=flow)[...] = dvar
+        
+        # truth histogram
+        hTruth = self.get_hist_passX_passY(hQCD_rebin)
+
+        self.hCorr = hh.divideHists(hTruth, hPred)
+        if np.any(~np.isfinite(self.hCorr.values(flow=flow))):
+            logger.warning(f"{sum(~np.isfinite(self.hCorr.values(flow=flow)))} Inf or NaN values in values of QCD MC nonclosure correction")
+        if np.any(~np.isfinite(self.hCorr.variances(flow=flow))):
+            logger.warning(f"{sum(~np.isfinite(self.hCorr.values(flow=flow)))} Inf or NaN values in variances of QCD MC nonclosure correction")
+
     # set slices object for selection of sideband regions
     def set_selections_x(self, integrate_x=True):
         x0, x1, x2, x3 = get_selection_edges(self.name_x)
@@ -897,6 +923,13 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         d, dvar = self.calculate_fullABCD(h, flow=flow)
         dsel, dvarsel = self.calculate_fullABCD(hNew, flow=flow)
 
+        if self.hCorr:
+            # apply QCD MC nonclosure correction and account for variance of correction
+            cval = self.hCorr.values(flow=flow)
+            cvar = self.hCorr.variances(flow=flow)
+            dsel *= cval
+            dvarsel = dsel**2 * cvar + cval**2 * dvarsel
+
         smoothidx = hNew.axes.name.index(self.smoothing_axis_name)
         smoothing_axis = hNew.axes[self.smoothing_axis_name]
         nax = len(d.shape)
@@ -979,6 +1012,14 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             bxvar = hbx.variances(flow=flow)
             y_var = b**4/(bx**2*a**4)*axvar + ax**2*b**2/(bx**2*a**4)*4*bvar + 4*avar/a**2 + ax**2*b**4/(bx**4*a**4)*bxvar
             y_var[abs(y_den) <= 0]=0
+
+        if self.hCorr:
+            # apply QCD MC nonclosure correction and account for variance of correction
+            cval = self.hCorr.values(flow=flow)
+            y *= cval
+            if h.storage_type == hist.storage.Weight:
+                cvar = self.hCorr.variances(flow=flow)
+                y_var = y**2 * cvar + cval**2 * y_var
 
         if self.throw_toys:
             logger.info("Throw toys")
