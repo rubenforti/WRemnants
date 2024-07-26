@@ -118,8 +118,8 @@ axis_fakes_eta = hist.axis.Regular(int((template_maxeta-template_mineta)*10/2), 
 
 axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(template_minpt, template_maxpt), name = "pt", overflow=False, underflow=False)
 
-axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min), name = "mt", underflow=False, overflow=True)
-axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(), name = "relIso",underflow=False, overflow=True)
+axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=False), name = "mt", underflow=False, overflow=True)
+axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=False), name = "relIso",underflow=False, overflow=True)
 axes_abcd = [axis_mtCat, axis_isoCat]
 axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
 columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
@@ -656,6 +656,10 @@ def build_graph(df, dataset):
 
     if not args.onlyMainHistograms:
         syst_tools.add_QCDbkg_jetPt_hist(results, df, axes, cols, jet_pt=30, storage_type=storage_type)
+
+    if isQCDMC:
+        unweighted = df.HistoBoost("unweighted", axes, cols)
+        results.append(unweighted)
 
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
