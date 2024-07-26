@@ -980,7 +980,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         
         return d, dvar
 
-    def compute_fakeratefactor(self, h, syst_variations=False, flow=True, auxiliary_info=False):
+    def compute_fakeratefactor(self, h, smoothing=False, syst_variations=False, flow=True, auxiliary_info=False):
         # rebin in smoothing axis to have stable ratios
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
@@ -1055,7 +1055,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             logger.info("Done with toys")
 
 
-        if self.smoothing_mode == "fakerate":
+        if smoothing:
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bin in h)
             y, y_var = self.smoothen(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
@@ -1133,7 +1133,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         if self.smoothing_mode=="fakerate" or self.interpolate_x or self.smooth_shapecorrection:
             h = self.transfer_variances(h, set_nominal=is_nominal)
 
-            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_smoothing)
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, smoothing=True, syst_variations=variations_smoothing)
             y_scf, y_scf_var = self.compute_shapecorrection(h, syst_variations=variations_scf)
             c, cvar = self.get_yields_applicationregion(h)
 
@@ -1397,7 +1397,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             return y, y_var
 
 
-    def compute_fakeratefactor(self, h, syst_variations=False, flow=True, auxiliary_info=False):
+    def compute_fakeratefactor(self, h, smoothing=False, syst_variations=False, flow=True, auxiliary_info=False):
         # rebin in smoothing axis to have stable ratios
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
         hNew = hh.rebinHist(h[sel], self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h[sel]
@@ -1468,7 +1468,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             logger.info("Done with toys")
 
-        if self.smoothing_mode == "fakerate":
+        if smoothing:
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bin in h)
             y, y_var = self.smoothen(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info)
 
