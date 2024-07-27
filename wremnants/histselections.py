@@ -7,6 +7,7 @@ from scipy.optimize import nnls
 from scipy.special import comb
 import pdb
 
+import scipy
 from scipy.optimize import curve_fit
 import uncertainties as unc
 from uncertainties import unumpy as unp
@@ -249,6 +250,47 @@ def divide_arrays(num, den, cutoff=1):
         logger.warning(f"Found {np.sum(criteria)} values in denominator below {cutoff}, the ratio will be set to 0 for those")
     r[abs(den) < cutoff] = 0 # if denumerator is close to 0 set ratio to zero to avoid large negative/positive values
     return r
+
+def spline_smooth_nominal(binvals, edges, edges_out, axis):
+        # interpolation of CDF
+        cdf = np.cumsum(binvals, axis=axis)
+        padding = binvals.ndim*[(0,0)]
+        padding[axis] = (1,0)
+        cdf = np.pad(cdf, padding)
+
+        x = edges
+        y = cdf
+        xout = edges_out
+
+        spline = scipy.interpolate.make_interp_spline(x, y, axis=axis, bc_type=None)
+        yout = spline(xout)
+
+        binvalsout = np.diff(yout, axis=axis)
+        binvalsout = np.maximum(binvalsout, 0.)
+
+        return binvalsout
+
+def spline_smooth(binvals, edges, edges_out, axis, binvars=None, syst_variations=False):
+    ynom = spline_smooth_nominal(binvals, edges, edges_out, axis=axis)
+
+    if not syst_variations:
+        return ynom, None
+
+    nvars = binvals.shape[axis]
+
+    yvars = np.zeros((*ynom.shape, nvars, 2), dtype=ynom.dtype)
+
+    # fluctuate the bin contents one by one to build the variations
+    for ivar in range(nvars):
+        for iupdown in range(2):
+            scale = 1. if iupdown==0 else -1.
+
+            binvalsvar = binvals.copy()
+            binvalsvar[ivar] += scale*np.sqrt(binvars[ivar])
+
+            yvars[..., ivar, iupdown] = spline_smooth_nominal(binvalsvar, edges, edges_out, axis=axis)
+
+    return ynom, yvars
 
 class HistselectorABCD(object):
     def __init__(self, h, name_x=None, name_y=None,
@@ -687,35 +729,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         dsel =  dsel[*sel]
         dvarsel = dvarsel[*sel]
 
-        xwidth = hNew.axes[self.smoothing_axis_name].widths
-        xwidthtgt = h.axes[self.smoothing_axis_name].widths
+        dsel, dvarsel = spline_smooth(dsel, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=dvarsel, syst_variations=syst_variations)
 
-        xwidth = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]
-        xwidthtgt = xwidthtgt[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]#
-
-        dsel *= 1./xwidth
-        dvarsel *= 1./xwidth**2
-
-        logd = np.where(dsel>0., np.log(dsel), 0.)
-        logdvar = np.where(dsel>0., dvarsel/dsel**2, 1.)
-        x = smoothing_axis.centers
-
-        if syst_variations:
-            logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
-        else:
-            logd, logdvar, params, cov, chi2, ndf = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, auxiliary_info=True)
-            logger.debug("ndof", ndf)
-            logger.debug("chisq stats", np.mean(chi2), np.std(chi2), np.min(chi2), np.max(chi2))
-            # print(f"chisq/ndof = {chi2}/{ndf}")
         # get output shape from original hist axes, but as for result histogram
-        d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y])
+        d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y], dtype=dsel.dtype)
         # leave the underflow and overflow unchanged if present
-        d[*sel] = np.exp(logd)*xwidthtgt
+        d[*sel] = dsel
         if syst_variations:
-            dvar = d
-            dvar = dvar[..., None, None]*np.ones((*dvar.shape, *logdvar.shape[-2:]), dtype=dvar.dtype)
+            dvar = np.zeros_like(d)
+            dvar = dvar[..., None, None]*np.ones((*dvar.shape, *dvarsel.shape[-2:]), dtype=dvar.dtype)
             # leave the underflow and overflow unchanged if present
-            dvar[*sel, :, :] = np.exp(logdvar)*xwidthtgt[..., None, None]**2
+            dvar[*sel, :, :] = dvarsel
         else:
             # with full smoothing all of the statistical uncertainty is included in the
             # explicit variations, so the remaining binned uncertainty is zero
@@ -978,6 +1002,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             cvar = hc.variances(flow=flow)
             dvar = frf**2 * cvar + d**2 * (4 * bvar/b**2 + 4 * avar/a**2 + axvar/ax**2 + bxvar/bx**2)[*slices]
         
+        # d = c
+        # dvar = cvar
+
         return d, dvar
 
     def compute_fakeratefactor(self, h, smoothing=False, syst_variations=False, flow=True, auxiliary_info=False):
