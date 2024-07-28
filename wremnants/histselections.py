@@ -426,9 +426,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             self.polynomial = "power"
 
-        # rebinning doesn't make sense for binned estimation and causes issues
-        # for full smoothing
-        if smoothing_mode in ["binned", "full"]:
+        # rebinning doesn't make sense for binned estimation
+        if smoothing_mode in ["binned"]:
             self.rebin_smoothing_axis = None
 
         if hasattr(self, "fakerate_integration_axes"):
