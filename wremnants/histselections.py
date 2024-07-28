@@ -752,7 +752,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             goodbin = (dsel > 0.) & (dvarsel > 0.)
 
             logd = np.where(goodbin, np.log(dsel), 0.)
-            logdvar = np.where(goodbin, dvarsel/dsel**2, 1e6)
+            logdvar = np.where(goodbin, dvarsel/dsel**2, 1.)
             x = smoothing_axis.centers
 
             if syst_variations:
@@ -764,8 +764,10 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 # print(f"chisq/ndof = {chi2}/{ndf}")
 
             dsel = np.exp(logd)*xwidthtgt
+            dsel = np.where(np.isfinite(dsel), dsel, 0.)
             if syst_variations:
                 dvarsel = np.exp(logdvar)*xwidthtgt[..., None, None]**2
+                dvarsel = np.where((dsel[..., None, None] > 0.) & np.isfinite(dvarsel), dvarsel,  dsel[..., None, None])
 
         # get output shape from original hist axes, but as for result histogram
         d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y], dtype=dsel.dtype)
