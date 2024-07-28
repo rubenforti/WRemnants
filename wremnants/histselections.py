@@ -280,13 +280,17 @@ def spline_smooth(binvals, edges, edges_out, axis, binvars=None, syst_variations
 
     yvars = np.zeros((*ynom.shape, nvars, 2), dtype=ynom.dtype)
 
+    binerrs = np.sqrt(binvars)
+
     # fluctuate the bin contents one by one to build the variations
     for ivar in range(nvars):
         for iupdown in range(2):
             scale = 1. if iupdown==0 else -1.
 
             binvalsvar = binvals.copy()
-            binvalsvar[ivar] += scale*np.sqrt(binvars[ivar])
+            varsel = binvals.ndim*[slice(None)]
+            varsel[axis] = ivar
+            binvalsvar[*varsel] += scale*binerrs[*varsel]
 
             yvars[..., ivar, iupdown] = spline_smooth_nominal(binvalsvar, edges, edges_out, axis=axis)
 
