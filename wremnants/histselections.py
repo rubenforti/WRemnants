@@ -245,9 +245,9 @@ def get_rebinning(edges, axis_name):
 
 def divide_arrays(num, den, cutoff=1):
     r = num/den
-    criteria = abs(den) < cutoff
+    criteria = abs(den) <= cutoff
     if np.sum(criteria) > 0:
-        logger.warning(f"Found {np.sum(criteria)} values in denominator below {cutoff}, the ratio will be set to 0 for those")
+        logger.warning(f"Found {np.sum(criteria)} values in denominator less than or equal to {cutoff}, the ratio will be set to 0 for those")
     r[abs(den) < cutoff] = 0 # if denumerator is close to 0 set ratio to zero to avoid large negative/positive values
     return r
 
@@ -1270,7 +1270,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # shape correction factor
         y_num = c**2 if apply else c
         y_den = cy
-        y = divide_arrays(y_num,y_den)
+        y = divide_arrays(y_num,y_den, cutoff=0.)
 
         if self.throw_toys:
             logger.info("Throw toys")
@@ -1483,7 +1483,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # fakerate factor
         y_num = (ax*ay*b)**2
         y_den = a**4 * axy * bx
-        y = divide_arrays(y_num,y_den)
+        y = divide_arrays(y_num,y_den, cutoff=0.)
 
         if h.storage_type == hist.storage.Weight:
             # full variances
