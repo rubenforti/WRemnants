@@ -733,7 +733,38 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         dsel =  dsel[*sel]
         dvarsel = dvarsel[*sel]
 
-        dsel, dvarsel = spline_smooth(dsel, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=dvarsel, syst_variations=syst_variations)
+        #TODO make this configurable
+        use_spline = False
+
+        if use_spline:
+            dsel, dvarsel = spline_smooth(dsel, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=dvarsel, syst_variations=syst_variations)
+        else:
+            xwidth = hNew.axes[self.smoothing_axis_name].widths
+            xwidthtgt = h.axes[self.smoothing_axis_name].widths
+
+            xwidth = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]
+            xwidthtgt = xwidthtgt[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]#
+
+            dsel *= 1./xwidth
+            dvarsel *= 1./xwidth**2
+
+            goodbin = (dsel > 0.) & (dvarsel > 0.)
+
+            logd = np.where(goodbin, np.log(dsel), 0.)
+            logdvar = np.where(goodbin, dvarsel/dsel**2, 1e6)
+            x = smoothing_axis.centers
+
+            if syst_variations:
+                logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
+            else:
+                logd, logdvar, params, cov, chi2, ndf = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, auxiliary_info=True)
+                logger.debug("ndof", ndf)
+                logger.debug("chisq stats", np.mean(chi2), np.std(chi2), np.min(chi2), np.max(chi2))
+                # print(f"chisq/ndof = {chi2}/{ndf}")
+
+            dsel = np.exp(logd)*xwidthtgt
+            if syst_variations:
+                dvarsel = np.exp(logdvar)*xwidthtgt[..., None, None]**2
 
         # get output shape from original hist axes, but as for result histogram
         d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y], dtype=dsel.dtype)
