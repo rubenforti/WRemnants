@@ -22,6 +22,7 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
+parser.add_argument("--addIsoMtAxes", action="store_true", help="Add iso/mT axes to the nominal ones. It is for tests to get uncertainties (mainly from SF) versus iso-mT to validate the goodness of muon SF in the fake regions")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
@@ -65,8 +66,15 @@ logger.info(f"Pt binning: {template_npt} bins from {template_minpt} to {template
 axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta", overflow=False, underflow=False)
 axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
 
+# for isoMt region validation and related tests
+axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
+axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
+
 nominal_axes = [axis_eta, axis_pt, common.axis_charge]
 nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
+if args.addIsoMtAxes:
+    nominal_axes.extend([axis_mtCat, axis_isoCat])
+    nominal_cols.extend(["transverseMass", "trigMuons_relIso0"])
 
 if isUnfolding:
     template_wpt = (template_maxpt-template_minpt)/args.genBins[0]
@@ -293,7 +301,7 @@ def build_graph(df, dataset):
 
     df = df.Define("passWlikeMT", f"transverseMass >= {mtw_min}")
 
-    if not args.onlyMainHistograms:
+    if not args.onlyMainHistograms and not isUnfolding and not args.addIsoMtAxes:
         axis_mt_coarse = hist.axis.Variable([0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.0], name = "mt", underflow=False, overflow=True)
         axis_trigPassIso = hist.axis.Boolean(name = f"trig_passIso")
         axis_nonTrigPassIso = hist.axis.Boolean(name = f"nonTrig_passIso")
@@ -301,8 +309,6 @@ def build_graph(df, dataset):
         nominal_bin = df.HistoBoost("nominal_isoMtBins", [*axes, axis_trigPassIso, axis_nonTrigPassIso, axis_mt_coarse], [*cols, "trigMuons_passIso0", "nonTrigMuons_passIso0", "transverseMass", "nominal_weight"])
         results.append(nominal_bin)
 
-        axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
-        axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
         nominal_testIsoMtFakeRegions = df.HistoBoost("nominal_testIsoMtFakeRegions", [*axes, axis_isoCat, axis_mtCat], [*cols, "trigMuons_relIso0", "transverseMass", "nominal_weight"])
         results.append(nominal_testIsoMtFakeRegions)
 
