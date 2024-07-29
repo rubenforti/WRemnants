@@ -54,6 +54,7 @@ def make_parser(parser=None):
     parser.add_argument("--sparse", action="store_true", help="Write out datacard in sparse mode (only for when using hdf5)")
     parser.add_argument("--excludeProcGroups", type=str, nargs="*", help="Don't run over processes belonging to these groups (only accepts exact group names)", default=["QCD"])
     parser.add_argument("--filterProcGroups", type=str, nargs="*", help="Only run over processes belonging to these groups", default=[])
+    parser.add_argument("--skipLnNSystWithNoProcs", action='store_true', help="Skip LnN systematics that would end up applied to no process (can happen when filtering or excluding them with --excludeProcGroups/--filterProcGroups), without raising errors.")
     parser.add_argument("-x", "--excludeNuisances", type=str, default="", help="Regular expression to exclude some systematics from the datacard")
     parser.add_argument("-k", "--keepNuisances", type=str, default="", help="Regular expression to keep some systematics, overriding --excludeNuisances. Can be used to keep only some systs while excluding all the others with '.*'")
     parser.add_argument("--absolutePathInCard", action="store_true", help="In the datacard, set Absolute path for the root file where shapes are stored")
@@ -300,7 +301,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
         cardTool.setAbsolutePathShapeInCard()
-
+    if args.skipLnNSystWithNoProcs:
+        cardTool.setSkipLnNSystWithNoProcs()
+        
     if simultaneousABCD:
         # In case of ABCD we need to have different fake processes for e and mu to have uncorrelated uncertainties
         cardTool.setFakeName(datagroups.fakeName + (datagroups.flavor if datagroups.flavor else ""))

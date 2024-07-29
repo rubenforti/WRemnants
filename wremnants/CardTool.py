@@ -71,6 +71,7 @@ class CardTool(object):
         self.simultaneousABCD = simultaneousABCD
         self.real_data = real_data
         self.absolutePathShapeFileInCard = False
+        self.skipLnNSystWithNoProcs = False
         self.excludeProcessForChannel = {} # can be used to exclue some POI when runnig a specific name (use case, force gen and reco charges to match)
         self.chargeIdDict = {"minus" : {"val" : -1, "id" : "q0", "badId" : "q1"},
                              "plus"  : {"val" : 1., "id" : "q1", "badId" : "q0"},
@@ -132,7 +133,10 @@ class CardTool(object):
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
-        
+
+    def setSkipLnNSystWithNoProcs(self, skip=True):
+        self.skipLnNSystWithNoProcs = skip
+
     def getProcsNoStatUnc(self):
         return self.noStatUncProcesses
         
@@ -1048,8 +1052,12 @@ class CardTool(object):
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
             if all(x not in info["processes"] for x in nondata):
-                logger.warning(f"Trying to add lnN uncertainty {name} for {info['processes']}, which are not valid processes; see predicted processes: {nondata}. It will be skipped")
-                continue
+                message = f"Trying to add lnN uncertainty {name} for {info['processes']}, which are not valid processes; see predicted processes: {nondata}."
+                if self.skipLnNSystWithNoProcs:
+                    logger.warning(f"{message}. It will be skipped")
+                    continue
+                else:
+                    raise ValueError (f"{message}")
 
             group = info["group"]
             groupFilter = info["groupFilter"]
