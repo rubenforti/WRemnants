@@ -39,6 +39,7 @@ parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: 
 parser.add_argument("--selectNonPromptFromLighMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
+parser.add_argument("--addAxisSignUt", action="store_true", help="Add another fit axis with the sign of the uT recoil projection")
 #
 
 args = parser.parse_args()
@@ -122,18 +123,27 @@ axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overfl
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
 # may not exactly reproduce the same pt range as analysis, though
-axis_fakes_eta = hist.axis.Regular(int((template_maxeta-template_mineta)*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
+axis_fakes_eta = hist.axis.Regular(round((template_maxeta-template_mineta)*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(template_minpt, template_maxpt), name = "pt", overflow=False, underflow=False)
 
 axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min), name = "mt", underflow=False, overflow=True)
 axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(), name = "relIso",underflow=False, overflow=True)
 axes_abcd = [axis_mtCat, axis_isoCat]
-axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
-columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
+axis_ut_analysis = hist.axis.Regular(2, -2, 2, underflow=False, overflow=False, name = "ut_angleSign") # used only to separate positive/negative uT for now
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
-nominal_cols = columns_fakerate
+if args.addAxisSignUt:
+    axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, axis_ut_analysis, *axes_abcd]
+    columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_angleSignUt0", "transverseMass", "goodMuons_relIso0"]
+
+    nominal_axes = [axis_eta, axis_pt, axis_charge, axis_ut_analysis, *axes_abcd]
+    nominal_cols = columns_fakerate
+else:
+    axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
+    columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
+
+    nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
+    nominal_cols = columns_fakerate
 
 if args.nToysMC > 0:
     axis_toys = hist.axis.Integer(0, args.nToysMC, underflow=False, overflow=False, name = "toys")
@@ -482,6 +492,8 @@ def build_graph(df, dataset):
         # TODO: fix it for not W/Z processes
         columnsForSF = ["goodMuons_pt0", "goodMuons_eta0", "goodMuons_SApt0", "goodMuons_SAeta0", "goodMuons_uT0", "goodMuons_charge0", "passIso"]
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="goodMuons")
+        # define_muon_uT_variable defined a uT variable using gen information, to get a more precise value for the purpose of applying scale factors
+        # for using it as a fit observable we need another definition based only on reco observables, since it is also needed for data
         if not args.smooth3dsf:
             columnsForSF.remove("goodMuons_uT0")
 
@@ -526,6 +538,9 @@ def build_graph(df, dataset):
         met = "DeepMETResolutionTune" if args.met == "DeepMETReso" else args.met
         df = df.Alias("MET_corr_rec_pt", f"{met}_pt")
         df = df.Alias("MET_corr_rec_phi", f"{met}_phi")
+
+    if args.addAxisSignUt:
+        df = df.Define("goodMuons_angleSignUt0", "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
 
     df = df.Define("ptW", "wrem::pt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")

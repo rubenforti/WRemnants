@@ -1048,8 +1048,9 @@ class CardTool(object):
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
             if all(x not in info["processes"] for x in nondata):
-                raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
-            
+                logger.warning(f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}. Skipping it")
+                return
+
             group = info["group"]
             groupFilter = info["groupFilter"]
             for chan in self.channels:

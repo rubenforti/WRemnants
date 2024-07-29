@@ -195,10 +195,10 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
 
     # Degrees of freedom calculation
     ndf = y.shape[-1] - nparams
-    ndf_total = y.size - chi2.size*nparams
+    ndf_total = y.size - chi2.size * nparams
 
     logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total}")
-    return chi2, ndf    
+    return chi2, ndf
 
 def extend_edges(traits, x):
     # extend array for underflow/overflow with distance from difference of two closest values 
