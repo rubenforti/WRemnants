@@ -202,8 +202,10 @@ def build_graph(df, dataset):
     if not passIsoBoth:
         df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
 
-    df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
-    df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
+    df = df.Define("trigMuons_relIso0", f"{isoBranch}[trigMuons][0]")
+    df = df.Define("nonTrigMuons_relIso0", f"{isoBranch}[nonTrigMuons][0]")
+    df = df.Define("trigMuons_passIso0", f"trigMuons_relIso0 < {isoThreshold}")
+    df = df.Define("nonTrigMuons_passIso0", f"nonTrigMuons_relIso0 < {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
@@ -298,6 +300,11 @@ def build_graph(df, dataset):
 
         nominal_bin = df.HistoBoost("nominal_isoMtBins", [*axes, axis_trigPassIso, axis_nonTrigPassIso, axis_mt_coarse], [*cols, "trigMuons_passIso0", "nonTrigMuons_passIso0", "transverseMass", "nominal_weight"])
         results.append(nominal_bin)
+
+        axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
+        axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
+        nominal_testIsoMtFakeRegions = df.HistoBoost("nominal_testIsoMtFakeRegions", [*axes, axis_isoCat, axis_mtCat], [*cols, "trigMuons_relIso0", "transverseMass", "nominal_weight"])
+        results.append(nominal_testIsoMtFakeRegions)
 
         axis_eta_nonTrig = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "etaNonTrig", overflow=False, underflow=False)
         axis_pt_nonTrig = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "ptNonTrig", overflow=False, underflow=False)
