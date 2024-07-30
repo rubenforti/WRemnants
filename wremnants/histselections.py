@@ -83,6 +83,12 @@ def poly(pol, order, order2=None):
             return lambda x, n, p=1: p * x**n
         elif pol=="bernstein":
             return lambda x, n, p=1, o=order: p * comb(o, n) * x**n * (1 - x)**(o - n)
+        elif pol=="monotonic":
+            # integral of bernstein (see https://en.wikipedia.org/wiki/Bernstein_polynomial#Properties)
+            # for n>o return one additional parameter for the constant term from the integration
+            return lambda x, n, p=1, o=order: p*x**0 if n>o else -1*p * 1/(o+1) * np.array(
+                    [comb(o+1, k) * x**k * (1 - x)**(o+1 - k) for k in range(n+1, o+2)]
+                ).sum(axis=0)
     else:
         return lambda x, x2, n, m, p=1, o1=order, o2=order2: p * poly(pol, o1)(x, n) * poly(pol, o2)(x2, m)
 
@@ -92,7 +98,7 @@ def get_parameter_matrices(x, y, w, order, pol="power"):
     stackX=[] # parameter matrix X 
     stackXTY=[] # and X.T @ Y
     f = poly(pol, order)
-    for n in range(order+1):
+    for n in range(order+1+(pol=="monotonic")):
         p = f(x, n)
         stackX.append( w * p )
         stackXTY.append((w**2 * p * y).sum(axis=(-1)))
@@ -115,7 +121,7 @@ def get_parameter_matrices_from2D(x, x2, y, w, order, order2=None, pol="power", 
         raise RuntimeError(f"Input 'order2' requires type 'None', 'int' or 'list'")
     stackX=[]   # parameter matrix X 
     stackXTY=[] # and X.T @ Y
-    for n in range(order+1):
+    for n in range(order+1+(pol=="monotonic")):
         f = poly(pol, order, order2[n])
         for m in range(order2[n]+1):
             p = f(x, x2, n, m)
@@ -136,9 +142,9 @@ def get_regression_function(order1, order2=None, pol="power"):
         def fsum(x, ps, o=order1):
             f = poly(pol, o)
             if hasattr(ps, "ndim") and ps.ndim > 1:
-                return sum([f(x, n, ps[...,n,np.newaxis]) for n in range(o+1)])
+                return sum([f(x, n, ps[...,n,np.newaxis]) for n in range(o+1+(pol=="monotonic"))])
             else:
-                return sum([f(x, n, ps[n]) for n in range(o+1)])
+                return sum([f(x, n, ps[n]) for n in range(o+1+(pol=="monotonic"))])
     else:
         def fsum(x1, x2, ps, o1=order1, o2=order2):
             idx=0
@@ -147,17 +153,17 @@ def get_regression_function(order1, order2=None, pol="power"):
             if hasattr(ps, "ndim") and ps.ndim > 1:
                 x1 = np.broadcast_to(x1, [*ps.shape[:-1], *x1.shape])
                 x2 = np.broadcast_to(x2, [*ps.shape[:-1], *x2.shape]) 
-                for n in range(o1+1):
+                for n in range(o1+1+(pol=="monotonic")):
                     f = poly(pol, o1, o2[n])
                     for m in range(o2[n]+1):
                         psum += f(x1, x2, n, m, ps[...,idx,np.newaxis,np.newaxis])
                         idx += 1
             else:
-                for n in range(o1+1):
+                for n in range(o1+1+(pol=="monotonic")):
                     f = poly(pol, o1, o2[n])
                     for m in range(o2[n]+1):
                         psum += f(x1, x2, n, m, ps[idx])
-                        idx += 1            
+                        idx += 1
             return psum
     return fsum
 
@@ -200,7 +206,7 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
 
     from scipy import stats
 
-    logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
+    logger.debug(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
     return chi2, ndf    
 
 def extend_edges(traits, x):
@@ -228,13 +234,14 @@ def get_rebinning(edges, axis_name):
         return None
 
     i=0
-    rebin = []
+    rebin = np.zeros_like(target_edges)
     for e in edges:
         if e >= target_edges[i]:
-            rebin.append(e)
+            rebin[i] = e
             i+=1
         if i >= len(target_edges):
             break
+    rebin = rebin[:i]
 
     if len(rebin) <= 2:
         logger.warning(f"No automatic rebinning possible for axis {axis_name}")
@@ -243,12 +250,13 @@ def get_rebinning(edges, axis_name):
     logger.debug(f"Rebin axis {axis_name} to {rebin}")
     return rebin
 
-def divide_arrays(num, den, cutoff=1):
+def divide_arrays(num, den, cutoff=1, replace=1):
     r = num/den
-    criteria = abs(den) <= cutoff
+    # criteria = abs(den) <= cutoff
+    criteria = den <= cutoff
     if np.sum(criteria) > 0:
-        logger.warning(f"Found {np.sum(criteria)} values in denominator less than or equal to {cutoff}, the ratio will be set to 0 for those")
-    r[abs(den) < cutoff] = 0 # if denumerator is close to 0 set ratio to zero to avoid large negative/positive values
+        logger.warning(f"Found {np.sum(criteria)} / {criteria.size} values in denominator less than or equal to {cutoff}, the ratio will be set to {replace} for those")
+        r[criteria] = replace # if denumerator is close to 0 set ratio to 1 to avoid large negative/positive values
     return r
 
 def spline_smooth_nominal(binvals, edges, edges_out, axis):
@@ -423,6 +431,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # select appropriate polynomial depending on type of smoothing
         if smoothing_mode == "fakerate":
             self.polynomial = "bernstein"
+        elif smoothing_mode == "full":
+            self.polynomial = "monotonic"
         else:
             self.polynomial = "power"
 
@@ -443,7 +453,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
-        if self.polynomial=="bernstein":
+        if self.polynomial in ["bernstein", "monotonic"]:
             self.solve = solve_nonnegative_leastsquare
         else:
             self.solve = solve_leastsquare
@@ -456,19 +466,27 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # histogram with nonclosure corrections
         self.hCorr = None
 
-    def set_correction(self, hQCD, axes_names=False, flow=True):
+    def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
         # axes_names: the axes names to bin the correction in. If empty make an inclusive correction (i.e. a single number)
         hQCD_rebin = hh.rebinHist(hQCD, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
 
-        # mirror charge and eta axes to cope with limited QCD MC stat
-        hQCD_rebin = hh.mirrorAxes(hQCD_rebin, ["charge", "eta"])
+        keep_axes = [*axes_names, self.name_x, self.name_y, self.smoothing_axis_name]
+        if any(n not in keep_axes for n in hQCD_rebin.axes.name):
+            # rebin instead of integrate to keep axes to allow for easy post processing
+            s = hist.tag.Slicer()
+            hQCD_rebin = hQCD_rebin[{a.name: s[::hist.rebin(a.size)] for a in hQCD_rebin.axes if a.name not in keep_axes}]
+
+        # mirror eta axes to cope with limited QCD MC stat
+        for n in mirror_axes:
+            if n in axes_names:
+                hQCD_rebin = hh.mirrorAxis(hQCD_rebin, n)
 
         if self.smoothing_mode == "fakerate" and (len(self.fakerate_integration_axes) or "charge" not in self.fakerate_axes):
             # TODO: should this be done in general?
             sel = {n: hist.sum for n in self.fakerate_integration_axes}
-            if "charge" not in self.fakerate_axes:
-                sel["charge"] = hist.sum
+            # if "charge" not in self.fakerate_axes and "charge" in hQCD_rebin.axes.name:
+            #     sel["charge"] = hist.sum
             hQCD_rebin = hQCD_rebin[sel]                
 
         # prediction without smoothing
@@ -484,15 +502,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # truth histogram
         hTruth = self.get_hist_passX_passY(hQCD_rebin)
 
-        if any(n not in axes_names for n in hTruth.axes.name if n not in ["charge"]): # charge is anyway (hard coded) mirrored
-            # rebin instead of integrate to keep axes to allow for easy post processing
-            s = hist.tag.Slicer()
-            hTruth = hTruth[{a.name: s[::hist.rebin(a.size)] for a in hTruth.axes if a.name not in axes_names}]
+        if any(n not in axes_names for n in hTruth.axes.name):
+            hTruth = hTruth[{a.name: s[::hist.rebin(a.size)] if a.name in hPred.axes.name else hist.sum for a in hTruth.axes if a.name not in axes_names}]
+        if any(n not in axes_names for n in hPred.axes.name):
             hPred = hPred[{a.name: s[::hist.rebin(a.size)] for a in hPred.axes if a.name not in axes_names}]
 
         self.hCorr = hh.divideHists(hTruth, hPred)
 
-        logger.debug(f"Got QCD MC corrections of {self.hCorr.values()}")
+        if axes_names is not None and len(axes_names)==0:
+            logger.info(f"Got QCD MC corrections of {self.hCorr.values()}")        
+        else:
+            logger.debug(f"Got QCD MC corrections of {self.hCorr.values()}")
 
         if np.any(~np.isfinite(self.hCorr.values(flow=flow))):
             logger.warning(f"{sum(~np.isfinite(self.hCorr.values(flow=flow)))} Inf or NaN values in QCD MC nonclosure correction")
@@ -567,12 +587,12 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         a = ha.values(flow=flow)
         b = hb.values(flow=flow)
         # fakerate factor
-        y = divide_arrays(b,a)
+        y = divide_arrays(b,a,cutoff=1)
         if h.storage_type == hist.storage.Weight:
             avar = ha.variances(flow=flow)
             bvar = hb.variances(flow=flow)
             y_var = bvar/a**2 + b**2*avar/a**4
-            y_var[abs(a) < 1]=0
+            y_var[a <= 1] = 1e10
 
         if self.hCorr:
             # apply QCD MC nonclosure correction and account for variance of correction
@@ -593,7 +613,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y, y_var
 
-    def smoothen(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, flow=True):
+    def smoothen(self, h, x, y, y_var, edges=None, syst_variations=False, auxiliary_info=False, bin_center_correction=False, flow=True):
         if h.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1/np.sqrt(y_var)
@@ -611,10 +631,35 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # smooth frf (e.g. in pT)
         X, XTY = get_parameter_matrices(x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
 
+        def get_bin_center_corrected(e, se, ps):
+            y_edges_flat = self.f_smoothing(e, ps)
+            y_edges = y_edges_flat.reshape((*y_edges_flat.shape[:-1], *se.shape))
+            y_weight = (y_edges*se).sum(axis=-1)
+            y_norm = y_edges.sum(axis=-1)
+            return y_weight/y_norm
+
         params, cov = self.solve(X, XTY)
 
+        if bin_center_correction:
+            # second iteration with bin center corrections
+            # get bin center corrections by taking n support points
+            n=10
+            sedges = np.linspace(edges[:-1],edges[1:],n,axis=-1)
+            sedges_flat = sedges.reshape(np.product(sedges.shape))
+            for i in range(20):
+                new_x = get_bin_center_corrected(sedges_flat, sedges, params)
+                X, XTY = get_parameter_matrices(new_x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
+                params, cov = self.solve(X, XTY)
+
+            # bin center corrections for evaluation
+            edges_orig = self.get_bin_edges_smoothing(h, flow=True)
+            sedges_orig = np.linspace(edges_orig[:-1],edges_orig[1:],n,axis=-1)
+            sedges_orig_flat = sedges_orig.reshape(np.product(sedges_orig.shape))
+            x_smooth_orig = get_bin_center_corrected(sedges_orig_flat, sedges_orig, params)
+        else:
+            x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
+
         # evaluate in range of original histogram
-        x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
         y_smooth_orig = self.f_smoothing(x_smooth_orig, params)
 
         if syst_variations:
@@ -667,15 +712,26 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         return make_eigenvector_predictons(params, cov, func=self.f_smoothing, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_smoothing(self, h, flow=True):
-        return self.get_bin_centers(h, self.smoothing_axis_name, self.smoothing_axis_min, self.smoothing_axis_max, flow=flow)
+        return self.get_bin_centers(h, self.smoothing_axis_name, xmin=self.smoothing_axis_min, xmax=self.smoothing_axis_max, flow=flow)
 
-    def get_bin_centers(self, h, axis_name, xmin=None, xmax=None, flow=True, cap=False):
-        # get bin centers for interpolation/smoothing
+    def get_bin_edges_smoothing(self, h, flow=True):
+        return self.get_bin_edges(h, self.smoothing_axis_name, xmin=self.smoothing_axis_min, xmax=self.smoothing_axis_max, flow=flow)
+
+    def get_bin_edges(self, h, axis_name, flow=True, **kwargs):
+        x = h.axes[axis_name].edges
+        if flow:
+            x = extend_edges(h.axes[axis_name].traits, x)
+        return self.get_bin_boundaries(x, **kwargs)
+
+    def get_bin_centers(self, h, axis_name, flow=True, **kwargs):
         x = h.axes[axis_name].centers
         if flow:
             x = extend_edges(h.axes[axis_name].traits, x)
+        return self.get_bin_boundaries(x, **kwargs)
 
-        if self.polynomial=="bernstein":
+    def get_bin_boundaries(self, x, xmin=None, xmax=None, cap=False):
+        # get bin boundaries for interpolation/smoothing with transformation
+        if self.polynomial in ["bernstein", "monotonic"]:
             # transform bernstein polinomials to [0,1]
             x = (x - xmin) / (xmax - xmin)
             if np.sum(x < 0) or np.sum(x > 1):
@@ -702,7 +758,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         
         return d, dvar
 
-    def calculate_fullABCD_smoothed(self, h, flow=True, syst_variations=False):
+    def calculate_fullABCD_smoothed(self, h, syst_variations=False, use_spline=False, flow=True):
         hNew = hh.rebinHist(h, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
 
         dsel, dvarsel = self.calculate_fullABCD(hNew, flow=flow)
@@ -731,10 +787,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         sel[smoothidx] = smoothslice
 
         dsel =  dsel[*sel]
-        dvarsel = dvarsel[*sel]
-
-        #TODO make this configurable
-        use_spline = False
+        dvarsel = dvarsel[*sel]       
 
         if use_spline:
             dsel, dvarsel = spline_smooth(dsel, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=dvarsel, syst_variations=syst_variations)
@@ -749,18 +802,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             dvarsel *= 1./xwidth**2
 
             goodbin = (dsel > 0.) & (dvarsel > 0.)
+            if np.sum(goodbin)-goodbin.size > 0:
+                logger.warning(f"Found {np.sum(goodbin)-goodbin.size} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
 
             logd = np.where(goodbin, np.log(dsel), 0.)
             logdvar = np.where(goodbin, dvarsel/dsel**2, 1.)
-            x = smoothing_axis.centers
+            x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
+            edges = self.get_bin_edges_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
 
-            if syst_variations:
-                logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
-            else:
-                logd, logdvar, params, cov, chi2, ndf = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, auxiliary_info=True)
-                logger.debug("ndof", ndf)
-                logger.debug("chisq stats", np.mean(chi2), np.std(chi2), np.min(chi2), np.max(chi2))
-                # print(f"chisq/ndof = {chi2}/{ndf}")
+            logd, logdvar = self.smoothen(
+                h, x, logd, logdvar, edges=edges, syst_variations=syst_variations, bin_center_correction=True
+                )
 
             dsel = np.exp(logd)*xwidthtgt
             dsel = np.where(np.isfinite(dsel), dsel, 0.)
@@ -904,13 +956,13 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         b = hb.values(flow=flow)
 
         # fakerate factor
-        y = divide_arrays(b,a)
+        y = divide_arrays(b,a,cutoff=1)
         if h.storage_type == hist.storage.Weight:
             # full variances
             avar = ha.variances(flow=flow)
             bvar = hb.variances(flow=flow)
             y_var = bvar/a**2 + b**2*avar/a**4
-            y_var[abs(a) <= 0]=0
+            y_var[a <= 1] = 1e10
 
         # the bins where the regression is performed (can be different to the bin in h)
         x = self.get_bin_centers(ha, self.name_x, flow=False) 
@@ -1064,7 +1116,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         y_num = ax*b**2
         y_den = bx*a**2
         # fakerate factor
-        y = divide_arrays(y_num,y_den)
+        y = divide_arrays(y_num,y_den,cutoff=1)
 
         if h.storage_type == hist.storage.Weight:
             # full variances
@@ -1073,7 +1125,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             bvar = hb.variances(flow=flow)
             bxvar = hbx.variances(flow=flow)
             y_var = b**4/(bx**2*a**4)*axvar + ax**2*b**2/(bx**2*a**4)*4*bvar + 4*avar/a**2 + ax**2*b**4/(bx**4*a**4)*bxvar
-            y_var[abs(y_den) <= 0]=0
+            y_var[y_den <= 1] = 1e10
 
         if self.hCorr:
             # apply QCD MC nonclosure correction and account for variance of correction
@@ -1198,7 +1250,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             h = self.transfer_variances(h, set_nominal=is_nominal)
 
             y_frf, y_frf_var = self.compute_fakeratefactor(h, smoothing=True, syst_variations=variations_smoothing)
-            y_scf, y_scf_var = self.compute_shapecorrection(h, syst_variations=variations_scf)
+            y_scf, y_scf_var = self.compute_shapecorrection(h, smoothing=True, syst_variations=variations_scf)
             c, cvar = self.get_yields_applicationregion(h)
 
             d = c * y_scf * y_frf
@@ -1241,9 +1293,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         return hSignal
 
-    def compute_shapecorrection(self, h, syst_variations=False, apply=False, flow=True, auxiliary_info=False):
+    def compute_shapecorrection(self, h, smoothing=False, syst_variations=False, apply=False, flow=True, auxiliary_info=False):
         # if apply=True, shape correction is multiplied to application region for correct statistical uncertainty, only allowed if not smoothing
-        if apply and (self.interpolate_x or self.smooth_shapecorrection):
+        if apply and smoothing and (self.interpolate_x or self.smooth_shapecorrection):
             raise NotImplementedError(f"Direct application of shapecorrection only supported when no smoothing is performed")
         # rebin in smoothing axis to have stable ratios
         sel = {n: hist.sum for n in self.fakerate_integration_axes}
@@ -1271,7 +1323,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # shape correction factor
         y_num = c**2 if apply else c
         y_den = cy
-        y = divide_arrays(y_num,y_den, cutoff=0.)
+        y = divide_arrays(y_num,y_den,cutoff=1)
+
+        if h.storage_type == hist.storage.Weight:
+            if apply:
+                y_var = 4*c**2/cy**2*cvar + c**4/cy**4*cyvar # multiply out for better numerical stability (avoid NaNs from divisions)
+            else:
+                y_var = cvar/cy**2 + (c**2 * cyvar)/cy**4 # multiply out for better numerical stability (avoid NaNs from divisions)
+            y_var[cy <= 1] = 1e10
 
         if self.throw_toys:
             logger.info("Throw toys")
@@ -1309,21 +1368,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             logger.info("Done with toys")
 
-        if self.interpolate_x or self.smooth_shapecorrection:
+        if smoothing and (self.interpolate_x or self.smooth_shapecorrection):
             if h.storage_type == hist.storage.Weight:
-                y_var = cvar/cy**2 + (c**2 * cyvar)/cy**4 # multiply out for better numerical stability (avoid NaNs from divisions)
                 w = 1/np.sqrt(y_var)
             else:
                 logger.warning("Smoothing extended ABCD on histogram without uncertainties, make an unweighted linear squared solution.")
                 w = np.ones_like(y)
-        else:
-            if h.storage_type == hist.storage.Weight:
-                if apply:
-                    y_var = 4*c**2/cy**2*cvar + c**4/cy**4*cyvar # multiply out for better numerical stability (avoid NaNs from divisions)
-                else:
-                    y_var = 1/cy**2*cvar + c**2/cy**4*cyvar # multiply out for better numerical stability (avoid NaNs from divisions)
 
-        if self.interpolate_x:
+        if smoothing and self.interpolate_x:
             axes = [n for n in h.axes.name if n not in [*self.fakerate_integration_axes, self.name_y] ]
 
             idx_ax_interpol = axes.index(self.name_x)
@@ -1401,7 +1453,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 w = w.reshape(y.shape)
                 chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
 
-        elif self.smooth_shapecorrection:
+        elif smoothing and self.smooth_shapecorrection:
             # don't interpolate in mT, but smooth in pT in 1D
 
             # move smoothing axis to last
@@ -1484,7 +1536,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # fakerate factor
         y_num = (ax*ay*b)**2
         y_den = a**4 * axy * bx
-        y = divide_arrays(y_num,y_den, cutoff=0.)
+        y = divide_arrays(y_num,y_den,cutoff=1)
 
         if h.storage_type == hist.storage.Weight:
             # full variances
@@ -1495,7 +1547,15 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             bvar = hb.variances(flow=flow)
             bxvar = hbx.variances(flow=flow)
             y_var = y**2 * (4*axvar/ax**2 + 4*ayvar/ay**2 + axyvar/axy**2 + 4*bvar/b**2 + 16*avar/a**2 + bxvar/bx**2)
-            y_var[abs(y_den) <= 0]=0
+            y_var[y_den <= 1] = 1e10
+
+        if self.hCorr:
+            # apply QCD MC nonclosure correction and account for variance of correction
+            cval = self.hCorr.values(flow=flow)
+            y *= cval
+            if h.storage_type == hist.storage.Weight:
+                cvar = self.hCorr.variances(flow=flow)
+                y_var = y**2 * cvar + cval**2 * y_var
 
         if self.throw_toys:
             logger.info("Throw toys")
@@ -1547,7 +1607,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         return make_eigenvector_predictons(params, cov, func=self.f_scf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_interpolation(self, h, flow=True, cap=False):
-        return self.get_bin_centers(h, self.name_x, self.axis_x_min, self.axis_x_max, flow=flow, cap=cap)
+        return self.get_bin_centers(h, self.name_x, xmin=self.axis_x_min, xmax=self.axis_x_max, flow=flow, cap=cap)
 
     def calculate_fullABCD(self, h, flow=True):
         if len(self.fakerate_integration_axes) > 0:
@@ -1555,8 +1615,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         if not self.integrate_x:
             logger.warning(f"Binned fake estimation is performed but ABCD x-axis is not integrated, the bin-by-bin stat uncertainties are not correct along this axis.")
 
-        frf, frf_var = self.compute_fakeratefactor(h)
-        c_scf, c_scf_var = self.compute_shapecorrection(h, apply=True)
+        frf, frf_var = self.compute_fakeratefactor(h, smoothing=False)
+        c_scf, c_scf_var = self.compute_shapecorrection(h, smoothing=False, apply=True)
 
         d = frf * c_scf
 

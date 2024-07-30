@@ -216,7 +216,6 @@ class Datagroups(object):
         scale = 1
         if mode == "extended1D":
             fakeselector = sel.FakeSelector1DExtendedABCD
-            scale = 1/1.15
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
             smoothen = smoothing_mode == "fakerate"
@@ -224,7 +223,6 @@ class Datagroups(object):
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
-            scale = 1/1.2
             if simultaneousABCD:
                 fakeselector = sel.FakeSelectorSimultaneousABCD
             else:
@@ -242,7 +240,7 @@ class Datagroups(object):
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
                 self.groups[g].histselector = fakeselector(
-                    h[{"charge": hist.sum}],
+                    h,
                     global_scalefactor=scale,
                     fakerate_axes=self.fakerate_axes,
                     smoothing_mode=smoothing_mode,
@@ -260,7 +258,7 @@ class Datagroups(object):
                     hQCD = self.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
                     self.groups[g].histselector.set_correction(hQCD, axes_names=mcCorr)
             else:
-                self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
+                self.groups[g].histselector = signalselector(h, fakerate_axes=self.fakerate_axes, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.
