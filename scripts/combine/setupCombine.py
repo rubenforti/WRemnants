@@ -912,7 +912,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pu_type="lowPU" if lowPU else "highPU")
 
     if lowPU:
-        if datagroups.flavor in ["e", "ee"]:
+        if datagroups.flavor in ["e", "ee"] and False:
             # disable, prefiring for muons currently broken? (fit fails)
             cardTool.addSystematic("prefireCorr",
                 processes=cardTool.allMCProcesses(),
