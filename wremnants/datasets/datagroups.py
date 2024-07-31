@@ -203,6 +203,7 @@ class Datagroups(object):
         mode="extended1D",
         smoothing_mode="full",
         smoothingOrderFakerate=2,
+        integrate_shapecorrection_x=True, # integrate the abcd x-axis or not, only relevant for extended2D
         simultaneousABCD=False,
         forceGlobalScaleFakes=None,
         mcCorr=["pt","eta"],
@@ -218,8 +219,13 @@ class Datagroups(object):
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
-            smoothen = smoothing_mode == "fakerate"
-            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x="automatic" if smoothen else None))
+
+            auxiliary_info["integrate_shapecorrection_x"]=integrate_shapecorrection_x
+
+            if smoothing_mode == "fakerate" and not integrate_shapecorrection_x:
+                auxiliary_info.update(dict(smooth_shapecorrection=True, interpolate_x=True, rebin_x="automatic"))
+            else:
+                auxiliary_info.update(dict(smooth_shapecorrection=False, interpolate_x=False, rebin_x=None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
