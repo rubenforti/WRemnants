@@ -1,5 +1,5 @@
-#ifndef WREMNANTS_MUON_EFFICIENCIES_VETO_TEST_H
-#define WREMNANTS_MUON_EFFICIENCIES_VETO_TEST_H
+#ifndef WREMNANTS_MUON_EFFICIENCIES_NEWVETO_H
+#define WREMNANTS_MUON_EFFICIENCIES_NEWVETO_H
 
 #include <boost/histogram/axis.hpp>
 #include <array>
@@ -10,10 +10,10 @@ namespace wrem {
     // syst and stat are stacked in the syst axis, usually it is 1 (nominal) + 1 (global syst) + 48 (eta-decorr syst) + 4 (pt eigen stat)
     // NSysts is only for the syst part, NEtaBins and NPtEigenBins are only needed for the stat part
 	template<typename HIST_SF, int NSteps, int NSysts, int NEtaBins, int NPtEigenBins>
-	class muon_efficiency_veto_helper_base {
+	class muon_efficiency_newVeto_helper_base {
 
 	public:
-		muon_efficiency_veto_helper_base(HIST_SF &&sf_all) :
+		muon_efficiency_newVeto_helper_base(HIST_SF &&sf_all) :
             sf_all_(std::make_shared<const HIST_SF>(std::move(sf_all))) {
 		}
 
@@ -158,16 +158,16 @@ namespace wrem {
 
     /////
 	template<typename HIST_SF, int NSteps, int NSysts, int NEtaBins, int NPtEigenBins>
-	class muon_efficiency_veto_helper :
-		public muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
+	class muon_efficiency_newVeto_helper :
+		public muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
 
 	public:
 
-		using base_t = muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
+		using base_t = muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
 
 		using base_t::base_t;
 
-		muon_efficiency_veto_helper(const base_t &other) : base_t(other) {}
+		muon_efficiency_newVeto_helper(const base_t &other) : base_t(other) {}
 
 		double operator() (float pt, float eta, int charge) {
             return base_t::scale_factor_nomi(pt, eta, charge);
@@ -176,17 +176,17 @@ namespace wrem {
 	};
 
 	template<typename HIST_SF, int NSteps, int NSysts, int NEtaBins, int NPtEigenBins>
-	class muon_efficiency_veto_helper_syst :
-		public muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
+	class muon_efficiency_newVeto_helper_syst :
+		public muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
 
 	public:
 
-		using base_t = muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
+		using base_t = muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
 		using tensor_t = typename base_t::syst_tensor_t;
 
 		using base_t::base_t;
 
-		muon_efficiency_veto_helper_syst(const base_t &other) : base_t(other) {}
+		muon_efficiency_newVeto_helper_syst(const base_t &other) : base_t(other) {}
 		
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
             return nominal_weight * base_t::sf_syst_var(pt, eta, charge);
@@ -195,17 +195,17 @@ namespace wrem {
 	};
 
 	template<typename HIST_SF, int NSteps, int NSysts, int NEtaBins, int NPtEigenBins>
-	class muon_efficiency_veto_helper_stat :
-		public muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
+	class muon_efficiency_newVeto_helper_stat :
+		public muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins> {
 		
 	public:
 
-		using base_t = muon_efficiency_veto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
+		using base_t = muon_efficiency_newVeto_helper_base<HIST_SF, NSteps, NSysts, NEtaBins, NPtEigenBins>;
 		using tensor_t = typename base_t::stat_tensor_t;
 
 		using base_t::base_t;
 
-		muon_efficiency_veto_helper_stat(const base_t &other) : base_t(other) {}
+		muon_efficiency_newVeto_helper_stat(const base_t &other) : base_t(other) {}
 
 		tensor_t operator() (float pt, float eta, int charge, double nominal_weight = 1.0) {
             return nominal_weight * base_t::sf_stat_var(pt, eta, charge);            
