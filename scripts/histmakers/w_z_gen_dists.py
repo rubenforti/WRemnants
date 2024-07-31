@@ -47,29 +47,6 @@ datasets = getDatasets(maxFiles=args.maxFiles,
 
 logger.debug(f"Will process samples {[d.name for d in datasets]}")
 
-axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True, overflow=False)
-
-axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
-
-if args.useUnfoldingBinning:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
-        ["ptVGen", "absYVGen"], 
-        common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
-        add_out_of_acceptance_axis=False,
-    )
-    axis_ptVgen = unfolding_axes[0]
-    axis_absYVgen = unfolding_axes[1]
-    axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
-else:
-    axis_absYVgen = hist.axis.Variable(
-        [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
-        name = "absYVgen", underflow=False
-     )
-    axis_ptVgen = hist.axis.Variable(
-        (*common.get_dilepton_ptV_binning(fine=False), 13000.),
-        name = "ptVgen", underflow=False,
-    )
-
 axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
 col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
@@ -103,11 +80,24 @@ def build_graph(df, dataset):
     isW = dataset.name.startswith("W") and dataset.name[1] not in ["W", "Z"] #in common.wprocs
     isZ = dataset.name.startswith("Z") and dataset.name[1] not in ["W", "Z"] #in common.zprocs
 
+    axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True, overflow=False)
+    axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
+
     theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike="Z" in dataset.name)
     axis_ptV_thag = theoryAgnostic_axes[0]
     axis_yV_thag = theoryAgnostic_axes[1]
 
-    if args.useTheoryAgnosticBinning:
+    if args.useUnfoldingBinning:
+        unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
+            ["ptVGen", "absYVGen"], 
+            common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
+            add_out_of_acceptance_axis=False,
+        )
+        axis_ptVgen = unfolding_axes[0]
+        axis_absYVgen = unfolding_axes[1]
+        axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
+    
+    elif args.useTheoryAgnosticBinning:
         axis_absYVgen = hist.axis.Variable(
             axis_yV_thag.edges, #same axis as theory agnostic norms
             name = "absYVgen", underflow=False
@@ -117,8 +107,17 @@ def build_graph(df, dataset):
             #common.ptV_binning,
             name = "ptVgen", underflow=False,
         )
+    else:
+        axis_absYVgen = hist.axis.Variable(
+            [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
+            name = "absYVgen", underflow=False
+        )
+        axis_ptVgen = hist.axis.Variable(
+            (*common.get_dilepton_ptV_binning(fine=False), 13000.),
+            name = "ptVgen", underflow=False,
+        )
+        
     axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
-    axis_chargeVgen = axis_chargeZgen if isZ else axis_chargeWgen
 
     weight_expr = "std::copysign(1.0, genWeight)"
 
