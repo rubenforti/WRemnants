@@ -43,9 +43,6 @@ if isTheoryAgnostic:
     if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
         raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
-isUnfolding = args.analysisMode == "unfolding"
-isPoiAsNoi = isUnfolding and args.poiAsNoi
-
 thisAnalysis = ROOT.wrem.AnalysisType.Wlike
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era

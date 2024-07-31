@@ -116,7 +116,7 @@ common_groups = [
     "normXsecW",
     "width",
     "ZmassAndWidth",
-    "massAndWidth"
+    "massAndWidth",
     "normXsecZ",
 ]
 nuisance_groupings = {

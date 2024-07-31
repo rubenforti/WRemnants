@@ -193,8 +193,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=data)
+    # hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
+    #     label=args.cmsDecor, data=data)
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=20*args.scaleleg*scale)
@@ -257,6 +257,10 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
 
 if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
+    command = meta["meta_info"]["command"]
+    asimov = False
+    if "-t-1" in command or "-t -1" in command or "-t" not in command:
+        asimov = True
     meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
@@ -274,6 +278,8 @@ if combinetf2:
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
         
         if any(x in hist_data.axes.name for x in ["helicity"]):
+            if asimov:
+                hist_data.values()[...] = 100000*np.log(hist_data.values())
             or_vals = np.copy(hist_inclusive.values())
             hist_inclusive.values()[...] = 100000*np.log(hist_inclusive.values())
             hist_inclusive.variances()[...] = 100000*100000*(hist_inclusive.variances())/np.square(or_vals)
@@ -281,7 +287,7 @@ if combinetf2:
                 or_vals = np.copy(h.values())
                 h.values()[...] = 100000*np.log(h.values())
                 h.variances()[...] = 100000*100000*(h.variances())/np.square(or_vals)
-
+                
         make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1

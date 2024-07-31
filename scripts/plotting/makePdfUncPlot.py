@@ -75,12 +75,13 @@ for dataset in args.datasets:
     cmap = cm.get_cmap("tab10")
     colors = [[cmap(i)]*3 for i in range(len(args.pdfs))]
 
+
     if "unrolled_gen_hel" in args.obs:
         print(dataset)
-        moments = input_tools.read_all_and_scale(args.infile, [dataset], [f"{args.baseName}_helicity_moments_scale"])
+        moments = input_tools.read_all_and_scale(args.infile, [dataset], [f"{args.baseName}_helicity_xsecs_scale"])
         coeffs =  moments[0].project('ptVgen','absYVgen','helicity','muRfact','muFfact')
 
-        moments_lhe = input_tools.read_all_and_scale(args.infile, [dataset], [f"{args.baseName}_helicity_moments_scale_lhe"])
+        moments_lhe = input_tools.read_all_and_scale(args.infile, [dataset], [f"{args.baseName}_helicity_xsecs_scale_lhe"])
         hel_lhe = moments_lhe[0].project('ptVgen','absYVgen','helicity','muRfact','muFfact')
         # ratioUL = hh.divideHists(coeffs[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}],hel_lhe[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}])
         # coeffs_lhe=hh.multiplyHists(hel_lhe,ratioUL)
@@ -144,7 +145,9 @@ for dataset in args.datasets:
 
             uncHists[ipdf].extend([coeffs_alpha[ipdf][...,1]*scale_alpha,coeffs_alpha[ipdf][...,2]*scale_alpha])
             names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
-            colors[ipdf].extend([[cmap(i)]*2 for i in range(len(args.pdfs),2*len(args.pdfs))][0])
+            # print(colors[ipdf])
+            colors[ipdf].extend([cmap(ipdf)]*2)
+            # print(colors[ipdf])
 
         # add QCD scales
         uncHists.append([coeffs[{'muRfact':1.j,'muFfact':1.j}],*[coeffs[{"muRfact" : 2.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 0.5j, "muFfact" : 0.5j}],coeffs[{"muRfact" : 2.j, "muFfact" : 1.j}], coeffs[{"muRfact" : 0.5j, "muFfact" : 1.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 0.5j}]]])
@@ -153,7 +156,7 @@ for dataset in args.datasets:
         
         uncHists.append([coeffs_lhe[{'muRfact':1.j,'muFfact':1.j}],*[coeffs_lhe[{"muRfact" : 2.j, "muFfact" : 2.j}],coeffs_lhe[{"muRfact" : 0.5j, "muFfact" : 0.5j}],coeffs_lhe[{"muRfact" : 2.j, "muFfact" : 1.j}], coeffs_lhe[{"muRfact" : 0.5j, "muFfact" : 1.j}],coeffs_lhe[{"muRfact" : 1.j, "muFfact" : 2.j}],coeffs_lhe[{"muRfact" : 1.j, "muFfact" : 0.5j}]]])
         names.append(["QCDscalelhe_central","","","","","",""])
-        colors.extend([[cmap(i)]*7 for i in range(len(args.pdfs)+1,len(args.pdfs)+2)])
+        colors.extend([[cmap(i)]*7 for i in range(len(args.pdfs)+2,len(args.pdfs)+3)])
 
     outdir = output_tools.make_plot_dir(args.outpath, args.outfolder)
     plot_names = copy.copy(args.pdfs)
@@ -203,8 +206,9 @@ for dataset in args.datasets:
             
             fig = plot_tools.makePlotWithRatioToRef(all_hists, colors=all_colors, labels=all_names, alpha=0.4,
                 rrange=args.rrange, ylabel="$\sigma$/bin", xlabel=xlabels[obs], rlabel=f"x/{args.pdfs[0].upper()}", binwnorm=None, nlegcols=1, only_ratio=False,width_scale=2)
-            outfile = f"{name}Hist_{obs}_{dataset}_sigma{ihel}"
+            outfile = f"{name}Hist_{obs}_{dataset}_sigma{round(ihel)}"
             ax1,ax2 = fig.axes
+
             for igroup, hgroup in enumerate(all_hists_list):
                 hvalues = [h.values() for h in hgroup]
                 max_envelope = np.max(np.array(hvalues), axis=0)
