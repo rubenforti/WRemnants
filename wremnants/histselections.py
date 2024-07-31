@@ -463,11 +463,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # histogram with nonclosure corrections
         self.hCorr = None
 
-        # swap regions from application region with fakerate region to improve statistical behaviour
-        self.swap_regions=True
-        if self.swap_regions and type(self) != FakeSelector1DExtendedABCD:
-            raise NotImplementedError("Swapping regions is only implemented for FakeSelector1DExtendedABCD")
-
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
         # axes_names: the axes names to bin the correction in. If empty make an inclusive correction (i.e. a single number)
@@ -574,11 +569,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         return hSignal            
 
     def get_yields_applicationregion(self, h, flow=True):
-        if self.swap_regions:
-            hC = h[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}] # this is the ax region, swap with c to improve stat.
-        else:
-            hC = self.get_hist_passX_failY(h)
-
+        hC = self.get_hist_passX_failY(h)
         c = hC.values(flow=flow)
         if h.storage_type == hist.storage.Weight:
             cvar = hC.variances(flow=flow)
@@ -620,7 +611,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y, y_var
 
-    def smoothen(self, h, x, y, y_var, edges=None, syst_variations=False, auxiliary_info=False, bin_center_correction=False, flow=True):
+    def smoothen(self, h, x, y, y_var, edges=None, syst_variations=False, auxiliary_info=False, flow=True):
         if h.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1/np.sqrt(y_var)
@@ -637,37 +628,30 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # smooth frf (e.g. in pT)
         X, XTY = get_parameter_matrices(x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
-
-        def get_bin_center_corrected(e, se, ps):
-            y_edges_flat = self.f_smoothing(e, ps)
-            y_edges = y_edges_flat.reshape((*y_edges_flat.shape[:-1], *se.shape))
-            y_weight = (y_edges*se).sum(axis=-1)
-            y_norm = y_edges.sum(axis=-1)
-            return y_weight/y_norm
-
         params, cov = self.solve(X, XTY)
 
-        if bin_center_correction:
-            #FIXME: bin_center_correction dosn't work with syst_variations because of broadcasting of x
-            # second iteration with bin center corrections
-            # get bin center corrections by taking n support points
-            n=10
-            sedges = np.linspace(edges[:-1],edges[1:],n,axis=-1)
-            sedges_flat = sedges.reshape(np.product(sedges.shape))
-            for i in range(20):
-                new_x = get_bin_center_corrected(sedges_flat, sedges, params)
-                X, XTY = get_parameter_matrices(new_x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
-                params, cov = self.solve(X, XTY)
+        if self.smoothing_mode == "full":
+            # add up parameters from smoothing of individual regions
+            if type(self) == FakeSelectorSimpleABCD:
+                # exp(-a + b + c)
+                # ['a', 'b', 'c']
+                w_region = np.array([-1, 1, 1], dtype=int)
+            elif type(self) == FakeSelector1DExtendedABCD:
+                # exp(ax + 2*b - bx -2*a + c)
+                # ['ax', 'a', 'bx', 'b', 'c']
+                w_region = np.array([1, -1, -2, 2, 1], dtype=int)
+            elif type(self) == FakeSelector2DExtendedABCD:
+                # exp(2*c + 2*ax + 2*ay + 2*b - cy - axy - bx - 4*a)
+                # ['axy', 'ax', 'bx', 'ay', 'a', 'b', 'cy', 'c']
+                w_region = np.array([-1, 2, -1, 2, -4, 2, -1, 2], dtype=int)
 
-            # bin center corrections for evaluation
-            edges_orig = self.get_bin_edges_smoothing(h, flow=True)
-            sedges_orig = np.linspace(edges_orig[:-1],edges_orig[1:],n,axis=-1)
-            sedges_orig_flat = sedges_orig.reshape(np.product(sedges_orig.shape))
-            x_smooth_orig = get_bin_center_corrected(sedges_orig_flat, sedges_orig, params)
-        else:
-            x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
+            params = np.sum(params*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis], axis=-2)
+            
+            if syst_variations:
+                cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
 
         # evaluate in range of original histogram
+        x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
         y_smooth_orig = self.f_smoothing(x_smooth_orig, params)
 
         if syst_variations:
@@ -682,9 +666,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # check for negative rates
         if np.sum(y_smooth_orig<0) > 0:
-            logger.warning(f"Found {np.sum(y_smooth_orig<0)} bins with negative fake rate factors")
+            logger.warning(f"Found {np.sum(y_smooth_orig<0)} bins with negative values from smoothing")
         if y_smooth_var_orig is not None and np.sum(y_smooth_var_orig<0) > 0:
-            logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative fake rate factor variations")
+            logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative values from smoothing variations")
 
         if auxiliary_info:
             y_pred = self.f_smoothing(x, params)
@@ -767,16 +751,37 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         return d, dvar
 
     def calculate_fullABCD_smoothed(self, h, syst_variations=False, use_spline=False, flow=True):
-        hNew = hh.rebinHist(h, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
 
-        dsel, dvarsel = self.calculate_fullABCD(hNew, flow=flow)
+        if type(self) in [FakeSelectorSimpleABCD, FakeSelector1DExtendedABCD]:
+            # sum up high abcd-y axis bins
+            h = hh.rebinHist(h, self.name_y, h.axes[self.name_y].edges[:2])
+        if type(self) == FakeSelectorSimpleABCD:
+            h = hh.rebinHist(h, self.name_x, [0, h.axes[self.name_x].edges[2]])
+        else:
+            # sum high mT bins
+            h = hh.rebinHist(h, self.name_x, h.axes[self.name_x].edges[:3])
 
-        if self.hCorr:
-            dsel, dvarsel = self.apply_correction(dsel, dvarsel)
+        # get values and variances of all sideband regions (this assumes signal region is at high abcd-x and low abcd-y axis bins)
+        sval = h.values(flow=flow)
+        svar = h.variances(flow=flow)
+        # move abcd axes last
+        idx_x = h.axes.name.index(self.name_x)
+        idx_y = h.axes.name.index(self.name_y)
 
-        smoothidx = hNew.axes.name.index(self.smoothing_axis_name)
-        smoothing_axis = hNew.axes[self.smoothing_axis_name]
-        nax = dsel.ndim
+        sval = np.moveaxis(sval, [idx_x, idx_y], [-2, -1])
+        svar = np.moveaxis(svar, [idx_x, idx_y], [-2, -1])
+
+        # invert y-axis to get signal region last
+        sval = np.flip(sval, axis=-1)
+        svar = np.flip(svar, axis=-1)
+
+        # make abcd axes flat, take all but last bin (i.e. signal region D)
+        sval = sval.reshape((*sval.shape[:-2], sval.shape[-2]*sval.shape[-1]))[...,:-1]
+        svar = svar.reshape((*svar.shape[:-2], svar.shape[-2]*svar.shape[-1]))[...,:-1]
+
+        smoothidx = [n for n in h.axes.name if n not in [self.name_x, self.name_y]].index(self.smoothing_axis_name)
+        smoothing_axis = h.axes[self.smoothing_axis_name]
+        nax = sval.ndim
 
         # underflow and overflow are left unchanged along the smoothing axis
         # so we need to exclude them if they have been otherwise included
@@ -790,49 +795,46 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         sel = nax*[slice(None)]
         sel[smoothidx] = smoothslice
 
-        dsel =  dsel[*sel]
-        dvarsel = dvarsel[*sel]       
+        sval = sval[*sel]
+        svar = svar[*sel]       
 
         if use_spline:
-            dsel, dvarsel = spline_smooth(dsel, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=dvarsel, syst_variations=syst_variations)
+            sval, svar = spline_smooth(sval, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=svar, syst_variations=syst_variations)
         else:
-            xwidth = hNew.axes[self.smoothing_axis_name].widths
-            xwidthtgt = h.axes[self.smoothing_axis_name].widths
+            xwidth = h.axes[self.smoothing_axis_name].widths
 
+            xwidthtgt = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 2)*[None]]
             xwidth = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]
-            xwidthtgt = xwidthtgt[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]#
 
-            dsel *= 1./xwidth
-            dvarsel *= 1./xwidth**2
+            sval *= 1./xwidth
+            svar *= 1./xwidth**2
 
-            goodbin = (dsel > 0.) & (dvarsel > 0.)
+            goodbin = (sval > 0.) & (svar > 0.)
             if np.sum(goodbin)-goodbin.size > 0:
                 logger.warning(f"Found {np.sum(goodbin)-goodbin.size} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
 
-            logd = np.where(goodbin, np.log(dsel), 0.)
-            logdvar = np.where(goodbin, dvarsel/dsel**2, 1.)
-            x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
-            edges = self.get_bin_edges_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
+            logd = np.where(goodbin, np.log(sval), 0.)
+            logdvar = np.where(goodbin, svar/sval**2, 1.)
+            x = self.get_bin_centers_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
+            edges = self.get_bin_edges_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
 
-            logd, logdvar = self.smoothen(
-                h, x, logd, logdvar, edges=edges, syst_variations=syst_variations, bin_center_correction=False
-                )
+            logd, logdvar = self.smoothen(h, x, logd, logdvar, edges=edges, syst_variations=syst_variations)
 
-            dsel = np.exp(logd)*xwidthtgt
-            dsel = np.where(np.isfinite(dsel), dsel, 0.)
+            sval = np.exp(logd)*xwidthtgt
+            sval = np.where(np.isfinite(sval), sval, 0.)
             if syst_variations:
-                dvarsel = np.exp(logdvar)*xwidthtgt[..., None, None]**2
-                dvarsel = np.where((dsel[..., None, None] > 0.) & np.isfinite(dvarsel), dvarsel,  dsel[..., None, None])
+                svar = np.exp(logdvar)*xwidthtgt[..., None, None]**2
+                svar = np.where((sval[..., None, None] > 0.) & np.isfinite(svar), svar,  sval[..., None, None])
 
         # get output shape from original hist axes, but as for result histogram
-        d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y], dtype=dsel.dtype)
+        d = np.zeros([a.extent if flow else a.shape for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y], dtype=sval.dtype)
         # leave the underflow and overflow unchanged if present
-        d[*sel] = dsel
+        d[*sel[:-1]] = sval
         if syst_variations:
             dvar = np.zeros_like(d)
-            dvar = dvar[..., None, None]*np.ones((*dvar.shape, *dvarsel.shape[-2:]), dtype=dvar.dtype)
+            dvar = dvar[..., None, None]*np.ones((*dvar.shape, *svar.shape[-2:]), dtype=dvar.dtype)
             # leave the underflow and overflow unchanged if present
-            dvar[*sel, :, :] = dvarsel
+            dvar[*sel[:-1], :, :] = svar
         else:
             # with full smoothing all of the statistical uncertainty is included in the
             # explicit variations, so the remaining binned uncertainty is zero
@@ -1104,12 +1106,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
 
         # select sideband regions
         ha = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_dy}]
-        
-        if self.swap_regions:
-            hax = hNew[{self.name_x: self.sel_x, self.name_y: self.sel_dy}] # this is c region, switch with ax to improve stat
-        else:
-            hax = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}]
-
+        hax = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_dy}]
         hb = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
         hbx = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}]
 
