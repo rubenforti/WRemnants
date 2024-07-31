@@ -200,7 +200,7 @@ using helicity_helicity_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N
     return original_weight * scale_tensor.reshape(reshapescale).broadcast(broadcasthelicities) * moments.broadcast(broadcastscales);
   }
 
-  helicity_helicity_tensor_t makeHelicityMomentHelicityTensor(const CSVars &csvars, const helicity_tensor_t &hel_tensor, double original_weight = 1.0)
+  helicity_helicity_tensor_t makeHelicityMomentHelicityTensor(const CSVars &csvars, double original_weight = 1.0)
   {
 
     constexpr Eigen::Index nhelicity = NHELICITY;
@@ -210,7 +210,7 @@ using helicity_helicity_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N
     constexpr std::array<Eigen::Index, 2> reshapehelicities = {1, nhelicity};
 
     Eigen::TensorFixedSize<double, Eigen::Sizes<nhelicity, 1>> moments = csAngularMoments(csvars).reshape(broadcasthels);
-    helicity_helicity_tensor_t hel_hel_tensor = original_weight * hel_tensor.reshape(reshapehelicities).broadcast(broadcasthels) * moments.broadcast(broadcasthelicities);
+    helicity_helicity_tensor_t hel_hel_tensor = original_weight * moments.reshape(reshapehelicities).broadcast(broadcasthels) * moments.broadcast(broadcasthelicities);
 
     // Set all off-diagonal elements to 0
     for (int i = 0; i < NHELICITY; ++i) {
@@ -221,7 +221,6 @@ using helicity_helicity_tensor_t = Eigen::TensorFixedSize<double, Eigen::Sizes<N
             else hel_hel_tensor(i, i) = original_weight*moments(i);
         }
     }
-    // std::cout<< hel_hel_tensor << std::endl;
     return hel_hel_tensor;
   }
 

@@ -127,7 +127,6 @@ class HDF5Writer(object):
     def get_flat_values(self, h, chanInfo, axes, return_variances=True, flow=False):
         # check if variances are available
         if return_variances and (h.storage_type != hist.storage.Weight):
-            # raise RuntimeError(f"Sumw2 not filled for {h} but needed for binByBin uncertainties")
             logger.warning(f"Sumw2 not filled for {h} but needed for binByBin uncertainties, variances are set to 0")
 
         if chanInfo.simultaneousABCD and set(chanInfo.getFakerateAxes()) != set(chanInfo.fit_axes[:len(chanInfo.getFakerateAxes())]):
@@ -400,7 +399,6 @@ class HDF5Writer(object):
 
                     hvar = dg.groups[proc].hists["syst"]
                     hnom = dg.groups[proc].hists[chanInfo.nominalName]
-                    
                     var_map = chanInfo.systHists(hvar, systKey, hnom)
 
                     var_names = [x[:-2] if "Up" in x[-2:] else (x[:-4] if "Down" in x[-4:] else x) 
