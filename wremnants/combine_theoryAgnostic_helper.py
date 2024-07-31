@@ -94,22 +94,11 @@ class TheoryAgnosticHelper(object):
             nom_hist = h[sum2nom]
 
             values = scale_hist.values()
-            # if not rebin_axes==[]:
-            #     values[:-1,:-1,0] = np.zeros_like(values[:-1,:-1,0]) # leave 1+cos^2theta term fixed to 1.
             #rescale if necessary
             for helicity in helicities:
                 values[:-1,:-1,helicity+1] = values[:-1,:-1,helicity+1]*scale #don't rescale OOA
             scale_hist.values()[...] = values
 
-            # if not rebin_axes==[]: #this is a correlated variation
-            #     # scale_hist[{'helicitySig': -1.j}] = 0 * scale_hist[{'helicitySig': -1.j}].values()  # sigmaUL doesn't get this variation
-            #     scale_hist[{'ptVgenSig': hist.overflow}] = np.zeros_like(scale_hist[{'ptVgenSig': hist.overflow}].values())  # set OOA variations to 0
-            #     scale_hist[{'absYVgenSig': hist.overflow}] = np.zeros_like(scale_hist[{'absYVgenSig': hist.overflow}].values())  # set OOA variations to 0
-            #     pass
-            if rebin_axes==[] and sum_axes==[]:
-                scale_hist[{'ptVgenSig': hist.overflow}] = 0.5*np.ones_like(scale_hist[{'ptVgenSig': hist.overflow}].values())  # set OOA variations to 0
-                scale_hist[{'absYVgenSig': hist.overflow}] = 0.5*np.ones_like(scale_hist[{'absYVgenSig': hist.overflow}].values())  # set OOA variations to 0
-            
             scaled_hist = hh.multiplyHists(h, scale_hist, flow=True)
             scaled_hist=scaled_hist[{ax: hist.tag.Slicer()[::hist.sum] for ax in sum_axes}]
             
@@ -153,8 +142,7 @@ class TheoryAgnosticHelper(object):
         )
         
         # open file with theory bands
-        # with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations.hdf5", "r") as ff:
-        with h5py.File("theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5", "r") as ff:
+        with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5", "r") as ff:
             scale_hists = narf.ioutils.pickle_load_h5py(ff["theorybands"])
 
         # First do in acceptance bins, then OOA later (for OOA we need to group bins into macro regions)
@@ -258,6 +246,25 @@ class TheoryAgnosticHelper(object):
                                 # splitGroup={f"{nuisanceBaseName}{sign}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
                                 preOpMap=
                                         self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["ptVgenSig"]),
+                                    ),
+            self.card_tool.addSystematic("yieldsTheoryAgnostic",
+                                rename=f"{nuisanceBaseName}CorrYQ",
+                                **common_noi_args,
+                                mirror=True,
+                                symmetrize = None,
+                                systAxes=self.poi_axes,
+                                processes=["signal_samples"],
+                                baseName=f"{nuisanceBaseName}CorrYQ_",
+                                noConstraint=True if self.args.priorNormXsec < 0 else False,
+                                scale=1,
+                                formatWithValue=[None,None,"low"],
+                                #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
+                                labelsByAxis=["PtV", "YVBin", "Helicity"],
+                                systAxesFlow=[], # only bins in acceptance in this call
+                                skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
+                                # splitGroup={f"{nuisanceBaseName}{sign}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
+                                preOpMap=
+                                        self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["absYVgenSig"]),
                                     ),
 
 

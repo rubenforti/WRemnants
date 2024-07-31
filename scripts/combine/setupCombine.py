@@ -1202,7 +1202,7 @@ if __name__ == "__main__":
 
     if isTheoryAgnostic:
         if len(args.genAxes) == 0:
-            args.genAxes = ["ptVgenSig-absYVgenSig-helicitySig"]
+            args.genAxes =  ["ptVgenSig", "absYVgenSig", "helicitySig"]
             logger.warning(f"Automatically setting '--genAxes {' '.join(args.genAxes)}' for theory agnostic analysis")
             if args.poiAsNoi:
                 logger.warning("This is only needed to properly get the systematic axes")

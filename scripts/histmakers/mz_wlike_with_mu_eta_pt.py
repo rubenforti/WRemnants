@@ -48,9 +48,6 @@ if isTheoryAgnostic:
     if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
         raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
-isUnfolding = args.analysisMode == "unfolding"
-isPoiAsNoi = isUnfolding and args.poiAsNoi
-
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 if args.validateVetoSF:
