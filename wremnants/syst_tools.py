@@ -986,48 +986,6 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         add_theory_corr_hists(results, df, axes, cols, 
             corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, **info)
 
-    if "gen" in base_name:
-
-        #helicity moments x theory agnostic
-        nominal_cols = ["ptVgen","absYVgen", "chargeVgen"]
-
-        theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike="Z" in dataset_name)
-        axis_ptV_thag = theoryAgnostic_axes[0]
-        axis_yV_thag = theoryAgnostic_axes[1]
-
-        axis_absYVgen = hist.axis.Variable(
-        axis_yV_thag.edges, #same axis as theory agnostic norms
-        name = "absYVgen", underflow=False, overflow=False
-        )
-
-        axis_ptVgen = hist.axis.Variable(
-        axis_ptV_thag.edges, #same axis as theory agnostic norms, 
-        #common.ptV_binning,
-        name = "ptVgen", underflow=False, overflow=False
-        )
-        
-        axis_chargeWgen = hist.axis.Regular(
-        2, -2, 2, name="chargeVgen", underflow=False, overflow=False
-        )
-        nominal_axes = [axis_ptVgen,axis_absYVgen,axis_chargeWgen]
-
-        df = df.Define("helicity_moments_tensor", "wrem::csAngularMoments(csSineCosThetaPhigen, nominal_weight)")
-        helicity_moments_scale = df.HistoBoost("nominal_gen_helicity", nominal_axes, [*nominal_cols, "helicity_moments_tensor"], tensor_axes = [axis_helicity], storage=hist.storage.Weight())
-        results.append(helicity_moments_scale)
-        
-        df = df.Define("helicity_moments_tensor_uncorr", "wrem::csAngularMoments(csSineCosThetaPhigen, nominal_weight_uncorr)")
-        helicity_moments_scale_uncorr = df.HistoBoost("nominal_gen_helicity_uncorr", nominal_axes, [*nominal_cols, "helicity_moments_tensor_uncorr"], tensor_axes = [axis_helicity], storage=hist.storage.Weight())
-        results.append(helicity_moments_scale_uncorr)
-
-        axis_helicity_multidim = hist.axis.Integer(-1, 8, name="helicitySig", overflow=False, underflow=False)
-        df = theoryAgnostic_tools.define_helicity_weights(df)
-
-        df = df.Define("helicity_moments_helicity_tensor", "wrem::makeHelicityMomentHelicityTensor(csSineCosThetaPhigen, helWeight_tensor, nominal_weight)")
-
-        gen_theoryAgnostic = df.HistoBoost("nominal_gen_helicity_yieldsTheoryAgnostic", [*nominal_axes, axis_ptV_thag, axis_yV_thag], [*nominal_cols,"ptVgen","absYVgen", "helicity_moments_helicity_tensor"], tensor_axes = [axis_helicity, axis_helicity_multidim],storage=hist.storage.Double())
-    
-        results.append(gen_theoryAgnostic)
-
     if for_wmass or isZ:
         logger.debug(f"Make QCD scale histograms for {dataset_name}")
         # there is no W backgrounds for the Wlike, make QCD scale histograms only for Z
@@ -1047,7 +1005,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
     return df
 
 
-def add_helicity_hists(results, df, axes, cols, base_name="nominal_gen", storage=hist.storage.Double()):
+def add_helicity_hists(results, df, dataset_name, axes, cols, base_name="nominal_gen", storage=hist.storage.Double()):
     df = df.Define("helicity_xsecs_scale_tensor", "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhigen, scaleWeights_tensor, nominal_weight)")
     helicity_xsecs_scale = df.HistoBoost(
         f"{base_name}_helicity_xsecs_scale",
@@ -1100,4 +1058,25 @@ def add_helicity_hists(results, df, axes, cols, base_name="nominal_gen", storage
         )
         results.append(helicity_xsecs_scale_postBeamRemnants)
 
+        # these are for theory agnostic gen fit
+        
+        #drop mass
+        cols = cols[1:]
+        axes = axes[1:]
+
+        theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike="Z" in dataset_name)
+        axis_ptV_thag = theoryAgnostic_axes[0]
+        axis_yV_thag = theoryAgnostic_axes[1]
+
+        df = df.Define("helicity_moments_tensor", "wrem::csAngularMoments(csSineCosThetaPhigen, nominal_weight)")
+        gen_nom = df.HistoBoost("nominal_gen_helicity", axes, [*cols, "helicity_moments_tensor"], tensor_axes = [axis_helicity], storage=hist.storage.Weight())
+        results.append(gen_nom)
+
+        df = df.Define("helicity_moments_helicity_tensor", "wrem::makeHelicityMomentHelicityTensor(csSineCosThetaPhigen, nominal_weight)")
+
+        gen_theoryAgnostic = df.HistoBoost("nominal_gen_helicity_yieldsTheoryAgnostic", [*axes, axis_ptV_thag, axis_yV_thag], [*cols,"ptVgen","absYVgen", "helicity_moments_helicity_tensor"], tensor_axes = [axis_helicity, helicity_utils.axis_helicity_multidim],storage=hist.storage.Double())
+
+        results.append(gen_theoryAgnostic)
+
+    
     return df

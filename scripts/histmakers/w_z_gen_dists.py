@@ -298,7 +298,7 @@ def build_graph(df, dataset):
         qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
 
         df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen",propagateToHelicity= args.propagatePDFstoHelicity)
-        df = syst_tools.add_helicity_hists(results, df, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
+        df = syst_tools.add_helicity_hists(results, df, dataset.name, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
     
     nominal_cols = [col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen"]
     nominal_axes = [axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen]

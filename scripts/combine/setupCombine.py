@@ -234,8 +234,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar])
 
     if isPoiAsNoi:
-        if not args.doStatOnly:
-            constrainMass = False if isTheoryAgnostic else True
+        constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if args.genAxes is None else args.genAxes
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
         datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
@@ -243,8 +242,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         # FIXME: temporary customization of signal and out-of-acceptance process names for theory agnostic with POI as NOI
         # There might be a better way to do it more homogeneously with the rest.
         if isTheoryAgnostic:
-            if not args.doStatOnly:
-                constrainMass = False
+            constrainMass = False
             hasSeparateOutOfAcceptanceSignal = False
             for g in datagroups.groups.keys():
                 logger.debug(f"{g}: {[m.name for m in datagroups.groups[g].members]}")
