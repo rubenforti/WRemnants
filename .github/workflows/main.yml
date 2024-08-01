@@ -28,7 +28,7 @@ env:
   OUTFILE_LOWPU_EE: "mz_lowPU_ee.hdf5"
   OUTFILE_LOWPU_MUMU: "mz_lowPU_mumu.hdf5"
   DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
-  DATAPATH_LOWPU: "/scratch/shared/NanoAOD/LowPU/"
+  DATAPATH_LOWPU: "root://eoscms.cern.ch//store/cmst3/group/wmass/LowPU/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -281,27 +281,27 @@ jobs:
       - name: lowpu w mu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName
 
       - name: lowpu w mu plot ptW
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+          --forceGlobalScaleFakes 1.0 --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: lowpu w mu plot lepton pt
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --baseName lep_pt_eta_phi --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          --forceGlobalScaleFakes 1.0 --baseName lep_pt_eta_phi --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot lepton
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          --forceGlobalScaleFakes 1.0 --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot mt
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          --forceGlobalScaleFakes 1.0 --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot response matrix
         run: >-  
@@ -311,27 +311,27 @@ jobs:
       - name: lowpu w e analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor e --analysisMode unfolding
+          --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --flavor e --analysisMode unfolding
 
       - name: lowpu w e plot ptW
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+          --forceGlobalScaleFakes 1.16 --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: lowpu w e plot lepton pt
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --baseName lep_pt_eta_phi --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          --forceGlobalScaleFakes 1.16 --baseName lep_pt_eta_phi --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot lepton
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          --forceGlobalScaleFakes 1.16 --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot mt
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
-          --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          --forceGlobalScaleFakes 1.16 --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot response matrix
         run: >- 
@@ -384,7 +384,7 @@ jobs:
       - name: lowpu z mumu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName
 
       - name: lowpu z mumu plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p mumu $HIST_FILE_MUMU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -398,7 +398,7 @@ jobs:
       - name: lowpu z ee analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --flavor ee
 
       - name: lowpu z ee plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p ee $HIST_FILE_EE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
