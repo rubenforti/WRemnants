@@ -27,6 +27,7 @@ parser.add_argument("--validateVetoSF", action="store_true", help="Add histogram
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
 parser.add_argument("--fillHistNonTrig", action="store_true", help="Fill histograms with non triggering muon (for tests)")
+parser.add_argument("--flipEventNumberSplitting", action="store_true", help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
@@ -186,7 +187,7 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
 
-    df = df.Define("isEvenEvent", "event % 2 == 0")
+    df = df.Define("isEvenEvent", f"event % 2 {'!=' if args.flipEventNumberSplitting else '=='} 0")
 
     weightsum = df.SumAndCount("weight")
 
