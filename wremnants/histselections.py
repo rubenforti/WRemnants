@@ -83,8 +83,8 @@ def poly(pol, order, order2=None):
         elif pol=="monotonic":
             # integral of bernstein (see https://en.wikipedia.org/wiki/Bernstein_polynomial#Properties)
             # for n>o return one additional parameter for the constant term from the integration
-            return lambda x, n, p=1, o=order: p*x**0 if n>o else -1*p * 1/(o+1) * np.array(
-                    [comb(o+1, k) * x**k * (1 - x)**(o+1 - k) for k in range(n+1, o+2)]
+            return lambda x, n, p=1, o=order: p*x**0 if n==0 else -1*p * 1/o * np.array(
+                    [comb(o, k) * x**k * (1 - x)**(o - k) for k in range(n, o+1)]
                 ).sum(axis=0)
     else:
         return lambda x, x2, n, m, p=1, o1=order, o2=order2: p * poly(pol, o1)(x, n) * poly(pol, o2)(x2, m)
@@ -95,7 +95,7 @@ def get_parameter_matrices(x, y, w, order, pol="power"):
     stackX=[] # parameter matrix X 
     stackXTY=[] # and X.T @ Y
     f = poly(pol, order)
-    for n in range(order+1+(pol=="monotonic")):
+    for n in range(order+1):
         p = f(x, n)
         stackX.append( w * p )
         stackXTY.append((w**2 * p * y).sum(axis=(-1)))
@@ -118,7 +118,7 @@ def get_parameter_matrices_from2D(x, x2, y, w, order, order2=None, pol="power", 
         raise RuntimeError(f"Input 'order2' requires type 'None', 'int' or 'list'")
     stackX=[]   # parameter matrix X 
     stackXTY=[] # and X.T @ Y
-    for n in range(order+1+(pol=="monotonic")):
+    for n in range(order+1):
         f = poly(pol, order, order2[n])
         for m in range(order2[n]+1):
             p = f(x, x2, n, m)
@@ -139,9 +139,9 @@ def get_regression_function(order1, order2=None, pol="power"):
         def fsum(x, ps, o=order1):
             f = poly(pol, o)
             if hasattr(ps, "ndim") and ps.ndim > 1:
-                return sum([f(x, n, ps[...,n,np.newaxis]) for n in range(o+1+(pol=="monotonic"))])
+                return sum([f(x, n, ps[...,n,np.newaxis]) for n in range(o+1)])
             else:
-                return sum([f(x, n, ps[n]) for n in range(o+1+(pol=="monotonic"))])
+                return sum([f(x, n, ps[n]) for n in range(o+1)])
     else:
         def fsum(x1, x2, ps, o1=order1, o2=order2):
             idx=0
@@ -150,13 +150,13 @@ def get_regression_function(order1, order2=None, pol="power"):
             if hasattr(ps, "ndim") and ps.ndim > 1:
                 x1 = np.broadcast_to(x1, [*ps.shape[:-1], *x1.shape])
                 x2 = np.broadcast_to(x2, [*ps.shape[:-1], *x2.shape]) 
-                for n in range(o1+1+(pol=="monotonic")):
+                for n in range(o1+1):
                     f = poly(pol, o1, o2[n])
                     for m in range(o2[n]+1):
                         psum += f(x1, x2, n, m, ps[...,idx,np.newaxis,np.newaxis])
                         idx += 1
             else:
-                for n in range(o1+1+(pol=="monotonic")):
+                for n in range(o1+1):
                     f = poly(pol, o1, o2[n])
                     for m in range(o2[n]+1):
                         psum += f(x1, x2, n, m, ps[idx])
@@ -611,7 +611,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y, y_var
 
-    def smoothen(self, h, x, y, y_var, edges=None, syst_variations=False, auxiliary_info=False, flow=True):
+    def smoothen(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, flow=True):
         if h.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1/np.sqrt(y_var)
@@ -816,9 +816,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             logd = np.where(goodbin, np.log(sval), 0.)
             logdvar = np.where(goodbin, svar/sval**2, 1.)
             x = self.get_bin_centers_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
-            edges = self.get_bin_edges_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
 
-            logd, logdvar = self.smoothen(h, x, logd, logdvar, edges=edges, syst_variations=syst_variations)
+            logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
 
             sval = np.exp(logd)*xwidthtgt
             sval = np.where(np.isfinite(sval), sval, 0.)
@@ -983,9 +982,6 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         #     y = slope[...,np.newaxis] * x_extrapolation + offset[...,np.newaxis]
         
         y, y_var = self.extrapolate_fakerate(h[{**sel, self.name_x: self.sel_x}], x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
-
-        # TODO: smoothing
-        # if self.smooth_fakerate:
 
         # broadcast abcd-x axis and application axes
         slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y and (not self.integrate_x or n != self.name_x)]
