@@ -235,7 +235,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     if isPoiAsNoi:
         constrainMass = False if isTheoryAgnostic else True
-        poi_axes = datagroups.gen_axes_names if args.genAxes is None else args.genAxes
+        poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
         datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
 
@@ -706,7 +706,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if xnorm:
             theorySystSamples = ["signal_samples"]
 
-        theory_helper.add_all_theory_unc(theorySystSamples, label, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
+        theory_helper.add_all_theory_unc(theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal)
 
     if xnorm or genfit:
         return cardTool

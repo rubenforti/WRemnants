@@ -31,6 +31,7 @@ class TheoryHelper(object):
         self.minnlo_unc = 'byHelicityPt'
         self.skipFromSignal = False
         self.args = args
+        self.label = label
 
     def sample_label(self, sample_group):
         if sample_group not in self.card_tool.procGroups:
@@ -66,9 +67,8 @@ class TheoryHelper(object):
         self.samples = []
         self.skipFromSignal = False
 
-    def add_all_theory_unc(self, samples, label, skipFromSignal=False):
+    def add_all_theory_unc(self, samples, skipFromSignal=False):
         self.samples = samples
-        self.label = label
         self.skipFromSignal = skipFromSignal
         self.add_nonpert_unc(model=self.np_model)
         self.add_resum_unc(scale=self.tnp_scale)

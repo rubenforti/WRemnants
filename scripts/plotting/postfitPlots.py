@@ -196,8 +196,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    # hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-    #     label=args.cmsDecor, data=data)
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
+        label=args.cmsDecor, data=data)
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=20*args.scaleleg*scale)
