@@ -6,7 +6,7 @@ import hist as bh
 import narf
 import math
 
-def stacked_plot_ratio(groups, hName, procs, outDir, suffix="", xMin=0, xMax=100, yMin=0, yMax=-1.75, xLabel="xLabel", yLabel="Events", logX=False, logY=False, rebin=1, legPos=[], yRatio=1.15, blind=False, dataNormProc="", labels=[], charge=None, extraRatios=[]):
+def stacked_plot_ratio(groups, hName, procs, outDir, suffix="", xMin=0, xMax=100, yMin=0, yMax=-1.75, xLabel="xLabel", yLabel="Events", logX=False, logY=False, rebin=1, legPos=[], yRatio=1.15, blind=False, dataNormProc="", labels=[], charge=None, extraRatios=[], fakes_scalefactor=1.0):
 
     functions.prepareDir(outDir, remove=False)
 
@@ -27,7 +27,7 @@ def stacked_plot_ratio(groups, hName, procs, outDir, suffix="", xMin=0, xMax=100
     bkg_hists = {}
     normMC = 0
     for i,proc in enumerate(procs[1:]):
-        hist = functions.readBoostHist(groups, hName, [proc], charge=charge)
+        hist = functions.readBoostHist(groups, hName, [proc], charge=charge, fakes_scalefactor=fakes_scalefactor)
         hist = functions.rebin(hist, rebin)
         hist.SetFillColor(ROOT.TColor.GetColor(groups.groups[proc].color))
         hist.SetLineColor(ROOT.kBlack)
@@ -239,7 +239,7 @@ def plot_ratio(groups, histNames, procs, labels, fOut, outDir, suffix="", xMin=0
         'xmin'              : xMin,
         'xmax'              : xMax,
         'ymin'              : yMin,
-        'ymax'              : yMax if yMax != -1 else 1.2*yMaxHists,
+        'ymax'              : yMax if yMax > 0 else -1.*yMax*yMaxHists,
 
         'xtitle'            : xLabel,
         'ytitle'            : yLabel,
@@ -358,12 +358,13 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
     hist_nom = functions.readBoostHist(groups, histName, [proc], boost=False)
     hist_nom = functions.rebin(hist_nom, rebin)
 
-    hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True)
+    #hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True, applySelection=True)
     try:
     #    #hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True, abcd=False, applySelection=False)
-        hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True)
+        hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True, applySelection=True)
     except:
         return
+
     ax_entries = list(hist_unc.axes[1])
     s = bh.tag.Slicer()
 
@@ -371,6 +372,7 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
     hist_systs = []
     doubleSide = False
 
+    print(hist_unc)
     def addUnc(hTarget, hNom, hUp, hDw=None):
         for k in range(1, hTarget.GetNbinsX()+1):
             c_orig = hNom.GetBinContent(k)
@@ -379,6 +381,7 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
             else: sigma = abs(hUp.GetBinContent(k)-hNom.GetBinContent(k))
             err_new = math.sqrt(sigma*sigma + err_orig*err_orig)
             hTarget.SetBinContent(k, c_orig + err_new)
+
 
     if doubleSide:
         for i in range(int(len(ax_entries)/2)):
@@ -402,7 +405,6 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
     #hist_systs.append(hist_syst_tot)
 
 
-
     cfg = {
 
         'logy'              : logY,
@@ -411,7 +413,7 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
         'xmin'              : xMin,
         'xmax'              : xMax,
         'ymin'              : yMin,
-        'ymax'              : yMax if yMax != -1 else 1.3*hist_nom.GetMaximum(),
+        'ymax'              : yMax if yMax > 0 else -1.*yMax*hist_nom.GetMaximum(),
 
         'xtitle'            : xLabel,
         'ytitle'            : yLabel,
@@ -471,6 +473,7 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
             latex.SetTextSize(0.040)
             latex.SetTextColor(1)
             latex.SetTextFont(42)
+            il = 0
             for il, label in enumerate(extralabels):
                 latex.DrawLatex(0.20, 0.85-il*0.05, label)
             latex.DrawLatex(0.20, 0.85-(il+1)*0.05, f"Total uncertainty" if iSyst == len(hist_systs)-1 else f"Unc idx = {iSyst}")
@@ -559,6 +562,7 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
     latex.SetTextColor(1)
     latex.SetTextFont(42)
 
+    il = 0
     for il, label in enumerate(extralabels):
         latex.DrawLatex(0.20, 0.85-il*0.05, label)
     latex.DrawLatex(0.20, 0.85-(il+1)*0.05, f"Total uncertainty")
@@ -586,4 +590,135 @@ def plot_systs(groups, histName, systName, proc, outDir, suffix="", xMin=0, xMax
 
     canvas.SaveAs(f"{outDir}/{histName}_{systName}_envelope{suffix}.png")
     canvas.SaveAs(f"{outDir}/{histName}_{systName}_envelope{suffix}.pdf")
+    canvas.Close()
+
+
+
+def plot_mass_widh(groups, histName, proc, outDir, var="mass", xMin=0, xMax=100, yMin=0, yMax=100, xLabel="xLabel", yLabel="Events", logX=False, logY=False, rebin=1, yRatio=1.15):
+
+    if proc == "Zmumu":
+        if var == "mass":
+            systName, axName = "massWeightZ", "massShift"
+            systs=["massShiftZ100MeVUp", "massShiftZ100MeVDown"]
+            syst_labels = ["Mass variation #plus 100 MeV", "Mass variation #minus 100 MeV"]
+            nom_label = "Nominal mass (91.1876 GeV)"
+        else:
+            systName, axName = "widthWeightZ", "width"
+            systs=["widthZ2p49333GeV", "widthZ2p4975GeV"] # [2.49333, 2.49493, 2.4929, 2.4952, 2.4975]
+            syst_labels = ["Width variation 2.49333 GeV", "Width variation 2.4975 GeV"]
+            nom_label = "Nominal width (2.4941 GeV)"
+    if proc == "Wmunu":
+        systName = "massWeightZ"
+        systs=["massShiftW100MeVUp", "massShiftW100MeVDown"]
+
+    functions.prepareDir(outDir, remove=False)
+    hist_nom = functions.readBoostHist(groups, histName, [proc], boost=False)
+    hist_nom = functions.rebin(hist_nom, rebin)
+
+    hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True)
+    print(hist_unc)
+    try:
+    #    #hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True, abcd=False, applySelection=False)
+        hist_unc = functions.readBoostHist(groups, f"{histName}_{systName}", [proc], boost=True)
+    except:
+        return
+    ax_entries = list(hist_unc.axes[1])
+    s = bh.tag.Slicer()
+
+    hist_systs_ratio = []
+    colors = [ROOT.kBlue, ROOT.kRed]
+    for i,syst in enumerate(systs):
+        hSyst = narf.hist_to_root(hist_unc[{axName : syst}])
+        hSyst.SetName(f"syst_{i}")
+        hSyst = functions.rebin(hSyst, rebin)
+        hSyst.Divide(hist_nom)
+        hSyst.SetLineColor(colors[i])
+        hSyst.SetLineWidth(2)
+        hSyst.SetLineStyle(1)
+        hist_systs_ratio.append(hSyst)
+
+    cfg = {
+
+        'logy'              : logY,
+        'logx'              : logX,
+
+        'xmin'              : xMin,
+        'xmax'              : xMax,
+        'ymin'              : yMin,
+        'ymax'              : yMax if yMax > 0 else -1.*yMax*hist_nom.GetMaximum(),
+
+        'xtitle'            : xLabel,
+        'ytitle'            : yLabel,
+
+        'topRight'          : functions.getLumiLabel(groups),
+        'topLeft'           : "#bf{CMS} #scale[0.7]{#it{Preliminary}}",
+
+        'ratiofraction'     : 0.3,
+        'ytitleR'           : "Ratio",
+
+        'yminR'             : 1-(yRatio-1),
+        'ymaxR'             : yRatio,
+    }
+
+
+    ## envelope
+    leg = ROOT.TLegend(.30, 0.88-(3)*0.06, .9, .88)
+    leg.SetBorderSize(0)
+    leg.SetFillStyle(0)
+    leg.SetTextSize(0.040)
+    leg.SetMargin(0.2)
+    if not logY:
+        ROOT.TGaxis.SetMaxDigits(3)
+        ROOT.TGaxis.SetExponentOffset(-0.075, 0.01, "y")
+
+    plotter.cfg = cfg
+    canvas, padT, padB = plotter.canvasRatio()
+    dummyT, dummyB, dummyL = plotter.dummyRatio()
+
+    ## top panel
+    canvas.cd()
+    padT.Draw()
+    padT.cd()
+    padT.SetGrid()
+    dummyT.Draw("HIST")
+
+    hist_nom.SetLineColor(ROOT.kBlack)
+    hist_nom.SetLineWidth(2)
+    hist_nom.SetLineStyle(1)
+    hist_nom.Draw("SAME HIST")
+
+    leg.AddEntry(hist_nom, nom_label, "L")
+    for i, h_ratio in enumerate(hist_systs_ratio):
+        leg.AddEntry(h_ratio, syst_labels[i], "L")
+    leg.Draw("SAME")
+
+    latex = ROOT.TLatex()
+    latex.SetNDC()
+    latex.SetTextSize(0.040)
+    latex.SetTextColor(1)
+    latex.SetTextFont(42)
+
+    plotter.auxRatio()
+    ROOT.gPad.SetTickx()
+    ROOT.gPad.SetTicky()
+    ROOT.gPad.RedrawAxis()
+
+
+    ## bottom panel
+    canvas.cd()
+    padB.Draw()
+    padB.SetFillStyle(0)
+    padB.cd()
+    #dummyB.GetYaxis().SetRangeUser(2-ratio_range, ratio_range)
+    dummyB.Draw("HIST")
+    dummyL.Draw("SAME")
+    for h_ratio in hist_systs_ratio:
+        h_ratio.Draw("SAME HIST")
+
+    ROOT.gPad.SetTickx()
+    ROOT.gPad.SetTicky()
+    ROOT.gPad.RedrawAxis()
+
+    canvas.SaveAs(f"{outDir}/{histName}_{var}.png")
+    canvas.SaveAs(f"{outDir}/{histName}_{var}.pdf")
     canvas.Close()
