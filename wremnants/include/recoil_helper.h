@@ -18,9 +18,11 @@ public:
 
     using c_t = std::vector<double>;
 
-    METXYCorrectionHelper(const c_t &coeff_x_, const c_t &coeff_y_) {
+    METXYCorrectionHelper(const c_t &coeff_x_, const c_t &coeff_y_, const int &npv_min_, const int &npv_max_) {
         coeff_x = coeff_x_;
         coeff_y = coeff_y_;
+        npv_min = npv_min_;
+        npv_max = npv_max_;
     }
 
     Vec_d operator() (const double &met_pt, const double &met_phi, const int &npv) {
@@ -32,6 +34,10 @@ public:
         Vec_d res(2, 0);
         res[0] = hypot(pUx, pUy);
         res[1] = atan2(pUy, pUx);
+
+        if(npv >= npv_max or npv <= npv_min) {
+            return res;
+        }
 
         // x
         delta = 0;
@@ -54,6 +60,8 @@ public:
 private:
     c_t coeff_x;
     c_t coeff_y;
+    int npv_min;
+    int npv_max;
     double deltaMax = 10; // protection for high/nonphysical corrections
 };
 
@@ -163,6 +171,9 @@ public:
             (*helper_no_unc_)(inputs, outputs);
             ret.unc_weights.setConstant(1.);
         }
+
+        ret.unc_weights = wrem::clip_tensor(ret.unc_weights, 10.);
+
         for(int k=0; k<N_UNC; k++) {
         //if(ret.unc_weights[k] < 0.99999 or ret.unc_weights[k] > 1.00001)
             if(std::isnan(ret.unc_weights[k]) or std::isinf(ret.unc_weights[k])) {
@@ -200,6 +211,7 @@ public:
         auto const inputs = std::tie(pt_tensor, ut_tensor);
         auto outputs = std::tie(ret);
         (*helper_)(inputs, outputs);
+        ret = wrem::clip_tensor(ret, 10.);
         return ret(0);
     }
 

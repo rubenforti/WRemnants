@@ -376,7 +376,13 @@ TVector2 transverseVectorSum(const Vec_f& pt, const Vec_f& phi) {
     }
     return sum;
 }
-    
+
+Vec_f slice_vec(const Vec_f &vec, int start, int end) {
+  Vec_f res(end-start, 0);
+  std::copy(vec.begin() + start, vec.begin() + end, res.begin());
+  return res;
+}
+
 template<std::ptrdiff_t N, typename V>
 auto vec_to_tensor(const V &vec, std::size_t start = 0) {
   Eigen::TensorFixedSize<typename V::value_type, Eigen::Sizes<N>> res;

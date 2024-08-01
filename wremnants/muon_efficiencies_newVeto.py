@@ -15,13 +15,13 @@ from utilities import common, logging
 from utilities.io_tools import input_tools
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "muon_efficiencies_veto_TEST.h"')
+narf.clingutils.Declare('#include "muon_efficiencies_newVeto.h"')
 
 data_dir = common.data_dir
 
-def make_muon_efficiency_helpers_veto_TEST(antiveto = False):
+def make_muon_efficiency_helpers_newVeto(antiveto = False):
     
-    logger.debug(f"Make efficiency helper veto TEST")
+    logger.debug(f"Make efficiency helper for veto (with newer approach)")
 
     axis_eta_eff = None
     axis_pt_eff = None
@@ -65,7 +65,7 @@ def make_muon_efficiency_helpers_veto_TEST(antiveto = False):
         # Regular(10, 0.5, 10.5, name='nomi-statUpDown-syst'))
         for step in steps:
             hist_hist = dict_veto[f"{veto_tag}SF_global_{step}_{charge_tag}"]
-            nstat = int(hist_hist.axes[2].size - 2) / 2 # use only statUp, and do mirroring later on at analysis level
+            nstat = int((hist_hist.axes[2].size - 2) / 2) # use only statUp, and do mirroring later on at analysis level
             inputHist_systBin = hist_hist.axes[2].size - 1
             if nstat != Nstat:
                 logger.warning(f"Step {step}: expected {Nstat} stat variations but {nstat} were found. Please check")
@@ -105,15 +105,15 @@ def make_muon_efficiency_helpers_veto_TEST(antiveto = False):
     # now creating the tensors
     sf_syst_2D_pyroot = narf.hist_to_pyroot_boost(sf_syst_2D)
     # nomi and syst are stored in the same histogram, just use different helpers to override the () operator for now, until RDF is improved
-    helper = ROOT.wrem.muon_efficiency_veto_helper[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( ROOT.std.move(sf_syst_2D_pyroot) )
-    helper_syst = ROOT.wrem.muon_efficiency_veto_helper_syst[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( helper )
+    helper = ROOT.wrem.muon_efficiency_newVeto_helper[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( ROOT.std.move(sf_syst_2D_pyroot) )
+    helper_syst = ROOT.wrem.muon_efficiency_newVeto_helper_syst[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( helper )
     # define axis for syst variations with all steps
     axis_all = hist.axis.Integer(0, len(steps), underflow = False, overflow = False, name = "-".join(steps))
     axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
     helper_syst.tensor_axes = [axis_all, axis_nsyst]
     #
     ### now the stat part
-    helper_stat = ROOT.wrem.muon_efficiency_veto_helper_stat[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( helper )
+    helper_stat = ROOT.wrem.muon_efficiency_newVeto_helper_stat[type(sf_syst_2D_pyroot), len(steps), Nsyst, NetaBinsStat, Nstat]( helper )
     # make new versions of these axes without overflow/underflow to index the tensor
     if isinstance(axis_eta_eff, bh.axis.Regular):
         axis_eta_eff_tensor = hist.axis.Regular(axis_eta_eff.size, axis_eta_eff.edges[0], axis_eta_eff.edges[-1], name = axis_eta_eff.name, overflow = False, underflow = False)

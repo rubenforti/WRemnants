@@ -95,10 +95,10 @@ def drange(x, y, jump):
         #x += decimal.Decimal(jump)
         x += jump
 
-def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrateAxes=[], abcd=True, rebin=None, applySelection=True):
+def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrateAxes=[], abcd=True, rebin=None, applySelection=True, fakes_scalefactor=1.0):
 
     if abcd:
-        groups.set_histselectors(procs, hName, mode="simple", smoothing_mode="binned", simultaneousABCD=False, integrate_x=False if "mt" in hName else True)
+        groups.set_histselectors(procs, hName, mode="simple", smoothen=False, simultaneousABCD=False, integrate_x=False if "mt" in hName else True, forceGlobalScaleFakes=fakes_scalefactor)
     groups.loadHistsForDatagroups(hName, syst="", procsToRead=procs, applySelection=applySelection)
     bhist = sum([groups.groups[p].hists[hName] for p in procs])
 
@@ -152,6 +152,8 @@ def get_meta(groups):
     met = groups.getMetaInfo()["args"].get("met", None)
     analysis = "lowPU" if "lowpu" in groups.mode else "highPU"
     flavor = groups.flavor
+    theoryCorr = groups.getMetaInfo()["args"].get("theoryCorr", None)
+    theoryCorrCentral = theoryCorr[0] if len(theoryCorr) > 0 else ''
     if flavor == None:
         flavor = "mu" if groups.mode=="w_mass" else "mumu"
-    return met, analysis, flavor
+    return met, analysis, flavor, theoryCorrCentral
