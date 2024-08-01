@@ -122,7 +122,6 @@ def make_parser(parser=None):
     parser.add_argument("--effStatLumiScale", type=float, default=None, help="Rescale equivalent luminosity for efficiency stat uncertainty by this value (e.g. 10 means ten times more data from tag and probe)")
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
-    parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
     parser.add_argument("--logNormalWmunu", default=-1, type=float, help="Add lnN uncertainty for W signal (mainly for tests wifakes in control regions, where W is a subdominant background). If negative nothing is added")
     parser.add_argument("--logNormalFake", default=1.15, type=float, help="Specify lnN uncertainty for Fake background (for W analysis). If negative nothing is added")
     # pseudodata
@@ -415,12 +414,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     signalMatch = WMatch if wmass else ZMatch
     nonSignalMatch = ZMatch if wmass else WMatch
 
+    wlike_vetoValidation = wlike and input_tools.args_from_metadata(cardTool, "validateVetoSF")
     cardTool.addProcessGroup("single_v_samples", lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=dibosonMatch))
     # TODO consistently treat low mass drell yan as signal across full analysis
     cardTool.addProcessGroup("z_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
+    if wmass or wlike_vetoValidation:
+        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
     if wmass:
         cardTool.addProcessGroup("w_samples", lambda x: assertSample(x, startsWith=WMatch, excludeMatch=dibosonMatch))
-        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
         cardTool.addProcessGroup("wtau_samples", lambda x: assertSample(x, startsWith=["Wtaunu"]))
         if not xnorm:
             cardTool.addProcessGroup("single_v_nonsig_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
@@ -829,15 +830,19 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
                         )
-            if wmass:
+            if wmass or wlike_vetoValidation:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
+                useRefinedVeto = input_tools.args_from_metadata(cardTool, "useRefinedVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
                     if "Syst" in name:
                         if useGlobalOrTrackerVeto:
                             axes = ["veto_reco-veto_tracking-veto_idip-veto_trackerreco-veto_trackertracking", "n_syst_variations"]
                         else:
-                            axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
+                            if useRefinedVeto:
+                                axes = ["vetoreco-vetotracking-vetoidip", "n_syst_variations"]
+                            else:
+                                axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
                         axlabels = ["WPSYST", "_etaDecorr"]
                         if useGlobalOrTrackerVeto:
                             nameReplace = [("WPSYST0", "reco"), ("WPSYST1", "tracking"), ("WPSYST2", "idip"), ("WPSYST3", "trackerreco"), ("WPSYST4", "trackertracking"), ("effSystTnP_veto", "effSyst_veto"), ("etaDecorr0", "fullyCorr") ]
@@ -856,15 +861,18 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         nameReplace = []
                         mirror = True
                         mirrorDownVarEqualToNomi=False
-                        if args.binnedScaleFactors:
-                            axes = ["SF eta", "nPtBins", "SF charge"]
+                        if useRefinedVeto:
+                            axes = ["vetoreco-vetotracking-vetoidip", "SF eta", "nPtEigenBins", "SF charge"]
+                            axlabels = ["WPSTEP", "eta", "pt", "q"]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_"), ("WPSTEP0", "reco"), ("WPSTEP1", "tracking"), ("WPSTEP2", "idip")]
                         else:
                             axes = ["SF eta", "nPtEigenBins", "SF charge"]
-                        axlabels = ["eta", "pt", "q"]
-                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
+                            axlabels = ["eta", "pt", "q"]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
                         scale = 1.0
                         groupName = "muon_eff_stat_veto"
-                        splitGroupDict = {"muon_eff_all" : ".*"}
+                        splitGroupDict = {f"{groupName}{x}" : f".*effStat_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        splitGroupDict["muon_eff_all"] = ".*"
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
 
@@ -878,7 +886,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         labelsByAxis=axlabels,
                         baseName=name+"_",
                         processes=['Zveto_samples'],
-                        passToFakes=passSystToFakes,
+                        passToFakes=passSystToFakes if wmass else False,
                         systNameReplace=nameReplace,
                         scale=scale,
                     )
@@ -907,7 +915,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pu_type="lowPU" if lowPU else "highPU")
 
     if lowPU:
-        if datagroups.flavor in ["e", "ee"]:
+        if datagroups.flavor in ["e", "ee"] and False:
             # disable, prefiring for muons currently broken? (fit fails)
             cardTool.addSystematic("prefireCorr",
                 processes=cardTool.allMCProcesses(),

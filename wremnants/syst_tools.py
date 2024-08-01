@@ -407,10 +407,7 @@ def add_syst_hist(results, df, name, axes, cols, tensor_name=None, tensor_axes=[
             results.append(df.HistoBoost(name, axes, [*cols, tensor_name], tensor_axes=tensor_axes, storage=storage_type))
 
 
-def define_mass_weights(df, proc):
-    if "massWeight_tensor" in df.GetColumnNames():
-        logger.debug("massWeight_tensor already defined, do nothing here.")
-        return df
+def define_mass_width_sin2theta_weights(df, proc):
 
     # TODO can these be parsed more automatically?
     if proc in common.zprocs_all:
@@ -418,27 +415,53 @@ def define_mass_weights(df, proc):
         gamma0 = 2.4941343245745466
         massvals = [91.0876, 91.0976, 91.1076, 91.1176, 91.1276, 91.1376, 91.1476, 91.1576, 91.1676, 91.1776, 91.1876, 91.1976, 91.2076, 91.2176, 91.2276, 91.2376, 91.2476, 91.2576, 91.2676, 91.2776, 91.2876, 91.1855, 91.1897]
         widthvals = [2.49333, 2.49493, 2.4929, 2.4952, 2.4975]
+        sin2thetavals = [0.23151, 0.23154, 0.23157, 0.2230, 0.2300, 0.2305, 0.2310, 0.2315, 0.2320, 0.2325, 0.2330]
     else:
         m0 = 80.379
         gamma0 = 2.0911383956149385
         massvals = [80.279, 80.289, 80.299, 80.309, 80.319, 80.329, 80.339, 80.349, 80.359, 80.369, 80.379, 80.389, 80.399, 80.409, 80.419, 80.429, 80.439, 80.449, 80.459, 80.469, 80.479]
         widthvals = [2.09053, 2.09173, 2.043, 2.085, 2.127]
+        sin2thetavals = []
 
-    nweights = len(massvals)
+    nweights_mass = len(massvals)
+    nweights_width = len(widthvals)
+    nweights_sin2theta = len(sin2thetavals)
 
-    # from -100 to 100 MeV with 10 MeV increment
-    df = df.Define("massWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights}>(MEParamWeight)")
-    df = df.Define("massWeight_tensor_wnom", "auto res = massWeight_tensor; res = nominal_weight*res; return res;")
+    if not "massWeight_tensor" in df.GetColumnNames():
+        # from -100 to 100 MeV with 10 MeV increment
+        if "MEParamWeight" in df.GetColumnNames():
+            df = df.Alias("massWeight_col", "MEParamWeight")
+        else:
+            df = df.Define("massWeight_col", f"wrem::slice_vec(LHEReweightingWeight,0, {nweights_mass})")
+        df = df.Define("massWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights_mass}>(massWeight_col)")
+        df = df.Define("massWeight_tensor_wnom", "auto res = massWeight_tensor; res = nominal_weight*res; return res;")
 
-    # compute modified weights which remove the width variation from the mass weights by using the width weights to compensate
-    # TODO we should pass this in from outside so that we can re-use it, but it's lightweight enough that it shouldn't matter much
-    helper_mass = ROOT.wrem.MassWeightHelper[nweights](m0, gamma0, massvals, widthvals)
+        # compute modified weights which remove the width variation from the mass weights by using the width weights to compensate
+        # TODO we should pass this in from outside so that we can re-use it, but it's lightweight enough that it shouldn't matter much
+        helper_mass = ROOT.wrem.MassWeightHelper[nweights_mass](m0, gamma0, massvals, widthvals)
 
-    df = df.Define("massWeight_widthdecor_tensor", helper_mass, ["MEParamWeight", "MEParamWeightAltSet1"])
-    df = df.Define("massWeight_widthdecor_tensor_wnom", "auto res = massWeight_widthdecor_tensor; res = nominal_weight*res; return res;")
+        if "MEParamWeightAltSet1" in df.GetColumnNames():
+            df = df.Alias("widthWeight_col", "MEParamWeightAltSet1")
+        else:
+            df = df.Define("widthWeight_col", f"wrem::slice_vec(LHEReweightingWeight,{nweights_mass}, {nweights_mass+nweights_width})")
+
+        df = df.Define("massWeight_widthdecor_tensor", helper_mass, ["massWeight_col", "widthWeight_col"])
+        df = df.Define("massWeight_widthdecor_tensor_wnom", "auto res = massWeight_widthdecor_tensor; res = nominal_weight*res; return res;")
+
+        df = df.Define("widthWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights_width}>(widthWeight_col)")
+        df = df.Define("widthWeight_tensor_wnom", "auto res = widthWeight_tensor; res = nominal_weight*res; return res;")
+
+
+        if proc in common.zprocs_all:
+            if "MEParamWeightAltSet4" in df.GetColumnNames():
+                df = df.Alias("sin2thetaWeight_col", "MEParamWeightAltSet4")
+            else:
+                logger.warning("sin2theta weights in new format to be defined")
+                df = df.Define("sin2thetaWeight_col", f"wrem::slice_vec(LHEReweightingWeight,{nweights_mass+nweights_width}, {nweights_mass+nweights_width+nweights_sin2theta})")
+            df = df.Define("sin2thetaWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights_sin2theta}>(sin2thetaWeight_col)")
+            df = df.Define("sin2thetaWeight_tensor_wnom", "auto res = sin2thetaWeight_tensor; res = nominal_weight*res; return res;")
 
     return df
-
 
 def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="massWeight"+(proc[0] if len(proc) else proc))
@@ -462,15 +485,6 @@ def massWeightNames(matches=None, proc="", exclude=[]):
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
 
-def define_width_weights(df, proc):
-    if "widthWeight_tensor" in df.GetColumnNames():
-        logger.debug("widthWeight_tensor already defined, do nothing here.")
-        return df
-    nweights = 5
-    df = df.Define("widthWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights}>(MEParamWeightAltSet1)")
-    df = df.Define("widthWeight_tensor_wnom", "auto res = widthWeight_tensor; res = nominal_weight*res; return res;")
-    return df
-
 
 def add_widthweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
     name = Datagroups.histName(base_name, syst="widthWeight"+(proc[0] if len(proc) else proc))
@@ -492,19 +506,6 @@ def widthWeightNames(matches=None, proc=""):
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
-
-def define_sin2theta_weights(df, proc):
-    if "sin2thetaWeight_tensor" in df.GetColumnNames():
-        logger.debug("sin2thetaWeight_tensor already defined, do nothing here.")
-        return df
-
-    if proc[0] != "Z":
-        raise RuntimeError("sin2theta weights are only defined for Z")
-
-    nweights = 11
-    df = df.Define("sin2thetaWeight_tensor", f"wrem::vec_to_tensor_t<double, {nweights}>(MEParamWeightAltSet4)")
-    df = df.Define("sin2thetaWeight_tensor_wnom", "auto res = sin2thetaWeight_tensor; res = nominal_weight*res; return res;")
-    return df
 
 
 def add_sin2thetaweights_hist(results, df, axes, cols, base_name="nominal", proc="", **kwargs):
@@ -681,7 +682,7 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
         if generator not in helpers:
             continue
 
-        logger.debug(f"Now ar generator {i}: {generator}")
+        logger.debug(f"Now at generator {i}: {generator}")
         
         if i == 0 and modify_central_weight:
             add_syst_hist(results, df, f"{base_name}_uncorr", axes, cols, "nominal_weight_uncorr", **kwargs)
@@ -756,16 +757,12 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
 
 
 def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
-    what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False, **kwargs
+                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", customHistNameTag="", smooth3D=False, **kwargs
     ):
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_stat = ["goodMuons_pt0", "goodMuons_eta0",
-                             "goodMuons_uT0", "goodMuons_charge0"]
-        muon_columns_syst = ["goodMuons_pt0", "goodMuons_eta0",
-                             "goodMuons_SApt0", "goodMuons_SAeta0",
-                             "goodMuons_uT0", "goodMuons_charge0",
-                             "passIso"]
+        muon_columns_stat = [f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "uT0", "charge0"]]
+        muon_columns_syst = [f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]]
     else:
         muvars_stat = ["pt0", "eta0", "uT0", "charge0"] # passIso0 required only for iso stat variations, added later
         muon_columns_stat_trig    = [f"trigMuons_{v}" for v in muvars_stat]
@@ -799,7 +796,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
         elif "iso" in key:
             if what_analysis == ROOT.wrem.AnalysisType.Wmass:
                  # iso variable called passIso rather than goodMuons_passIso0 in W histmaker
-                muon_columns_stat_step = [*muon_columns_stat, "passIso"]
+                muon_columns_stat_step = [*muon_columns_stat, f"{singleMuonCollection}_passIso0"]
             elif what_analysis == ROOT.wrem.AnalysisType.Wlike:
                 muon_columns_stat_step = [*muon_columns_stat_trig, "trigMuons_passIso0",
                                           *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0"]
@@ -808,25 +805,31 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
                                           *muon_columns_stat_nonTrig, "nonTrigMuons_passIso0", "nonTrigMuons_passTrigger0"]
         else:
             muon_columns_stat_step = muon_columns_stat
-            
-        df = df.Define(f"effStatTnP_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
-        name = Datagroups.histName(base_name, syst=f"effStatTnP_{key}")
-        add_syst_hist(results, df, name, axes, cols, f"effStatTnP_{key}_tensor", helper.tensor_axes, **kwargs)
 
-    df = df.Define("effSystTnP_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"effSystTnP")
-    add_syst_hist(results, df, name, axes, cols, "effSystTnP_weight", helper_syst.tensor_axes, **kwargs)
+        statNameBase = "effStatTnP"
+        if len(customHistNameTag):
+            statNameBase += f"_{customHistNameTag}"
+        df = df.Define(f"{statNameBase}_{key}_tensor", helper, [*muon_columns_stat_step, "nominal_weight"])
+        name = Datagroups.histName(base_name, syst=f"{statNameBase}_{key}")
+        add_syst_hist(results, df, name, axes, cols, f"{statNameBase}_{key}_tensor", helper.tensor_axes, **kwargs)
+
+    systNameBase = "effSystTnP"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+    df = df.Define(f"{systNameBase}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
 
 def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
-    what_analysis=ROOT.wrem.AnalysisType.Wmass, step="tracking", **kwargs
+                                         what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
     ):
 
     SAvarTag = "SA" if step == "tracking" else "" 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_syst = [f"goodMuons_{SAvarTag}pt0", f"goodMuons_{SAvarTag}eta0", "goodMuons_charge0"]
+        muon_columns_syst = [f"{singleMuonCollection}_{SAvarTag}pt0", f"{singleMuonCollection}_{SAvarTag}eta0", f"{singleMuonCollection}_charge0"]
     else:
         muvars_syst = [f"{SAvarTag}pt0", f"{SAvarTag}eta0", "charge0"]
         muon_columns_syst_trig    = [f"trigMuons_{v}" for v in muvars_syst]
@@ -837,27 +840,39 @@ def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, b
         elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         else:
-            raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")            
-    
-    df = df.Define(f"effSystTnP_altBkg_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst=f"effSystTnP_altBkg_{step}")
-    add_syst_hist(results, df, name, axes, cols, f"effSystTnP_altBkg_{step}_weight", helper_syst.tensor_axes, **kwargs)
+            raise NotImplementedError(f"add_muon_efficiency_unc_hists_altBkg: analysis {what_analysis} not implemented.")
+
+    systNameBase = "effSystTnP_altBkg"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+
+    df = df.Define(f"{systNameBase}_{step}_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}_{step}")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_{step}_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
 
-def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs):
+def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", muons="vetoMuons", customHistNameTag="", **kwargs):
     # TODO: update for dilepton
-    muon_columns_stat = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
-    muon_columns_syst = ["unmatched_postfsrMuon_pt","unmatched_postfsrMuon_eta","unmatched_postfsrMuon_charge"]
-            
-    df = df.Define("effStatTnP_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effStatTnP_veto_sf")
-    add_syst_hist(results, df, name, axes, cols, "effStatTnP_veto_tensor", helper_stat.tensor_axes, **kwargs)
+    muon_columns_stat = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
+    muon_columns_syst = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
 
-    df = df.Define("effSystTnP_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="effSystTnP_veto")
-    add_syst_hist(results, df, name, axes, cols, "effSystTnP_veto_weight", helper_syst.tensor_axes, **kwargs)
+    statNameBase = "effStatTnP"
+    if len(customHistNameTag):
+        statNameBase += f"_{customHistNameTag}"
+    
+    df = df.Define(f"{statNameBase}_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{statNameBase}_veto_sf")
+    add_syst_hist(results, df, name, axes, cols, f"{statNameBase}_veto_tensor", helper_stat.tensor_axes, **kwargs)
+
+    systNameBase = "effSystTnP"
+    if len(customHistNameTag):
+        systNameBase += f"_{customHistNameTag}"
+
+    df = df.Define(f"{systNameBase}_veto_weight", helper_syst, [*muon_columns_syst, "nominal_weight"])
+    name = Datagroups.histName(base_name, syst=f"{systNameBase}_veto")
+    add_syst_hist(results, df, name, axes, cols, f"{systNameBase}_veto_weight", helper_syst.tensor_axes, **kwargs)
 
     return df
 
@@ -949,14 +964,10 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
 
     df = theory_tools.define_scale_tensor(df)
 
-    if "MEParamWeight" not in df.GetColumnNames():
+    if "MEParamWeight" not in df.GetColumnNames() and "LHEReweightingWeight" not in df.GetColumnNames():
         logger.warning("MEParamWeight not in list of columns, mass, width, and sin2theta weight tensors can not be defined")
-        # TODO: weights may be stored in other columns; use those
     else:
-        df = define_mass_weights(df, dataset_name)
-        df = define_width_weights(df, dataset_name)
-        if isZ:
-            df = define_sin2theta_weights(df, dataset_name)
+        df = define_mass_width_sin2theta_weights(df, dataset_name)
 
     # common kwargs
     info = dict(base_name=base_name, addhelicity=addhelicity, nhelicity=nhelicity, storage_type=storage_type)
