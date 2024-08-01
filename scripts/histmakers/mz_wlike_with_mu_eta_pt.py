@@ -22,13 +22,15 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
-parser.add_argument("--addIsoMtAxes", action="store_true", help="Add iso/mT axes to the nominal ones. It is for tests to get uncertainties (mainly from SF) versus iso-mT to validate the goodness of muon SF in the fake regions")
+parser.add_argument("--addIsoMtAxes", action="store_true", help="Add iso/mT axes to the nominal ones. It is for tests to get uncertainties (mainly from SF) versus iso-mT to validate the goodness of muon SF in the fake regions. Isolation (on triggering muon) and mT cut are automatically overridden.")
 
 initargs,_ = parser.parse_known_args()
 logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+if initargs.addIsoMtAxes:
+    parser = common.set_parser_default(parser, "muonIsolation", [0, 1])
 
 args = parser.parse_args()
 
@@ -67,8 +69,10 @@ axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, na
 axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
 
 # for isoMt region validation and related tests
-axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
-axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
+#axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
+#axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
+axis_mtCat = hist.axis.Variable([0, 22, 45, 1000], name = "mt", underflow=False, overflow=False)
+axis_isoCat = hist.axis.Variable([0, 0.15, 0.3, 100], name = "relIso",underflow=False, overflow=False)
 
 nominal_axes = [axis_eta, axis_pt, common.axis_charge]
 nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
@@ -323,7 +327,8 @@ def build_graph(df, dataset):
         df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
         df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
 
-    df = df.Filter("passWlikeMT")
+    if not args.addIsoMtAxes:
+        df = df.Filter("passWlikeMT")
 
     if not args.onlyMainHistograms:
         # plot reco vertex distribution before and after PU reweigthing
