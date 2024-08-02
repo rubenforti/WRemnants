@@ -151,7 +151,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
-    # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
+   # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
     #       processes which are defined in the original process dictionary but are not supposed to be (always) run on
     if args.addQCDMC or "QCD" in args.filterProcGroups:
@@ -1196,7 +1196,7 @@ if __name__ == "__main__":
 
     if isTheoryAgnostic:
         if len(args.genAxes) == 0:
-            args.genAxes =  ["ptVgenSig", "absYVgenSig", "helicitySig"]
+            args.genAxes = ["ptVgenSig-absYVgenSig-helicitySig"]
             logger.warning(f"Automatically setting '--genAxes {' '.join(args.genAxes)}' for theory agnostic analysis")
             if args.poiAsNoi:
                 logger.warning("This is only needed to properly get the systematic axes")
@@ -1220,7 +1220,7 @@ if __name__ == "__main__":
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
-            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
