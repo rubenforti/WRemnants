@@ -520,20 +520,16 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         if args.fitMassDiff:
             suffix = "".join([a.capitalize() for a in args.fitMassDiff.split("-")])
-            mass_diff_args = dict(
+            combine_helpers.add_mass_diff_variations(
+                cardTool, 
+                args.fitMassDiff,
                 name=f"{massWeightName}{label}",
-                processes=signal_samples_forMass,
-                rename=f"massDiff{suffix}{label}",
-                group=f"massDiff{label}",
-                systNameReplace=[("Shift",f"Diff{suffix}")],
-                skipEntries=massWeightNames(proc=label, exclude=50),
-                noi=not constrainMass,
-                noConstraint=not constrainMass,
-                mirror=False,
-                systAxes=["massShift"],
-                passToFakes=passSystToFakes,
+                processes=signal_samples_forMass, 
+                constrain=constrainMass,
+                suffix=suffix, 
+                label=label,
+                passSystToFakes=passSystToFakes,
             )
-            combine_helpers.add_mass_diff_variations(cardTool, mass_diff_args)
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
