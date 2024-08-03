@@ -27,11 +27,11 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
             parser.add_argument("--theoryAgnosticBandSize", type=float, default=1., help="Multiplier for theory-motivated band in theory agnostic analysis with POIs as NOIs.")
+            parser.add_argument("--helicitiesToInflate", type=int, nargs='*', default=[], help="Select which helicities you want to scale")
         elif subparserName == "theoryAgnosticPolVar":
             parser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
             parser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
@@ -152,7 +152,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
-    # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
+   # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
     #       processes which are defined in the original process dictionary but are not supposed to be (always) run on
     if args.addQCDMC or "QCD" in args.filterProcGroups:
@@ -681,8 +681,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
 
-        theory_helper = combine_theory_helper.TheoryHelper(cardTool, args, hasNonsigSamples=(wmass and not xnorm))
-        theory_helper.configure(resumUnc=args.resumUnc,
+    
+        theory_helper = combine_theory_helper.TheoryHelper(label, cardTool, args, hasNonsigSamples=(wmass and not xnorm))
+        theory_helper.configure(resumUnc=args.resumUnc, 
             transitionUnc = not args.noTransitionUnc,
             propagate_to_fakes=to_fakes,
             np_model=args.npUnc,
@@ -697,6 +698,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if wmass:
             if args.noPDFandQCDtheorySystOnSignal:
                 theorySystSamples = ["wtau_samples"]
+            theorySystSamples.append("single_v_nonsig_samples")
+        elif wlike:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = []
             theorySystSamples.append("single_v_nonsig_samples")
         if xnorm:
             theorySystSamples = ["signal_samples"]
@@ -1219,7 +1224,7 @@ if __name__ == "__main__":
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
-            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)

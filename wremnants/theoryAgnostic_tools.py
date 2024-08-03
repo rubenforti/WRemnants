@@ -24,9 +24,9 @@ def select_fiducial_space(df, ptVgenMax, absYVgenMax, accept=True, select=True, 
         logger.debug(f"Theory agnostic fiducial cut (out-of-acceptance): not ({selection})")
     return df
 
-def define_helicity_weights(df, filename=None):
+def define_helicity_weights(df, is_w_like = False, filename=None):
     # define the helicity tensor, here nominal_weight will only have theory weights, no experimental pieces, it is defined in theory_tools.define_theory_weights_and_corrs
-    weightsByHelicity_helper = helicity_utils.makehelicityWeightHelper(filename)
+    weightsByHelicity_helper = helicity_utils.makehelicityWeightHelper(is_w_like,filename)
     df = df.Define("helWeight_tensor", weightsByHelicity_helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
     df = df.Define("nominal_weight_helicity", "wrem::scalarmultiplyHelWeightTensor(nominal_weight, helWeight_tensor)")
     return df
