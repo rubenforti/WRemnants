@@ -499,7 +499,7 @@ class HDF5Writer(object):
                     continue
 
                 sumw[ibin:ibin+nbinschan] += self.dict_norm[chan][proc]
-                sumw2[ibin:ibin+nbinschan] += self.dict_sumw2[chan][proc]
+                sumw2[ibin:ibin+nbinschan] += chanInfo.binByBinStatScale**2*self.dict_sumw2[chan][proc]
             
             ibin += nbinschan
 

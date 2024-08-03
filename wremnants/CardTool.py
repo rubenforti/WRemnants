@@ -78,6 +78,7 @@ class CardTool(object):
                              }
         self.charge_ax = "charge"
         self.procGroups = {}
+        self.binByBinStatScale = 1.
 
     def getProcNames(self, grouped_procs):
         expanded_procs = []
@@ -240,6 +241,9 @@ class CardTool(object):
         self.nominalName = histName
         if self.datagroups:
             self.datagroups.setNominalName(histName)
+
+    def setBinByBinStatScale(self, scale):
+        self.binByBinStatScale = scale
 
     # by default this returns True also for Fake since it has Data in the list of members
     # then self.isMC negates this one and thus will only include pure MC processes
@@ -1159,12 +1163,20 @@ class CardTool(object):
     def writeHistByCharge(self, h, name):
         for charge in self.channels:
             q = self.chargeIdDict[charge]["val"]
-            hout = narf.hist_to_root(self.getBoostHistByCharge(h, q))
+            hin = self.getBoostHistByCharge(h, q)
+            if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+                hin = hin.copy()
+                hin.variances()[...] *= self.binByBinStatScale**2
+            hout = narf.hist_to_root(hin)
             hout.SetName(name.replace("CHANNEL",charge)+f"_{charge}")
             hout.Write()
         
     def writeHistWithCharges(self, h, name):
-        hout = narf.hist_to_root(h)
+        hin  = h
+        if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+            hin = hin.copy()
+            hin.variances()[...] *= self.binByBinStatScale**2
+        hout = narf.hist_to_root(hin)
         hout.SetName(f"{name}_{self.channels[0]}" if self.channels else name)
         hout.Write()
     
