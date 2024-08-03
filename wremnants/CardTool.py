@@ -79,6 +79,7 @@ class CardTool(object):
         self.charge_ax = "charge"
         self.procGroups = {}
         self.binByBinStatScale = 1.
+        self.exponentialTransform = False
 
     def getProcNames(self, grouped_procs):
         expanded_procs = []
@@ -244,6 +245,9 @@ class CardTool(object):
 
     def setBinByBinStatScale(self, scale):
         self.binByBinStatScale = scale
+
+    def setExponentialTransform(self, transform = True):
+        self.exponentialTransform = transform
 
     # by default this returns True also for Fake since it has Data in the list of members
     # then self.isMC negates this one and thus will only include pure MC processes

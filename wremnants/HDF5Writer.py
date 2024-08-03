@@ -256,7 +256,7 @@ class HDF5Writer(object):
 
                 # nominal histograms of prediction
                 norm_proc_hist = dg.groups[proc].hists[chanInfo.nominalName]
-                if "helicity" in chanInfo.nominalName:
+                if chanInfo.exponentialTransform:
                     def exponential(h):
                         h.values()[...] = np.exp(h.values()/100000)
                         return h
@@ -406,7 +406,7 @@ class HDF5Writer(object):
                     # Deduplicate while keeping order
                     var_names = list(dict.fromkeys(var_names))
                     norm_proc = self.dict_norm[chan][proc]
-                    if "helicity" in chanInfo.nominalName:
+                    if chanInfo.exponentialTransform:
                         norm_proc = 100000*np.log(norm_proc)
 
                     for var_name in var_names:
@@ -421,7 +421,7 @@ class HDF5Writer(object):
                                 raise RuntimeError(f"{len(_syst)-sum(np.isfinite(_syst))} NaN or Inf values encountered in systematic {var_name}!")
 
                             # check if there is a sign flip between systematic and nominal
-                            if "helicity" in chanInfo.nominalName:
+                            if chanInfo.exponentialTransform:
                                 _logk = kfac*(_syst - norm_proc)/100000
                             else:
                                 _logk = kfac*np.log(_syst/norm_proc)
@@ -432,7 +432,7 @@ class HDF5Writer(object):
                                 _logk = np.clip(_logk,-self.clip,self.clip)
                             if self.clipSystVariationsSignal>0. and proc in signals:
                                 _logk = np.clip(_logk,-self.clipSig,self.clipSig)
-                            if "helicity" in chanInfo.nominalName:
+                            if chanInfo.exponentialTransform:
                                 return _logk
                             else:
                                 return _logk_view
