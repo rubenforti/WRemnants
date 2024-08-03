@@ -50,7 +50,8 @@ def make_parser(parser=None):
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
     parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
-    parser.add_argument("--hdf5", action="store_true", help="Write out datacard in hdf5")
+    parser.add_argument("--root", action="store_true", help="Write out datacard in txt/root format (deprecated)")
+    parser.add_argument("--allow-deprecated-root-output", action="store_true", help="Force write out datacard in txt/root format despite deprecation")
     parser.add_argument("--sparse", action="store_true", help="Write out datacard in sparse mode (only for when using hdf5)")
     parser.add_argument("--excludeProcGroups", type=str, nargs="*", help="Don't run over processes belonging to these groups (only accepts exact group names)", default=["QCD"])
     parser.add_argument("--filterProcGroups", type=str, nargs="*", help="Only run over processes belonging to these groups", default=[])
@@ -1170,7 +1171,7 @@ def outputFolderName(outfolder, card_tool, doStatOnly, postfix):
 
     return f"{outfolder}/{'_'.join(to_join)}/"
 
-def main(args, xnorm=False):
+def run_root(args, xnorm=False):
     forceNonzero = False #args.analysisMode == None
     checkSysts = forceNonzero
 
@@ -1213,7 +1214,7 @@ if __name__ == "__main__":
         logger.warning("For now setting theory agnostic without POI as NOI activates --doStatOnly")
         args.doStatOnly = True
 
-    if args.hdf5:
+    if not args.root:
         writer = HDF5Writer.HDF5Writer(sparse=args.sparse)
 
         if args.baseName == "xnorm":
@@ -1248,13 +1249,16 @@ if __name__ == "__main__":
         logger.info(f"Writing HDF5 output to {outfile}")
         writer.write(args, outfolder, outfile, allowNegativeExpectation=args.allowNegativeExpectation)
     else:
+        if not args.allow_deprecated_root_output:
+            raise RuntimeError("Root output is deprecated, forcibly enable it with --allow-deprecated-root-output")
+
         if len(args.inputFile) > 1:
             raise IOError(f"Multiple input files only supported within --hdf5 mode")
 
-        main(args)
+        run_root(args)
         if isFloatingPOIs:
             logger.warning("Now running with xnorm = True")
             # in case of unfolding and hdf5, the xnorm histograms are directly written into the hdf5
-            main(args, xnorm=True)
+            run_root(args, xnorm=True)
 
     logging.summary()
