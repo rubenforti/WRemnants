@@ -152,7 +152,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             edges = h_inclusive.axes[0].edges
 
             # need to divide by bin width
-            binwidth = edges[1:]-edges[:-1]
+            binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
             if h_inclusive.storage_type != hist.storage.Weight:
                 raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
             nom = h_inclusive.values() / binwidth
