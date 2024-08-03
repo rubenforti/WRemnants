@@ -203,6 +203,11 @@ def met_xy_reweighting(direction = "x", corrType="uncorr", polyOrderData=-1, pol
         fit_mc.SetLineWidth(2)
         for iP in range(0, polyOrderMC+1): outDict['mc']['nom'].append(fit_mc.GetParameter(iP))
 
+    outDict['data']['xMin'] = npv_fit_min
+    outDict['data']['xMax'] = npv_fit_max
+    outDict['mc']['xMin'] = npv_fit_min
+    outDict['mc']['xMax'] = npv_fit_max
+
     ## sigmas
     cfg = {
 
@@ -277,7 +282,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     groups = datagroups.Datagroups(args.input)
-    met, analysis, flavor = functions.get_meta(groups)
+    met, analysis, flavor, theory = functions.get_meta(groups)
     fOut = f"wremnants-data/data/recoil/{analysis}_{met}/met_xy_{flavor}.json"
     outDir = f"/home/submit/jaeyserm/public_html/recoil/{analysis}_{met}/met_xy_{flavor}/"
     functions.prepareDir(outDir, True)
@@ -287,12 +292,30 @@ if __name__ == "__main__":
         if flavor == "mumu":
             procs, data = ["Zmumu", "Ztautau", "Other"], "Data"
 
+            npv_max, npv_fit_min, npv_fit_max = 10, 0, 9
+            yMin_x, yMax_x, yMin_y, yMax_y = -5, 5, -5, 5
+            polyOrderData_x, polyOrderData_y = 3, 3
+            polyOrderMC_x, polyOrderMC_y = 3, 3
+        elif flavor == "ee":
+            procs, data = ["Zee", "Ztautau", "Other"], "Data"
+
+            npv_max, npv_fit_min, npv_fit_max = 10, 0, 9
+            yMin_x, yMax_x, yMin_y, yMax_y = -5, 5, -5, 5
+            polyOrderData_x, polyOrderData_y = 3, 3
+            polyOrderMC_x, polyOrderMC_y = 3, 3
+        elif flavor == "mu":
+            procs, data = ["Zmumu", "Ztautau", "Wtaunu", "Wmunu", "Top", "Diboson"], "Data"
+
             npv_max, npv_fit_min, npv_fit_max = 10, 0, 10
             yMin_x, yMax_x, yMin_y, yMax_y = -5, 5, -5, 5
-            polyOrderData_x, polyOrderData_y = 2, 2
-            polyOrderMC_x, polyOrderMC_y = 2, 2
-        else:
-            procs, data = ["Zmumu", "Ztautau", "Wtaunu", "Wmunu", "Top", "Diboson"], "Data"
+            polyOrderData_x, polyOrderData_y = 3, 2
+            polyOrderMC_x, polyOrderMC_y = 3, 2
+
+            for g in groups.groups:
+                groups.groups[g].selectOp = None
+
+        elif flavor == "e":
+            procs, data = ["Zee", "Ztautau", "Wtaunu", "Wenu", "Top", "Diboson"], "Data"
 
             npv_max, npv_fit_min, npv_fit_max = 10, 0, 10
             yMin_x, yMax_x, yMin_y, yMax_y = -5, 5, -5, 5
@@ -312,7 +335,6 @@ if __name__ == "__main__":
             yMin_x, yMax_x, yMin_y, yMax_y = -10, 6, -5, 5
             polyOrderData_x, polyOrderData_y = 3, 3
             polyOrderMC_x, polyOrderMC_y = 3, 3
-
         else:
             procs, data = ["Zmumu", "Ztautau", "Wtaunu", "Wmunu", "Top", "Diboson"], "Data"
 
@@ -337,3 +359,6 @@ if __name__ == "__main__":
     met_xy_reweighting(direction="x", corrType="corr_xy", polyOrderData=polyOrderData_x, polyOrderMC=polyOrderMC_x, procs=procs, data=data, yMin=yMin_x, yMax=yMax_x)
     met_xy_reweighting(direction="y", corrType="corr_xy", polyOrderData=polyOrderData_y, polyOrderMC=polyOrderMC_y, procs=procs, data=data, yMin=yMin_y, yMax=yMax_y)
     print(fOut)
+    if not args.save:
+        print("WARNING: DID NOT SAVE")
+

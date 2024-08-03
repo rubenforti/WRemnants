@@ -27,11 +27,11 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
             parser.add_argument("--theoryAgnosticBandSize", type=float, default=1., help="Multiplier for theory-motivated band in theory agnostic analysis with POIs as NOIs.")
+            parser.add_argument("--helicitiesToInflate", type=int, nargs='*', default=[], help="Select which helicities you want to scale")
         elif subparserName == "theoryAgnosticPolVar":
             parser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
             parser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
@@ -121,7 +121,6 @@ def make_parser(parser=None):
     parser.add_argument("--effStatLumiScale", type=float, default=None, help="Rescale equivalent luminosity for efficiency stat uncertainty by this value (e.g. 10 means ten times more data from tag and probe)")
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
-    parser.add_argument("--scaleZmuonVeto", default=1, type=float, help="Scale the second muon veto uncertainties by this factor for Wmass")
     parser.add_argument("--logNormalWmunu", default=-1, type=float, help="Add lnN uncertainty for W signal (mainly for tests wifakes in control regions, where W is a subdominant background). If negative nothing is added")
     parser.add_argument("--logNormalFake", default=1.02, type=float, help="Specify lnN uncertainty for Fake background (for W analysis). If negative nothing is added")
     # pseudodata
@@ -138,6 +137,7 @@ def make_parser(parser=None):
     parser.add_argument("--forceConstrainMass", action='store_true', help="force mass to be constrained in fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
+    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
     parser = make_subparsers(parser)
 
     return parser
@@ -152,7 +152,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
-    # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
+   # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
     #       processes which are defined in the original process dictionary but are not supposed to be (always) run on
     if args.addQCDMC or "QCD" in args.filterProcGroups:
@@ -297,6 +297,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
     cardTool.setDatagroups(datagroups)
 
+    if wmass:
+        cardTool.setBinByBinStatScale(args.binByBinStatScaleForMW)
+
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
         cardTool.setAbsolutePathShapeInCard()
@@ -412,12 +415,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     signalMatch = WMatch if wmass else ZMatch
     nonSignalMatch = ZMatch if wmass else WMatch
 
+    wlike_vetoValidation = wlike and input_tools.args_from_metadata(cardTool, "validateVetoSF")
     cardTool.addProcessGroup("single_v_samples", lambda x: assertSample(x, startsWith=[*WMatch, *ZMatch], excludeMatch=dibosonMatch))
     # TODO consistently treat low mass drell yan as signal across full analysis
     cardTool.addProcessGroup("z_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
+    if wmass or wlike_vetoValidation:
+        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
     if wmass:
         cardTool.addProcessGroup("w_samples", lambda x: assertSample(x, startsWith=WMatch, excludeMatch=dibosonMatch))
-        cardTool.addProcessGroup("Zveto_samples", lambda x: assertSample(x, startsWith=[*ZMatch, "DYlowMass"], excludeMatch=dibosonMatch))
         cardTool.addProcessGroup("wtau_samples", lambda x: assertSample(x, startsWith=["Wtaunu"]))
         if not xnorm:
             cardTool.addProcessGroup("single_v_nonsig_samples", lambda x: assertSample(x, startsWith=ZMatch, excludeMatch=dibosonMatch))
@@ -519,20 +524,16 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         if args.fitMassDiff:
             suffix = "".join([a.capitalize() for a in args.fitMassDiff.split("-")])
-            mass_diff_args = dict(
+            combine_helpers.add_mass_diff_variations(
+                cardTool, 
+                args.fitMassDiff,
                 name=f"{massWeightName}{label}",
-                processes=signal_samples_forMass,
-                rename=f"massDiff{suffix}{label}",
-                group=f"massDiff{label}",
-                systNameReplace=[("Shift",f"Diff{suffix}")],
-                skipEntries=massWeightNames(proc=label, exclude=50),
-                noi=not constrainMass,
-                noConstraint=not constrainMass,
-                mirror=False,
-                systAxes=["massShift"],
-                passToFakes=passSystToFakes,
+                processes=signal_samples_forMass, 
+                constrain=constrainMass,
+                suffix=suffix, 
+                label=label,
+                passSystToFakes=passSystToFakes,
             )
-            combine_helpers.add_mass_diff_variations(cardTool, mass_diff_args)
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
@@ -680,8 +681,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
 
-        theory_helper = combine_theory_helper.TheoryHelper(cardTool, args, hasNonsigSamples=(wmass and not xnorm))
-        theory_helper.configure(resumUnc=args.resumUnc,
+    
+        theory_helper = combine_theory_helper.TheoryHelper(label, cardTool, args, hasNonsigSamples=(wmass and not xnorm))
+        theory_helper.configure(resumUnc=args.resumUnc, 
             transitionUnc = not args.noTransitionUnc,
             propagate_to_fakes=to_fakes,
             np_model=args.npUnc,
@@ -696,6 +698,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if wmass:
             if args.noPDFandQCDtheorySystOnSignal:
                 theorySystSamples = ["wtau_samples"]
+            theorySystSamples.append("single_v_nonsig_samples")
+        elif wlike:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = []
             theorySystSamples.append("single_v_nonsig_samples")
         if xnorm:
             theorySystSamples = ["signal_samples"]
@@ -826,15 +832,19 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
                         )
-            if wmass:
+            if wmass or wlike_vetoValidation:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
+                useRefinedVeto = input_tools.args_from_metadata(cardTool, "useRefinedVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
                     if "Syst" in name:
                         if useGlobalOrTrackerVeto:
                             axes = ["veto_reco-veto_tracking-veto_idip-veto_trackerreco-veto_trackertracking", "n_syst_variations"]
                         else:
-                            axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
+                            if useRefinedVeto:
+                                axes = ["vetoreco-vetotracking-vetoidip", "n_syst_variations"]
+                            else:
+                                axes = ["veto_reco-veto_tracking-veto_idip", "n_syst_variations"]
                         axlabels = ["WPSYST", "_etaDecorr"]
                         if useGlobalOrTrackerVeto:
                             nameReplace = [("WPSYST0", "reco"), ("WPSYST1", "tracking"), ("WPSYST2", "idip"), ("WPSYST3", "trackerreco"), ("WPSYST4", "trackertracking"), ("effSystTnP_veto", "effSyst_veto"), ("etaDecorr0", "fullyCorr") ]
@@ -853,15 +863,18 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         nameReplace = []
                         mirror = True
                         mirrorDownVarEqualToNomi=False
-                        if args.binnedScaleFactors:
-                            axes = ["SF eta", "nPtBins", "SF charge"]
+                        if useRefinedVeto:
+                            axes = ["vetoreco-vetotracking-vetoidip", "SF eta", "nPtEigenBins", "SF charge"]
+                            axlabels = ["WPSTEP", "eta", "pt", "q"]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_"), ("WPSTEP0", "reco"), ("WPSTEP1", "tracking"), ("WPSTEP2", "idip")]
                         else:
                             axes = ["SF eta", "nPtEigenBins", "SF charge"]
-                        axlabels = ["eta", "pt", "q"]
-                        nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
+                            axlabels = ["eta", "pt", "q"]
+                            nameReplace = nameReplace + [("effStatTnP_veto_sf_", "effStat_veto_")]
                         scale = 1.0
                         groupName = "muon_eff_stat_veto"
-                        splitGroupDict = {"muon_eff_all" : ".*"}
+                        splitGroupDict = {f"{groupName}{x}" : f".*effStat_veto.*{x}" for x in list(["reco","tracking","idip"])}
+                        splitGroupDict["muon_eff_all"] = ".*"
                     if args.effStatLumiScale and "Syst" not in name:
                         scale /= math.sqrt(args.effStatLumiScale)
 
@@ -875,7 +888,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         labelsByAxis=axlabels,
                         baseName=name+"_",
                         processes=['Zveto_samples'],
-                        passToFakes=passSystToFakes,
+                        passToFakes=passSystToFakes if wmass else False,
                         systNameReplace=nameReplace,
                         scale=scale,
                     )
@@ -904,7 +917,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pu_type="lowPU" if lowPU else "highPU")
 
     if lowPU:
-        if datagroups.flavor in ["e", "ee"]:
+        if datagroups.flavor in ["e", "ee"] and False:
             # disable, prefiring for muons currently broken? (fit fails)
             cardTool.addSystematic("prefireCorr",
                 processes=cardTool.allMCProcesses(),
@@ -1211,7 +1224,7 @@ if __name__ == "__main__":
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
-            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)

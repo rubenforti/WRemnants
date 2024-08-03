@@ -35,6 +35,7 @@ parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
+parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
 
 args = parser.parse_args()
 
@@ -75,7 +76,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     else:
         binwnorm = None
         ylabel="Events/bin"
+    
+    histtype_data = "errorbar"
+    histtype_mc = "fill"
 
+    if any(x in axes_names for x in ["ptVgen","absYVgen","helicity"]):
+        histtype_data = "step"
+        histtype_mc = "errorbar"
+    
     if len(h_data.axes) > 1:
         if "eta" in axes_names[-1]:
             axes_names = axes_names[::-1]
@@ -99,7 +107,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         h_stack,
         xerr=False,
         yerr=False,
-        histtype="fill",
+        histtype=histtype_mc,
         color=colors,
         label=labels,
         stack=True,
@@ -114,7 +122,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         hep.histplot(
             h_data,
             yerr=True,
-            histtype="errorbar",
+            histtype=histtype_data,
             color="black",
             label="Data",
             binwnorm=binwnorm,
@@ -152,7 +160,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             edges = h_inclusive.axes[0].edges
 
             # need to divide by bin width
-            binwidth = edges[1:]-edges[:-1]
+            binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
             if h_inclusive.storage_type != hist.storage.Weight:
                 raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
             nom = h_inclusive.values() / binwidth
@@ -227,6 +235,11 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
 
         for bins in itertools.product(*selection_bins):
             idxs = {a.name: i for a, i in zip(selection_axes, bins) }
+            idxs_centers = {
+                a.name: a.centers[i] if isinstance(a, (hist.axis.Regular, hist.axis.Variable)) else a.edges[i]
+                for a, i in zip(selection_axes, bins)
+            }
+
 
             h_data = hist_data[idxs]
             h_inclusive = hist_inclusive[idxs]
@@ -238,8 +251,9 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
                 lumi = np.diff(lumis)[idx]
                 logger.info(f"Axis 'run' found in histogram selection_axes, set lumi to {lumi}")
                 kwopts["run"] = lumi
-
-            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs.items()])
+            for a, i in idxs_centers.items():
+                print(a,i)
+            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
             make_plot(h_data, h_inclusive, h_stack, other_axes, suffix=suffix, *opts, **kwopts)
     else:
@@ -247,12 +261,16 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
 
 if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
+    command = meta["meta_info"]["command"]
+    asimov = False
+    if "-t-1" in command or "-t -1" in command or "-t" not in command:
+        asimov = True
     meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     chi2=None
-    if f"chi2_{fittype}" in fitresult:
+    if f"chi2_{fittype}" in fitresult and not args.noChisq:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
 
     for channel, info in meta_input["channel_info"].items():
@@ -262,7 +280,18 @@ if combinetf2:
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
-
+        
+        if any(x in hist_data.axes.name for x in ["helicity"]):
+            if asimov:
+                hist_data.values()[...] = 100000*np.log(hist_data.values())
+            or_vals = np.copy(hist_inclusive.values())
+            hist_inclusive.values()[...] = 100000*np.log(hist_inclusive.values())
+            hist_inclusive.variances()[...] = 100000*100000*(hist_inclusive.variances())/np.square(or_vals)
+            for h in hist_stack:
+                or_vals = np.copy(h.values())
+                h.values()[...] = 100000*np.log(h.values())
+                h.variances()[...] = 100000*100000*(h.variances())/np.square(or_vals)
+                
         make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
@@ -294,7 +323,7 @@ else:
             hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
                 data=np.stack((np.reshape(h.values()[ch_start:ch_end], shape), np.reshape(h.variances()[ch_start:ch_end], shape)), axis=-1)) for h in hist_stack]
 
-            if not args.prefit:
+            if not args.prefit and not args.noChisq:
                 rfile = ROOT.TFile.Open(args.infile.replace(".hdf5",".root"))
                 ttree = rfile.Get("fitresults")
                 ttree.GetEntry(0)

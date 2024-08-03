@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 
 # example
-# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ -n nominal_muonsonly --plotNonTrig
+# python scripts/analysisTools/w_mass_13TeV/validateVetoDilepton.py /scratch/mciprian/CombineStudies/testZmumuVeto/fromDavide/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_vetoGlobal.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/validateVetoSF_fromDavide/global/ --plotNonTrig
+
+# right now this has become an effective copy of scripts/analysisTools/w_mass_13TeV/validateWlike.py because the input histogram can be the same
 
 # histogram template:
-#      nominal_muonsonly
-# Axes = ('trigMuons_eta0', 'trigMuons_pt0', 'trigMuons_charge0', 'nonTrigMuons_eta0', 'nonTrigMuons_pt0', 'nonTrigMuons_charge0')
-# Regular(24, -2.4, 2.4, name='trigMuons_eta0')
-# Regular(34, 26, 60, name='trigMuons_pt0')
-# Regular(2, -2, 2, underflow=False, overflow=False, name='trigMuons_charge0')
-# Regular(24, -2.4, 2.4, name='nonTrigMuons_eta0')
-# Regular(50, 15, 65, name='nonTrigMuons_pt0')
-# Regular(2, -2, 2, underflow=False, overflow=False, name='nonTrigMuons_charge0')
+# nominal_bothMuons
+# Axes = ('eta', 'pt', 'charge', 'etaNonTrig', 'ptNonTrig', 'passMT')
+# Regular(48, -2.4, 2.4, underflow=False, overflow=False, name='eta')
+# Regular(34, 26, 60, underflow=False, overflow=False, name='pt')
+# Regular(2, -2, 2, underflow=False, overflow=False, name='charge')
+# Regular(48, -2.4, 2.4, underflow=False, overflow=False, name='etaNonTrig')
+# Regular(45, 15, 60, underflow=False, overflow=False, name='ptNonTrig')
+# Boolean(name='passMT')
 
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
@@ -53,13 +55,14 @@ if __name__ == "__main__":
     parser = common_plot_parser()
     parser.add_argument("inputfile", type=str, nargs=1, help="Input file with histograms (pkl.lz4 or hdf5 file)")
     parser.add_argument("outdir",   type=str, nargs=1, help="Output folder")
-    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (it depends on what study you run)", default="nominal_muonsonly")
+    parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (it depends on what study you run)", default="nominal_bothMuons")
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
     #parser.add_argument("--mtRange", type=float, nargs=2, default=[0,40], choices=[-1.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.], help="Apply mT cut, if upper edge is negative integrate the overflow")
     parser.add_argument("-c", "--charges", type=int, default=[-1, 1], nargs='+', choices=[-1, 1], help="Charge selection for chosen muon")
     parser.add_argument("--rr", "--ratio-range", dest="ratioRange", default=(0.95,1.05), type=float, nargs=2, help="Range for ratio plot")
     parser.add_argument('--plotNonTrig', action='store_true', help='Plot non triggering muon (with the veto selection), otherwise plot triggering muon')
+    parser.add_argument('--passMT', action='store_true', help='Make plots with mt cut')
     parser.add_argument('--scaleProc', default=None, nargs='*', type=str,
                         help='Apply scaling factor to process by name, with syntax proc=scale=charge (=charge can be omitted, if given it must be plus or minus). Can specify multiple times')
     args = parser.parse_args()
@@ -97,6 +100,7 @@ if __name__ == "__main__":
     histInfo = groups.getDatagroups() # keys are same as returned by groups.getNames()
     s = hist.tag.Slicer()
 
+    mtTag = "passMT" if args.passMT else "inclusiveMT"
     scaleDict = {"plus": {},
                  "minus" : {}}
     if args.scaleProc:
@@ -113,7 +117,8 @@ if __name__ == "__main__":
     for charge in charges.keys():
         chargeTag = charges[charge]
         chargeBin = 0 if charge == -1 else 1
-        outdirTag = f"{muonTag}_{chargeTag}/"
+        otherChargeBin = 1 - chargeBin
+        outdirTag = f"{muonTag}_{chargeTag}_{mtTag}/"
         outdirCharge = f"{outdir}/{outdirTag}/"
         createPlotDirAndCopyPhp(outdirCharge, eoscp=args.eoscp)
 
@@ -127,17 +132,15 @@ if __name__ == "__main__":
             logger.debug(hin.axes)
             ###
             # select charge and integrate other muon
+            hin = hin[{"passMT" : True if args.passMT else s[::hist.sum]}]
             if args.plotNonTrig:
-                h = hin[{"nonTrigMuons_charge0": s[chargeBin],
-                         "trigMuons_pt0" : s[::hist.sum],
-                         "trigMuons_eta0" : s[::hist.sum],
-                         "trigMuons_charge0" : s[::hist.sum]}]
+                h = hin[{"pt" : s[::hist.sum],
+                         "eta" : s[::hist.sum],
+                         "charge" : s[otherChargeBin]}]
             else:
-                h = hin[{"trigMuons_charge0": s[chargeBin],
-                         "nonTrigMuons_pt0" : s[::hist.sum],
-                         "nonTrigMuons_eta0" : s[::hist.sum],
-                         "nonTrigMuons_charge0" : s[::hist.sum]}]
-
+                h = hin[{"ptNonTrig" : s[::hist.sum],
+                         "etaNonTrig" : s[::hist.sum],
+                         "charge" : s[chargeBin]}]
             ###
             logger.debug(h.axes)
             if d =="Data":

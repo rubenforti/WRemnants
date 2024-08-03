@@ -234,34 +234,86 @@ int hasMatchDR2idx(const float& eta, const float& phi, const Vec_f& vec_eta, con
 
 }
 
-bool veto_vector_sorting(std::pair<float,float> i,std::pair<float,float> j) { return (i.first>j.first); }
+int hasMatchDR2idx_closest(const float& eta, const float& phi, const Vec_f& vec_eta, const Vec_f& vec_phi, const float dr2 = 0.09) {
 
-float unmatched_postfsrMuon_var(const Vec_f& var, const Vec_f& pt, int hasMatchDR2idx) {
-
-  std::vector<std::pair<float,float> > ptsortingvector;
-  for (unsigned int i = 0; i < var.size(); i++) {
-    if (i!=hasMatchDR2idx) ptsortingvector.push_back(std::pair(pt[i],var[i]));
+  double minDR2 = 1000.0;
+  int ret = -1;
+  for (unsigned int jvec = 0; jvec < vec_eta.size(); ++jvec) {
+      double thisDR2 = deltaR2(eta, phi, vec_eta[jvec], vec_phi[jvec]);
+      if (thisDR2 < dr2 and thisDR2 < minDR2) {
+          minDR2 = thisDR2;
+          ret = jvec;
+      }
   }
-  if (ptsortingvector.size() == 0) return -99;
-  std::sort(ptsortingvector.begin(),ptsortingvector.end(),veto_vector_sorting);
-  return ptsortingvector[0].second;
+  return ret;
 
 }
 
-bool veto_vector_sorting_charge(std::pair<float,int> i,std::pair<float,int> j) { return (i.first>j.first); }
+Vec_i charge_from_pdgid(const Vec_i& pdgid) {
 
-int unmatched_postfsrMuon_charge(const Vec_i& var, const Vec_f& pt, int hasMatchDR2idx) {
-
-  std::vector<std::pair<float,int> > ptsortingvector;
-  for (unsigned int i = 0; i < var.size(); i++) {
-    if (i!=hasMatchDR2idx) ptsortingvector.push_back(std::pair(pt[i],var[i]));
-  }
-  if (ptsortingvector.size() == 0) return -99;
-  std::sort(ptsortingvector.begin(),ptsortingvector.end(),veto_vector_sorting_charge);
-  return ptsortingvector[0].second;
+    // start by assigning negative charge, and set to +1 for negative pdgId
+    // for neutral particles this might not be the desired choice, might implement specific exceptions
+    // but for now this function is used for charged particles
+    Vec_i res(pdgid.size(), -1);
+    for (unsigned int i = 0; i < res.size(); ++i) {
+        if (pdgid[i] < 0) res[i] = 1;
+    }
+    return res;
 
 }
 
+template <typename T>
+T unmatched_postfsrMuon_var(const ROOT::VecOps::RVec<T>& var, const Vec_f& pt, int hasMatchDR2idx) {
+
+    T retVar = -99;
+    if (hasMatchDR2idx < 0) {
+        // std::cout << "Warning: no gen-reco match found" << std::endl;
+        return retVar;
+    }
+
+    if (var.size() < 2) {
+        // std::cout << "Warning: only one matched postFSR muon found" << std::endl;
+        return retVar;
+    }
+
+    float maxPt = -1;
+    // no need to require OS charge for the matched and unmatched muons (with Z->4mu due to PHOTOS one can get same charge, but it is fine for the veto)
+    for (unsigned int i = 0; i < var.size(); i++) {
+        if (i != hasMatchDR2idx and pt[i] > maxPt) {
+            retVar = var[i];
+            maxPt = pt[i];
+        }
+    }
+    return retVar;
+
+}
+    
+template <typename T> 
+T unmatched_postfsrMuon_var_withCharge(const ROOT::VecOps::RVec<T>& var, const Vec_f& pt, const Vec_i& charge, int hasMatchDR2idx) {
+
+    T retVar = -99;
+    if (hasMatchDR2idx < 0) {
+        // std::cout << "Warning: no gen-reco match found" << std::endl;
+        return retVar;
+    }
+
+    if (var.size() < 2) {
+        // std::cout << "Warning: only one matched postFSR muon found" << std::endl;
+        return retVar;
+    }
+
+    float maxPt = -1;
+    int matchedCharge = charge[hasMatchDR2idx];
+    for (unsigned int i = 0; i < var.size(); i++) {
+        if (i != hasMatchDR2idx and ((charge[i] + matchedCharge) == 0) and pt[i] > maxPt) {
+            retVar = var[i];
+            maxPt = pt[i];
+        }
+    }
+    return retVar;
+
+}
+    
 RVec<int> postFSRLeptonsIdx(RVec<bool> postFSRleptons) {
   RVec<int> v;
   for (unsigned int i=0; i<postFSRleptons.size(); i++) {
@@ -316,7 +368,13 @@ TVector2 transverseVectorSum(const Vec_f& pt, const Vec_f& phi) {
     }
     return sum;
 }
-    
+
+Vec_f slice_vec(const Vec_f &vec, int start, int end) {
+  Vec_f res(end-start, 0);
+  std::copy(vec.begin() + start, vec.begin() + end, res.begin());
+  return res;
+}
+
 template<std::ptrdiff_t N, typename V>
 auto vec_to_tensor(const V &vec, std::size_t start = 0) {
   Eigen::TensorFixedSize<typename V::value_type, Eigen::Sizes<N>> res;

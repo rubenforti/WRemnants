@@ -141,7 +141,7 @@ def build_graph(df, dataset):
     df = df.Define("postFSRmuon_phi0", "GenPart_phi[postFSRmuons][0]")
     df = df.Define("postFSRmuon_charge0", "-1 * std::copysign(1.0, GenPart_pdgId[postFSRmuons][0])")
 
-    df = muon_selections.select_veto_muons(df, nMuons=0, condition=">=", ptCut=15.0, etaCut=3.0,
+    df = muon_selections.select_veto_muons(df, nMuons=0, condition=">=", ptCut=args.vetoRecoPt, etaCut=3.0,
                                            useGlobalOrTrackerVeto=False, tightGlobalOrTracker=True)
     # might have more veto muons, but will look for at least one gen matched to the only gen muon
     df = df.Define("oneOrMoreVetoMuons", "Sum(vetoMuons) > 0")

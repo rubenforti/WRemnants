@@ -11,6 +11,7 @@ import socket
 from wremnants.datasets.datasetDict_v9 import dataDictV9, dataDictV9extended
 from wremnants.datasets.datasetDict_gen import genDataDict
 from wremnants.datasets.datasetDict_lowPU import dataDictLowPU
+from wremnants.datasets.datasetDict_lowPU2023 import dataDictLowPU2023
 import ROOT
 import XRootD.client
 from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
@@ -93,7 +94,7 @@ def buildFileList(path):
     return buildFileListXrd(path) if path.startswith(xrdprefix) else buildFileListPosix(path)
 
 #TODO add the rest of the samples!
-def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_data=False, oneMCfileEveryN=None):
+def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_data=False, oneMCfileEveryN=None, era=None):
     filelist = []
     expandedPaths = []
     for orig_path in paths:
@@ -102,7 +103,7 @@ def makeFilelist(paths, maxFiles=-1, base_path=None, nano_prod_tags=None, is_dat
         # try each tag in order until files are found
         fallback = False
         for prod_tag in nano_prod_tags:
-            format_args=dict(BASE_PATH=base_path, NANO_PROD_TAG=prod_tag)
+            format_args=dict(BASE_PATH=base_path, NANO_PROD_TAG=prod_tag, ERA=era)
 
             path = orig_path.format(**format_args)
             expandedPaths.append(path)
@@ -194,14 +195,21 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
             logger.info('Using NanoAOD V9 for 2018')
         else:
             raise ValueError(f"Unsupported era {era}")
+    elif nanoVersion == "v12": # 2022/2023
+        pass
     else:
-        raise ValueError("Only NanoAODv9 is supported")
+        raise ValueError("Only NanoAODv9/v12 is supported")
 
     if mode:
         if "gen" in mode:
-            dataDict.update(genDataDict)     
+            dataDict.update(genDataDict)
         elif "lowpu" in mode:
-            dataDict = dataDictLowPU
+            if era == "2017H":
+                dataDict = dataDictLowPU
+            elif "2023_PUAVE" in era:
+                dataDict = dataDictLowPU2023
+            else:
+                raise ValueError(f"Low pileup era {era} not supported")
 
     narf_datasets = []
     for sample,info in dataDict.items():
@@ -219,7 +227,7 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
         nfiles = maxFiles
         if type(maxFiles) == dict:
             nfiles = maxFiles[sample] if sample in maxFiles else -1
-        paths = makeFilelist(info["filepaths"], nfiles, base_path=base_path, nano_prod_tags=prod_tags, is_data=is_data, oneMCfileEveryN=oneMCfileEveryN)
+        paths = makeFilelist(info["filepaths"], nfiles, base_path=base_path, nano_prod_tags=prod_tags, is_data=is_data, oneMCfileEveryN=oneMCfileEveryN, era=era)
 
         if checkFileForZombie:
             paths = [p for p in paths if not is_zombie(p)]
