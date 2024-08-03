@@ -216,12 +216,12 @@ class Datagroups(object):
         signalselector = sel.SignalSelectorABCD
         scale = 1
         if mode == "extended1D":
+            scale = 0.85
             fakeselector = sel.FakeSelector1DExtendedABCD
         elif mode == "extended2D":
+            scale = 1.15
             fakeselector = sel.FakeSelector2DExtendedABCD
-
             auxiliary_info["integrate_shapecorrection_x"]=integrate_shapecorrection_x
-
             if smoothing_mode == "fakerate" and not integrate_shapecorrection_x:
                 auxiliary_info.update(dict(smooth_shapecorrection=True, interpolate_x=True, rebin_x="automatic"))
             else:
@@ -229,6 +229,7 @@ class Datagroups(object):
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
+            scale = 0.85
             if simultaneousABCD:
                 fakeselector = sel.FakeSelectorSimultaneousABCD
             else:

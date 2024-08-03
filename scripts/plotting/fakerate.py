@@ -414,7 +414,7 @@ def plot_chi2_extnededABCD_scf(syst_variations=False, auxiliary_info=True,  poly
     plot_chi2(chi2_scf2.ravel(), ndf_scf2, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
     plot_chi2(chi2_scf3.ravel(), ndf_scf3, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
 
-def plot_diagnostics_extnededABCD(
+def plot_diagnostics_extendedABCD(
     h, outdir, syst_variations=False, auxiliary_info=True,
 ):
     # plot the fake distribution in the signal region
@@ -847,8 +847,9 @@ def plot_diagnostics_extnededABCD(
 
 ### plot closure
 def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothing_mode="binned", normalized=False, bootstrap=False):
-    h = h[{"charge":hist.sum}]
+    # h = h[{"charge":hist.sum}]
     # h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
+    
     h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
     h = hh.disableFlow(h, "pt")
 
@@ -857,10 +858,9 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     # h = h[{"pt":hist.sum}]
 
     smoothing_axis_name = "pt"
-    fakerate_axes = ["eta", "pt"]#, "charge"]
+    fakerate_axes = ["eta", "pt", "charge"]
     # h = h[{"muonJetPt":hist.sum}]
 
-    fakerate_integration_axes = [a for a in fakerate_axes if a not in args.vars]
     threshold = args.xBinsSideband[-1]
 
     if smoothing_mode in ["binned"]:
@@ -885,12 +885,11 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         values = h.values(flow=True)
         hBootstrap = h.copy()
 
-
     info=dict(
         fakerate_axes=fakerate_axes, 
         smoothing_axis_name=smoothing_axis_name, 
         rebin_smoothing_axis=rebin_smoothing_axis, 
-        integrate_x=True
+        integrate_x=True,
         )
 
     # signal selection
@@ -899,39 +898,39 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     hss.append(hD_sig)
     labels.append("D (truth)")
     
-    # # simple ABCD
-    # logger.info("Make simple ABCD prediction")
-    # if smoothed:
-    #     hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
-    #     hD_simple = hSel_simple.get_hist(h)
-    #     hss.append(hD_simple)
-    #     labels.append("simple smoothed")
-    # else:
-    #     hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
+    # simple ABCD
+    logger.info("Make simple ABCD prediction")
+    if smoothing_mode in ["full", "fakerate"]:
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, smoothing_mode=smoothing_mode, smoothing_order_fakerate=2, **info)
+        hD_simple = hSel_simple.get_hist(h)
+        hss.append(hD_simple)
+        labels.append("simple smoothed")
+    else:
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smoothing_mode=smoothing_mode, upper_bound_y=None)
 
-    #     if bootstrap:
-    #         # throw posson toys
-    #         toy_shape = [nsamples, *values.shape]
-    #         rng = np.random.default_rng(seed)
-    #         toys = rng.poisson(values, size=toy_shape)
+        if bootstrap:
+            # throw posson toys
+            toy_shape = [nsamples, *values.shape]
+            rng = np.random.default_rng(seed)
+            toys = rng.poisson(values, size=toy_shape)
 
-    #         vals = []
-    #         for i in range(nsamples):
-    #             hBootstrap.values(flow=True)[...] = toys[i,...]
-    #             hSel_simple.h_nominal = None
-    #             hD_simple = hSel_simple.get_hist(hBootstrap)
-    #             vals.append(hD_simple.values(flow=True))
+            vals = []
+            for i in range(nsamples):
+                hBootstrap.values(flow=True)[...] = toys[i,...]
+                hSel_simple.h_nominal = None
+                hD_simple = hSel_simple.get_hist(hBootstrap)
+                vals.append(hD_simple.values(flow=True))
 
-    #         vals = np.array(vals)
-    #         toy_mean = np.mean(vals, axis=0)
-    #         toy_var = np.var(vals, ddof=1, axis=0) 
-    #         hD_simple.values(flow=True)[...] = toy_mean
-    #         hD_simple.variances(flow=True)[...] = toy_var
-    #     else:
-    #         hD_simple = hSel_simple.get_hist(h)
+            vals = np.array(vals)
+            toy_mean = np.mean(vals, axis=0)
+            toy_var = np.var(vals, ddof=1, axis=0) 
+            hD_simple.values(flow=True)[...] = toy_mean
+            hD_simple.variances(flow=True)[...] = toy_var
+        else:
+            hD_simple = hSel_simple.get_hist(h)
 
-    #     hss.append(hD_simple)
-    #     labels.append("simple ABCD")
+        hss.append(hD_simple)
+        labels.append("simple ABCD")
 
     # # extrapolate ABCD x-axis
     # if not smoothed:
@@ -1016,47 +1015,48 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # hss.append(hD_ext5)
         # labels.append("ext(5) binned (iso<0.45)")
 
-    # # extended ABCD in 8 control regions
-    # logger.info("Make 2D extended ABCD prediction in 8 control regions")
-    # if smoothed:
-    #     hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info)
-    #     hD_ext8 = hSel_ext8.get_hist(h)
-    #     hss.append(hD_ext8)
-    #     labels.append("ext. 2D smoothed")
+    # extended ABCD in 8 control regions
+    logger.info("Make 2D extended ABCD prediction in 8 control regions")
+    if smoothing_mode in ["full", "fakerate"]:
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(
+            h, smoothing_mode=smoothing_mode, smoothing_order_fakerate=2, interpolate_x=False, integrate_shapecorrection_x=True, **info)
+        hD_ext8 = hSel_ext8.get_hist(h)
+        hss.append(hD_ext8)
+        labels.append("ext. 2D smoothed")
 
-    #     # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
-    #     # hD_ext8 = hSel_ext8.get_hist(h)
-    #     # hss.append(hD_ext8)
-    #     # labels.append("ext(8) smoothed (full)")
-    # else:
-    #     hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
-    #         integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+        # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, interpolation_order=1, smoothing_order_shapecorrection=[1,1])
+        # hD_ext8 = hSel_ext8.get_hist(h)
+        # hss.append(hD_ext8)
+        # labels.append("ext(8) smoothed (full)")
+    else:
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
+            integrate_shapecorrection_x=True, interpolate_x=False, smooth_shapecorrection=False, smoothing_mode=smoothing_mode)
 
-    #     if bootstrap:
-    #         # throw posson toys
-    #         toy_shape = [nsamples, *values.shape]
-    #         rng = np.random.default_rng(seed)
-    #         toys = rng.poisson(values, size=toy_shape)
+        if bootstrap:
+            # throw posson toys
+            toy_shape = [nsamples, *values.shape]
+            rng = np.random.default_rng(seed)
+            toys = rng.poisson(values, size=toy_shape)
 
-    #         vals = []
-    #         for i in range(nsamples):
-    #             hBootstrap.values(flow=True)[...] = toys[i,...]
-    #             hSel_ext8.h_nominal = None
-    #             hD_ext8 = hSel_ext8.get_hist(hBootstrap)
-    #             vals.append(hD_ext8.values(flow=True))
+            vals = []
+            for i in range(nsamples):
+                hBootstrap.values(flow=True)[...] = toys[i,...]
+                hSel_ext8.h_nominal = None
+                hD_ext8 = hSel_ext8.get_hist(hBootstrap)
+                vals.append(hD_ext8.values(flow=True))
 
-    #         vals = np.array(vals)
-    #         toy_mean = np.mean(vals, axis=0)
-    #         toy_var = np.var(vals, ddof=1, axis=0) 
-    #         hD_ext8.values(flow=True)[...] = toy_mean
-    #         hD_ext8.variances(flow=True)[...] = toy_var
-    #     else:
-    #         hD_ext8 = hSel_ext8.get_hist(h)
+            vals = np.array(vals)
+            toy_mean = np.mean(vals, axis=0)
+            toy_var = np.var(vals, ddof=1, axis=0) 
+            hD_ext8.values(flow=True)[...] = toy_mean
+            hD_ext8.variances(flow=True)[...] = toy_var
+        else:
+            hD_ext8 = hSel_ext8.get_hist(h)
 
-    #     hss.append(hD_ext8)
-    #     labels.append("ext. 2D")
+        hss.append(hD_ext8)
+        labels.append("ext. 2D")
 
-        # labels.append("extended 2D")
+        labels.append("extended 2D")
 
         # using fullcorrection
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
@@ -1219,7 +1219,7 @@ if __name__ == '__main__':
     groups = Datagroups(args.infile, excludeGroups=None)
 
     if args.axlim or args.rebin or args.absval:
-        groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval)
+        groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval, rename=False)
 
     # abseta = "eta" in args.vars and len(args.absval) > args.vars.index("eta") and args.absval[args.vars.index("eta")]
 
@@ -1235,16 +1235,16 @@ if __name__ == '__main__':
     for proc in args.procFilters:
         h = histInfo[proc].hists[args.baseName]
 
-        # if proc != groups.fakeName:
-        #     plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothing_mode="binned")
-        #     plot_closure(h, outdir, suffix=f"{proc}_normalized", proc=proc, smoothing_mode="binned", normalized=True)
-        #     plot_closure(h, outdir, suffix=f"{proc}_smooth_fakerate", proc=proc, smoothing_mode="fakerate")
-        #     plot_closure(h, outdir, suffix=f"{proc}_smooth_full", proc=proc, smoothing_mode="full")
+        if proc != groups.fakeName:
+            plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothing_mode="binned")
+            plot_closure(h, outdir, suffix=f"{proc}_normalized", proc=proc, smoothing_mode="binned", normalized=True)
+            plot_closure(h, outdir, suffix=f"{proc}_smooth_fakerate", proc=proc, smoothing_mode="fakerate")
+            plot_closure(h, outdir, suffix=f"{proc}_smooth_full", proc=proc, smoothing_mode="full")
 
-        # continue
+        continue
 
         # plot fakerate factors for full extended ABCD method
-        plot_diagnostics_extnededABCD(h, outdir)
+        plot_diagnostics_extendedABCD(h, outdir)
 
         continue
 
