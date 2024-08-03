@@ -35,6 +35,7 @@ parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
+parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
 
 args = parser.parse_args()
 
@@ -159,7 +160,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             edges = h_inclusive.axes[0].edges
 
             # need to divide by bin width
-            binwidth = edges[1:]-edges[:-1]
+            binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
             if h_inclusive.storage_type != hist.storage.Weight:
                 raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
             nom = h_inclusive.values() / binwidth
@@ -269,7 +270,7 @@ if combinetf2:
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     chi2=None
-    if f"chi2_{fittype}" in fitresult:
+    if f"chi2_{fittype}" in fitresult and not args.noChisq:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
 
     for channel, info in meta_input["channel_info"].items():
@@ -322,7 +323,7 @@ else:
             hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
                 data=np.stack((np.reshape(h.values()[ch_start:ch_end], shape), np.reshape(h.variances()[ch_start:ch_end], shape)), axis=-1)) for h in hist_stack]
 
-            if not args.prefit:
+            if not args.prefit and not args.noChisq:
                 rfile = ROOT.TFile.Open(args.infile.replace(".hdf5",".root"))
                 ttree = rfile.Get("fitresults")
                 ttree.GetEntry(0)
