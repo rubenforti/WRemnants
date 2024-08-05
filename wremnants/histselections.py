@@ -175,7 +175,8 @@ def solve_leastsquare(X, XTY):
     params = np.einsum('...ij,...j->...i', XTXinv, XTY)
     return params, XTXinv
 
-def solve_nonnegative_leastsquare(X, XTY):
+def solve_nonnegative_leastsquare(X, XTY, exclude_idx=None):
+    # exclude_idx to exclude the non negative constrained for one parameter by evaluating the nnls twice and flipping the sign
     XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
     XTX = XT @ X
     XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
@@ -184,9 +185,15 @@ def solve_nonnegative_leastsquare(X, XTY):
     nBins = np.prod(orig_shape[:-1])
     XTY_flat = XTY.reshape(nBins, XTY.shape[-1])
     XTX_flat = XTX.reshape(nBins, XTX.shape[-2], XTX.shape[-1])
-    # params = [fnnls(xtx, xty) for xtx, xty in zip(XTX_flat, XTY_flat)] # use fast nnls
-    params = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat, XTY_flat)] # use scipy implementation of nnls (may be a bit slower)
+    # params = [fnnls(xtx, xty) for xtx, xty in zip(XTX_flat, XTY_flat)] # use fast nnls (for some reason slower, even though it should be faster ...)
+    params = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat, XTY_flat)] # use scipy implementation of nnls
     params = np.reshape(params, orig_shape)
+    if exclude_idx is not None and np.sum(params[...,exclude_idx]==0):
+        mask = params[...,exclude_idx]==0
+        mask_flat = mask.flatten()
+        params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat[mask_flat], XTY_flat[mask_flat] * np.array([-1,1,1,1]))]
+        params[mask] = np.array(params_negative) * np.array([-1,1,1,1])
+        logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
     return params, XTXinv
 
 def compute_chi2(y, y_pred, w=None, nparams=1):
@@ -450,8 +457,11 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
-        if self.polynomial in ["bernstein", "monotonic"]:
+        if self.polynomial in ["bernstein",]:
             self.solve = solve_nonnegative_leastsquare
+        elif self.polynomial in ["monotonic",]:
+            # exclude first parameter (integration constant) from non negative constraint
+            self.solve = lambda x,y: solve_nonnegative_leastsquare(x,y,0)
         else:
             self.solve = solve_leastsquare
 
