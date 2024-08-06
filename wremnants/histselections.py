@@ -191,8 +191,10 @@ def solve_nonnegative_leastsquare(X, XTY, exclude_idx=None):
     if exclude_idx is not None and np.sum(params[...,exclude_idx]==0):
         mask = params[...,exclude_idx]==0
         mask_flat = mask.flatten()
-        params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat[mask_flat], XTY_flat[mask_flat] * np.array([-1,1,1,1]))]
-        params[mask] = np.array(params_negative) * np.array([-1,1,1,1])
+        w_flip = np.ones(XTY.shape[-1])
+        w_flip[0] = -1
+        params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat[mask_flat], XTY_flat[mask_flat] * w_flip)]
+        params[mask] = np.array(params_negative) * w_flip
         logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
     return params, XTXinv
 
@@ -211,6 +213,7 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
     from scipy import stats
 
     logger.debug(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
+    logger.debug(f"Min chi2 = {chi2.min()}; max chi2 = {chi2.max()}")
     return chi2, ndf    
 
 def extend_edges(traits, x):
@@ -473,6 +476,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # histogram with nonclosure corrections
         self.hCorr = None
 
+        self.external_params = None
+        self.external_cov = None
+
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
         # axes_names: the axes names to bin the correction in. If empty make an inclusive correction (i.e. a single number)
@@ -621,7 +627,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y, y_var
 
-    def smoothen(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, flow=True):
+    def smoothen(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, signal_region=False, flow=True):
         if h.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1/np.sqrt(y_var)
@@ -640,8 +646,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         X, XTY = get_parameter_matrices(x, y, w, self.smoothing_order_fakerate, pol=self.polynomial)
         params, cov = self.solve(X, XTY)
 
-        if self.smoothing_mode == "full":
-            # add up parameters from smoothing of individual regions
+        if self.smoothing_mode == "full" and not signal_region:
+            if auxiliary_info:
+                # compute chi2 from individual sideband regions
+                y_pred = self.f_smoothing(x, params)
+                y_pred = y_pred.reshape(y.shape) # flatten
+                w = w.reshape(y.shape)
+                chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
+
+                # return y, y_var, y_pred, params, cov, chi2, ndf
+
+            # add up parameters from smoothing of individual sideband regions
             if type(self) == FakeSelectorSimpleABCD:
                 # exp(-a + b + c)
                 # ['a', 'b', 'c']
@@ -657,8 +672,13 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
             params = np.sum(params*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis], axis=-2)
             
-            if syst_variations:
+            if syst_variations or auxiliary_info:
                 cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
+
+        if self.external_cov is not None and syst_variations:
+            cov = cov + self.external_cov[..., *[np.newaxis for n in range(cov.ndim - self.external_cov.ndim)],:,:]
+        if self.external_params is not None:
+            params = params + self.external_params[..., *[np.newaxis for n in range(params.ndim - self.external_params.ndim)],:]
 
         # evaluate in range of original histogram
         x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
@@ -681,11 +701,12 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative values from smoothing variations")
 
         if auxiliary_info:
-            y_pred = self.f_smoothing(x, params)
-            # flatten
-            y_pred = y_pred.reshape(y.shape) 
-            w = w.reshape(y.shape)
-            chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
+            if self.smoothing_mode != "full" or signal_region:
+                y_pred = self.f_smoothing(x, params)
+                y_pred = y_pred.reshape(y.shape) # flatten
+                w = w.reshape(y.shape)
+                chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
+
             return y_smooth_orig, y_smooth_var_orig, params, cov, chi2, ndf
         else:
             return y_smooth_orig, y_smooth_var_orig
@@ -760,7 +781,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         
         return d, dvar
 
-    def calculate_fullABCD_smoothed(self, h, syst_variations=False, use_spline=False, flow=True):
+    def calculate_fullABCD_smoothed(self, h, syst_variations=False, use_spline=False, auxiliary_info=False, signal_region=False, flow=True):
 
         if type(self) in [FakeSelectorSimpleABCD, FakeSelector1DExtendedABCD]:
             # sum up high abcd-y axis bins
@@ -785,9 +806,13 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         sval = np.flip(sval, axis=-1)
         svar = np.flip(svar, axis=-1)
 
-        # make abcd axes flat, take all but last bin (i.e. signal region D)
-        sval = sval.reshape((*sval.shape[:-2], sval.shape[-2]*sval.shape[-1]))[...,:-1]
-        svar = svar.reshape((*svar.shape[:-2], svar.shape[-2]*svar.shape[-1]))[...,:-1]
+        if signal_region:
+            sval = sval.reshape((*sval.shape[:-2], sval.shape[-2]*sval.shape[-1]))[...,-1]
+            svar = svar.reshape((*svar.shape[:-2], svar.shape[-2]*svar.shape[-1]))[...,-1]
+        else:
+            # make abcd axes flat, take all but last bin (i.e. signal region D)
+            sval = sval.reshape((*sval.shape[:-2], sval.shape[-2]*sval.shape[-1]))[...,:-1]
+            svar = svar.reshape((*svar.shape[:-2], svar.shape[-2]*svar.shape[-1]))[...,:-1]
 
         smoothidx = [n for n in h.axes.name if n not in [self.name_x, self.name_y]].index(self.smoothing_axis_name)
         smoothing_axis = h.axes[self.smoothing_axis_name]
@@ -813,21 +838,28 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             xwidth = h.axes[self.smoothing_axis_name].widths
 
-            xwidthtgt = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 2)*[None]]
+            xwidthtgt = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 2 + signal_region)*[None]]
             xwidth = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]
 
             sval *= 1./xwidth
             svar *= 1./xwidth**2
 
             goodbin = (sval > 0.) & (svar > 0.)
-            if np.sum(goodbin)-goodbin.size > 0:
-                logger.warning(f"Found {np.sum(goodbin)-goodbin.size} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
+            if goodbin.size-np.sum(goodbin) > 0:
+                logger.warning(f"Found {goodbin.size-np.sum(goodbin)} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
 
             logd = np.where(goodbin, np.log(sval), 0.)
-            logdvar = np.where(goodbin, svar/sval**2, 1.)
+            logdvar = np.where(goodbin, svar/sval**2, np.inf)
             x = self.get_bin_centers_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
 
-            logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
+            if auxiliary_info:
+                # # TODO: remove
+                # return self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, signal_region=signal_region, auxiliary_info=True
+                # )
+                logd, logdvar, params, cov, chi2, ndf = self.smoothen(
+                    h, x, logd, logdvar, syst_variations=syst_variations, signal_region=signal_region, auxiliary_info=True)
+            else:
+                logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
 
             sval = np.exp(logd)*xwidthtgt
             sval = np.where(np.isfinite(sval), sval, 0.)
@@ -849,7 +881,10 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             # explicit variations, so the remaining binned uncertainty is zero
             dvar = np.zeros_like(d)
 
-        return d, dvar
+        if auxiliary_info:
+            return d, dvar, params, cov, chi2, ndf
+        else:
+            return d, dvar
 
 class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
     # simple ABCD method simultaneous fitting all regions

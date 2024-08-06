@@ -827,16 +827,91 @@ class CardTool(object):
                 hdatas.append(self.loadPseudodataFakes(datagroups, forceNonzero=forceNonzero))
                 continue
 
-            if pseudoData in ["simple", "extended1D", "extended2D"]:
-                # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
-                datagroups.set_histselectors(datagroups.getNames(), self.nominalName, 
-                    mode=pseudoData,
-                    simultaneousABCD=self.simultaneousABCD,
+            if pseudoData in ["dataClosure", "mcClosure"]:
+                # build the pseudodata from the nominal model
+                hdata = hh.sumHists([self.datagroups.getDatagroups()[x].hists[self.nominalName] for x in self.datagroups.groups.keys() if x != self.getDataName()])
+                hdatas.append(hdata)
+
+                # build the model by adding the nonclosure
+                # first load the nonclosure
+                if pseudoData == "dataClosure":
+                    datagroups.loadHistsForDatagroups(
+                        baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
+                        procsToRead=[self.getFakeName()],
+                        scaleToNewLumi=self.lumiScale,
+                        lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                        forceNonzero=forceNonzero,
+                        sumFakesPartial=not self.simultaneousABCD,
+                        applySelection=False)
+                    hist_fake= datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData]
+                elif pseudoData == "mcClosure":
+                    hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+                    
+                fakeselector = sel.FakeSelector1DExtendedABCD(
+                    hist_fake, 
+                    fakerate_axes=self.datagroups.fakerate_axes,
+                    smoothing_mode="full",
+                    smoothing_order_fakerate=3,
+                    integrate_x=True,
                 )
+
+                d_true, dval_true = fakeselector.calculate_fullABCD_smoothed(hist_fake)
+
+                h_obs = fakeselector.get_hist_passX_passY(hist_fake)
+                d_obs = h_obs.values()
+                dvar_obs = h_obs.variances()
+
+                corr = d_true.sum()/d_obs.sum()
+                logger.info(f"Got corr={corr}")
+
+                logger.info(f"calculate_fullABCD_smoothed pred for {pseudoData}")
+                _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
+
+                hist_fake = hh.scaleHist(hist_fake, 1./0.85)
+
+                logger.info(f"calculate_fullABCD_smoothed true for {pseudoData}")
+                _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
+
+                cov = cov + cov_d
+                params = params_d - params
+
+                # cov_inv = np.linalg.inv(cov)
+
+                # cp = np.einsum('...ij,...j->...i', cov_inv, params)
+                # pcp = params * cp
+
+                # print(pcp.sum())
+                # chi2 = params.T @ cov_inv @ params
+
+                self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_params = params
+                self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_cov = cov
+
+                self.datagroups.loadHistsForDatagroups(
+                    baseName=self.nominalName, syst=self.nominalName,
+                    procsToRead=[self.getFakeName()], 
+                    scaleToNewLumi=self.lumiScale,
+                    lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                    forceNonzero=forceNonzero,
+                    sumFakesPartial=not self.simultaneousABCD)
+                continue
+
+            elif pseudoData.split("-")[0] in ["simple", "extended1D", "extended2D"]:
+                # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
+                parts = pseudoData.split("-")
+                if len(parts) == 2:
+                    pseudoDataMode, pseudoDataSmoothingMode = parts
+                else:
+                    pseudoDataMode = pseudoData
+                    pseudoDataSmoothingMode = "full"
+
+                datagroups.set_histselectors(
+                    datagroups.getNames(), self.nominalName, mode=pseudoDataMode,
+                    smoothing_mode=pseudoDataSmoothingMode, smoothingOrderFakerate=3,
+                    integrate_x=True,
+                    mcCorr=[None],
+                    )
                 syst=self.nominalName
-            else:
-                syst=pseudoData
- 
+
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
@@ -846,6 +921,12 @@ class CardTool(object):
                 sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
+
+            # add BBB stat on top of nominal
+            hist_fake = self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName]
+            hist_fake.variances(flow=True)[...] = datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData].variances(flow=True)
+
+            self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName] = hist_fake
 
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
