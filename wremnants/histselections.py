@@ -654,8 +654,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 w = w.reshape(y.shape)
                 chi2, ndf = compute_chi2(y, y_pred, w, nparams=params.shape[-1])
 
-                # return y, y_var, y_pred, params, cov, chi2, ndf
-
             # add up parameters from smoothing of individual sideband regions
             if type(self) == FakeSelectorSimpleABCD:
                 # exp(-a + b + c)
@@ -853,9 +851,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             x = self.get_bin_centers_smoothing(h, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
 
             if auxiliary_info:
-                # # TODO: remove
-                # return self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, signal_region=signal_region, auxiliary_info=True
-                # )
                 logd, logdvar, params, cov, chi2, ndf = self.smoothen(
                     h, x, logd, logdvar, syst_variations=syst_variations, signal_region=signal_region, auxiliary_info=True)
             else:

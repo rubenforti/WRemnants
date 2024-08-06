@@ -719,8 +719,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     if not lowPU: # lowPU does not include PhotonInduced as a process. skip it:
         cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
     if wmass:
-        # if args.logNormalWmunu > 0.0:
-        #     cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
+        if args.logNormalWmunu > 0.0:
+            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
         if args.logNormalFake > 0.0:
             cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*"})
         elif args.logNormalFake < 0.0:

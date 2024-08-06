@@ -855,33 +855,12 @@ class CardTool(object):
                     integrate_x=True,
                 )
 
-                d_true, dval_true = fakeselector.calculate_fullABCD_smoothed(hist_fake)
-
-                h_obs = fakeselector.get_hist_passX_passY(hist_fake)
-                d_obs = h_obs.values()
-                dvar_obs = h_obs.variances()
-
-                corr = d_true.sum()/d_obs.sum()
-                logger.info(f"Got corr={corr}")
-
-                logger.info(f"calculate_fullABCD_smoothed pred for {pseudoData}")
                 _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
-
                 hist_fake = hh.scaleHist(hist_fake, 1./0.85)
-
-                logger.info(f"calculate_fullABCD_smoothed true for {pseudoData}")
                 _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
 
                 cov = cov + cov_d
                 params = params_d - params
-
-                # cov_inv = np.linalg.inv(cov)
-
-                # cp = np.einsum('...ij,...j->...i', cov_inv, params)
-                # pcp = params * cp
-
-                # print(pcp.sum())
-                # chi2 = params.T @ cov_inv @ params
 
                 self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_params = params
                 self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_cov = cov
@@ -911,6 +890,8 @@ class CardTool(object):
                     mcCorr=[None],
                     )
                 syst=self.nominalName
+            else:
+                syst=pseudoData
 
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=syst, label=pseudoData,
