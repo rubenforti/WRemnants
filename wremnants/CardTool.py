@@ -903,11 +903,11 @@ class CardTool(object):
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
 
-            # add BBB stat on top of nominal
-            hist_fake = self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName]
-            hist_fake.variances(flow=True)[...] = datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData].variances(flow=True)
-
-            self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName] = hist_fake
+            if pseudoData.split("-")[0] in ["simple", "extended1D", "extended2D"]:
+                # add BBB stat on top of nominal
+                hist_fake = self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName]
+                hist_fake.variances(flow=True)[...] = datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData].variances(flow=True)
+                self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName] = hist_fake
 
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
