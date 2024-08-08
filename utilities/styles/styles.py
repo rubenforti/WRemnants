@@ -115,7 +115,8 @@ common_groups = [
     "normXsecW",
     "width",
     "ZmassAndWidth",
-    "massAndWidth"
+    "massAndWidth",
+    "normXsecZ",
 ]
 nuisance_groupings = {
     "super":[
@@ -135,7 +136,19 @@ nuisance_groupings = {
         "prefire",
         "muonCalibration",
         "Fake",
-        "bcQuarkMass"
+        "bcQuarkMass",
+        # "normWplus_Helicity-1",
+        # "normWplus_Helicity0",
+        # "normWplus_Helicity1",
+        # "normWplus_Helicity2",
+        # "normWplus_Helicity3",
+        # "normWplus_Helicity4",
+        # "normWminus_Helicity-1",
+        # "normWminus_Helicity0",
+        # "normWminus_Helicity1",
+        # "normWminus_Helicity2",
+        # "normWminus_Helicity3",
+        # "normWminus_Helicity4"
     ],
     "min": common_groups + [
         "massShiftW", "massShiftZ",

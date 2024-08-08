@@ -47,7 +47,6 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
         new_vars = np.broadcast_to(h1.variances(flow=flow), broadcast_shape)
         new_vars = np.moveaxis(new_vars, np.arange(len(moves)), list(moves.keys()))
         new_vals = np.stack((new_vals, new_vars), axis=-1)
-
     return hist.Hist(*h2.axes, data=new_vals, storage=h1.storage_type())
 
 def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_val=1., flow=True, createNew=True, by_ax_name=True):
@@ -150,7 +149,7 @@ def multiplyHists(h1, h2, allowBroadcast=True, createNew=True, flow=True):
         h1 = broadcastSystHist(h1, h2, flow=flow)
         h2 = broadcastSystHist(h2, h1, flow=flow)
 
-    if h1.storage_type == hist.storage.Double and h2.storage_type == hist.storage.Double:
+    if h1.storage_type == hist.storage.Double and h2.storage_type == hist.storage.Double and createNew==False:
         return h1*h2 
 
     with_variance = h1.storage_type == hist.storage.Weight and h2.storage_type == hist.storage.Weight
@@ -338,7 +337,12 @@ def makeAbsHist(h, axis_name, rename=True):
 
     if 0 not in ax.edges:
         raise ValueError("Can't mirror around 0 if it isn't a bin boundary")
-    abs_ax = hist.axis.Variable(ax.edges[ax.index(0.):], **axInfo)
+    new_edges = ax.edges[ax.index(0.):]
+    if isinstance(ax, hist.axis.Regular):
+        abs_ax = hist.axis.Regular(len(new_edges)-1, 0, new_edges[-1], **axInfo)
+    else:
+        abs_ax = hist.axis.Variable(new_edges, **axInfo)
+
     hnew = hist.Hist(*h.axes[:axidx], abs_ax, *h.axes[axidx+1:], storage=h.storage_type())
     
     s = hist.tag.Slicer()
@@ -372,6 +376,25 @@ def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
             logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
             sel[ax] = slice(None,None,hist.rebin(rebin))
     return h[sel] if len(sel)>0 else h        
+
+def mirrorAxis(h, axis, flow=True):
+    # mirror an axis by projecting the entries to the absolute value of the axis and copy it 
+    htmp = makeAbsHist(h, axis, rename=False)
+    idx = htmp.axes.name.index(axis)
+    vals = htmp.values(flow=flow)
+    varis = htmp.variances(flow=flow)
+    vals_flip = np.flip(vals, axis=idx)
+    varis_flip = np.flip(varis, axis=idx)
+    vals = np.concatenate((vals_flip, vals), axis=idx)
+    varis = np.concatenate((varis_flip, varis), axis=idx)
+    h.values(flow=flow)[...] = vals/2.
+    h.variances(flow=flow)[...] = varis/4.
+    return h
+
+def mirrorAxes(h, axes, flow=True):
+    for a in axes:
+        h = mirrorAxis(h, a, flow=flow)
+    return h
 
 def disableFlow(h, axis_name):
     # disable the overflow and underflow bins of a single axes, while keeping the flow bins of other axes
@@ -575,7 +598,7 @@ def transfer_variances(h1, h2, flow=True):
     # extra dimensions for systematic axes
     extra_dimensions = (Ellipsis,) + (np.newaxis,) * (val1.ndim - val2.ndim)
     var1 = np.ones_like(val1)*var2[extra_dimensions] # use var2 directly in cases of not finite values
-    mask = np.isfinite(var2) & (var2!=0)
+    mask = np.isfinite(var2) & (var2!=0.) & (val2!=0.)
     # scale uncertainty with difference in yield with respect to second histogram such that relative uncertainty stays the same,
     factors = (val1[mask] / val2[mask][extra_dimensions])
     var1[mask] = var2[mask][extra_dimensions] * factors**2
@@ -822,3 +845,5 @@ def rssHistsMid(h, syst_axis, scale=1.):
     hDown = addHists(hnom, hrss[{"downUpVar" : -1j}], scale2=-1.)
 
     return hUp, hDown
+
+

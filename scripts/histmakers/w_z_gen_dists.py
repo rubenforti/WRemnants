@@ -27,11 +27,14 @@ parser.add_argument("--fiducial", choices=["masswindow", "dilepton", "singlelep"
 parser.add_argument("--auxiliaryHistograms", action="store_true", help="Safe auxiliary histograms (mainly for ew analysis)")
 parser.add_argument("--ptqVgen", action='store_true', help="To store qt by Q variable instead of ptVgen, GEN only ", default=None)
 parser.add_argument("--helicity", action='store_true', help="Make qcdScaleByHelicity hist")
+parser.add_argument("--theoryCorrections", action='store_true', help="Apply default theory corrections")
 
 parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
-parser = common.set_parser_default(parser, "theoryCorr", [])
-parser = common.set_parser_default(parser, "ewTheoryCorr", [])
+args = parser.parse_args()
 
+if not args.theoryCorrections:
+    parser = common.set_parser_default(parser, "theoryCorr", [])
+    parser = common.set_parser_default(parser, "ewTheoryCorr", [])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -44,45 +47,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
 
 logger.debug(f"Will process samples {[d.name for d in datasets]}")
 
-axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True, overflow=False)
-
-axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
-
-theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes()
-axis_ptV_thag = theoryAgnostic_axes[0]
-axis_yV_thag = theoryAgnostic_axes[1]
-
-if args.useTheoryAgnosticBinning:
-    axis_absYVgen = hist.axis.Variable(
-        axis_yV_thag.edges, #same axis as theory agnostic norms
-        name = "absYVgen", underflow=False
-    )
-    axis_ptVgen = hist.axis.Variable(
-        axis_ptV_thag.edges, #same axis as theory agnostic norms, 
-        #common.ptV_binning,
-        name = "ptVgen", underflow=False,
-    )
-elif args.useUnfoldingBinning:
-    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
-        ["ptVGen", "absYVGen"], 
-        common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
-        add_out_of_acceptance_axis=False,
-    )
-    axis_ptVgen = unfolding_axes[0]
-    axis_absYVgen = unfolding_axes[1]
-    axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
-else:
-    axis_absYVgen = hist.axis.Variable(
-        [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
-        name = "absYVgen", underflow=False
-     )
-    axis_ptVgen = hist.axis.Variable(
-        (*common.get_dilepton_ptV_binning(fine=False), 13000.),
-        name = "ptVgen", underflow=False,
-    )
-
 axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
-axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
 col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
 axis_ptqVgen = hist.axis.Variable(
@@ -115,7 +80,44 @@ def build_graph(df, dataset):
     isW = dataset.name.startswith("W") and dataset.name[1] not in ["W", "Z"] #in common.wprocs
     isZ = dataset.name.startswith("Z") and dataset.name[1] not in ["W", "Z"] #in common.zprocs
 
-    axis_chargeVgen = axis_chargeZgen if isZ else axis_chargeWgen
+    axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True, overflow=False)
+    axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
+
+    theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike="Z" in dataset.name)
+    axis_ptV_thag = theoryAgnostic_axes[0]
+    axis_yV_thag = theoryAgnostic_axes[1]
+
+    if args.useUnfoldingBinning:
+        unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
+            ["ptVGen", "absYVGen"], 
+            common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
+            add_out_of_acceptance_axis=False,
+        )
+        axis_ptVgen = unfolding_axes[0]
+        axis_absYVgen = unfolding_axes[1]
+        axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
+    
+    elif args.useTheoryAgnosticBinning:
+        axis_absYVgen = hist.axis.Variable(
+            axis_yV_thag.edges, #same axis as theory agnostic norms
+            name = "absYVgen", underflow=False
+        )
+        axis_ptVgen = hist.axis.Variable(
+            axis_ptV_thag.edges, #same axis as theory agnostic norms, 
+            #common.ptV_binning,
+            name = "ptVgen", underflow=False,
+        )
+    else:
+        axis_absYVgen = hist.axis.Variable(
+            [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
+            name = "absYVgen", underflow=False
+        )
+        axis_ptVgen = hist.axis.Variable(
+            (*common.get_dilepton_ptV_binning(fine=False), 13000.),
+            name = "ptVgen", underflow=False,
+        )
+        
+    axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
 
     weight_expr = "std::copysign(1.0, genWeight)"
 
@@ -138,6 +140,7 @@ def build_graph(df, dataset):
     else:
         nominal_axes = [axis_massWgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeWgen]
         lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeWgen]
+    
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 
@@ -288,14 +291,19 @@ def build_graph(df, dataset):
     if 'powheg' in dataset.name:
         return results, weightsum
 
-    nominal_gen = df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Weight())
-    results.append(nominal_gen)
+    if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
+            "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames() and "MEParamWeight" in df.GetColumnNames():
 
-    if 'horace' not in dataset.name and 'winhac' not in dataset.name and "LHEScaleWeight" in df.GetColumnNames():
         qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
-        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen")
-        
-        df = syst_tools.add_helicity_hists(results, df, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
+
+        df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen",propagateToHelicity= args.propagatePDFstoHelicity)
+        df = syst_tools.add_helicity_hists(results, df, dataset.name, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
+    
+    nominal_cols = [col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen"]
+    nominal_axes = [axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen]
+    nominal_gen = df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Weight())
+    
+    results.append(nominal_gen)
 
     return results, weightsum
 

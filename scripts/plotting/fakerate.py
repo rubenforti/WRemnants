@@ -414,15 +414,159 @@ def plot_chi2_extnededABCD_scf(syst_variations=False, auxiliary_info=True,  poly
     plot_chi2(chi2_scf2.ravel(), ndf_scf2, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol2")
     plot_chi2(chi2_scf3.ravel(), ndf_scf3, outdirSCF, xlim=(0,35), suffix=proc, outfile="chi2_pol3")
 
-def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True, polynomial="power",
-    #polynomial="bernstein"
+def plot_diagnostics_extendedABCD(
+    h, outdir, syst_variations=False, auxiliary_info=True,
 ):
+    # plot the fake distribution in the signal region
+
+    smoothing_axis_name = "pt"
+    fakerate_axes = ["eta", "pt", "charge"]
+
+    # h = h[{"eta":hist.rebin(48),"charge":hist.rebin(2)}]
+
+    # selector = sel.FakeSelectorSimpleABCD
+    selector = sel.FakeSelector2DExtendedABCD
+
+    rebin_x_old=[26,27,28,29,30,31,33,36,40,46,56]
+    rebin_x_new=[26,27,28,29,30,31,32,35,38,41,44,47,50,53,56]
+
+    throw_toys = None
+
+    # fake selector binned w/o rebinning
+    logger.info("Make binned fake prediction")
+    hSel_binned = selector(h, 
+        fakerate_axes=fakerate_axes, rebin_smoothing_axis=None, smoothing_mode="binned", 
+        rebin_x=None, interpolate_x=False, smooth_shapecorrection=False, throw_toys=throw_toys)
+    h_binned = hSel_binned.get_hist(h)
+
+    logger.info("Make fakerate fake prediction w/ old binning")
+    hSel_fakerate = selector(h, fakerate_axes=fakerate_axes, smoothing_mode="fakerate", 
+        rebin_smoothing_axis=rebin_x_old, throw_toys=throw_toys)
+    h_fakerate = hSel_fakerate.get_hist(h)
+
+    logger.info("Make fakerate fake prediction w/ new binning")
+    hSel_fakerate_new = selector(h, fakerate_axes=fakerate_axes, smoothing_mode="fakerate", 
+        rebin_smoothing_axis=rebin_x_new, throw_toys=throw_toys)
+    h_fakerate_new = hSel_fakerate_new.get_hist(h)
+
+    logger.info("Make full fake prediction w/o rebinning")
+    hSel_full = selector(h, 
+        fakerate_axes=fakerate_axes, smoothing_order_fakerate=1, smoothing_mode="full", rebin_x=None, 
+        rebin_smoothing_axis=None, interpolate_x=False, smooth_shapecorrection=False, throw_toys=throw_toys)
+    h_full = hSel_full.get_hist(h)
+
+    logger.info("Make full fake prediction w/ old rebinning")
+    hSel_full_rebin = selector(h, 
+        fakerate_axes=fakerate_axes, smoothing_order_fakerate=1, smoothing_mode="full", 
+        rebin_smoothing_axis=rebin_x_old, interpolate_x=False, smooth_shapecorrection=False, throw_toys=throw_toys)
+    h_full_rebin = hSel_full_rebin.get_hist(h)
+
+    logger.info("Make full fake prediction w/ new rebinning")
+    hSel_full_rebin_new = selector(h, 
+        fakerate_axes=fakerate_axes, smoothing_order_fakerate=1, smoothing_mode="full", 
+        rebin_smoothing_axis=rebin_x_new, interpolate_x=False, smooth_shapecorrection=False, throw_toys=throw_toys)
+    h_full_rebin_new = hSel_full_rebin_new.get_hist(h)
+
+
+    etavar="\eta"
+    logy=True
+
+    # ylim = [1e4, 1e6]
+    ylim = [1e0, 1e6]
+
+    x_edges = h.axes[smoothing_axis_name].edges
+    x_widths = np.diff(x_edges)/2
+    x_centers = x_edges[:-1]+x_widths
+
+    for idx_charge, charge_bins in enumerate(h.axes["charge"]):
+        for idx_eta, eta_bins in enumerate(h.axes["eta"]):
+            slices = {"eta":idx_eta, "charge":idx_charge}
+
+            linestyles = ["-", "-", "--", "--", ":"]
+            colors = mpl.colormaps["tab10"]
+            outfile = f"charge{idx_charge}_eta{idx_eta}"
+            binlabel=f"${round(eta_bins[0],1)} < {etavar} < {round(eta_bins[1],1)}$"
+            
+            h1d_binned = h_binned[slices]
+            y_binned = h1d_binned.values()
+            yerr_binned = h1d_binned.variances()**0.5
+
+            h1d_fakerate = h_fakerate[slices]
+            y_fakerate = h1d_fakerate.values()
+            yerr_fakerate = h1d_fakerate.variances()**0.5
+
+            h1d_fakerate_new = h_fakerate_new[slices]
+            y_fakerate_new = h1d_fakerate_new.values()
+            yerr_fakerate_new = h1d_fakerate_new.variances()**0.5
+
+            h1d_full = h_full[slices]
+            y_full = h1d_full.values()
+            yerr_full = h1d_full.variances()**0.5
+
+            h1d_full_rebin = h_full_rebin[slices]
+            y_full_rebin = h1d_full_rebin.values()
+            yerr_full_rebin = h1d_full_rebin.variances()**0.5
+
+            h1d_full_rebin_new = h_full_rebin_new[slices]
+            y_full_rebin_new = h1d_full_rebin_new.values()
+            yerr_full_rebin_new = h1d_full_rebin_new.variances()**0.5
+
+            if logy:
+                # ylim = [max(0.1, min(y_binned)*0.5), max(y_binned+yerr_binned)*2]
+                pass
+            else:
+                ylim=None
+            #     # ylim = [max(0, min(y-yerr)*0.9), min(5,max(y+yerr))*1.1]
+            #     ylim = [0,5]
+            xlim=None
+
+            fig, ax1, ax2 = plot_tools.figureWithRatio(
+                h1d_binned, ylabel="Events", xlabel=styles.xlabels.get(smoothing_axis_name,smoothing_axis_name), 
+                cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy, rrange=[0.9,1.1], rlabel="1/binned")
+
+            ax1.errorbar(x_centers, y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_binned[:len(x_centers)], marker="", linestyle='none', color="k", label="binned")
+
+            ax1.errorbar(x_centers, y_fakerate[:len(x_centers)], xerr=x_widths, yerr=yerr_fakerate[:len(x_centers)], marker="", linestyle='none', color=colors(0), label="fakerate old rebinned")
+            ax1.errorbar(x_centers, y_fakerate_new[:len(x_centers)], xerr=x_widths, yerr=yerr_fakerate_new[:len(x_centers)], marker="", linestyle='none', color=colors(1), label="fakerate new rebinned")
+
+            ax1.errorbar(x_centers, y_full[:len(x_centers)], xerr=x_widths, yerr=yerr_full[:len(x_centers)], marker="", linestyle='none', color=colors(2), label="full")
+            ax1.errorbar(x_centers, y_full_rebin[:len(x_centers)], xerr=x_widths, yerr=yerr_full_rebin[:len(x_centers)], marker="", linestyle='none', color=colors(3), label="full old rebinned")
+            ax1.errorbar(x_centers, y_full_rebin_new[:len(x_centers)], xerr=x_widths, yerr=yerr_full_rebin_new[:len(x_centers)], marker="", linestyle='none', color=colors(4), label="full new rebinned")
+
+            #ratios
+            ax2.errorbar(x_centers, y_fakerate[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_fakerate[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color=colors(0))
+            ax2.errorbar(x_centers, y_fakerate_new[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_fakerate_new[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color=colors(1))
+            ax2.errorbar(x_centers, y_full[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_full[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color=colors(2))
+            ax2.errorbar(x_centers, y_full_rebin[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_full_rebin[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color=colors(3))
+            ax2.errorbar(x_centers, y_full_rebin_new[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_full_rebin_new[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color=colors(4))
+
+            ax2.errorbar(x_centers, y_binned[:len(x_centers)]/y_binned[:len(x_centers)], xerr=x_widths, yerr=yerr_binned[:len(x_centers)]/y_binned[:len(x_centers)], marker="", linestyle='none', color="k")
+
+            ax1.text(0.94, 0.9, binlabel, transform=ax1.transAxes, fontsize=20,
+                    verticalalignment='bottom', horizontalalignment="right")
+
+            ax1.text(1.0, 1.003, styles.process_labels[proc], transform=ax1.transAxes, fontsize=20,
+                    verticalalignment='bottom', horizontalalignment="right")
+            plot_tools.addLegend(ax1, ncols=2, text_size=20, loc="upper left")
+            plot_tools.fix_axes(ax1, ax2, logy=logy)
+
+            if args.postfix:
+                outfile += f"_{args.postfix}"
+
+            plot_tools.save_pdf_and_png(outdir, outfile)
+            plot_tools.write_index_and_log(outdir, outfile, args=args)
+
+        #     break
+        # break
+
+    return
+
     # smoothing_axis_name = "muonJetPt" #"pt"
     # fakerate_axes = ["abseta", "charge", "muonJetPt"]
     # h = hh.rebinHist(h[{"pt":hist.sum}], "muonJetPt", [26, 42, 46, 48, 54, 76])
 
     smoothing_axis_name = "pt"
-    fakerate_axes = ["abseta", "pt", "charge"]
+    fakerate_axes = ["eta", "pt", "charge"]
     h = hh.rebinHist(h[{"muonJetPt":hist.sum}], "pt", [28, 30, 33, 40, 56])
 
     hSel_simple_binned = sel.FakeSelectorSimpleABCD(h, fakerate_axes=fakerate_axes, smoothing_axis_name=smoothing_axis_name,
@@ -702,33 +846,34 @@ def plot_diagnostics_extnededABCD(h, syst_variations=False, auxiliary_info=True,
 
 
 ### plot closure
-def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothed=False, normalized=False, bootstrap=False):
-    h = h[{"charge":hist.sum}]
+def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothing_mode="binned", normalized=False, bootstrap=False):
+    # h = h[{"charge":hist.sum}]
+    # h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
+    
     h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
     h = hh.disableFlow(h, "pt")
 
     # smoothing_axis_name = "muonJetPt"
-    # fakerate_axes = ["abseta" "muonJetPt"] #, "charge",
+    # fakerate_axes = ["eta" "muonJetPt"] #, "charge",
     # h = h[{"pt":hist.sum}]
 
     smoothing_axis_name = "pt"
-    fakerate_axes = ["abseta", "pt"]#, "charge"]
+    fakerate_axes = ["eta", "pt", "charge"]
     # h = h[{"muonJetPt":hist.sum}]
 
-    fakerate_integration_axes = [a for a in fakerate_axes if a not in args.vars]
     threshold = args.xBinsSideband[-1]
 
-    if smoothed:
-        if smoothing_axis_name == "muonJetPt":
-            rebin_smoothing_axis = [26, 42, 46, 48, 54]
-        elif smoothing_axis_name == "pt":
-            rebin_smoothing_axis = [26, 28, 30, 33, 40, 56]
-    else:
+    if smoothing_mode in ["binned"]:
         if smoothing_axis_name == "muonJetPt":
             h = hh.rebinHist(h, "muonJetPt", [26, 42, 46, 48, 54])
         if smoothing_axis_name == "pt":
             h = hh.rebinHist(h, "pt", [26, 28, 30, 33, 40, 56])
         rebin_smoothing_axis=None
+    else:
+        if smoothing_axis_name == "muonJetPt":
+            rebin_smoothing_axis = [26, 42, 46, 48, 54]
+        elif smoothing_axis_name == "pt":
+            rebin_smoothing_axis = [26, 28, 30, 33, 40, 56]
 
     hss=[]
     labels=[]
@@ -740,8 +885,12 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         values = h.values(flow=True)
         hBootstrap = h.copy()
 
-
-    info=dict(fakerate_axes=fakerate_axes, smoothing_axis_name=smoothing_axis_name, rebin_smoothing_axis=rebin_smoothing_axis, integrate_x=True)
+    info=dict(
+        fakerate_axes=fakerate_axes, 
+        smoothing_axis_name=smoothing_axis_name, 
+        rebin_smoothing_axis=rebin_smoothing_axis, 
+        integrate_x=True,
+        )
 
     # signal selection
     hSel_sig = sel.SignalSelectorABCD(h, **info)
@@ -751,13 +900,13 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     
     # simple ABCD
     logger.info("Make simple ABCD prediction")
-    if smoothed:
-        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info)
+    if smoothing_mode in ["full", "fakerate"]:
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, smoothing_mode=smoothing_mode, smoothing_order_fakerate=2, **info)
         hD_simple = hSel_simple.get_hist(h)
         hss.append(hD_simple)
         labels.append("simple smoothed")
     else:
-        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
+        hSel_simple = sel.FakeSelectorSimpleABCD(h, **info, smoothing_mode=smoothing_mode, upper_bound_y=None)
 
         if bootstrap:
             # throw posson toys
@@ -828,13 +977,13 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
     # extended ABCD in 5 control regions
     logger.info("Make 1D extended ABCD prediction in 5 control regions")
-    if smoothed:
-        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info)
+    if smoothing_mode in ["full", "fakerate"]:
+        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smoothing_mode=smoothing_mode, smoothing_order_fakerate=2)
         hD_ext5 = hSel_ext5.get_hist(h)
         hss.append(hD_ext5)
-        labels.append("ext. 1D smoothed")
+        labels.append(f"Ext. 1D {smoothing_mode} smoothed")
     else:
-        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False, upper_bound_y=None)
+        hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smoothing_mode=smoothing_mode, upper_bound_y=None)
 
         if bootstrap:
             # throw posson toys
@@ -858,7 +1007,8 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
             hD_ext5 = hSel_ext5.get_hist(h)
 
         hss.append(hD_ext5)
-        labels.append("ext. 1D")
+        labels.append(f"Ext. 1D binned")
+
 
         # hSel_ext5 = sel.FakeSelector1DExtendedABCD(h, **info, smooth_fakerate=False upper_bound_y=hist.overflow)
         # hD_ext5 = hSel_ext5.get_hist(h)
@@ -867,8 +1017,9 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
     # extended ABCD in 8 control regions
     logger.info("Make 2D extended ABCD prediction in 8 control regions")
-    if smoothed:
-        hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info)
+    if smoothing_mode in ["full", "fakerate"]:
+        hSel_ext8 = sel.FakeSelector2DExtendedABCD(
+            h, smoothing_mode=smoothing_mode, smoothing_order_fakerate=2, interpolate_x=False, integrate_shapecorrection_x=True, **info)
         hD_ext8 = hSel_ext8.get_hist(h)
         hss.append(hD_ext8)
         labels.append("ext. 2D smoothed")
@@ -879,7 +1030,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         # labels.append("ext(8) smoothed (full)")
     else:
         hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, upper_bound_y=None,
-            integrate_shapecorrection_x=False, interpolate_x=False, smooth_shapecorrection=False, smooth_fakerate=False)
+            integrate_shapecorrection_x=True, interpolate_x=False, smooth_shapecorrection=False, smoothing_mode=smoothing_mode)
 
         if bootstrap:
             # throw posson toys
@@ -905,7 +1056,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hss.append(hD_ext8)
         labels.append("ext. 2D")
 
-        # labels.append("extended 2D")
+        labels.append("extended 2D")
 
         # using fullcorrection
         # hSel_ext8 = sel.FakeSelector2DExtendedABCD(h, **info, full_corrfactor=True, upper_bound_y=None,
@@ -946,16 +1097,18 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     if rebin_smoothing_axis:
         hss = [hh.rebinHist(h, smoothing_axis_name, rebin_smoothing_axis) for h in hss]
 
-    axes = hss[0].axes.name
+    axes = [f"abs{a.capitalize()}" if args.absval[i] else a for i, a in enumerate(hss[0].axes.name)]
 
     if len(axes)>1:
-        hss = [hh.unrolledHist(h, obs=axes[::-1], add_flow_bins=True) for h in hss]
+        hss = [hh.unrolledHist(h, obs=hss[0].axes.name[::-1], add_flow_bins=True) for h in hss]
         xlabel=f"{'-'.join([styles.xlabels.get(a,a).replace('(GeV)','') for a in axes])} bin"
     else:
         xlabel = styles.xlabels[axes[0]] if len(axes)==1 and axes in styles.xlabels else f"{'-'.join(axes)} Bin"
 
     scales = [sum(h.values(flow=True)) for h in hss]
     scale0 = sum(hss[0].values(flow=True))
+    scales_var = [sum(h.variances(flow=True)) for h in hss]
+    scale0_var = sum(hss[0].variances(flow=True))
     if normalized:
         print(scales)
         hss = [hh.scaleHist(h, 1./sum(h.values(flow=True))) for h in hss]
@@ -963,8 +1116,8 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     else:
         ylabel = "Events / bin"
 
-    for l, s in zip(labels, scales):
-        print(f"{l} = {s/scale0}")
+    for l, s, v in zip(labels, scales, scales_var):
+        print(f"{l} = {scale0/s} +/- {(v/s**2+scale0_var/scale0**2)**0.5 * scale0/s}")
 
     hs = hss
 
@@ -991,7 +1144,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     if ratio:
         hr = [hh.divideHists(h1d, hss[0]) for h1d in hss]
         
-        if not smoothed:
+        if smoothing_mode in ["binned"]:
             chi2s = [sum((h1d.values(flow=True) - hss[0].values(flow=True))**2/(h1d.variances(flow=True) + hss[0].variances(flow=True))) for h1d in hss]
             ndf = len(hss[0].values(flow=True)) - normalized
             labels = [f"{l} $\chi^2/ndf={round(c)}/{ndf}$" if i!= 0 else l for i, (l, c) in enumerate(zip(labels, chi2s))]
@@ -1066,7 +1219,7 @@ if __name__ == '__main__':
     groups = Datagroups(args.infile, excludeGroups=None)
 
     if args.axlim or args.rebin or args.absval:
-        groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval)
+        groups.set_rebin_action(args.vars, args.axlim, args.rebin, args.absval, rename=False)
 
     # abseta = "eta" in args.vars and len(args.absval) > args.vars.index("eta") and args.absval[args.vars.index("eta")]
 
@@ -1083,16 +1236,15 @@ if __name__ == '__main__':
         h = histInfo[proc].hists[args.baseName]
 
         if proc != groups.fakeName:
-            plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothed=False)
-            plot_closure(h, outdir, suffix=f"{proc}_normalized", proc=proc, smoothed=False, normalized=True)
-            plot_closure(h, outdir, suffix=f"{proc}_smoothed", proc=proc, smoothed=True)
+            plot_closure(h, outdir, suffix=f"{proc}", proc=proc, smoothing_mode="binned")
+            plot_closure(h, outdir, suffix=f"{proc}_normalized", proc=proc, smoothing_mode="binned", normalized=True)
+            plot_closure(h, outdir, suffix=f"{proc}_smooth_fakerate", proc=proc, smoothing_mode="fakerate")
+            plot_closure(h, outdir, suffix=f"{proc}_smooth_full", proc=proc, smoothing_mode="full")
 
         continue
 
         # plot fakerate factors for full extended ABCD method
-        outdirFRF = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
-        # outdirSCF = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
-        plot_diagnostics_extnededABCD(h, outdirFRF)
+        plot_diagnostics_extendedABCD(h, outdir)
 
         continue
 
