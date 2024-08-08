@@ -78,6 +78,8 @@ class CardTool(object):
                              }
         self.charge_ax = "charge"
         self.procGroups = {}
+        self.binByBinStatScale = 1.
+        self.exponentialTransform = False
 
     def getProcNames(self, grouped_procs):
         expanded_procs = []
@@ -240,6 +242,12 @@ class CardTool(object):
         self.nominalName = histName
         if self.datagroups:
             self.datagroups.setNominalName(histName)
+
+    def setBinByBinStatScale(self, scale):
+        self.binByBinStatScale = scale
+
+    def setExponentialTransform(self, transform = True):
+        self.exponentialTransform = transform
 
     # by default this returns True also for Fake since it has Data in the list of members
     # then self.isMC negates this one and thus will only include pure MC processes
@@ -556,12 +564,12 @@ class CardTool(object):
                 raise RuntimeError(f"Did not find any valid variations for syst {syst}")
 
         variations = [hvar[{ax : binnum for ax,binnum in zip(axNames, entry)}] for entry in entries]
+        
         if hvar.axes[-1].name == "mirror" and len(variations) == 2*len(systInfo["outNames"]):
             systInfo["outNames"] = [n + d for n in systInfo["outNames"] for d in ["Up", "Down"]]
         elif len(variations) != len(systInfo["outNames"]):
             logger.warning(f"The number of variations doesn't match the number of names for "
                 f"syst {syst}. Found {len(systInfo['outNames'])} names and {len(variations)} variations.")
-
         return {name : var for name,var in zip(systInfo["outNames"], variations) if name}
 
     def getLogk(self, hvar, hnom, kfac=1., logkepsilon=math.log(1e-3)):
@@ -1159,12 +1167,20 @@ class CardTool(object):
     def writeHistByCharge(self, h, name):
         for charge in self.channels:
             q = self.chargeIdDict[charge]["val"]
-            hout = narf.hist_to_root(self.getBoostHistByCharge(h, q))
+            hin = self.getBoostHistByCharge(h, q)
+            if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+                hin = hin.copy()
+                hin.variances()[...] *= self.binByBinStatScale**2
+            hout = narf.hist_to_root(hin)
             hout.SetName(name.replace("CHANNEL",charge)+f"_{charge}")
             hout.Write()
         
     def writeHistWithCharges(self, h, name):
-        hout = narf.hist_to_root(h)
+        hin  = h
+        if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+            hin = hin.copy()
+            hin.variances()[...] *= self.binByBinStatScale**2
+        hout = narf.hist_to_root(hin)
         hout.SetName(f"{name}_{self.channels[0]}" if self.channels else name)
         hout.Write()
     

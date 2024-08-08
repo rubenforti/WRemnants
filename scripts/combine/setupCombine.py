@@ -27,11 +27,11 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
-    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
             parser.add_argument("--theoryAgnosticBandSize", type=float, default=1., help="Multiplier for theory-motivated band in theory agnostic analysis with POIs as NOIs.")
+            parser.add_argument("--helicitiesToInflate", type=int, nargs='*', default=[], help="Select which helicities you want to scale")
         elif subparserName == "theoryAgnosticPolVar":
             parser.add_argument("--noPolVarOnFake", action="store_true", help="Do not propagate POI variations to fakes")
             parser.add_argument("--symmetrizePolVar", action='store_true', help="Symmetrize up/Down variations in CardTool (using average)")
@@ -50,7 +50,8 @@ def make_parser(parser=None):
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4],
                         help="Set verbosity level with logging, the larger the more verbose")
     parser.add_argument("--noColorLogger", action="store_true", help="Do not use logging with colors")
-    parser.add_argument("--hdf5", action="store_true", help="Write out datacard in hdf5")
+    parser.add_argument("--root", action="store_true", help="Write out datacard in txt/root format (deprecated)")
+    parser.add_argument("--allow-deprecated-root-output", action="store_true", help="Force write out datacard in txt/root format despite deprecation")
     parser.add_argument("--sparse", action="store_true", help="Write out datacard in sparse mode (only for when using hdf5)")
     parser.add_argument("--excludeProcGroups", type=str, nargs="*", help="Don't run over processes belonging to these groups (only accepts exact group names)", default=["QCD"])
     parser.add_argument("--filterProcGroups", type=str, nargs="*", help="Only run over processes belonging to these groups", default=[])
@@ -84,7 +85,7 @@ def make_parser(parser=None):
     parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
-    parser.add_argument("--fakeSmoothingOrder", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
+    parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -122,7 +123,7 @@ def make_parser(parser=None):
     parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers and nuisances)")
     parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
     parser.add_argument("--logNormalWmunu", default=-1, type=float, help="Add lnN uncertainty for W signal (mainly for tests wifakes in control regions, where W is a subdominant background). If negative nothing is added")
-    parser.add_argument("--logNormalFake", default=1.15, type=float, help="Specify lnN uncertainty for Fake background (for W analysis). If negative nothing is added")
+    parser.add_argument("--logNormalFake", default=1.05, type=float, help="Specify lnN uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added")
     # pseudodata
     parser.add_argument("--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata")
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
@@ -134,9 +135,11 @@ def make_parser(parser=None):
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
-    parser.add_argument("--forceConstrainMass", action='store_true', help="force mass to be constrained in fit")
+    parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
+    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
+    parser.add_argument("--exponentialTransform", action='store_true', help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)")
     parser = make_subparsers(parser)
 
     return parser
@@ -151,7 +154,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
     isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
-    # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
+   # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
     #       processes which are defined in the original process dictionary but are not supposed to be (always) run on
     if args.addQCDMC or "QCD" in args.filterProcGroups:
@@ -185,7 +188,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         wmass = hasw
 
     simultaneousABCD = wmass and args.simultaneousABCD and not xnorm
-    constrainMass = args.forceConstrainMass or args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
+
+    if args.massConstraintMode == "automatic":
+        constrainMass = args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
+    else:
+        constrainMass = True if args.massConstraintMode == "constrained" else False
     logger.debug(f"constrainMass = {constrainMass}")
 
     if wmass:
@@ -295,6 +302,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
     cardTool.setDatagroups(datagroups)
+
+    if wmass:
+        cardTool.setBinByBinStatScale(args.binByBinStatScaleForMW)
+
+    cardTool.setExponentialTransform(args.exponentialTransform)
 
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
@@ -677,8 +689,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
 
-        theory_helper = combine_theory_helper.TheoryHelper(cardTool, args, hasNonsigSamples=(wmass and not xnorm))
-        theory_helper.configure(resumUnc=args.resumUnc,
+    
+        theory_helper = combine_theory_helper.TheoryHelper(label, cardTool, args, hasNonsigSamples=(wmass and not xnorm))
+        theory_helper.configure(resumUnc=args.resumUnc, 
             transitionUnc = not args.noTransitionUnc,
             propagate_to_fakes=to_fakes,
             np_model=args.npUnc,
@@ -693,6 +706,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if wmass:
             if args.noPDFandQCDtheorySystOnSignal:
                 theorySystSamples = ["wtau_samples"]
+            theorySystSamples.append("single_v_nonsig_samples")
+        elif wlike:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = []
             theorySystSamples.append("single_v_nonsig_samples")
         if xnorm:
             theorySystSamples = ["signal_samples"]
@@ -710,6 +727,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
         if args.logNormalFake > 0.0:
             cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*"})
+        elif args.logNormalFake < 0.0:
+            cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
         cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background", splitGroup = {"experiment": ".*"})
         cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background", splitGroup = {"experiment": ".*"})
         cardTool.addSystematic("luminosity",
@@ -743,7 +762,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             systNamePrepend=subgroup,
             actionArgs=dict(variations_smoothing=True),
         )
-        if args.fakeEstimation in ["extended2D",]:
+        if args.fakeEstimation in ["extended2D",] and args.fakeSmoothingMode != "full":
             subgroup = f"{cardTool.getFakeName()}Shape"
             cardTool.addSystematic(**info,
                 rename=subgroup,
@@ -1158,7 +1177,7 @@ def outputFolderName(outfolder, card_tool, doStatOnly, postfix):
 
     return f"{outfolder}/{'_'.join(to_join)}/"
 
-def main(args, xnorm=False):
+def run_root(args, xnorm=False):
     forceNonzero = False #args.analysisMode == None
     checkSysts = forceNonzero
 
@@ -1201,7 +1220,7 @@ if __name__ == "__main__":
         logger.warning("For now setting theory agnostic without POI as NOI activates --doStatOnly")
         args.doStatOnly = True
 
-    if args.hdf5:
+    if not args.root:
         writer = HDF5Writer.HDF5Writer(sparse=args.sparse)
 
         if args.baseName == "xnorm":
@@ -1215,7 +1234,7 @@ if __name__ == "__main__":
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
-            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None)
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
@@ -1236,13 +1255,16 @@ if __name__ == "__main__":
         logger.info(f"Writing HDF5 output to {outfile}")
         writer.write(args, outfolder, outfile, allowNegativeExpectation=args.allowNegativeExpectation)
     else:
+        if not args.allow_deprecated_root_output:
+            raise RuntimeError("Root output is deprecated, forcibly enable it with --allow-deprecated-root-output")
+
         if len(args.inputFile) > 1:
             raise IOError(f"Multiple input files only supported within --hdf5 mode")
 
-        main(args)
+        run_root(args)
         if isFloatingPOIs:
             logger.warning("Now running with xnorm = True")
             # in case of unfolding and hdf5, the xnorm histograms are directly written into the hdf5
-            main(args, xnorm=True)
+            run_root(args, xnorm=True)
 
     logging.summary()
