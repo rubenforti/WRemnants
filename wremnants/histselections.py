@@ -668,10 +668,37 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 # ['axy', 'ax', 'bx', 'ay', 'a', 'b', 'cy', 'c']
                 w_region = np.array([-1, 2, -1, 2, -4, 2, -1, 2], dtype=int)
 
+            # linear parameter combination
             params = np.sum(params*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis], axis=-2)
-            
+
+            # cropping parameters at 0 to enforce monotonicity, excluding integration constant at idx=0
+            params[...,1:][params[...,1:]<=0] = 0
+
             if syst_variations or auxiliary_info:
                 cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
+
+            # # parameter combination via nnls
+            # W = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2)) @ X
+
+            # # parameter matrix X 
+            # X = np.ones_like(params) * w_region[...,np.newaxis]
+            # XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
+
+            # # cov = cov * w_region[...,np.newaxis, np.newaxis]**2
+            # W = np.linalg.inv(cov.reshape(-1,*cov.shape[-3:]))
+            # W = W.reshape((*cov.shape[:-3],*W.shape[-3:])) 
+
+            # WX = np.einsum('...ij,...j->...i', W, X)
+            # XTWX = XT @ WX
+
+            # XTWXinv = np.linalg.inv(XTWX.reshape(-1,*XTWX.shape[-3:]))
+            # XTWXinv = XTWXinv.reshape((*XT.shape[:-2],*XTWXinv.shape[-2:])) 
+
+            # WY = np.einsum('...ij,...j->...i', W, Y)
+            # XTWY = XT @ WY
+
+            # params = np.einsum('...ij,...j->...i', XTWXinv, XTWY)
+
 
         if self.external_cov is not None and syst_variations:
             cov = cov + self.external_cov[..., *[np.newaxis for n in range(cov.ndim - self.external_cov.ndim)],:,:]
@@ -730,7 +757,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         return hNominal
 
     def make_eigenvector_predictons_frf(self, params, cov, x1, x2=None):
-        return make_eigenvector_predictons(params, cov, func=self.f_smoothing, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
+        return make_eigenvector_predictons(params, cov, func=self.f_smoothing, x1=x1, x2=x2, force_positive=False)
 
     def get_bin_centers_smoothing(self, h, flow=True):
         return self.get_bin_centers(h, self.smoothing_axis_name, xmin=self.smoothing_axis_min, xmax=self.smoothing_axis_max, flow=flow)
