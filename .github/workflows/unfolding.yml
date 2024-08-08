@@ -22,7 +22,7 @@ env:
   OUTFILE_WMASS: "mw_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_WLIKE: "mz_wlike_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_DILEPTON: "mz_dilepton_unfolding.hdf5"
-  DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
+  DATAPATH: "/scratch/shared/NanoAOD/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -177,7 +177,7 @@ jobs:
       - name: wmass combine setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py
-          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wmass combine fit 
         run: >-
@@ -227,7 +227,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE 
           --fitresult ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge_unfolding/fitresults_123456789.hdf5 --fitvar qGen-ptGen-absEtaGen 
-          --hdf5 -o $WREMNANTS_OUTDIR --postfix theoryfit
+          -o $WREMNANTS_OUTDIR --postfix theoryfit
 
       - name: wmass theoryfit combine fit 
         run: >-
@@ -323,7 +323,7 @@ jobs:
       - name: wlike combine unfolding setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --lumiScale $LUMI_SCALE --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: wlike combine unfolding fit 
         run: >-
@@ -370,7 +370,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE 
           --fitresult ${WREMNANTS_OUTDIR}/ZMassWLike_eta_pt_charge_unfolding/fitresults_123456789.hdf5 --fitvar qGen-ptGen-absEtaGen 
-          --hdf5 -o $WREMNANTS_OUTDIR --postfix theoryfit
+          -o $WREMNANTS_OUTDIR --postfix theoryfit
 
       - name: wlike theoryfit combine fit 
         run: >-
@@ -471,14 +471,14 @@ jobs:
         if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding setup
         # run with full binning
         if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --hdf5 --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
+          --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
 
       - name: dilepton combine ptll unfolding fit
         run: >- 
