@@ -39,6 +39,9 @@ parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: 
 parser.add_argument("--selectNonPromptFromLightMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
+parser.add_argument("--noVetoSF", action="store_true", help="Don't use SF for the veto, for tests")
+parser.add_argument("--scaleDYvetoFraction", type=float, default=-1.0, help="Scale fraction of DY background that should receive veto SF by this amount. Negative values do nothing")
+parser.add_argument("--scaleDYfull", type=float, default=-1.0, help="Scale inclusive DY background (as if scaling the cross section). Negative values do nothing")
 #
 
 args = parser.parse_args()
@@ -49,6 +52,9 @@ useGlobalOrTrackerVeto = args.useGlobalOrTrackerVeto
 
 if args.selectNonPromptFromLightMesonDecay and args.selectNonPromptFromSV:
     raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLightMesonDecay cannot be used together.")
+
+if args.scaleDYfull > 0.0 and args.scaleDYvetoFraction > 0.0:
+    raise ValueError("Options --scaleDYfull and --scaleDYvetoFraction cannot be used together.")
 
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
@@ -491,7 +497,15 @@ def build_graph(df, dataset):
             
             if isZveto and not args.noGenMatchMC:
                 df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["vetoMuons_pt0","vetoMuons_eta0","vetoMuons_charge0"])
-                weight_expr += "*weight_vetoSF_nominal"
+                if args.scaleDYvetoFraction > 0.0:
+                    # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
+                    df = df.Define("weight_DY", f"(vetoMuons_charge0 > -99) ? {args.scaleDYvetoFraction} : 1.0")
+                elif args.scaleDYfull > 0.0:
+                    df = df.DefinePerSample("weight_DY", f"{args.scaleDYfull}")
+                else:
+                    df = df.DefinePerSample("weight_DY", f"1.0")
+
+                weight_expr += "*weight_DY" if args.noVetoSF else "*weight_DY*weight_vetoSF_nominal"
 
         # prepare inputs for pixel multiplicity helpers
         cvhName = "cvhideal"
