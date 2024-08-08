@@ -437,7 +437,7 @@ def build_graph(df, dataset):
     results.append(nominal)
 
     if isPoiAsNoi and isZ and not not hasattr(dataset, "out_of_acceptance"):
-       if isTheoryAgnostic:
+        if isTheoryAgnostic:
             noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsTheoryAgnostic")
             logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for theory agnostic to treat POIs as NOIs")
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *theoryAgnostic_axes], [*nominal_cols, *theoryAgnostic_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))
