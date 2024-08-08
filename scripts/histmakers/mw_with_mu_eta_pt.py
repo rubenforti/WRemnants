@@ -722,7 +722,7 @@ def build_graph(df, dataset):
                 for es in common.muonEfficiency_altBkgSyst_effSteps:
                     df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
                                                                          what_analysis=thisAnalysis, step=es, storage_type=storage_type)
-                if isZveto and not args.noGenMatchMC:
+                if isZveto and not args.noGenMatchMC and not args.noVetoSF:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
 
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)
