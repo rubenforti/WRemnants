@@ -23,7 +23,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     groups = datagroups.Datagroups(args.input)
-    met, analysis, flavor = functions.get_meta(groups)
+    met, analysis, flavor, theory = functions.get_meta(groups)
 
     savedict = {}
     savedict['lumi_header'] = functions.getLumiLabel(groups)

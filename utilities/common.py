@@ -117,15 +117,21 @@ axis_relIsoCat = hist.axis.Variable([0,0.15,0.3], name = "relIso",underflow=Fals
 
 def get_binning_fakes_pt(min_pt, max_pt):
     edges = np.arange(min_pt,32,1)
-    edges = np.append(edges, [e for e in [33,36,40,46,56] if e<max_pt][:-1])
+    edges = np.append(edges, [e for e in [35,38,41,44,47,50,53,56] if e<max_pt][:-1])
     edges = np.append(edges, [max_pt])
     ## the following lines are used to replace the previous ones when studying different pT binning and the MC stat
+    # edges = np.arange(min_pt,32,1)
+    # edges = np.append(edges, [e for e in [33,36,40,46,56] if e<max_pt][:-1])
+    # edges = np.append(edges, [max_pt])
     #edges = np.arange(min_pt,32.1,1.2)  
     #edges = np.append(edges, [e for e in [34.4, 38, 44, 56] if e<max_pt][:-1])
     #edges = np.append(edges, [max_pt])
     #edges = np.arange(min_pt,32,2)
     #edges = np.append(edges, [e for e in [32, 36, 40, 46, 56] if e<max_pt][:-1])
     #edges = np.append(edges, [max_pt])
+    #edges = np.arange(min_pt, max_pt, 3)
+    #edges = np.append(edges, [max_pt])
+
     return edges
 
 
@@ -343,11 +349,11 @@ def common_parser(analysis_label=""):
     parser.add_argument("--noVertexWeight", action='store_true', help="Do not apply reweighting of vertex z distribution in MC to match data")
     parser.add_argument("--validationHists", action='store_true', help="make histograms used only for validations")
     parser.add_argument("--onlyMainHistograms", action='store_true', help="Only produce some histograms, skipping (most) systematics to run faster when those are not needed")
-    parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"], help="Choice of MET", default="DeepMETPVRobust")
+    parser.add_argument("--met", type=str, choices=["DeepMETReso", "DeepMETResp", "RawPFMET", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"], help="Choice of MET", default="DeepMETPVRobust")
     parser.add_argument("-o", "--outfolder", type=str, default="", help="Output folder")
     parser.add_argument("--appendOutputFile", type=str, default="", help="Append analysis output to specified output file")
     parser.add_argument("--sequentialEventLoops", action='store_true', help="Run event loops sequentially for each process to reduce memory usage")
-    parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP", "2017", "2018"], help="Data set to process", default="2016PostVFP")
+    parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP", "2017", "2018", "2017H", "2023_PUAVE1", "2023_PUAVE2", "2023_PUAVE5", "2023_PUAVE10"], help="Data set to process", default="2016PostVFP")
     parser.add_argument("--scale_A", default=1.0, type=float, help="scaling of the uncertainty on the b-field scale parameter A")
     parser.add_argument("--scale_e", default=1.0, type=float, help="scaling of the uncertainty on the material scale parameter e")
     parser.add_argument("--scale_M", default=1.0, type=float, help="scaling of the uncertainty on the alignment scale parameter M")
@@ -393,7 +399,7 @@ def common_parser(analysis_label=""):
         parser.add_argument("--reweightPixelMultiplicity", action='store_true', help="Reweight events based on number of valid pixel hits for the muons")
         parser.add_argument("--requirePixelHits", action='store_true', help="Require good muons to have at least one valid pixel hit used in the track refit.")
         parser.add_argument("--pixelMultiplicityStat", action='store_true', help="Include (very small) statistical uncertainties for pixel multiplicity variation")
-
+        parser.add_argument("--vetoRecoPt", default=15, type=float, help="Lower threshold for muon pt in the veto definition")
 
 
     commonargs,_ = parser.parse_known_args()

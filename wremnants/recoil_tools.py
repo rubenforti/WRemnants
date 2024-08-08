@@ -2,12 +2,13 @@ import ROOT
 import hist
 import numpy as np
 import copy
+import logging
 import sys
 import decimal
 import json
 import os
 import array
-from utilities import common, logging
+from utilities import common as common
 from utilities.io_tools import input_tools
 
 import tensorflow as tf
@@ -15,7 +16,7 @@ import tensorflow as tf
 
 ROOT.gInterpreter.Declare('#include "recoil_tools.h"')
 ROOT.gInterpreter.Declare('#include "recoil_helper.h"')
-logger = logging.child_logger(__name__)
+logger = logging.getLogger("wremnants").getChild(__name__.split(".")[-1])
 
 
 def RecoilCalibrationHelper(fIn, args):
@@ -56,8 +57,12 @@ def METXYCorrectionHelper(fIn):
         logger.warning(f"MET XY corrections disabled")
         return None, None
     js = input_tools.read_json(fIn)
-    helper_data = ROOT.wrem.METXYCorrectionHelper(js['x']['data']['nom'], js['y']['data']['nom'])
-    helper_mc = ROOT.wrem.METXYCorrectionHelper(js['x']['mc']['nom'], js['y']['mc']['nom'])
+    helper_data = ROOT.wrem.METXYCorrectionHelper(js['x']['data']['nom'], js['y']['data']['nom'], 
+        js['y']['data']['xMin'] if 'xMin' in js['y']['data'] else 0, 
+        js['y']['data']['xMax'] if 'xMax' in js['y']['data'] else 1000)
+    helper_mc = ROOT.wrem.METXYCorrectionHelper(js['x']['mc']['nom'], js['y']['mc']['nom'], 
+        js['y']['mc']['xMin'] if 'xMin' in js['y']['mc'] else 0, 
+        js['y']['mc']['xMax'] if 'xMax' in js['y']['mc'] else 1000)
     return helper_data, helper_mc
 
 class Recoil:
@@ -72,9 +77,13 @@ class Recoil:
         self.isW = False
 
         self.met_xy_helper_data, self.met_xy_helper_mc = METXYCorrectionHelper(f"{common.data_dir}/recoil/{pu_type}_{self.met}/met_xy_{self.flavor}.json")
-        self.vpt_reweight_helper_mc_data = VPTReweightHelper(f"{common.data_dir}/recoil/{pu_type}_{self.met}/vptrw_mc_data_mumu.json")
+        if self.flavor == "mumu" or self.flavor == "mu":
+            self.vpt_reweight_helper_mc_data = VPTReweightHelper(f"{common.data_dir}/recoil/{pu_type}_{self.met}/vptrw_mc_data_mumu.json")
+            recoil_tflite = f"{common.data_dir}/recoil/{pu_type}_{self.met}/model_mc_data.tflite"
+        else:
+            self.vpt_reweight_helper_mc_data = VPTReweightHelper(f"{common.data_dir}/recoil/{pu_type}_{self.met}/vptrw_mc_data_ee.json")
+            recoil_tflite = f"{common.data_dir}/recoil/{pu_type}_{self.met}/model_mc_data_ee.tflite"
 
-        recoil_tflite = f"{common.data_dir}/recoil/{pu_type}_{self.met}/model_mc_data.tflite"
         self.recoilHelper, self.nstat = RecoilCalibrationHelper(recoil_tflite, args)
         self.recoil_syst_bkg_para = RecoilCalibrationUncertaintyHelper(recoil_tflite, "syst_bkg_para", args)
         self.recoil_syst_bkg_perp = RecoilCalibrationUncertaintyHelper(recoil_tflite, "syst_bkg_perp", args)
@@ -236,6 +245,7 @@ class Recoil:
         elif self.met == "DeepMETReso": met_pt, met_phi = "DeepMETResolutionTune_pt", "DeepMETResolutionTune_phi"
         elif self.met == "DeepMETPVRobust" and self.pu_type == "highPU": met_pt, met_phi = "DeepMETPVRobust_pt", "DeepMETPVRobust_phi"
         elif self.met == "DeepMETPVRobustNoPUPPI" and self.pu_type == "highPU": met_pt, met_phi = "DeepMETPVRobustNoPUPPI_pt", "DeepMETPVRobustNoPUPPI_phi"
+        elif self.met == "DeepMETResp": met_pt, met_phi = "DeepMETResponseTune_pt", "DeepMETResponseTune_phi"
         else:
             logger.warning(f"MET definition {self.met} not found, fall back to RawPFMET")
             met_pt, met_phi = "RawMET_pt", "RawMET_phi"
@@ -255,8 +265,9 @@ class Recoil:
 
 
         # phi corrected MET (XY corrections)
+        self.df = self.df.Define("npvs", "(int)PV_npvsGood")
         if self.met_xy_helper_data != None and self.met_xy_helper_mc != None:
-            self.df = self.df.Define("met_corr_xy", self.met_xy_helper_data if self.dataset.is_data else self.met_xy_helper_mc, ["met_corr_lep_pt", "met_corr_lep_phi", "PV_npvsGood"])
+            self.df = self.df.Define("met_corr_xy", self.met_xy_helper_data if self.dataset.is_data else self.met_xy_helper_mc, ["met_corr_lep_pt", "met_corr_lep_phi", "npvs"])
             self.df = self.df.Define("met_corr_xy_pt", "met_corr_xy[0]")
             self.df = self.df.Define("met_corr_xy_phi", "met_corr_xy[1]")
         else:
@@ -269,11 +280,11 @@ class Recoil:
             return
 
         # histograms as function of npv, to derive/closure the XY correction
-        self.add_histo("met_corr_lep_x_npv", ["PV_npvsGood", "met_corr_lep_x"], [self.axis_npv, self.axis_MET_xy])
-        self.add_histo("met_corr_lep_y_npv", ["PV_npvsGood", "met_corr_lep_y"], [self.axis_npv, self.axis_MET_xy])
+        self.add_histo("met_corr_lep_x_npv", ["npvs", "met_corr_lep_x"], [self.axis_npv, self.axis_MET_xy])
+        self.add_histo("met_corr_lep_y_npv", ["npvs", "met_corr_lep_y"], [self.axis_npv, self.axis_MET_xy])
 
-        self.add_histo("met_corr_xy_x_npv", ["PV_npvsGood", "met_corr_xy_x"], [self.axis_npv, self.axis_MET_xy])
-        self.add_histo("met_corr_xy_y_npv", ["PV_npvsGood", "met_corr_xy_y"], [self.axis_npv, self.axis_MET_xy])
+        self.add_histo("met_corr_xy_x_npv", ["npvs", "met_corr_xy_x"], [self.axis_npv, self.axis_MET_xy])
+        self.add_histo("met_corr_xy_y_npv", ["npvs", "met_corr_xy_y"], [self.axis_npv, self.axis_MET_xy])
         
         
         self.df = self.df.Define("lep_pt_uncorr_over_corr", "lep_uncorr_pt/lep_corr_pt")
@@ -376,14 +387,14 @@ class Recoil:
         self.add_histo("recoil_corr_xy_para_qt_v_pt", ["v_pt", "recoil_corr_xy_para_qt"], [self.axis_qt, self.axis_recoil_para_qt])
         self.add_histo("recoil_corr_xy_perp_v_pt", ["v_pt", "recoil_corr_xy_perp"], [self.axis_qt, self.axis_recoil_perp])
 
-        self.add_histo("recoil_corr_xy_para_npv", ["PV_npvsGood", "recoil_corr_xy_para"], [self.axis_npv, self.axis_recoil_para])
-        self.add_histo("recoil_corr_xy_para_qt_npv", ["PV_npvsGood", "recoil_corr_xy_para_qt"], [self.axis_npv, self.axis_recoil_para_qt])
-        self.add_histo("recoil_corr_xy_perp_npv", ["PV_npvsGood", "recoil_corr_xy_perp"], [self.axis_npv, self.axis_recoil_perp])
+        self.add_histo("recoil_corr_xy_para_npv", ["npvs", "recoil_corr_xy_para"], [self.axis_npv, self.axis_recoil_para])
+        self.add_histo("recoil_corr_xy_para_qt_npv", ["npvs", "recoil_corr_xy_para_qt"], [self.axis_npv, self.axis_recoil_para_qt])
+        self.add_histo("recoil_corr_xy_perp_npv", ["npvs", "recoil_corr_xy_perp"], [self.axis_npv, self.axis_recoil_perp])
 
         # response vs npv
-        self.add_histo("recoil_corr_xy_para_qt_v_pt_npv", ["v_pt", "PV_npvsGood", "recoil_corr_xy_para_qt"], [self.axis_qt, self.axis_npv, self.axis_recoil_para_qt])
-        self.add_histo("recoil_corr_xy_para_v_pt_npv", ["v_pt", "PV_npvsGood", "recoil_corr_xy_para"], [self.axis_qt, self.axis_npv, self.axis_recoil_para])
-        self.add_histo("v_gen_pt_npv", ["v_pt", "PV_npvsGood"], [self.axis_qt, self.axis_npv])
+        self.add_histo("recoil_corr_xy_para_qt_v_pt_npv", ["v_pt", "npvs", "recoil_corr_xy_para_qt"], [self.axis_qt, self.axis_npv, self.axis_recoil_para_qt])
+        self.add_histo("recoil_corr_xy_para_v_pt_npv", ["v_pt", "npvs", "recoil_corr_xy_para"], [self.axis_qt, self.axis_npv, self.axis_recoil_para])
+        self.add_histo("v_gen_pt_npv", ["v_pt", "npvs"], [self.axis_qt, self.axis_npv])
 
         # recoil vs rapidity
         self.add_histo("recoil_corr_xy_para_y", ["v_y", "recoil_corr_xy_para"], [self.axis_rapidity, self.axis_recoil_para])
@@ -406,8 +417,8 @@ class Recoil:
         self.add_histo("njets", ["njets"], [self.axis_njets])
         self.add_histo("RawMET_sumEt", ["RawMET_sumEt"], [self.axis_sumEt])
 
-        self.add_histo("npv", ["PV_npvsGood"], [self.axis_npv])
-        self.add_histo("npv_RawMET_sumEt", ["PV_npvsGood", "RawMET_sumEt"], [self.axis_npv, self.axis_sumEt])
+        self.add_histo("npv", ["npvs"], [self.axis_npv])
+        self.add_histo("npv_RawMET_sumEt", ["npvs", "RawMET_sumEt"], [self.axis_npv, self.axis_sumEt])
         self.add_histo("qT_sumEt", ["v_pt", "RawMET_sumEt"], [self.axis_qt, self.axis_sumEt])
 
         self.add_histo("recoil_corr_xy_para_qT_njets", ["njets", "recoil_corr_xy_para_qt"], [self.axis_njets, self.axis_recoil_para])
@@ -433,13 +444,14 @@ class Recoil:
 
             self.add_histo("METx_corr_lep_runNo", ["METx_corr_lep", "run"], [self.axis_MET_xy, self.axis_run_no])
             self.add_histo("METy_corr_lep_runNo", ["METy_corr_lep", "run"], [self.axis_MET_xy, self.axis_run_no])
-            self.add_histo("npv_runNo", ["PV_npvsGood", "run"], [self.axis_npv, self.axis_run_no])
+            self.add_histo("npv_runNo", ["npvs", "run"], [self.axis_npv, self.axis_run_no])
 
 
     def setup_gen_reco_vars_Z(self):
 
-        self.df = self.df.Define("lep0_mom4", "ROOT::Math::PtEtaPhiMVector(lep_corr_pt[0], lep_corr_eta[0], lep_corr_phi[0], wrem::muon_mass)")
-        self.df = self.df.Define("lep1_mom4", "ROOT::Math::PtEtaPhiMVector(lep_corr_pt[1], lep_corr_eta[1], lep_corr_phi[1], wrem::muon_mass)")
+        mass = "wrem::muon_mass" if "mu" in self.flavor else "wrem::electron_mass"
+        self.df = self.df.Define("lep0_mom4", f"ROOT::Math::PtEtaPhiMVector(lep_corr_pt[0], lep_corr_eta[0], lep_corr_phi[0], {mass})")
+        self.df = self.df.Define("lep1_mom4", f"ROOT::Math::PtEtaPhiMVector(lep_corr_pt[1], lep_corr_eta[1], lep_corr_phi[1], {mass})")
         self.df = self.df.Define("vmom4", "ROOT::Math::PxPyPzEVector(lep0_mom4)+ROOT::Math::PxPyPzEVector(lep1_mom4)")
         self.df = self.df.Define("v_pt", "vmom4.Pt()")
         self.df = self.df.Define("v_phi", "vmom4.Phi()")
@@ -552,7 +564,10 @@ class Recoil:
                 #self.df = self.df.Alias("v_gen_phi", "v_gen_phi_prefsr")
 
             # reweighthings
-            self.df = self.df.Define("vpt_weight_mc_data", self.vpt_reweight_helper_mc_data, ["v_gen_pt"])
+            if self.vpt_reweight_helper_mc_data != None:
+                self.df = self.df.Define("vpt_weight_mc_data", self.vpt_reweight_helper_mc_data, ["v_gen_pt"])
+            else:
+                self.df = self.df.Define("vpt_weight_mc_data", "1.0")
             self.df = self.df.Define("nominal_weight_vptrw_mc_data", "nominal_weight*vpt_weight_mc_data")
 
         else:
@@ -576,15 +591,15 @@ class Recoil:
         self.add_histo("recoil_corr_xy_para_qt_gen_v_gen_pt", ["v_gen_pt", "recoil_corr_xy_para_qt_gen"], [self.axis_qt, self.axis_recoil_para_qt])
         self.add_histo("recoil_corr_xy_perp_gen_v_gen_pt", ["v_gen_pt", "recoil_corr_xy_perp_gen"], [self.axis_qt, self.axis_recoil_perp])
 
-        self.add_histo("recoil_corr_xy_para_gen_npv", ["PV_npvsGood", "recoil_corr_xy_para_gen"], [self.axis_npv, self.axis_recoil_para])
-        self.add_histo("recoil_corr_xy_para_qt_gen_npv", ["PV_npvsGood", "recoil_corr_xy_para_qt_gen"], [self.axis_npv, self.axis_recoil_para_qt])
-        self.add_histo("recoil_corr_xy_perp_gen_npv", ["PV_npvsGood", "recoil_corr_xy_perp_gen"], [self.axis_npv, self.axis_recoil_perp])
+        self.add_histo("recoil_corr_xy_para_gen_npv", ["npvs", "recoil_corr_xy_para_gen"], [self.axis_npv, self.axis_recoil_para])
+        self.add_histo("recoil_corr_xy_para_qt_gen_npv", ["npvs", "recoil_corr_xy_para_qt_gen"], [self.axis_npv, self.axis_recoil_para_qt])
+        self.add_histo("recoil_corr_xy_perp_gen_npv", ["npvs", "recoil_corr_xy_perp_gen"], [self.axis_npv, self.axis_recoil_perp])
 
         # response vs npv
-        self.add_histo("recoil_corr_xy_para_gen_v_gen_pt_npv", ["v_gen_pt", "PV_npvsGood", "recoil_corr_xy_para_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_para])
-        self.add_histo("recoil_corr_xy_para_qt_gen_v_gen_pt_npv", ["v_gen_pt", "PV_npvsGood", "recoil_corr_xy_para_qt_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_para_qt])
-        self.add_histo("recoil_corr_xy_perp_gen_v_gen_pt_npv", ["v_gen_pt", "PV_npvsGood", "recoil_corr_xy_perp_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_perp])
-        self.add_histo("v_gen_pt_npv", ["v_gen_pt", "PV_npvsGood"], [self.axis_qt, self.axis_npv])
+        self.add_histo("recoil_corr_xy_para_gen_v_gen_pt_npv", ["v_gen_pt", "npvs", "recoil_corr_xy_para_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_para])
+        self.add_histo("recoil_corr_xy_para_qt_gen_v_gen_pt_npv", ["v_gen_pt", "npvs", "recoil_corr_xy_para_qt_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_para_qt])
+        self.add_histo("recoil_corr_xy_perp_gen_v_gen_pt_npv", ["v_gen_pt", "npvs", "recoil_corr_xy_perp_gen"], [self.axis_qt, self.axis_npv, self.axis_recoil_perp])
+        self.add_histo("v_gen_pt_npv", ["v_gen_pt", "npvs"], [self.axis_qt, self.axis_npv])
 
     def apply_recoil_Z(self):
 
@@ -657,6 +672,7 @@ class Recoil:
         if self.dataset.name in self.datasets_to_apply:
 
             # old stuff
+            '''
             self.df = self.df.Define("recoil_corr_xy_gen_old", f"wrem::recoilComponentsGen(met_corr_xy_pt, met_corr_xy_phi, lep_corr_pt, lep_corr_phi, v_gen_phi)")
             self.df = self.df.Define("qT_gen", "ptVgen") # pre-fsr defines should be loaded
             self.df = self.df.Define("recoil_corr_xy_para_gen_old", "recoil_corr_xy_gen_old[1] + v_gen_pt")
@@ -671,7 +687,7 @@ class Recoil:
             self.df = self.df.Define("MET_corr_rec_old", f"wrem::METCorrectionGen(recoil_corr_rec_para_qt_gen_old, recoil_corr_rec_perp_gen_old, lep_corr_pt, lep_corr_phi, v_gen_phi) ") 
             self.df = self.df.Define("MET_corr_rec_pt_old", "MET_corr_rec_old[0]")
             self.df = self.df.Define("MET_corr_rec_phi_old", "MET_corr_rec_old[1]")
-            
+            '''
             
             if self.recoilHelper != None:
                 self.df = self.df.Define("recoil_corr", self.recoilHelper, ["v_gen_pt", "recoil_corr_xy_para_qt_gen", "recoil_corr_xy_perp_gen"])
@@ -717,7 +733,8 @@ class Recoil:
         cols = cols if isinstance(cols, list) else [cols]
 
         results.append(df.HistoBoost(f"{hName}_recoil_stat", axes, cols + [self.recoil_unc_stat_weights_with_nom], tensor_axes=[self.recoil_var_ax_stat], storage=storage_type))
-        results.append(df.HistoBoost(f"{hName}_recoil_syst", axes, cols + [self.recoil_unc_syst_weights_with_nom], tensor_axes=[self.recoil_var_ax_syst], storage=storage_type))
+        if self.nsyst > 0:
+            results.append(df.HistoBoost(f"{hName}_recoil_syst", axes, cols + [self.recoil_unc_syst_weights_with_nom], tensor_axes=[self.recoil_var_ax_syst], storage=storage_type))
         return df
 
     def add_recoil_unc_W(self, df, results, dataset, cols, axes, hName, add_fakerate_cols=False, col_mt_orig="transverseMass", col_mt_target="transverseMass", storage_type=hist.storage.Double()):
@@ -742,7 +759,8 @@ class Recoil:
             cols_ = cols
 
         self.results.append(df.HistoBoost(f"{hName}_recoil_stat", axes_, cols_ + [self.recoil_unc_stat_weights_with_nom], tensor_axes=[self.recoil_var_ax_stat], storage=storage_type))
-        self.results.append(df.HistoBoost(f"{hName}_recoil_syst", axes_, cols_ + [self.recoil_unc_syst_weights_with_nom], tensor_axes=[self.recoil_var_ax_syst], storage=storage_type))
+        if self.nsyst > 0:
+            self.results.append(df.HistoBoost(f"{hName}_recoil_syst", axes_, cols_ + [self.recoil_unc_syst_weights_with_nom], tensor_axes=[self.recoil_var_ax_syst], storage=storage_type))
         return df
 
     def setup_recoil_Z_unc(self):
@@ -794,11 +812,12 @@ class Recoil:
 
         self.nsyst = len(recoil_systs)
 
-        self.recoil_unc_syst_weights_with_nom = "recoil_unc_syst_weights_with_nom"
-        self.df = self.df.Define(self.recoil_unc_syst_weights_with_nom, f"wrem::concatWeights<{len(recoil_systs)}>(nominal_weight, {', '.join(recoil_systs)})")
-        self.recoil_var_ax_syst = hist.axis.Integer(0, self.nsyst, name="recoil_unc", underflow=False, overflow=False)
-        for hName, col, ax in zip(hNames, cols, axes):
-            self.df = self.add_recoil_unc_Z(self.df, self.results, self.dataset, col, ax, hName)
+        if self.nsyst > 0:
+            self.recoil_unc_syst_weights_with_nom = "recoil_unc_syst_weights_with_nom"
+            self.df = self.df.Define(self.recoil_unc_syst_weights_with_nom, f"wrem::concatWeights<{len(recoil_systs)}>(nominal_weight, {', '.join(recoil_systs)})")
+            self.recoil_var_ax_syst = hist.axis.Integer(0, self.nsyst, name="recoil_unc", underflow=False, overflow=False)
+            for hName, col, ax in zip(hNames, cols, axes):
+                self.df = self.add_recoil_unc_Z(self.df, self.results, self.dataset, col, ax, hName)
 
 
     def setup_recoil_W_unc(self):
@@ -807,9 +826,9 @@ class Recoil:
 
         hNames, cols, axes = [], [], [] 
         if self.storeHists:
-            hNames = ["met_corr_rec_pt", "mt_corr_rec"]
+            hNames = ["met_corr_rec_pt", "mt_corr_rec", "recoil_corr_rec_magn"]
             cols = hNames
-            axes = [self.axis_MET_pt, self.axis_mt]
+            axes = [self.axis_MET_pt, self.axis_mt, self.axis_recoil_magn]
 
         # statistical uncertainties
         self.df = self.df.Define("recoil_unc_stat_weights", "recoil_corr.unc_weights")
@@ -828,9 +847,10 @@ class Recoil:
 
         self.nsyst = len(recoil_systs)
 
-        self.recoil_unc_syst_weights_with_nom = "recoil_unc_syst_weights_with_nom"
-        self.df = self.df.Define(self.recoil_unc_syst_weights_with_nom, f"wrem::concatWeights<{len(recoil_systs)}>(nominal_weight, {', '.join(recoil_systs)})")
-        self.recoil_var_ax_syst = hist.axis.Integer(0, self.nsyst, name="recoil_unc", underflow=False, overflow=False)
+        if self.nsyst > 0:
+            self.recoil_unc_syst_weights_with_nom = "recoil_unc_syst_weights_with_nom"
+            self.df = self.df.Define(self.recoil_unc_syst_weights_with_nom, f"wrem::concatWeights<{len(recoil_systs)}>(nominal_weight, {', '.join(recoil_systs)})")
+            self.recoil_var_ax_syst = hist.axis.Integer(0, self.nsyst, name="recoil_unc", underflow=False, overflow=False)
 
         for hName, col, ax in zip(hNames, cols, axes):
             self.df = self.add_recoil_unc_W(self.df, self.results, self.dataset, col, ax, hName, col_mt_orig="transverseMass", col_mt_target="mt_corr_rec", add_fakerate_cols=True)
