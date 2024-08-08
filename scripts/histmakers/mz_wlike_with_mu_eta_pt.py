@@ -69,8 +69,8 @@ axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, na
 axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt", overflow=False, underflow=False)
 
 # for isoMt region validation and related tests
-#axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=True), name = "mt", underflow=False, overflow=True)
-#axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=True), name = "relIso",underflow=False, overflow=True)
+# use very high upper edge as a proxy for infinity (cannot exploit overflow bins in the fit)
+# can probably use numpy infinity, but this is compatible with the root conversion
 axis_mtCat = hist.axis.Variable([0, 22, 45, 1000], name = "mt", underflow=False, overflow=False)
 axis_isoCat = hist.axis.Variable([0, 0.15, 0.3, 100], name = "relIso",underflow=False, overflow=False)
 
