@@ -104,7 +104,7 @@ else:
 # for isoMt region validation and related tests
 # use very high upper edge as a proxy for infinity (cannot exploit overflow bins in the fit)
 # can probably use numpy infinity, but this is compatible with the root conversion
-axis_mtCat = hist.axis.Variable([0, 22, 45, 1000], name = "mt", underflow=False, overflow=False)
+axis_mtCat = hist.axis.Variable([0, int(args.mtCut/2.), args.mtCut, 1000], name = "mt", underflow=False, overflow=False)
 axis_isoCat = hist.axis.Variable([0, 0.15, 0.3, 100], name = "relIso",underflow=False, overflow=False)
 
 nominal_axes = [axis_eta, axis_pt, common.axis_charge]
