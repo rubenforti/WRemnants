@@ -44,7 +44,7 @@ if isFloatingPOIsTheoryAgnostic:
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
-if initargs.addIsoMtAxes:
+if args.addIsoMtAxes:
     parser = common.set_parser_default(parser, "muonIsolation", [0, 1])
 
 if isTheoryAgnostic:
@@ -52,6 +52,8 @@ if isTheoryAgnostic:
     if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
         raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
+args = parser.parse_args() # parse again or new defaults won't be propagated
+    
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 if args.validateVetoSF:
