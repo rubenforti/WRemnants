@@ -192,7 +192,7 @@ def solve_nonnegative_leastsquare(X, XTY, exclude_idx=None):
         mask = params[...,exclude_idx]==0
         mask_flat = mask.flatten()
         w_flip = np.ones(XTY.shape[-1])
-        w_flip[0] = -1
+        w_flip[exclude_idx] = -1
         params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTX_flat[mask_flat], XTY_flat[mask_flat] * w_flip)]
         params[mask] = np.array(params_negative) * w_flip
         logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
@@ -670,34 +670,33 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
             # linear parameter combination
             params = np.sum(params*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis], axis=-2)
+            cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
 
-            # cropping parameters at 0 to enforce monotonicity, excluding integration constant at idx=0
-            params[...,1:][params[...,1:]<=0] = 0
+            # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
+            Y = params
+            W = np.linalg.inv(cov.reshape(-1,*cov.shape[-2:]))
+            W = W.reshape((*cov.shape[:-2],*W.shape[-2:])) 
+            WY = np.einsum('...ij,...j->...i', W, Y)
+            # the design matrix X is just a 1xn unity matrix and can thus be ignored
+            XTWY = WY
+            XTWX = W
 
-            if syst_variations or auxiliary_info:
-                cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
+            orig_shape = XTWY.shape
+            nBins = np.prod(orig_shape[:-1])
+            XTWY_flat = XTWY.reshape(nBins, XTWY.shape[-1])
+            XTWX_flat = XTWX.reshape(nBins, XTWX.shape[-2], XTWX.shape[-1])
+            params = [nnls(xtwx, xtwy)[0] for xtwx, xtwy in zip(XTWX_flat, XTWY_flat)]
+            params = np.reshape(params, orig_shape)
 
-            # # parameter combination via nnls
-            # W = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2)) @ X
-
-            # # parameter matrix X 
-            # X = np.ones_like(params) * w_region[...,np.newaxis]
-            # XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
-
-            # # cov = cov * w_region[...,np.newaxis, np.newaxis]**2
-            # W = np.linalg.inv(cov.reshape(-1,*cov.shape[-3:]))
-            # W = W.reshape((*cov.shape[:-3],*W.shape[-3:])) 
-
-            # WX = np.einsum('...ij,...j->...i', W, X)
-            # XTWX = XT @ WX
-
-            # XTWXinv = np.linalg.inv(XTWX.reshape(-1,*XTWX.shape[-3:]))
-            # XTWXinv = XTWXinv.reshape((*XT.shape[:-2],*XTWXinv.shape[-2:])) 
-
-            # WY = np.einsum('...ij,...j->...i', W, Y)
-            # XTWY = XT @ WY
-
-            # params = np.einsum('...ij,...j->...i', XTWXinv, XTWY)
+            # allow the integration constaint to be negative
+            if np.sum(params[...,0]==0) > 0:
+                mask = params[...,0]==0
+                mask_flat = mask.flatten()
+                w_flip = np.ones(XTWY.shape[-1])
+                w_flip[0] = -1
+                params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTWX_flat[mask_flat], XTWY_flat[mask_flat] * w_flip)]
+                params[mask] = np.array(params_negative) * w_flip
+                logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
 
 
         if self.external_cov is not None and syst_variations:
