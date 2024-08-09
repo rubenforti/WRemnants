@@ -130,7 +130,7 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
-    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D"],
+    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-fakerate"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
@@ -744,6 +744,17 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
 
     if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+        
+        # add stat uncertainty from QCD MC nonclosure to smoothing parameter covariance
+        hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+
+        fakeselector = cardTool.datagroups.groups[cardTool.getFakeName()].histselector
+
+        _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
+        _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
+
+        fakeselector.external_cov = cov + cov_d
+
         syst_axes = ["eta", "charge"] if (args.fakeSmoothingMode != "binned" or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
             name=inputBaseName, 
@@ -753,7 +764,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             mirror=False,
             scale=1,
             applySelection=False, # don't apply selection, all regions will be needed for the action
-            action=cardTool.datagroups.groups[cardTool.getFakeName()].histselector.get_hist,
+            action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
         subgroup = f"{cardTool.getFakeName()}Rate"
         cardTool.addSystematic(**info,
@@ -769,6 +780,46 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 splitGroup = {subgroup: f".*", "experiment": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_scf=True),
+            )
+
+        if args.fakeSmoothingMode == "full":
+            # add nominal nonclosure of QCD MC as single systematic
+            def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
+                # apply QCD MC nonclosure by adding parameters (assumes log space, e.g. in full smoothing)
+                fakeselector.external_params = params_d - params
+                hvar = fakeselector.get_hist(h, *args, **kwargs)
+                # reset external parameters
+                fakeselector.external_params = None
+
+                if len(axesToDecorrNames) == 0:
+                    # inclusive
+                    hvar = hist.Hist(
+                        *hvar.axes, hist.axis.Integer(0, 1, name="var", underflow=False, overflow=False), 
+                        storage=hist.storage.Double(),
+                        data = hvar.values(flow=True)[...,np.newaxis]
+                    )
+                else:
+                    hnom = fakeselector.get_hist(h, *args, **kwargs)
+                    hvar = syst_tools.decorrelateByAxes(hvar, hnom, axesToDecorrNames)
+
+                return hvar
+
+            for axesToDecorrNames in [[], ["eta"]]:
+                subgroup = f"{cardTool.getFakeName()}QCDMCNonclosure"
+                cardTool.addSystematic(
+                    name=inputBaseName, 
+                    group="Fake",
+                    rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
+                    splitGroup = {subgroup: f".*", "experiment": ".*"},
+                    systNamePrepend=subgroup,
+                    processes=cardTool.getFakeName(),
+                    noConstraint=False,
+                    mirror=True,
+                    scale=1,
+                    applySelection=False, # don't apply selection, external parameters need to be added
+                    action=fake_nonclosure,
+                    actionArgs=dict(axesToDecorrNames=axesToDecorrNames),
+                    systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
             )
 
     if not args.noEfficiencyUnc:

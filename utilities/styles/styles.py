@@ -23,9 +23,15 @@ process_colors = {
     "Fake": "#9C9CA1",
     "Fake_e": "#9C9CA1",
     "Fake_mu": "#9C9CA1",
+    "Prompt": "#E42536",
 }
 
 process_supergroups = {
+    "sv":{
+        "Prompt": ["Wmunu", "Wtaunu", "Ztautau", "Zmumu", "DYlowMass", "PhotonInduced", "Top", "Diboson"],
+        "Fake": ["Fake"],
+        "QCD": ["QCD"],
+    },
     "w_mass":{
         "Z": ["Ztautau", "Zmumu", "DYlowMass"],
         "Rare": ["PhotonInduced", "Top", "Diboson"],
@@ -55,11 +61,12 @@ process_labels = {
     "PhotonInduced": r"$\gamma$-induced",
     "Top": "Top",
     "Diboson": "Diboson",
-    "QCD": "QCD MC",
+    "QCD": "QCD MC (predicted)",
     "Other": "Other",
     "Fake": "Nonprompt",
     "Fake_e": "Nonprompt (e)",
     "Fake_mu": r"Nonprompt (\mu)",
+    "Prompt": "Prompt",
 }
 
 xlabels = {
@@ -308,7 +315,7 @@ def get_systematics_label(key, idx=0):
 
 def get_labels_colors_procs_sorted(procs):
     # order of the processes in the plots
-    procs_sort = ["Wmunu", "Fake", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced"][::-1]
+    procs_sort = ["Wmunu", "Fake", "QCD", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced", "Prompt"][::-1]
 
     procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
     logger.info(f"Found processes {procs} in fitresult")

@@ -30,12 +30,15 @@ parser.add_argument("--logy", action='store_true', help="Make the yscale logarit
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noRatio", action='store_true', help="Don't make the ratio in the plot")
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
+parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
 parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"], 
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
+parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
+parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 
 args = parser.parse_args()
 
@@ -96,10 +99,15 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         h_inclusive = hh.unrolledHist(h_inclusive, binwnorm=binwnorm, obs=axes_names)
         h_stack = [hh.unrolledHist(h, binwnorm=binwnorm, obs=axes_names) for h in h_stack]
 
+    if args.normToData:
+        scale = h_data.values().sum()/h_inclusive.values().sum()
+        h_stack = [hh.scaleHist(h, scale) for h in h_stack]
+        h_inclusive = hh.scaleHist(h_inclusive, scale)
+
     axis_name = "_".join([a for a in axes_names])
     xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
     if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, "Data/Pred.", args.rrange)
+        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, f"{args.dataName}/Pred.", args.rrange)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -124,7 +132,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             yerr=True,
             histtype=histtype_data,
             color="black",
-            label="Data",
+            label=args.dataName,
             binwnorm=binwnorm,
             ax=ax1,
             alpha=1.,
@@ -150,7 +158,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
                 hh.divideHists(h_data, h_inclusive, cutoff=0.01, rel_unc=True),
                 histtype="errorbar",
                 color="black",
-                label="Data",
+                label=args.dataName,
                 yerr=True,
                 linewidth=2,
                 ax=ax2
@@ -179,6 +187,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
+    fontsize = ax1.xaxis.label.get_size()
+
     if chi2 is not None:
         p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
         if saturated_chi2:
@@ -187,21 +197,22 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             chi2_name = "\chi^2/ndf"
         if len(h_data.values())<100:
             plt.text(0.05, 0.94, f"${chi2_name}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=20*args.scaleleg*scale)  
+                fontsize=fontsize)  
             plt.text(0.05, 0.86, f"$= {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=20*args.scaleleg*scale)  
+                fontsize=fontsize)  
         else:
             plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=20*args.scaleleg*scale)
+                fontsize=fontsize)
 
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, 
+        fontsize=fontsize, 
         label=args.cmsDecor, data=data)
 
     if len(h_stack) < 10:
-        plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=20*args.scaleleg*scale)
+        plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
     plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
@@ -222,11 +233,25 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.write_index_and_log(outdir, outfile, 
         yield_tables={
             "Stacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip(labels, h_stack)], columns=["Process", "Yield", "Uncertainty"]), 
-            "Unstacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip(["Data", "Inclusive"], [h_data, h_inclusive])], columns=["Process", "Yield", "Uncertainty"])},
+            "Unstacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])], columns=["Process", "Yield", "Uncertainty"])},
         args=args, **kwargs
     )
 
-def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, **kwopts):
+def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, colors, channel="", *opts, **kwopts):
+    if args.processGrouping is not None:
+        if args.processGrouping in styles.process_supergroups:
+            new_stack = {}
+            for new_name, old_procs in styles.process_supergroups[args.processGrouping].items():
+                stacks = [hist_stack[procs.index(p)] for p in old_procs if p in procs]
+                if len(stacks) == 0:
+                    continue
+                new_stack[new_name] = hh.sumHists(stacks)  
+            
+            labels, colors, procs = styles.get_labels_colors_procs_sorted([k for k in new_stack.keys()])
+            hist_stack = [new_stack[p] for p in procs]
+        else:
+            logger.warning(f"No supergroups found for input file with mode {args.processGrouping}, proceed without merging groups")
+
     # make plots in slices (e.g. for charge plus an minus separately)
     selection_axes = [a for a in axes if a.name in args.selectionAxes]
     if len(selection_axes) > 0:
@@ -239,7 +264,6 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
                 a.name: a.centers[i] if isinstance(a, (hist.axis.Regular, hist.axis.Variable)) else a.edges[i]
                 for a, i in zip(selection_axes, bins)
             }
-
 
             h_data = hist_data[idxs]
             h_inclusive = hist_inclusive[idxs]
@@ -255,9 +279,9 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, channel="", *opts, *
                 print(a,i)
             suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
-            make_plot(h_data, h_inclusive, h_stack, other_axes, suffix=suffix, *opts, **kwopts)
+            make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, *opts, **kwopts)
     else:
-        make_plot(hist_data, hist_inclusive, hist_stack, axes, suffix=channel, *opts, **kwopts)
+        make_plot(hist_data, hist_inclusive, hist_stack, axes, labels=labels, colors=colors, suffix=channel, *opts, **kwopts)
 
 if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
@@ -292,7 +316,7 @@ if combinetf2:
                 h.values()[...] = 100000*np.log(h.values())
                 h.variances()[...] = 100000*100000*(h.variances())/np.square(or_vals)
                 
-        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, lumi=info["lumi"])
+        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, procs=procs, labels=labels, colors=colors, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
     import ROOT
@@ -331,7 +355,7 @@ else:
             else:
                 chi2 = None
 
-            make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, colors=colors, labels=labels, chi2=chi2, meta=meta, saturated_chi2=True, lumi=info["lumi"])
+            make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, procs=procs, labels=labels, colors=colors, chi2=chi2, meta=meta, saturated_chi2=True, lumi=info["lumi"])
             ch_start = ch_end
     else:
         # the fit was probably done on a file generated via the root writer and we can't use the axes information
@@ -404,7 +428,7 @@ else:
         else:
             chi2 = None
 
-        make_plots(hist_data, hist_inclusive, hist_stack, axes, colors=colors, labels=labels, chi2=chi2, saturated_chi2=True)
+        make_plots(hist_data, hist_inclusive, hist_stack, axes, procs=procs, labels=labels, colors=colors, chi2=chi2, saturated_chi2=True)
 
 if output_tools.is_eosuser_path(args.outpath) and args.eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)
