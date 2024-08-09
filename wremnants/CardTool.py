@@ -134,7 +134,7 @@ class CardTool(object):
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
-        
+
     def getProcsNoStatUnc(self):
         return self.noStatUncProcesses
         
@@ -1052,12 +1052,13 @@ class CardTool(object):
         nondata_chan = {chan: nondata.copy() for chan in self.channels}
         for chan in self.excludeProcessForChannel.keys():
             nondata_chan[chan] = list(filter(lambda x: not self.excludeProcessForChannel[chan].match(x), nondata))
-        # exit this function when a syst is applied to no process (can happen when some are excluded)
+        # skip any syst that would be applied to no process (can happen when some are excluded)
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
             if all(x not in info["processes"] for x in nondata):
-                raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
-            
+                logger.warning(f"Trying to add lnN uncertainty {name} for {info['processes']}, which are not valid processes; see predicted processes: {nondata}.. It will be skipped")
+                continue
+
             group = info["group"]
             groupFilter = info["groupFilter"]
             for chan in self.channels:
