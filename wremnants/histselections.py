@@ -869,7 +869,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             svar *= 1./xwidth**2
 
             goodbin = (sval > 0.) & (svar > 0.)
-            goodbin = goodbin & ~((sval < 1.) & (svar/sval**2 <= 1.)) # exclude bins with 0 data entries but negative prompt MC subtraction
             if goodbin.size-np.sum(goodbin) > 0:
                 logger.warning(f"Found {goodbin.size-np.sum(goodbin)} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
 
