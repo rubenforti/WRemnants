@@ -41,7 +41,6 @@ parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use g
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
 parser.add_argument("--noVetoSF", action="store_true", help="Don't use SF for the veto, for tests")
 parser.add_argument("--scaleDYvetoFraction", type=float, default=-1.0, help="Scale fraction of DY background that should receive veto SF by this amount. Negative values do nothing")
-parser.add_argument("--scaleDYfull", type=float, default=-1.0, help="Scale inclusive DY background (as if scaling the cross section). Negative values do nothing")
 #
 
 args = parser.parse_args()
@@ -52,9 +51,6 @@ useGlobalOrTrackerVeto = args.useGlobalOrTrackerVeto
 
 if args.selectNonPromptFromLightMesonDecay and args.selectNonPromptFromSV:
     raise ValueError("Options --selectNonPromptFromSV and --selectNonPromptFromLightMesonDecay cannot be used together.")
-
-if args.scaleDYfull > 0.0 and args.scaleDYvetoFraction > 0.0:
-    raise ValueError("Options --scaleDYfull and --scaleDYvetoFraction cannot be used together.")
 
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
@@ -501,9 +497,6 @@ def build_graph(df, dataset):
                 if args.scaleDYvetoFraction > 0.0:
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
                     df = df.Define("weight_DY", f"(vetoMuons_charge0 > -99) ? {args.scaleDYvetoFraction} : 1.0")
-                    weight_expr += "*weight_DY"
-                elif args.scaleDYfull > 0.0:
-                    df = df.DefinePerSample("weight_DY", f"{args.scaleDYfull}")
                     weight_expr += "*weight_DY"
 
                 if not args.noVetoSF:
