@@ -787,8 +787,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 hnom = fakeselector.get_hist(h, *args, **kwargs)
 
                 # normalize variation histogram to have the same integral as nominal
-                scale = hnom.sum(flow=True).value / hvar.sum(flow=True).value
-                hvar = hh.scaleHist(hvar, scale)
+                hScale = hh.divideHists(hnom[{"pt":hist.sum}], hvar[{"pt":hist.sum}])
+                hvar = hh.multiplyHists(hvar, hScale)
 
                 if len(axesToDecorrNames) == 0:
                     # inclusive
