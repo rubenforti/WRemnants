@@ -35,6 +35,7 @@ parser.add_argument("--select", type=int, nargs="*", default=[],
     help="Select specific bins of the selectionAxis e.g. '0 1' to select the first bin of the first axis and second bin of the second axis")
 parser.add_argument("--hists", type=str, nargs='*', default=None, 
     help="List of hists to plot; dash separated for unrolled hists")
+parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 
 # variations
 parser.add_argument("--varName", type=str, nargs='*', default=[], help="Name of variation hist")
@@ -122,6 +123,13 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
         hists_pred = h_stack    
     else:
         hists_pred = [hh.sumHists(h_stack)]
+
+        if args.normToData:
+            scale = h_data.values().sum()/hists_pred[0].values().sum()
+            h_stack = [hh.scaleHist(h, scale) for h in h_stack]
+            hists_pred[0] = hh.scaleHist(hists_pred[0], scale)
+            hists_syst_up = [hh.scaleHist(h, scale) for h in hists_syst_up]
+            hists_syst_dn = [hh.scaleHist(h, scale) for h in hists_syst_dn]
 
     # loop over all processes if plots for each process is requested, or inclusive otherwise
     for i, h_pred in enumerate(hists_pred):
@@ -252,11 +260,14 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
         if selections is not None:
             for i, (key, idx) in enumerate(selections.items()):
                 lo, hi = selection_edges[i]
-                label = styles.xlabels[key].replace(" (GeV)","")
-                if lo != None:
-                    label = f"{lo} < {label}"
-                if hi != None:
-                    label = f"{label} < {hi}"
+                if key=="charge":
+                    label = f"charge = {'-1' if i==0 else +1}"
+                else:
+                    label = styles.xlabels[key].replace(" (GeV)","")
+                    if lo != None:
+                        label = f"{lo} < {label}"
+                    if hi != None:
+                        label = f"{label} < {hi}"
 
                 ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                     fontsize=20*args.scaleleg*scale)  

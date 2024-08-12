@@ -828,11 +828,9 @@ class CardTool(object):
                 continue
 
             if pseudoData in ["dataClosure", "mcClosure"]:
-                # build the pseudodata from the nominal model
-                hdata = hh.sumHists([self.datagroups.getDatagroups()[x].hists[self.nominalName] for x in self.datagroups.groups.keys() if x != self.getDataName()])
-                hdatas.append(hdata)
+                # build the pseudodata by adding the nonclosure
 
-                # build the model by adding the nonclosure
+                # build the pseudodata by adding the nonclosure
                 # first load the nonclosure
                 if pseudoData == "dataClosure":
                     datagroups.loadHistsForDatagroups(
@@ -847,31 +845,31 @@ class CardTool(object):
                 elif pseudoData == "mcClosure":
                     hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
                     
-                fakeselector = sel.FakeSelector1DExtendedABCD(
-                    hist_fake, 
-                    fakerate_axes=self.datagroups.fakerate_axes,
-                    smoothing_mode="full",
-                    smoothing_order_fakerate=3,
-                    integrate_x=True,
-                )
+                fakeselector = self.datagroups.getDatagroups()[self.getFakeName()].histselector
 
-                _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
-                hist_fake = hh.scaleHist(hist_fake, 1./0.85)
                 _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
+                hist_fake = hh.scaleHist(hist_fake, fakeselector.global_scalefactor)
+                _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
 
-                cov = cov + cov_d
-                params = params_d - params
-
-                self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_params = params
-                self.datagroups.getDatagroups()[self.getFakeName()].histselector.external_cov = cov
-
+                # add the nonclosure by adding the difference of the parameters
+                fakeselector.external_params = params_d - params
+                # load the pseudodata including the nonclosure
                 self.datagroups.loadHistsForDatagroups(
-                    baseName=self.nominalName, syst=self.nominalName,
-                    procsToRead=[self.getFakeName()], 
+                    baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
+                    procsToRead=[x for x in self.datagroups.groups.keys() if x != self.getDataName()], 
                     scaleToNewLumi=self.lumiScale,
                     lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                     forceNonzero=forceNonzero,
                     sumFakesPartial=not self.simultaneousABCD)
+                # adding the pseudodata
+                hdata = hh.sumHists([self.datagroups.getDatagroups()[x].hists[pseudoData] for x in self.datagroups.groups.keys() if x != self.getDataName()])
+                hdatas.append(hdata)
+
+                # remove the parameter offset again
+                fakeselector.external_params = None
+                # add the covariance matrix from the nonclosure to the model
+                fakeselector.external_cov = cov + cov_d
+
                 continue
 
             elif pseudoData.split("-")[0] in ["simple", "extended1D", "extended2D"]:

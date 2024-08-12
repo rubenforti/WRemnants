@@ -744,16 +744,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
 
     if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        
-        # add stat uncertainty from QCD MC nonclosure to smoothing parameter covariance
-        hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
 
         fakeselector = cardTool.datagroups.groups[cardTool.getFakeName()].histselector
-
-        _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
-        _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
-
-        fakeselector.external_cov = cov + cov_d
 
         syst_axes = ["eta", "charge"] if (args.fakeSmoothingMode != "binned" or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
@@ -783,13 +775,20 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             )
 
         if args.fakeSmoothingMode == "full":
-            # add nominal nonclosure of QCD MC as single systematic
+            # add systematic of explicit parameter variation
             def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
-                # apply QCD MC nonclosure by adding parameters (assumes log space, e.g. in full smoothing)
-                fakeselector.external_params = params_d - params
+                # apply varyation by adding parameter value (assumes log space, e.g. in full smoothing)
+                fakeselector.external_params = np.zeros(4)
+                fakeselector.external_params[1] = 0.5
                 hvar = fakeselector.get_hist(h, *args, **kwargs)
                 # reset external parameters
                 fakeselector.external_params = None
+
+                hnom = fakeselector.get_hist(h, *args, **kwargs)
+
+                # normalize variation histogram to have the same integral as nominal
+                scale = hnom.sum(flow=True).value / hvar.sum(flow=True).value
+                hvar = hh.scaleHist(hvar, scale)
 
                 if len(axesToDecorrNames) == 0:
                     # inclusive
@@ -799,13 +798,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         data = hvar.values(flow=True)[...,np.newaxis]
                     )
                 else:
-                    hnom = fakeselector.get_hist(h, *args, **kwargs)
                     hvar = syst_tools.decorrelateByAxes(hvar, hnom, axesToDecorrNames)
 
                 return hvar
 
-            for axesToDecorrNames in [[], ["eta"]]:
-                subgroup = f"{cardTool.getFakeName()}QCDMCNonclosure"
+            for axesToDecorrNames in [[], ]:#["eta"]]:
+                subgroup = f"{cardTool.getFakeName()}Param{param}"
                 cardTool.addSystematic(
                     name=inputBaseName, 
                     group="Fake",
@@ -820,7 +818,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     action=fake_nonclosure,
                     actionArgs=dict(axesToDecorrNames=axesToDecorrNames),
                     systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
-            )
+                )
 
     if not args.noEfficiencyUnc:
 
@@ -895,7 +893,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         )
             if wmass or wlike_vetoValidation:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
-                useRefinedVeto = input_tools.args_from_metadata(cardTool, "useRefinedVeto")
+                useRefinedVeto = False# input_tools.args_from_metadata(cardTool, "useRefinedVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]
                 for name in allEffTnP_veto:
                     if "Syst" in name:

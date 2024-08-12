@@ -672,31 +672,32 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             params = np.sum(params*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis], axis=-2)
             cov = np.sum(cov*w_region[*[np.newaxis]*(params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
 
-            # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
-            Y = params
-            W = np.linalg.inv(cov.reshape(-1,*cov.shape[-2:]))
-            W = W.reshape((*cov.shape[:-2],*W.shape[-2:])) 
-            WY = np.einsum('...ij,...j->...i', W, Y)
-            # the design matrix X is just a 1xn unity matrix and can thus be ignored
-            XTWY = WY
-            XTWX = W
+            if self.polynomial == "monotonic":
+                # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
+                Y = params
+                W = np.linalg.inv(cov.reshape(-1,*cov.shape[-2:]))
+                W = W.reshape((*cov.shape[:-2],*W.shape[-2:])) 
+                WY = np.einsum('...ij,...j->...i', W, Y)
+                # the design matrix X is just a 1xn unity matrix and can thus be ignored
+                XTWY = WY
+                XTWX = W
 
-            orig_shape = XTWY.shape
-            nBins = np.prod(orig_shape[:-1])
-            XTWY_flat = XTWY.reshape(nBins, XTWY.shape[-1])
-            XTWX_flat = XTWX.reshape(nBins, XTWX.shape[-2], XTWX.shape[-1])
-            params = [nnls(xtwx, xtwy)[0] for xtwx, xtwy in zip(XTWX_flat, XTWY_flat)]
-            params = np.reshape(params, orig_shape)
+                orig_shape = XTWY.shape
+                nBins = np.prod(orig_shape[:-1])
+                XTWY_flat = XTWY.reshape(nBins, XTWY.shape[-1])
+                XTWX_flat = XTWX.reshape(nBins, XTWX.shape[-2], XTWX.shape[-1])
+                params = [nnls(xtwx, xtwy)[0] for xtwx, xtwy in zip(XTWX_flat, XTWY_flat)]
+                params = np.reshape(params, orig_shape)
 
-            # allow the integration constaint to be negative
-            if np.sum(params[...,0]==0) > 0:
-                mask = params[...,0]==0
-                mask_flat = mask.flatten()
-                w_flip = np.ones(XTWY.shape[-1])
-                w_flip[0] = -1
-                params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTWX_flat[mask_flat], XTWY_flat[mask_flat] * w_flip)]
-                params[mask] = np.array(params_negative) * w_flip
-                logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
+                # allow the integration constaint to be negative
+                if np.sum(params[...,0]==0) > 0:
+                    mask = params[...,0]==0
+                    mask_flat = mask.flatten()
+                    w_flip = np.ones(XTWY.shape[-1])
+                    w_flip[0] = -1
+                    params_negative = [nnls(xtx, xty)[0] for xtx, xty in zip(XTWX_flat[mask_flat], XTWY_flat[mask_flat] * w_flip)]
+                    params[mask] = np.array(params_negative) * w_flip
+                    logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
 
 
         if self.external_cov is not None and syst_variations:
