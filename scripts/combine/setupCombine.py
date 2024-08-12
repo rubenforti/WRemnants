@@ -803,7 +803,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 return hvar
 
             for axesToDecorrNames in [[], ]:#["eta"]]:
-                subgroup = f"{cardTool.getFakeName()}Param{param}"
+                subgroup = f"{cardTool.getFakeName()}Param1"
                 cardTool.addSystematic(
                     name=inputBaseName, 
                     group="Fake",
