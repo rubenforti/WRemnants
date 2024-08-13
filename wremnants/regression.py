@@ -285,6 +285,19 @@ class Regressor(object):
             params += self.external_params[..., *[np.newaxis for n in range(self.params.ndim - self.external_params.ndim)],:]
         return make_eigenvector_predictons(params, cov, func=self.evaluator, x1=x1, x2=x2, force_positive=False)
 
+    def reduce_parameters(self, weight_vector=None, axis=-2):
+        # linear parameter combination using weight_vector
+        if weight_vector is None:
+            weight_vector = np.ones_like(self.params.shape[axis])
+        if axis<0:
+            axis=self.params.ndim+axis
+        if axis==self.params.ndim-1:
+            raise RuntimeError("Last axis can not be reduced since it's the parameter axis")
+        slices = [np.newaxis if i!=axis else slice(None) for i in range(self.params.ndim)]
+
+        self.params = np.sum(self.params*weight_vector[*slices], axis=axis)
+        self.cov = np.sum(self.cov*weight_vector[*slices, np.newaxis]**2, axis=axis)
+
     def force_positive(self, exclude_idx=None):
         # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
         Y = self.params

@@ -248,7 +248,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
     def __init__(self, h, *args, 
         smoothing_mode="full",
         smoothing_order_fakerate=2,
-        smoothen_application_region=True, # if application region should be smoothed in case of fakerate smoothing
+        smoothen_application_region=False, # if application region should be smoothed in case of fakerate smoothing
         smoothing_order_spectrum=3,
         throw_toys=None, #"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
@@ -302,7 +302,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         self.hCorr = None
 
         # swap the A and C regions for better numerical behaviour (only implemented for fakerate smoothing)
-        self.swap_regions = True
+        self.swap_regions = False
 
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
@@ -525,9 +525,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 # ['axy', 'ax', 'bx', 'ay', 'a', 'b', 'cy', 'c']
                 w_region = np.array([-1, 2, -1, 2, -4, 2, -1, 2], dtype=int)
 
-            # linear parameter combination
-            regressor.params = np.sum(regressor.params*w_region[*[np.newaxis]*(regressor.params.ndim-2), slice(None), np.newaxis], axis=-2)
-            regressor.cov = np.sum(regressor.cov*w_region[*[np.newaxis]*(regressor.params.ndim-2), slice(None), np.newaxis, np.newaxis]**2, axis=-3)
+            regressor.reduce_parameters(w_region)
 
             if regressor.polynomial == "monotonic":
                 regressor.force_positive(exclude_idx=0)

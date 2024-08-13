@@ -146,7 +146,7 @@ if applySelection:
         datasets,
         args.baseName,
         smoothing_mode=args.fakeSmoothingMode,
-        smoothingOrderFakerate=args.fakeSmoothingOrder,
+        smoothingOrderSpectrum=args.fakeSmoothingOrder,
         integrate_x=all("mt" not in x.split("-") for x in args.hists),
         mode=args.fakeEstimation,
         forceGlobalScaleFakes=args.forceGlobalScaleFakes,
