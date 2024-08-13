@@ -284,6 +284,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 smoothing_order_spectrum,
                 min_x=self.smoothing_axis_min,
                 max_x=self.smoothing_axis_max,
+                nnls = False,
                 )
         else:
             self.spectrum_regressor = None

@@ -31,6 +31,8 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
 def get_parameter_eigenvectors(params, cov, sign=1, force_positive=False):
     # diagonalize and get eigenvalues and eigenvectors
     e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i], 
+    # protect against negative eigenvalues
+    e = np.maximum(e, 0.)
     vT = np.transpose(v, axes=(*np.arange(v.ndim-2), v.ndim-1, v.ndim-2)) # transpose v to have row eigenvectors[i, :] for easier computations
     mag = np.sqrt(e)[...,np.newaxis] * vT * sign
     # duplicate params vector to have duplicated rows
@@ -233,11 +235,15 @@ class Regressor(object):
         cap_x=False,
         min_x=0,
         max_x=1,
+        nnls=None,
     ):
         self.polynomial = polynomial
         self.order = order
 
-        self.solver = get_solver(polynomial)
+        if nnls is None:
+            self.solver = get_solver(polynomial)
+        else:
+            self.solver = solve_nonnegative_leastsquare if nnls else solve_leastsquare
 
         self.evaluator = get_regression_function(order, pol=polynomial)
 
@@ -325,6 +331,11 @@ class Regressor(object):
             self.params[mask] = np.array(self.params_negative) * w_flip
             logger.info(f"Found {mask.sum()} parameters that are excluded in nnls and negative")
 
+        # modify covariance matrix by fixing parameters at boundary
+        # this should lead to zero eigenvalues/null variations in
+        # the corresponding cases
+        self.cov = np.where(self.params[..., None]==0., 0., self.cov)
+        self.cov = np.where(self.params[..., None, :]==0., 0., self.cov)
 
 class Regressor2D(Regressor):
     def __init__(

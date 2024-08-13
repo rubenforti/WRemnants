@@ -788,11 +788,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 actionArgs=dict(variations_scf=True),
             )
 
-        if args.fakeSmoothingMode == "full":
+        if args.fakeSmoothingMode == "full" and args.fakeSmoothingOrder > 0:
             # add systematic of explicit parameter variation
+            fakeSmoothingOrder = args.fakeSmoothingOrder
             def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
-                # apply varyation by adding parameter value (assumes log space, e.g. in full smoothing)
-                fakeselector.spectrum_regressor.external_params = np.zeros(4)
+                # apply variation by adding parameter value (assumes log space, e.g. in full smoothing)
+                fakeselector.spectrum_regressor.external_params = np.zeros(fakeSmoothingOrder + 1)
                 fakeselector.spectrum_regressor.external_params[1] = 0.5
                 hvar = fakeselector.get_hist(h, *args, **kwargs)
                 # reset external parameters
