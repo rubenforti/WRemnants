@@ -293,7 +293,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         datagroups.fakerate_axes=args.fakerateAxes
         datagroups.set_histselectors(
             datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-            smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+            smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
             mcCorr=args.fakeMCCorr,
             integrate_x="mt" not in fitvar,
             simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
@@ -743,7 +743,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*"},)
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
 
-    if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
+    if (
+        (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD") 
+        and cardTool.getFakeName() in datagroups.groups.keys() 
+        and not xnorm 
+        and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar))
+        ):
 
         fakeselector = cardTool.datagroups.groups[cardTool.getFakeName()].histselector
 
@@ -758,13 +763,22 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
-        subgroup = f"{cardTool.getFakeName()}Rate"
+        subgroup = f"{cardTool.getFakeName()}Smoothing"
         cardTool.addSystematic(**info,
             rename=subgroup,
             splitGroup = {subgroup: f".*", "experiment": ".*"},
             systNamePrepend=subgroup,
             actionArgs=dict(variations_smoothing=True),
         )
+        if args.fakeSmoothingMode == "fakerate":
+            subgroup = f"{cardTool.getFakeName()}Rate"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_frf=True),
+            )
+
         if args.fakeEstimation in ["extended2D",] and args.fakeSmoothingMode != "full":
             subgroup = f"{cardTool.getFakeName()}Shape"
             cardTool.addSystematic(**info,
@@ -778,11 +792,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             # add systematic of explicit parameter variation
             def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
                 # apply varyation by adding parameter value (assumes log space, e.g. in full smoothing)
-                fakeselector.external_params = np.zeros(4)
-                fakeselector.external_params[1] = 0.5
+                fakeselector.spectrum_regressor.external_params = np.zeros(4)
+                fakeselector.spectrum_regressor.external_params[1] = 0.5
                 hvar = fakeselector.get_hist(h, *args, **kwargs)
                 # reset external parameters
-                fakeselector.external_params = None
+                fakeselector.spectrum_regressor.external_params = None
 
                 hnom = fakeselector.get_hist(h, *args, **kwargs)
 
