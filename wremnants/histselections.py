@@ -248,14 +248,13 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
     def __init__(self, h, *args, 
         smoothing_mode="full",
         smoothing_order_fakerate=2,
-        smoothen_application_region=False, # if application region should be smoothed in case of fakerate smoothing
         smoothing_order_spectrum=3,
         throw_toys=None, #"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
     ):
         """
-        :smoothing_mode: choices: ['binned', 'fakerate', 'full']
+        :smoothing_mode: choices: ['binned', 'fakerate', 'hybrid', 'full']
         """
         super().__init__(h, *args, **kwargs)
 
@@ -264,10 +263,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         self.global_scalefactor = global_scalefactor
         self.smoothing_mode = smoothing_mode
 
-        self.smoothen_application_region=smoothen_application_region
-
         # select appropriate regressor objects depending on type of smoothing
-        if self.smoothing_mode == "fakerate":
+        if self.smoothing_mode in ["fakerate", "hybrid"]:
             self.fakerate_regressor = Regressor(
                 "bernstein", 
                 smoothing_order_fakerate,
@@ -277,7 +274,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             self.fakerate_regressor = None
 
-        if self.smoothing_mode in ["full", "fakerate"]:
+        if self.smoothing_mode in ["fakerate", "hybrid", "full"]:
             self.spectrum_regressor = Regressor(
                 "monotonic", 
                 # "power",
@@ -375,7 +372,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
     def get_hist(self, h, is_nominal=False, variations_frf=False, variations_smoothing=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
-        if self.smoothing_mode == "fakerate":
+        if self.smoothing_mode in ["fakerate", "hybrid"]:
             h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(h, smoothing=True, syst_variations=variations_frf)
 
@@ -391,7 +388,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
             cval = hC.values(flow=flow)
             cvar = hC.variances(flow=flow)
-            if self.smoothen_application_region:
+            if self.smoothing_mode in ["hybrid"]:
                 cval, cvar = self.smoothen_spectrum(
                     hC, 
                     cval,
@@ -407,7 +404,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 dvar = cvar[...,:,:] * y_frf[..., np.newaxis,np.newaxis]
             elif variations_frf:
                 dvar = cval[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
-            elif self.smoothen_application_region:
+            elif self.smoothing_mode in ["hybrid"]:
                 # everything is smoothed, no additional bin by bin statistical uncertainty
                 dvar = np.zeros_like(d)
             else:

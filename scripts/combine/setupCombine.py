@@ -82,7 +82,7 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
+    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
     parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
@@ -763,14 +763,15 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
-        subgroup = f"{cardTool.getFakeName()}Smoothing"
-        cardTool.addSystematic(**info,
-            rename=subgroup,
-            splitGroup = {subgroup: f".*", "experiment": ".*"},
-            systNamePrepend=subgroup,
-            actionArgs=dict(variations_smoothing=True),
-        )
-        if args.fakeSmoothingMode == "fakerate":
+        if args.fakeSmoothingMode in ["hybrid", "full"]:
+            subgroup = f"{cardTool.getFakeName()}Smoothing"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_smoothing=True),
+            )
+        if args.fakeSmoothingMode in ["fakerate", "hybrid"]:
             subgroup = f"{cardTool.getFakeName()}Rate"
             cardTool.addSystematic(**info,
                 rename=subgroup,
