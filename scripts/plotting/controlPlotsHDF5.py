@@ -36,6 +36,7 @@ parser.add_argument("--select", type=int, nargs="*", default=[],
 parser.add_argument("--hists", type=str, nargs='*', default=None, 
     help="List of hists to plot; dash separated for unrolled hists")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
+parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
 
 # variations
 parser.add_argument("--varName", type=str, nargs='*', default=[], help="Name of variation hist")
@@ -175,7 +176,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
                 yerr=True,
                 histtype="errorbar",
                 color="black",
-                label="Data",
+                label=args.dataName,
                 binwnorm=binwnorm,
                 ax=ax1,
                 alpha=1.,
