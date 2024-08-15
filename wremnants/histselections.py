@@ -276,12 +276,13 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         if self.smoothing_mode in ["fakerate", "hybrid", "full"]:
             self.spectrum_regressor = Regressor(
-                "monotonic",
-                # "power",
+                # "monotonic",
+                "power",
                 smoothing_order_spectrum,
                 min_x=self.smoothing_axis_min,
                 max_x=self.smoothing_axis_max,
-                nnls = self.smoothing_mode not in ["full"], # constraint is handled elsewhere in the full smoothing case
+                # nnls = self.smoothing_mode not in ["full"], # constraint is handled elsewhere in the full smoothing case
+                nnls = False,
                 )
         else:
             self.spectrum_regressor = None
