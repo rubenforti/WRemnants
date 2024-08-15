@@ -434,7 +434,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         elif self.smoothing_mode == "full":
             h = self.transfer_variances(h, set_nominal=is_nominal)
-            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing, use_spline=True)
+            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing, use_spline=False)
         elif self.smoothing_mode == "binned":
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h, flow=flow)
