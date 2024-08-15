@@ -82,7 +82,7 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
+    parser.add_argument("--fakeSmoothingMode", type=str, default="hybrid", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
     parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
@@ -138,7 +138,7 @@ def make_parser(parser=None):
     parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
-    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
+    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.10, help="scaling of bin by bin statistical uncertainty for W mass analysis")
     parser.add_argument("--exponentialTransform", action='store_true', help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)")
     parser = make_subparsers(parser)
 
@@ -764,13 +764,32 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
         if args.fakeSmoothingMode in ["hybrid", "full"]:
-            subgroup = f"{cardTool.getFakeName()}Smoothing"
-            cardTool.addSystematic(**info,
-                rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
-                systNamePrepend=subgroup,
-                actionArgs=dict(variations_smoothing=True),
+            if False:
+                # these uncertainties are covered by the binByBin stat uncertainties
+                # for the moment
+                subgroup = f"{cardTool.getFakeName()}Smoothing"
+                cardTool.addSystematic(**info,
+                    rename=subgroup,
+                    splitGroup = {subgroup: f".*", "experiment": ".*"},
+                    systNamePrepend=subgroup,
+                    actionArgs=dict(variations_smoothing=True),
+                )
+
+            subgroup = f"{cardTool.getFakeName()}SmoothingSyst"
+            cardTool.addSystematic(name=inputBaseName,
+                                    group="Fake",
+                                    processes=cardTool.getFakeName(),
+                                    noConstraint=False,
+                                    mirror=True,
+                                    scale=1.,
+                                    applySelection=False,
+                                    action = fakeselector.get_smoothing_syst,
+                                    rename=subgroup,
+                                    splitGroup = {subgroup: f".*", "experiment": ".*"},
+                                    systNamePrepend=subgroup,
+                                    systAxes = ["var"],
             )
+
         if args.fakeSmoothingMode in ["fakerate", "hybrid"]:
             subgroup = f"{cardTool.getFakeName()}Rate"
             cardTool.addSystematic(**info,
@@ -789,7 +808,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 actionArgs=dict(variations_scf=True),
             )
 
-        if args.fakeSmoothingMode == "full" and args.fakeSmoothingOrder > 0:
+        if args.fakeSmoothingMode in ["hybrid", "full"] and args.fakeSmoothingOrder > 0:
             # add systematic of explicit parameter variation
             fakeSmoothingOrder = args.fakeSmoothingOrder
             def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
@@ -907,7 +926,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             systNameReplace=[("effSystTnP", "effSyst"), ("etaDecorr0", "fullyCorr")],
                             scale=scale,
                         )
-            if (wmass and not input_tools.args_from_metadata(cardTool, "noVetoSF")) or wlike_vetoValidation:
+            # if (wmass and not input_tools.args_from_metadata(cardTool, "noVetoSF")) or wlike_vetoValidation:
+            if (wmass and not False) or wlike_vetoValidation:
                 useGlobalOrTrackerVeto = input_tools.args_from_metadata(cardTool, "useGlobalOrTrackerVeto")
                 useRefinedVeto = input_tools.args_from_metadata(cardTool, "useRefinedVeto")
                 allEffTnP_veto = ["effStatTnP_veto_sf", "effSystTnP_veto"]

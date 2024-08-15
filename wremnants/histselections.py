@@ -101,7 +101,7 @@ def spline_smooth_nominal(binvals, edges, edges_out, axis):
     y = cdf
     xout = edges_out
 
-    spline = scipy.interpolate.make_interp_spline(x, y, axis=axis, bc_type=None)
+    spline = interpolate.make_interp_spline(x, y, axis=axis, bc_type=None)
     yout = spline(xout)
 
     binvalsout = np.diff(yout, axis=axis)
@@ -276,12 +276,12 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         if self.smoothing_mode in ["fakerate", "hybrid", "full"]:
             self.spectrum_regressor = Regressor(
-                "monotonic", 
+                "monotonic",
                 # "power",
                 smoothing_order_spectrum,
                 min_x=self.smoothing_axis_min,
                 max_x=self.smoothing_axis_max,
-                nnls = False,
+                nnls = self.smoothing_mode not in ["full"], # constraint is handled elsewhere in the full smoothing case
                 )
         else:
             self.spectrum_regressor = None
@@ -299,7 +299,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         # histogram with nonclosure corrections
         self.hCorr = None
 
-        # swap the A and C regions for better numerical behaviour (only implemented for fakerate smoothing)
+        # swap the A and C regions for better numerical behaviour (only implemented for fakerate and hybrid smoothing)
         self.swap_regions = False
 
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
@@ -370,7 +370,20 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             raise RuntimeError(f"Failed to transfer variances")
         return h
 
-    def get_hist(self, h, is_nominal=False, variations_frf=False, variations_smoothing=False, flow=True):
+    def get_smoothing_syst(self, h):
+        #TODO this might not be safe in certain future parallelization schemes
+        smoothing_mode_old = self.smoothing_mode
+        self.smoothing_mode = "fakerate"
+        halt = self.get_hist(h)
+        self.smoothing_mode = smoothing_mode_old
+
+        axis_var=hist.axis.Integer(0,1, underflow=False, overflow=False, name="var")
+        hout = hist.Hist(*halt.axes, axis_var)
+        hout[{"var" : 0}] = halt.values(flow=True)
+
+        return hout
+
+    def get_hist(self, h, is_nominal=False, variations_frf=False, variations_smoothing=False, flow=True, use_spline=False):
         idx_x = h.axes.name.index(self.name_x)
         if self.smoothing_mode in ["fakerate", "hybrid"]:
             h = self.transfer_variances(h, set_nominal=is_nominal)
@@ -386,15 +399,22 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             else:
                 hC = self.get_hist_passX_failY(h)
 
-            cval = hC.values(flow=flow)
-            cvar = hC.variances(flow=flow)
+            if use_spline and self.smoothing_mode in ["hybrid"]:
+                hCNew = hC[{self.smoothing_axis_name : hist.rebin(3)}]
+            else:
+                hCNew = hC
+
+            cval = hCNew.values(flow=flow)
+            cvar = hCNew.variances(flow=flow)
+            cvar_binned = cvar
             if self.smoothing_mode in ["hybrid"]:
                 cval, cvar = self.smoothen_spectrum(
                     hC, 
+                    hCNew.axes[self.smoothing_axis_name].edges,
                     cval,
                     cvar,
                     syst_variations=variations_smoothing, 
-                    use_spline=False, 
+                    use_spline=use_spline,
                     flow=flow,
                 )
 
@@ -405,15 +425,16 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             elif variations_frf:
                 dvar = cval[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
             elif self.smoothing_mode in ["hybrid"]:
-                # everything is smoothed, no additional bin by bin statistical uncertainty
-                dvar = np.zeros_like(d)
+                # keep statistical uncertainty from c region since we'll propagate that
+                # as a systematic
+                dvar = y_frf**2 * cvar_binned
             else:
                 # only take bin by bin uncertainty from c region
                 dvar = y_frf**2 * cvar
 
         elif self.smoothing_mode == "full":
             h = self.transfer_variances(h, set_nominal=is_nominal)
-            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing)
+            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing, use_spline=True)
         elif self.smoothing_mode == "binned":
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h, flow=flow)
@@ -550,7 +571,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y_smooth_orig, y_smooth_var_orig
 
-    def smoothen_spectrum(self, h, sval, svar, syst_variations=False, use_spline=False, reduce=False, flow=True):
+    def smoothen_spectrum(self, h, edges, sval, svar, syst_variations=False, use_spline=False, reduce=False, flow=True):
         smoothidx = [n for n in h.axes.name if n not in [self.name_x, self.name_y]].index(self.smoothing_axis_name)
         smoothing_axis = h.axes[self.smoothing_axis_name]
         nax = sval.ndim
@@ -571,7 +592,12 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         svar = svar[*sel]       
 
         if use_spline:
-            sval, svar = spline_smooth(sval, edges = smoothing_axis.edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=svar, syst_variations=syst_variations)
+            if reduce:
+                raise NotImplementedError("splines with reduction over regions not implemented yet.")
+
+            print("splines")
+
+            sval, svar = spline_smooth(sval, edges = edges, edges_out = h.axes[self.smoothing_axis_name].edges, axis=smoothidx, binvars=svar, syst_variations=syst_variations)
         else:
             xwidth = h.axes[self.smoothing_axis_name].widths
 
@@ -587,6 +613,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
             logd = np.where(goodbin, np.log(sval), 0.)
             logdvar = np.where(goodbin, svar/sval**2, np.inf)
+
             x = self.get_bin_centers_smoothing(h, flow=flow) # the bins where the smoothing is performed (can be different to the bins in h)
 
             sval, svar = self.smoothen(
@@ -686,12 +713,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             # sum high mT bins
             h = hh.rebinHist(h, self.name_x, h.axes[self.name_x].edges[:3])
 
+        if use_spline:
+            hNew = h[{self.smoothing_axis_name : hist.rebin(3)}]
+        else:
+            hNew = h
+
         # get values and variances of all sideband regions (this assumes signal region is at high abcd-x and low abcd-y axis bins)
-        sval = h.values(flow=flow)
-        svar = h.variances(flow=flow)
+        sval = hNew.values(flow=flow)
+        svar = hNew.variances(flow=flow)
         # move abcd axes last
-        idx_x = h.axes.name.index(self.name_x)
-        idx_y = h.axes.name.index(self.name_y)
+        idx_x = hNew.axes.name.index(self.name_x)
+        idx_y = hNew.axes.name.index(self.name_y)
 
         sval = np.moveaxis(sval, [idx_x, idx_y], [-2, -1])
         svar = np.moveaxis(svar, [idx_x, idx_y], [-2, -1])
@@ -710,6 +742,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return self.smoothen_spectrum(
             h, 
+            hNew.axes[self.smoothing_axis_name].edges,
             sval, 
             svar, 
             syst_variations=syst_variations, 
@@ -981,7 +1014,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 dvar = dvar.sum(axis=idx_x)
         elif self.smoothing_mode == "full":
             h = self.transfer_variances(h, set_nominal=is_nominal)
-            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing)
+            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing, use_spline=False)
         elif self.smoothing_mode == "binned":
             # no smoothing of rates
             d, dvar = self.calculate_fullABCD(h)
