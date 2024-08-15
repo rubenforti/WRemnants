@@ -20,11 +20,11 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
     ndf = y.shape[-1] - nparams
     ndf_total = y.size - chi2.size*nparams
 
-    logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
-    logger.info(f"Min chi2/ndf = {chi2.min()}/{ndf} (p = {stats.chi2.sf(chi2.min(), ndf)})")
-    logger.info(f"Max chi2/ndf = {chi2.max()}/{ndf} (p = {stats.chi2.sf(chi2.max(), ndf)})")
-    logger.info(f"Mean chi2 = {chi2.mean()}")
-    logger.info(f"Std chi2 = {chi2.std()}")
+    logger.debug(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
+    logger.debug(f"Min chi2/ndf = {chi2.min()}/{ndf} (p = {stats.chi2.sf(chi2.min(), ndf)})")
+    logger.debug(f"Max chi2/ndf = {chi2.max()}/{ndf} (p = {stats.chi2.sf(chi2.max(), ndf)})")
+    logger.debug(f"Mean chi2 = {chi2.mean()}")
+    logger.debug(f"Std chi2 = {chi2.std()}")
     return chi2, ndf    
 
 
@@ -225,6 +225,8 @@ def transform_bernstein(x, min_x, max_x, cap_x=False):
             raise RuntimeError(f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 ({x[x < 0]}) and {np.sum(x > 1)} larger 1 ({x[x > 1]}) found after transformation with xmin={xmin} and xmax={xmax}")
     return x
 
+def transform_power(x, *args, **kwargs):
+    return transform_bernstein(x, *args, **kwargs) * 2 - 1
 
 class Regressor(object):
     def __init__(
@@ -259,8 +261,10 @@ class Regressor(object):
         self.external_cov = None
 
     def transform_x(self, x):
-        # if self.polynomial in ["bernstein", "monotonic"]:
-        x = transform_bernstein(x, self.min_x, self.max_x, self.cap_x)
+        if self.polynomial in ["bernstein", "monotonic"]:
+            x = transform_bernstein(x, self.min_x, self.max_x, self.cap_x)
+        else:
+            x = transform_power(x, self.min_x, self.max_x, self.cap_x)
         return x
 
     def solve(self, x, y, w, chi2_info=True):
@@ -358,6 +362,9 @@ class Regressor2D(Regressor):
         if self.polynomial in ["bernstein", "monotonic"]:
             x1 = transform_bernstein(x1, self.min_x[0], self.max_x[0], self.cap_x[0])
             x2 = transform_bernstein(x2, self.min_x[1], self.max_x[1], self.cap_x[1])
+        else:
+            x1 = transform_power(x1, self.min_x[0], self.max_x[0], self.cap_x[0])
+            x2 = transform_power(x2, self.min_x[1], self.max_x[1], self.cap_x[1])
         return x1, x2
 
     def solve(self, x1, x2, y, w, flatten=False):

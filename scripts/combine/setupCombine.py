@@ -130,7 +130,7 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
-    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-fakerate"],
+    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-binned", "extended1D-fakerate"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
@@ -764,30 +764,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
         if args.fakeSmoothingMode in ["hybrid", "full"]:
-            if False:
-                # these uncertainties are covered by the binByBin stat uncertainties
-                # for the moment
-                subgroup = f"{cardTool.getFakeName()}Smoothing"
-                cardTool.addSystematic(**info,
-                    rename=subgroup,
-                    splitGroup = {subgroup: f".*", "experiment": ".*"},
-                    systNamePrepend=subgroup,
-                    actionArgs=dict(variations_smoothing=True),
-                )
-
-            subgroup = f"{cardTool.getFakeName()}SmoothingSyst"
-            cardTool.addSystematic(name=inputBaseName,
-                                    group="Fake",
-                                    processes=cardTool.getFakeName(),
-                                    noConstraint=False,
-                                    mirror=True,
-                                    scale=1.,
-                                    applySelection=False,
-                                    action = fakeselector.get_smoothing_syst,
-                                    rename=subgroup,
-                                    splitGroup = {subgroup: f".*", "experiment": ".*"},
-                                    systNamePrepend=subgroup,
-                                    systAxes = ["var"],
+            subgroup = f"{cardTool.getFakeName()}Smoothing"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_smoothing=True),
             )
 
         if args.fakeSmoothingMode in ["fakerate", "hybrid"]:

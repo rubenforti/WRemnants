@@ -390,7 +390,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(h, smoothing=True, syst_variations=variations_frf)
 
-            if self.swap_regions:
+            if not self.integrate_x and self.swap_regions:
+                logger.warning(f"Regions for fakerate estiamation can only be swapped if abcd-x axis is integrated")
+            if self.swap_regions and self.integrate_x:
                 if type(self) == FakeSelectorSimpleABCD:
                     # replace C region with B region
                     hC = self.get_hist_failX_passY(h) 
@@ -426,9 +428,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             elif variations_frf:
                 dvar = cval[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
             elif self.smoothing_mode in ["hybrid"]:
-                # keep statistical uncertainty from c region since we'll propagate that
-                # as a systematic
-                dvar = y_frf**2 * cvar_binned
+                # noo bin by bin statistical uncertainty, all regions covered by smoothing
+                dvar = np.zeros_like(cvar)
             else:
                 # only take bin by bin uncertainty from c region
                 dvar = y_frf**2 * cvar
@@ -472,7 +473,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # select sideband regions
         ha = self.get_hist_failX_failY(hNew)
-        if self.swap_regions:
+        if not self.integrate_x and self.swap_regions:
+            logger.warning(f"Regions for fakerate estiamation can only be swapped if abcd-x axis is integrated")
+        if self.swap_regions and self.integrate_x:
             # replace B region with C region
             hb = self.get_hist_passX_failY(hNew) 
         else:
@@ -817,7 +820,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         hb = hNew[{self.name_x: self.sel_dx, self.name_y: self.sel_y}]
         hbx = hNew[{self.name_x: self.sel_d2x, self.name_y: self.sel_y}]
 
-        if self.swap_regions:
+        if not self.integrate_x and self.swap_regions:
+            logger.warning(f"Regions for fakerate estiamation can only be swapped if abcd-x axis is integrated")
+        if self.swap_regions and self.integrate_x:
             # replace Ax region with C region
             hax = self.get_hist_passX_failY(hNew)
         else:
