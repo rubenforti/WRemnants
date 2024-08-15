@@ -210,7 +210,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" else None, 
         fontsize=fontsize, 
         label=args.cmsDecor, data=data)
 

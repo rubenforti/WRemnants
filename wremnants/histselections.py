@@ -247,7 +247,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
         smoothing_mode="full",
-        smoothing_order_fakerate=2,
+        smoothing_order_fakerate=3,
         smoothing_order_spectrum=3,
         throw_toys=None, #"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
@@ -301,7 +301,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         self.hCorr = None
 
         # swap the A and C regions for better numerical behaviour (only implemented for fakerate and hybrid smoothing)
-        self.swap_regions = False
+        self.swap_regions = True
 
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
@@ -840,7 +840,7 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             axvar = hax.variances(flow=flow)
             bvar = hb.variances(flow=flow)
             bxvar = hbx.variances(flow=flow)
-            y_var = b**4/(bx**2*a**4)*axvar + ax**2*b**2/(bx**2*a**4)*4*bvar + 4*avar/a**2 + ax**2*b**4/(bx**4*a**4)*bxvar
+            y_var = b**4/(bx**2*a**4)*axvar + ax**2*b**2/(bx**2*a**4)*4*bvar + y**2*4*avar/a**2 + y**2*bxvar/bx**2
             y_var[y_den <= 1] = 1e10
 
         if self.hCorr:

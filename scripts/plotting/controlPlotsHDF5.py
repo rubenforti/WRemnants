@@ -286,7 +286,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
         # offset_text.set_position((-0.08,1.02))
 
         if args.cmsDecor:
-            lumi = float(f"{channel_info['lumi']:.3g}") if not density else None
+            lumi = float(f"{channel_info['lumi']:.3g}") if not density and args.dataName=="Data" else None
             
             hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
                 label= args.cmsDecor, data=hist_data is not None)

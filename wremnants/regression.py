@@ -21,8 +21,8 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
     ndf_total = y.size - chi2.size*nparams
 
     logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {stats.chi2.sf(chi2_total, ndf_total)})")
-    logger.info(f"Min chi2 = {chi2.min()} (p = {stats.chi2.sf(chi2.min(), ndf)})")
-    logger.info(f"Max chi2 = {chi2.max()} (p = {stats.chi2.sf(chi2.max(), ndf)})")
+    logger.info(f"Min chi2/ndf = {chi2.min()}/{ndf} (p = {stats.chi2.sf(chi2.min(), ndf)})")
+    logger.info(f"Max chi2/ndf = {chi2.max()}/{ndf} (p = {stats.chi2.sf(chi2.max(), ndf)})")
     logger.info(f"Mean chi2 = {chi2.mean()}")
     logger.info(f"Std chi2 = {chi2.std()}")
     return chi2, ndf    

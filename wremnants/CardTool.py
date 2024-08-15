@@ -847,12 +847,17 @@ class CardTool(object):
                     
                 fakeselector = self.datagroups.getDatagroups()[self.getFakeName()].histselector
 
-                _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
+                _0, _1 = fakeselector.calculate_fullABCD_smoothed(hist_fake, signal_region=True)
+                params_d = fakeselector.spectrum_regressor.params
+                cov_d = fakeselector.spectrum_regressor.cov
+
                 hist_fake = hh.scaleHist(hist_fake, fakeselector.global_scalefactor)
-                _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
+                _0, _1 = fakeselector.calculate_fullABCD_smoothed(hist_fake)
+                params = fakeselector.spectrum_regressor.params
+                cov = fakeselector.spectrum_regressor.cov
 
                 # add the nonclosure by adding the difference of the parameters
-                fakeselector.external_params = params_d - params
+                fakeselector.spectrum_regressor.external_params = params_d - params
                 # load the pseudodata including the nonclosure
                 self.datagroups.loadHistsForDatagroups(
                     baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
@@ -866,7 +871,7 @@ class CardTool(object):
                 hdatas.append(hdata)
 
                 # remove the parameter offset again
-                fakeselector.external_params = None
+                fakeselector.spectrum_regressor.external_params = None
                 # add the covariance matrix from the nonclosure to the model
                 fakeselector.external_cov = cov + cov_d
 

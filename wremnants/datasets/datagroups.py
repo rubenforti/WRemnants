@@ -202,7 +202,7 @@ class Datagroups(object):
         fake_processes=None,
         mode="extended1D",
         smoothing_mode="full",
-        smoothingOrderFakerate=2,
+        smoothingOrderFakerate=3,
         smoothingOrderSpectrum=3,
         integrate_shapecorrection_x=True, # integrate the abcd x-axis or not, only relevant for extended2D
         simultaneousABCD=False,

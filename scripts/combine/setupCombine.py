@@ -85,7 +85,7 @@ def make_parser(parser=None):
     parser.add_argument("--fakeSmoothingMode", type=str, default="hybrid", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
-    parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
+    parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -377,7 +377,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 pseudodataGroups.fakerate_axes=args.fakerateAxes
                 pseudodataGroups.set_histselectors(
                     pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
                     mcCorr=args.fakeMCCorr,
                     integrate_x="mt" not in fitvar,
                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
@@ -394,7 +394,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(
                 pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation, fake_processes=["QCD",],
-                smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
                 mcCorr=args.fakeMCCorr,
                 simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
                 )
@@ -811,10 +811,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if args.fakeSmoothingMode in ["hybrid", "full"] and args.fakeSmoothingOrder > 0:
             # add systematic of explicit parameter variation
             fakeSmoothingOrder = args.fakeSmoothingOrder
-            def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
+            def fake_nonclosure(h, axesToDecorrNames, param_idx=1, variation_size=0.5, *args, **kwargs):
                 # apply variation by adding parameter value (assumes log space, e.g. in full smoothing)
                 fakeselector.spectrum_regressor.external_params = np.zeros(fakeSmoothingOrder + 1)
-                fakeselector.spectrum_regressor.external_params[1] = 0.5
+                fakeselector.spectrum_regressor.external_params[param_idx] = variation_size
                 hvar = fakeselector.get_hist(h, *args, **kwargs)
                 # reset external parameters
                 fakeselector.spectrum_regressor.external_params = None
@@ -837,23 +837,24 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
                 return hvar
 
-            for axesToDecorrNames in [[], ]:#["eta"]]:
-                subgroup = f"{cardTool.getFakeName()}Param1"
-                cardTool.addSystematic(
-                    name=inputBaseName, 
-                    group="Fake",
-                    rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
-                    splitGroup = {subgroup: f".*", "experiment": ".*"},
-                    systNamePrepend=subgroup,
-                    processes=cardTool.getFakeName(),
-                    noConstraint=False,
-                    mirror=True,
-                    scale=1,
-                    applySelection=False, # don't apply selection, external parameters need to be added
-                    action=fake_nonclosure,
-                    actionArgs=dict(axesToDecorrNames=axesToDecorrNames),
-                    systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
-                )
+            for axesToDecorrNames in [[], ]:
+                for idx, mag in [(1,0.2),(2,0.2),(3,0.2)]:
+                    subgroup = f"{cardTool.getFakeName()}Param{idx}"
+                    cardTool.addSystematic(
+                        name=inputBaseName, 
+                        group="Fake",
+                        rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
+                        splitGroup = {subgroup: f".*", "experiment": ".*"},
+                        systNamePrepend=subgroup,
+                        processes=cardTool.getFakeName(),
+                        noConstraint=False,
+                        mirror=True,
+                        scale=1,
+                        applySelection=False, # don't apply selection, external parameters need to be added
+                        action=fake_nonclosure,
+                        actionArgs=dict(axesToDecorrNames=axesToDecorrNames, param_idx=idx, variation_size=mag),
+                        systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
+                    )
 
     if not args.noEfficiencyUnc:
 
