@@ -138,7 +138,7 @@ def make_parser(parser=None):
     parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
-    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
+    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.26, help="scaling of bin by bin statistical uncertainty for W mass analysis")
     parser.add_argument("--exponentialTransform", action='store_true', help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)")
     parser = make_subparsers(parser)
 
