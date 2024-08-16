@@ -82,10 +82,10 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
+    parser.add_argument("--fakeSmoothingMode", type=str, default="hybrid", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
-    parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
+    parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -130,7 +130,7 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
-    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-fakerate"],
+    parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-binned", "extended1D-fakerate"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
@@ -138,7 +138,7 @@ def make_parser(parser=None):
     parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
-    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
+    parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.10, help="scaling of bin by bin statistical uncertainty for W mass analysis")
     parser.add_argument("--exponentialTransform", action='store_true', help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)")
     parser = make_subparsers(parser)
 
@@ -293,7 +293,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         datagroups.fakerate_axes=args.fakerateAxes
         datagroups.set_histselectors(
             datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-            smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+            smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
             mcCorr=args.fakeMCCorr,
             integrate_x="mt" not in fitvar,
             simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
@@ -377,7 +377,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 pseudodataGroups.fakerate_axes=args.fakerateAxes
                 pseudodataGroups.set_histselectors(
                     pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
                     mcCorr=args.fakeMCCorr,
                     integrate_x="mt" not in fitvar,
                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
@@ -394,7 +394,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
             pseudodataGroups.set_histselectors(
                 pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation, fake_processes=["QCD",],
-                smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
                 mcCorr=args.fakeMCCorr,
                 simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
                 )
@@ -743,17 +743,14 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*"},)
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
 
-    if cardTool.getFakeName() != "QCD" and cardTool.getFakeName() in datagroups.groups.keys() and not xnorm and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)):
-        
-        # add stat uncertainty from QCD MC nonclosure to smoothing parameter covariance
-        hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+    if (
+        (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD") 
+        and cardTool.getFakeName() in datagroups.groups.keys() 
+        and not xnorm 
+        and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar))
+        ):
 
         fakeselector = cardTool.datagroups.groups[cardTool.getFakeName()].histselector
-
-        _0, _1, params, cov, _chi2, _ndf = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True)
-        _0, _1, params_d, cov_d, _chi2_d, _ndf_d = fakeselector.calculate_fullABCD_smoothed(hist_fake, auxiliary_info=True, signal_region=True)
-
-        fakeselector.external_cov = cov + cov_d
 
         syst_axes = ["eta", "charge"] if (args.fakeSmoothingMode != "binned" or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
@@ -766,13 +763,24 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             applySelection=False, # don't apply selection, all regions will be needed for the action
             action=fakeselector.get_hist,
             systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]+["_param", "downUpVar"])
-        subgroup = f"{cardTool.getFakeName()}Rate"
-        cardTool.addSystematic(**info,
-            rename=subgroup,
-            splitGroup = {subgroup: f".*", "experiment": ".*"},
-            systNamePrepend=subgroup,
-            actionArgs=dict(variations_smoothing=True),
-        )
+        if args.fakeSmoothingMode in ["hybrid", "full"]:
+            subgroup = f"{cardTool.getFakeName()}Smoothing"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_smoothing=True),
+            )
+
+        if args.fakeSmoothingMode in ["fakerate", "hybrid"]:
+            subgroup = f"{cardTool.getFakeName()}Rate"
+            cardTool.addSystematic(**info,
+                rename=subgroup,
+                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                systNamePrepend=subgroup,
+                actionArgs=dict(variations_frf=True),
+            )
+
         if args.fakeEstimation in ["extended2D",] and args.fakeSmoothingMode != "full":
             subgroup = f"{cardTool.getFakeName()}Shape"
             cardTool.addSystematic(**info,
@@ -782,14 +790,22 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 actionArgs=dict(variations_scf=True),
             )
 
-        if args.fakeSmoothingMode == "full":
-            # add nominal nonclosure of QCD MC as single systematic
-            def fake_nonclosure(h, axesToDecorrNames, *args, **kwargs):
-                # apply QCD MC nonclosure by adding parameters (assumes log space, e.g. in full smoothing)
-                fakeselector.external_params = params_d - params
+        if args.fakeSmoothingMode in ["hybrid", "full"] and args.fakeSmoothingOrder > 0:
+            # add systematic of explicit parameter variation
+            fakeSmoothingOrder = args.fakeSmoothingOrder
+            def fake_nonclosure(h, axesToDecorrNames, param_idx=1, variation_size=0.5, *args, **kwargs):
+                # apply variation by adding parameter value (assumes log space, e.g. in full smoothing)
+                fakeselector.spectrum_regressor.external_params = np.zeros(fakeSmoothingOrder + 1)
+                fakeselector.spectrum_regressor.external_params[param_idx] = variation_size
                 hvar = fakeselector.get_hist(h, *args, **kwargs)
                 # reset external parameters
-                fakeselector.external_params = None
+                fakeselector.spectrum_regressor.external_params = None
+
+                hnom = fakeselector.get_hist(h, *args, **kwargs)
+
+                # normalize variation histogram to have the same integral as nominal
+                hScale = hh.divideHists(hnom[{"pt":hist.sum}], hvar[{"pt":hist.sum}])
+                hvar = hh.multiplyHists(hvar, hScale)
 
                 if len(axesToDecorrNames) == 0:
                     # inclusive
@@ -799,28 +815,28 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         data = hvar.values(flow=True)[...,np.newaxis]
                     )
                 else:
-                    hnom = fakeselector.get_hist(h, *args, **kwargs)
                     hvar = syst_tools.decorrelateByAxes(hvar, hnom, axesToDecorrNames)
 
                 return hvar
 
-            for axesToDecorrNames in [[], ["eta"]]:
-                subgroup = f"{cardTool.getFakeName()}QCDMCNonclosure"
-                cardTool.addSystematic(
-                    name=inputBaseName, 
-                    group="Fake",
-                    rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
-                    splitGroup = {subgroup: f".*", "experiment": ".*"},
-                    systNamePrepend=subgroup,
-                    processes=cardTool.getFakeName(),
-                    noConstraint=False,
-                    mirror=True,
-                    scale=1,
-                    applySelection=False, # don't apply selection, external parameters need to be added
-                    action=fake_nonclosure,
-                    actionArgs=dict(axesToDecorrNames=axesToDecorrNames),
-                    systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
-            )
+            for axesToDecorrNames in [[], ]:
+                for idx, mag in [(1,0.2),(2,0.2),(3,0.2)]:
+                    subgroup = f"{cardTool.getFakeName()}Param{idx}"
+                    cardTool.addSystematic(
+                        name=inputBaseName, 
+                        group="Fake",
+                        rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
+                        splitGroup = {subgroup: f".*", "experiment": ".*"},
+                        systNamePrepend=subgroup,
+                        processes=cardTool.getFakeName(),
+                        noConstraint=False,
+                        mirror=True,
+                        scale=1,
+                        applySelection=False, # don't apply selection, external parameters need to be added
+                        action=fake_nonclosure,
+                        actionArgs=dict(axesToDecorrNames=axesToDecorrNames, param_idx=idx, variation_size=mag),
+                        systAxes=["var"] if len(axesToDecorrNames)==0 else [f"{n}_decorr" for n in axesToDecorrNames],
+                    )
 
     if not args.noEfficiencyUnc:
 

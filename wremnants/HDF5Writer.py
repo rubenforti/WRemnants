@@ -250,7 +250,7 @@ class HDF5Writer(object):
                                 logger.debug(f"Delete pseudodata histogram {pseudo}")
                                 del dg.groups[proc].hists[pseudo]
 
-            # nominal predictions (after pseudodata because some pseudodata changes the nominal model)
+            # nominal predictions (after pseudodata because some pseudodata changes the nominal model and/or its uncertainties)
             for proc in procs_chan:
                 logger.debug(f"Now  in channel {chan} at process {proc}")
 

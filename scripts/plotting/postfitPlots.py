@@ -105,7 +105,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         h_inclusive = hh.scaleHist(h_inclusive, scale)
 
     axis_name = "_".join([a for a in axes_names])
-    xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
+    if len(axes_names) == 1:
+        xlabel=styles.xlabels.get(axes_names[0])
+    else:
+        xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
     if ratio:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, f"{args.dataName}/Pred.", args.rrange)
     else:
@@ -207,7 +210,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" else None, 
         fontsize=fontsize, 
         label=args.cmsDecor, data=data)
 

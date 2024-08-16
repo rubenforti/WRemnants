@@ -202,7 +202,8 @@ class Datagroups(object):
         fake_processes=None,
         mode="extended1D",
         smoothing_mode="full",
-        smoothingOrderFakerate=2,
+        smoothingOrderFakerate=3,
+        smoothingOrderSpectrum=3,
         integrate_shapecorrection_x=True, # integrate the abcd x-axis or not, only relevant for extended2D
         simultaneousABCD=False,
         forceGlobalScaleFakes=None,
@@ -252,6 +253,7 @@ class Datagroups(object):
                     fakerate_axes=self.fakerate_axes,
                     smoothing_mode=smoothing_mode,
                     smoothing_order_fakerate=smoothingOrderFakerate,
+                    smoothing_order_spectrum=smoothingOrderSpectrum,
                     **auxiliary_info, **kwargs
                     )
                 if mode in ["simple", "extended1D", "extended2D"] and forceGlobalScaleFakes is None and (len(mcCorr)==0 or mcCorr[0] not in ["none", None]):
