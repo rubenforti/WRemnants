@@ -39,6 +39,8 @@ parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: 
 parser.add_argument("--selectNonPromptFromLightMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
+parser.add_argument("--noVetoSF", action="store_true", help="Don't use SF for the veto, for tests")
+parser.add_argument("--scaleDYvetoFraction", type=float, default=-1.0, help="Scale fraction of DY background that should receive veto SF by this amount. Negative values do nothing")
 parser.add_argument("--addAxisSignUt", action="store_true", help="Add another fit axis with the sign of the uT recoil projection")
 #
 
@@ -203,10 +205,11 @@ elif args.binnedScaleFactors:
 else:
     logger.info("Using smoothed scale factors and uncertainties")
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
-    if args.useRefinedVeto:
-        muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(antiveto=True)
-    else:
-        muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
+    if not args.noVetoSF:
+        if args.useRefinedVeto:
+            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(antiveto=True)
+        else:
+            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
     
 logger.info(f"SF file: {args.sfFile}")
 
@@ -466,11 +469,12 @@ def build_graph(df, dataset):
         if args.selectVetoEventsMC:
             # in principle a gen muon with eta = 2.401 might still be matched to a reco muon with eta < 2.4, same for pt, so this condition is potentially fragile, but it is just for test plots
             df = df.Filter("Sum(postfsrMuons_inAcc) >= 2")
-        df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx_closest(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
-        df = df.Define("GenPart_charge","wrem::charge_from_pdgid(GenPart_pdgId[postfsrMuons_inAcc])")
-        df = df.Define(f"vetoMuons_pt0",  "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
-        df = df.Define(f"vetoMuons_eta0", "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
-        df = df.Define(f"vetoMuons_charge0", "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+        if not args.noVetoSF:
+            df = df.Define("hasMatchDR2idx","wrem::hasMatchDR2idx_closest(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons_inAcc],GenPart_phi[postfsrMuons_inAcc],0.09)")
+            df = df.Define("GenPart_charge","wrem::charge_from_pdgid(GenPart_pdgId[postfsrMuons_inAcc])")
+            df = df.Define(f"vetoMuons_pt0",  "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+            df = df.Define(f"vetoMuons_eta0", "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
+            df = df.Define(f"vetoMuons_charge0", "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)")
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
@@ -502,8 +506,14 @@ def build_graph(df, dataset):
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
             
             if isZveto and not args.noGenMatchMC:
-                df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["vetoMuons_pt0","vetoMuons_eta0","vetoMuons_charge0"])
-                weight_expr += "*weight_vetoSF_nominal"
+                if args.scaleDYvetoFraction > 0.0:
+                    # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
+                    df = df.Define("weight_DY", f"(vetoMuons_charge0 > -99) ? {args.scaleDYvetoFraction} : 1.0")
+                    weight_expr += "*weight_DY"
+
+                if not args.noVetoSF:
+                    df = df.Define("weight_vetoSF_nominal", muon_efficiency_veto_helper, ["vetoMuons_pt0","vetoMuons_eta0","vetoMuons_charge0"])
+                    weight_expr += "*weight_vetoSF_nominal"
 
         # prepare inputs for pixel multiplicity helpers
         cvhName = "cvhideal"
@@ -705,7 +715,7 @@ def build_graph(df, dataset):
             results.append(yieldsForWeffMC)
 
         if not args.noRecoil and args.recoilUnc:
-            df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, base_name="nominal", storage_type=storage_type)
+            df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal", storage_type=storage_type)
         if apply_theory_corr:
             syst_tools.add_theory_corr_hists(results, df, axes, cols, corr_helpers[dataset.name], theory_corrs, base_name="nominal", 
                 modify_central_weight=not args.theoryCorrAltOnly, isW = isW, storage_type=storage_type)
@@ -723,7 +733,7 @@ def build_graph(df, dataset):
                 for es in common.muonEfficiency_altBkgSyst_effSteps:
                     df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
                                                                          what_analysis=thisAnalysis, step=es, storage_type=storage_type)
-                if isZveto and not args.noGenMatchMC:
+                if isZveto and not args.noGenMatchMC and not args.noVetoSF:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
 
             df = syst_tools.add_L1Prefire_unc_hists(results, df, muon_prefiring_helper_stat, muon_prefiring_helper_syst, axes, cols, storage_type=storage_type)

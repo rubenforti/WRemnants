@@ -23,23 +23,37 @@ import numpy as np
 
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection") # 40 for Wmass, thus be 45 here (roughly half the boson mass)
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it")
+parser.add_argument("--addIsoMtAxes", action="store_true", help="Add iso/mT axes to the nominal ones. It is for tests to get uncertainties (mainly from SF) versus iso-mT to validate the goodness of muon SF in the fake regions. Isolation (on triggering muon) and mT cut are automatically overridden.")
 parser.add_argument("--validateVetoSF", action="store_true", help="Add histogram for validation of veto SF, loading all necessary helpers. This requires using the veto selection on the non-triggering muon, with reduced pt cut")
 parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use global-or-tracker veto definition and scale factors instead of global only")
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
 parser.add_argument("--fillHistNonTrig", action="store_true", help="Fill histograms with non triggering muon (for tests)")
 parser.add_argument("--flipEventNumberSplitting", action="store_true", help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon")
 
-initargs,_ = parser.parse_known_args()
-logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger)
+args = parser.parse_args()
+logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
+
+isUnfolding = args.analysisMode == "unfolding"
+isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]
+isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
+isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
+isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
+
+if isFloatingPOIsTheoryAgnostic:
+    raise ValueError("Theory agnostic fit with floating POIs is not currently implemented")
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
 parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+if args.addIsoMtAxes:
+    parser = common.set_parser_default(parser, "muonIsolation", [0, 1])
 
-args = parser.parse_args()
+if isTheoryAgnostic:
+    parser = common.set_parser_default(parser, "excludeFlow", True)
+    if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
+        raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
-isUnfolding = args.analysisMode == "unfolding"
-isPoiAsNoi = isUnfolding and args.poiAsNoi
-
+args = parser.parse_args() # parse again or new defaults won't be propagated
+    
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 if args.validateVetoSF:
@@ -89,6 +103,17 @@ else:
     nominal_axes = [axis_eta, axis_pt, common.axis_charge]
     nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
 
+# for isoMt region validation and related tests
+# use very high upper edge as a proxy for infinity (cannot exploit overflow bins in the fit)
+# can probably use numpy infinity, but this is compatible with the root conversion
+axis_mtCat = hist.axis.Variable([0, int(args.mtCut/2.), args.mtCut, 1000], name = "mt", underflow=False, overflow=False)
+axis_isoCat = hist.axis.Variable([0, 0.15, 0.3, 100], name = "relIso",underflow=False, overflow=False)
+
+nominal_axes = [axis_eta, axis_pt, common.axis_charge]
+nominal_cols = ["trigMuons_eta0", "trigMuons_pt0", "trigMuons_charge0"]
+if args.addIsoMtAxes:
+    nominal_axes.extend([axis_mtCat, axis_isoCat])
+    nominal_cols.extend(["transverseMass", "trigMuons_relIso0"])
 
 if isUnfolding:
     template_wpt = (template_maxpt-template_minpt)/args.genBins[0]
@@ -98,6 +123,13 @@ if isUnfolding:
     unfolding_axes, unfolding_cols = differential.get_pt_eta_charge_axes(npt_unfolding, min_pt_unfolding, max_pt_unfolding, args.genBins[1])
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Zmumu")
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = "Ztautau")
+
+elif isTheoryAgnostic:
+    theoryAgnostic_axes, theoryAgnostic_cols = differential.get_theoryAgnostic_axes(ptV_bins=args.genPtVbinEdges, absYV_bins=args.genAbsYVbinEdges, ptV_flow=isPoiAsNoi, absYV_flow=isPoiAsNoi,wlike=True)
+    axis_helicity = helicity_utils.axis_helicity_multidim
+    # the following just prepares the existence of the group for out-of-acceptance signal, but doesn't create or define the histogram yet
+    if not isPoiAsNoi or (isTheoryAgnosticPolVar and args.theoryAgnosticSplitOOA): # this splitting is not needed for the normVar version of the theory agnostic
+        raise ValueError("This option is not currently implemented")
 
 # axes for mT measurement
 axis_mt = hist.axis.Regular(200, 0., 200., name = "mt",underflow=False, overflow=True)
@@ -163,10 +195,10 @@ theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if d.name in common.vprocs], theory_corrs)
 
 # helpers for muRmuF MiNNLO polynomial variations
-
-muRmuFPolVar_helpers_minus = makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-muRmuFPolVar_helpers_plus  = makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-muRmuFPolVar_helpers_Z     = makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+if isTheoryAgnosticPolVar:
+    muRmuFPolVar_helpers_minus = makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+    muRmuFPolVar_helpers_plus  = makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+    muRmuFPolVar_helpers_Z     = makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
 
 # recoil initialization
 if not args.noRecoil:
@@ -249,8 +281,10 @@ def build_graph(df, dataset):
         if not passIsoBoth:
             df = muon_selections.apply_iso_muons(df, args.muonIsolation[0], args.muonIsolation[1], isoBranch, isoThreshold)
 
-    df = df.Define("trigMuons_passIso0", f"{isoBranch}[trigMuons][0] < {isoThreshold}")
-    df = df.Define("nonTrigMuons_passIso0", f"{isoBranch}[nonTrigMuons][0] < {isoThreshold}")
+    df = df.Define("trigMuons_relIso0", f"{isoBranch}[trigMuons][0]")
+    df = df.Define("nonTrigMuons_relIso0", f"{isoBranch}[nonTrigMuons][0]")
+    df = df.Define("trigMuons_passIso0", f"trigMuons_relIso0 < {isoThreshold}")
+    df = df.Define("nonTrigMuons_passIso0", f"nonTrigMuons_relIso0 < {isoThreshold}")
 
     df = muon_selections.select_z_candidate(df, mass_min, mass_max)
 
@@ -317,7 +351,10 @@ def build_graph(df, dataset):
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
 
     results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
-
+    
+    if isZ and isTheoryAgnostic:
+            df = theoryAgnostic_tools.define_helicity_weights(df,is_w_like=True)
+    
     if not args.noRecoil:
         leps_uncorr = ["Muon_pt[goodMuons][0]", "Muon_eta[goodMuons][0]", "Muon_phi[goodMuons][0]", "Muon_charge[goodMuons][0]", "Muon_pt[goodMuons][1]", "Muon_eta[goodMuons][1]", "Muon_phi[goodMuons][1]", "Muon_charge[goodMuons][1]"]
         leps_corr = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_phi0", "trigMuons_charge0", "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_phi0", "nonTrigMuons_charge0"]
@@ -345,13 +382,16 @@ def build_graph(df, dataset):
 
     df = df.Define("passWlikeMT", f"transverseMass >= {mtw_min}")
 
-    if not args.onlyMainHistograms:
+    if not args.onlyMainHistograms and not isUnfolding and not args.addIsoMtAxes:
         axis_mt_coarse = hist.axis.Variable([0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0, 120.0], name = "mt", underflow=False, overflow=True)
         axis_trigPassIso = hist.axis.Boolean(name = f"trig_passIso")
         axis_nonTrigPassIso = hist.axis.Boolean(name = f"nonTrig_passIso")
 
         nominal_bin = df.HistoBoost("nominal_isoMtBins", [*axes, axis_trigPassIso, axis_nonTrigPassIso, axis_mt_coarse], [*cols, "trigMuons_passIso0", "nonTrigMuons_passIso0", "transverseMass", "nominal_weight"])
         results.append(nominal_bin)
+
+        nominal_testIsoMtFakeRegions = df.HistoBoost("nominal_testIsoMtFakeRegions", [*axes, axis_isoCat, axis_mtCat], [*cols, "trigMuons_relIso0", "transverseMass", "nominal_weight"])
+        results.append(nominal_testIsoMtFakeRegions)
 
         axis_eta_nonTrig = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "etaNonTrig", overflow=False, underflow=False)
         ptMin_nonTrig = args.vetoRecoPt if args.validateVetoSF else template_minpt
@@ -374,7 +414,8 @@ def build_graph(df, dataset):
         df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
         df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
 
-    df = df.Filter("passWlikeMT")
+    if not args.addIsoMtAxes:
+        df = df.Filter("passWlikeMT")
 
     if not args.onlyMainHistograms:
         # plot reco vertex distribution before and after PU reweigthing
@@ -393,18 +434,23 @@ def build_graph(df, dataset):
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
-    if isZ and not hasattr(dataset, "out_of_acceptance"):
-        theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
-        # assume to have same coeffs for plus and minus (no reason for it not to be the case)
-        if dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":
-            helpers_class = muRmuFPolVar_helpers_Z
-            process_name = "Z"
-        for coeffKey in helpers_class.keys():
-            logger.debug(f"Creating muR/muF histograms with polynomial variations for {coeffKey}")
-            helperQ = helpers_class[coeffKey]
-            df = df.Define(f"muRmuFPolVar_{coeffKey}_tensor", helperQ, theoryAgnostic_helpers_cols)
-            noiAsPoiWithPolHistName = Datagroups.histName("nominal", syst=f"muRmuFPolVar{process_name}_{coeffKey}")
-            results.append(df.HistoBoost(noiAsPoiWithPolHistName, nominal_axes, [*nominal_cols, f"muRmuFPolVar_{coeffKey}_tensor"], tensor_axes=helperQ.tensor_axes, storage=hist.storage.Double()))
+    if isPoiAsNoi and isZ and not hasattr(dataset, "out_of_acceptance"):
+        if isTheoryAgnostic:
+            noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsTheoryAgnostic")
+            logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for theory agnostic to treat POIs as NOIs")
+            results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *theoryAgnostic_axes], [*nominal_cols, *theoryAgnostic_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))
+            if isTheoryAgnosticPolVar:
+                theoryAgnostic_helpers_cols = ["qtOverQ", "absYVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"]
+                # assume to have same coeffs for plus and minus (no reason for it not to be the case)
+                if dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":
+                    helpers_class = muRmuFPolVar_helpers_Z
+                    process_name = "Z"
+                for coeffKey in helpers_class.keys():
+                    logger.debug(f"Creating muR/muF histograms with polynomial variations for {coeffKey}")
+                    helperQ = helpers_class[coeffKey]
+                    df = df.Define(f"muRmuFPolVar_{coeffKey}_tensor", helperQ, theoryAgnostic_helpers_cols)
+                    noiAsPoiWithPolHistName = Datagroups.histName("nominal", syst=f"muRmuFPolVar{process_name}_{coeffKey}")
+                    results.append(df.HistoBoost(noiAsPoiWithPolHistName, nominal_axes, [*nominal_cols, f"muRmuFPolVar_{coeffKey}_tensor"], tensor_axes=helperQ.tensor_axes, storage=hist.storage.Double()))
 
     if not args.noRecoil and args.recoilUnc:
         df = recoilHelper.add_recoil_unc_Z(df, results, dataset, cols, axes, "nominal")

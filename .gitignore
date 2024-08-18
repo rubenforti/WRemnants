@@ -157,3 +157,5 @@ cython_debug/
 # WRemnants/analysis specific
 *.pdf
 *.png
+*.hdf5
+*.root
