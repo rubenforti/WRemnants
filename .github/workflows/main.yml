@@ -234,7 +234,7 @@ jobs:
         run: echo "The web dir is $WEB_DIR plot dir is ${PLOT_DIR}"
 
       - name: wmass plotting
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red --fakeSmoothingMode $NOMINAL_FAKE_SMOOTHING
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --fakeSmoothingMode $NOMINAL_FAKE_SMOOTHING --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: wmass plot lepton phi
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 10 --logy --baseName leptonPhi --fakeSmoothingMode fakerate --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
