@@ -393,7 +393,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
-            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, hfake_processes=["QCD",], **histselector_kwargs)
+            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, fake_processes=["QCD",], **histselector_kwargs)
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
@@ -817,7 +817,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 return hvar
 
             for axesToDecorrNames in [[], ]:
-                for idx, mag in [(0,0.2),(1,0.2),(2,0.2),(3,0.2)]:
+                for idx, mag in [(0,0.2),(1,0.2),(2,0.2),]:#(3,0.2)]:
                     subgroup = f"{cardTool.getFakeName()}Param{idx}"
                     cardTool.addSystematic(
                         name=inputBaseName, 
