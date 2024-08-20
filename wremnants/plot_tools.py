@@ -347,10 +347,7 @@ def makeStackPlotWithRatio(
             )
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-    if add_ratio:
-        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
-    else:
-        fix_axes(ax1, yscale=yscale, logy=logy)
+    fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
 
     if cms_decor:
         lumi = float(f"{lumi:.3g}") if not density else None
@@ -453,7 +450,7 @@ def makePlotWithRatioToRef(
         # This seems like a bug, but it's needed
         if not xlim:
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
-        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+        fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
         if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     return fig
 
@@ -547,22 +544,15 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
     else:
         return all_edges
 
-def fix_axes(ax1, ax2=None, yscale=None, logy=False):
+def fix_axes(ax1, ax2, fig, yscale=None, logy=False):
     #TODO: Would be good to get this working
-    #ax1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
+    ax1.yaxis.get_offset_text().set_x(-0.1/np.divide(*fig.get_size_inches()))
     if yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*yscale)
-    if not logy:
-        redo_axis_ticks(ax1, "y")
-        if ax2 is not None:
-            redo_axis_ticks(ax2, "x")
     if ax2 is not None:
-        redo_axis_ticks(ax1, "x", True)
         ax1.set_xticklabels([])
-    else:
-        redo_axis_ticks(ax1, "x", False)
-
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()

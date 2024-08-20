@@ -190,7 +190,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
-    fontsize = ax1.xaxis.label.get_size()
+    fontsize = ax1.xaxis.label.get_size()*0.7
 
     if chi2 is not None:
         p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
@@ -216,7 +216,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
