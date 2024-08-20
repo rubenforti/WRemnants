@@ -284,7 +284,7 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
                 kwopts["run"] = lumi
             for a, i in idxs_centers.items():
                 print(a,i)
-            suffix = f"{channel}_" + "_".join([f"{a}_{i.replace(".","p").replace("-","m")}" for a, i in idxs_centers.items()])
+            suffix = f"{channel}_" + "_".join([f"{a}_{i.replace('.','p').replace('-','m')}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
             make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, *opts, **kwopts)
     else:

@@ -88,7 +88,7 @@ def make_parser(parser=None):
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
     parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=FakeSelectorSimpleABCD.smoothing_modes, help="Smoothing mode for fake estimate.")
     parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
-    parser.add_argument("--fakeSmoothingPolynomial", type=str, default="power", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
+    parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -817,7 +817,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 return hvar
 
             for axesToDecorrNames in [[], ]:
-                for idx, mag in [(0,0.2),(1,0.2),(2,0.2),]:#(3,0.2)]:
+                for idx, mag in [(1,0.1),(2,0.1),]:
                     subgroup = f"{cardTool.getFakeName()}Param{idx}"
                     cardTool.addSystematic(
                         name=inputBaseName, 
