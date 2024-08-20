@@ -49,7 +49,7 @@ parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices
 parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
 parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=FakeSelectorSimpleABCD.smoothing_modes, help="Smoothing mode for fake estimate.")
 parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
-parser.add_argument("--fakeSmoothingPolynomial", type=str, default="power", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
+parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
