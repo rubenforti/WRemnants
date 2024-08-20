@@ -78,6 +78,8 @@ class CardTool(object):
                              }
         self.charge_ax = "charge"
         self.procGroups = {}
+        self.binByBinStatScale = 1.
+        self.exponentialTransform = False
 
     def getProcNames(self, grouped_procs):
         expanded_procs = []
@@ -132,7 +134,7 @@ class CardTool(object):
 
     def setAbsolutePathShapeInCard(self, setRelative=False):
         self.absolutePathShapeFileInCard = False if setRelative else True
-        
+
     def getProcsNoStatUnc(self):
         return self.noStatUncProcesses
         
@@ -240,6 +242,12 @@ class CardTool(object):
         self.nominalName = histName
         if self.datagroups:
             self.datagroups.setNominalName(histName)
+
+    def setBinByBinStatScale(self, scale):
+        self.binByBinStatScale = scale
+
+    def setExponentialTransform(self, transform = True):
+        self.exponentialTransform = transform
 
     # by default this returns True also for Fake since it has Data in the list of members
     # then self.isMC negates this one and thus will only include pure MC processes
@@ -556,12 +564,12 @@ class CardTool(object):
                 raise RuntimeError(f"Did not find any valid variations for syst {syst}")
 
         variations = [hvar[{ax : binnum for ax,binnum in zip(axNames, entry)}] for entry in entries]
+        
         if hvar.axes[-1].name == "mirror" and len(variations) == 2*len(systInfo["outNames"]):
             systInfo["outNames"] = [n + d for n in systInfo["outNames"] for d in ["Up", "Down"]]
         elif len(variations) != len(systInfo["outNames"]):
             logger.warning(f"The number of variations doesn't match the number of names for "
                 f"syst {syst}. Found {len(systInfo['outNames'])} names and {len(variations)} variations.")
-
         return {name : var for name,var in zip(systInfo["outNames"], variations) if name}
 
     def getLogk(self, hvar, hnom, kfac=1., logkepsilon=math.log(1e-3)):
@@ -761,6 +769,7 @@ class CardTool(object):
 
         # now load the nominal histograms
         # only load nominal histograms that are not already loaded
+        procDictFromNomi = self.datagroups.getDatagroups()
         processesFromNomiToLoad = [proc for proc in self.datagroups.groups.keys() if self.nominalName not in procDictFromNomi[proc].hists]
         if len(processesFromNomiToLoad):
             self.datagroups.loadHistsForDatagroups(
@@ -770,7 +779,6 @@ class CardTool(object):
                 lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not self.simultaneousABCD)
-        procDictFromNomi = self.datagroups.getDatagroups()
 
         if "QCD" not in procDict:
             # use truth MC as QCD
@@ -819,16 +827,75 @@ class CardTool(object):
                 hdatas.append(self.loadPseudodataFakes(datagroups, forceNonzero=forceNonzero))
                 continue
 
-            if pseudoData in ["simple", "extended1D", "extended2D"]:
+            if pseudoData in ["dataClosure", "mcClosure"]:
+                # build the pseudodata by adding the nonclosure
+
+                # build the pseudodata by adding the nonclosure
+                # first load the nonclosure
+                if pseudoData == "dataClosure":
+                    datagroups.loadHistsForDatagroups(
+                        baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
+                        procsToRead=[self.getFakeName()],
+                        scaleToNewLumi=self.lumiScale,
+                        lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                        forceNonzero=forceNonzero,
+                        sumFakesPartial=not self.simultaneousABCD,
+                        applySelection=False)
+                    hist_fake= datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData]
+                elif pseudoData == "mcClosure":
+                    hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+                    
+                fakeselector = self.datagroups.getDatagroups()[self.getFakeName()].histselector
+
+                _0, _1 = fakeselector.calculate_fullABCD_smoothed(hist_fake, signal_region=True)
+                params_d = fakeselector.spectrum_regressor.params
+                cov_d = fakeselector.spectrum_regressor.cov
+
+                hist_fake = hh.scaleHist(hist_fake, fakeselector.global_scalefactor)
+                _0, _1 = fakeselector.calculate_fullABCD_smoothed(hist_fake)
+                params = fakeselector.spectrum_regressor.params
+                cov = fakeselector.spectrum_regressor.cov
+
+                # add the nonclosure by adding the difference of the parameters
+                fakeselector.spectrum_regressor.external_params = params_d - params
+                # load the pseudodata including the nonclosure
+                self.datagroups.loadHistsForDatagroups(
+                    baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
+                    procsToRead=[x for x in self.datagroups.groups.keys() if x != self.getDataName()], 
+                    scaleToNewLumi=self.lumiScale,
+                    lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
+                    forceNonzero=forceNonzero,
+                    sumFakesPartial=not self.simultaneousABCD)
+                # adding the pseudodata
+                hdata = hh.sumHists([self.datagroups.getDatagroups()[x].hists[pseudoData] for x in self.datagroups.groups.keys() if x != self.getDataName()])
+                hdatas.append(hdata)
+
+                # remove the parameter offset again
+                fakeselector.spectrum_regressor.external_params = None
+                # add the covariance matrix from the nonclosure to the model
+                fakeselector.external_cov = cov + cov_d
+
+                continue
+
+            elif pseudoData.split("-")[0] in ["simple", "extended1D", "extended2D"]:
                 # pseudodata for fakes using data with different fake estimation, change the selection but still keep the nominal histogram
-                datagroups.set_histselectors(datagroups.getNames(), self.nominalName, 
-                    mode=pseudoData,
-                    simultaneousABCD=self.simultaneousABCD,
-                )
+                parts = pseudoData.split("-")
+                if len(parts) == 2:
+                    pseudoDataMode, pseudoDataSmoothingMode = parts
+                else:
+                    pseudoDataMode = pseudoData
+                    pseudoDataSmoothingMode = "full"
+
+                datagroups.set_histselectors(
+                    datagroups.getNames(), self.nominalName, mode=pseudoDataMode,
+                    smoothing_mode=pseudoDataSmoothingMode, smoothingOrderFakerate=3,
+                    integrate_x=True,
+                    mcCorr=[None],
+                    )
                 syst=self.nominalName
             else:
                 syst=pseudoData
- 
+
             datagroups.loadHistsForDatagroups(
                 baseName=self.nominalName, syst=syst, label=pseudoData,
                 procsToRead=processes,
@@ -838,6 +905,12 @@ class CardTool(object):
                 sumFakesPartial=not self.simultaneousABCD)
             procDict = datagroups.getDatagroups()
             hists = [procDict[proc].hists[pseudoData] for proc in processes if proc not in processesFromNomi]
+
+            if pseudoData.split("-")[0] in ["simple", "extended1D", "extended2D"]:
+                # add BBB stat on top of nominal
+                hist_fake = self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName]
+                hist_fake.variances(flow=True)[...] = datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData].variances(flow=True)
+                self.datagroups.getDatagroups()[self.getFakeName()].hists[self.nominalName] = hist_fake
 
             # now add possible processes from nominal
             logger.warning(f"Making pseudodata summing these processes: {processes}")
@@ -1044,12 +1117,13 @@ class CardTool(object):
         nondata_chan = {chan: nondata.copy() for chan in self.channels}
         for chan in self.excludeProcessForChannel.keys():
             nondata_chan[chan] = list(filter(lambda x: not self.excludeProcessForChannel[chan].match(x), nondata))
-        # exit this function when a syst is applied to no process (can happen when some are excluded)
+        # skip any syst that would be applied to no process (can happen when some are excluded)
         for name,info in self.lnNSystematics.items():
             if self.isExcludedNuisance(name): continue
             if all(x not in info["processes"] for x in nondata):
-                raise ValueError (f"Trying to add lnN uncertainty for {info['processes']}, which is not a valid process; see predicted processes: {nondata}")
-            
+                logger.warning(f"Trying to add lnN uncertainty {name} for {info['processes']}, which are not valid processes; see predicted processes: {nondata}.. It will be skipped")
+                continue
+
             group = info["group"]
             groupFilter = info["groupFilter"]
             for chan in self.channels:
@@ -1159,12 +1233,20 @@ class CardTool(object):
     def writeHistByCharge(self, h, name):
         for charge in self.channels:
             q = self.chargeIdDict[charge]["val"]
-            hout = narf.hist_to_root(self.getBoostHistByCharge(h, q))
+            hin = self.getBoostHistByCharge(h, q)
+            if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+                hin = hin.copy()
+                hin.variances()[...] *= self.binByBinStatScale**2
+            hout = narf.hist_to_root(hin)
             hout.SetName(name.replace("CHANNEL",charge)+f"_{charge}")
             hout.Write()
         
     def writeHistWithCharges(self, h, name):
-        hout = narf.hist_to_root(h)
+        hin  = h
+        if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
+            hin = hin.copy()
+            hin.variances()[...] *= self.binByBinStatScale**2
+        hout = narf.hist_to_root(hin)
         hout.SetName(f"{name}_{self.channels[0]}" if self.channels else name)
         hout.Write()
     

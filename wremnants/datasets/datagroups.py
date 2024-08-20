@@ -195,8 +195,20 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def set_histselectors(self, 
-                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothing_mode="full", smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
+    def set_histselectors(
+        self,
+        group_names,
+        histToRead="nominal",
+        fake_processes=None,
+        mode="extended1D",
+        smoothing_mode="full",
+        smoothingOrderFakerate=3,
+        smoothingOrderSpectrum=3,
+        integrate_shapecorrection_x=True, # integrate the abcd x-axis or not, only relevant for extended2D
+        simultaneousABCD=False,
+        forceGlobalScaleFakes=None,
+        mcCorr=["pt","eta"],
+        **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode[0] != "w":
@@ -205,16 +217,20 @@ class Datagroups(object):
         signalselector = sel.SignalSelectorABCD
         scale = 1
         if mode == "extended1D":
+            scale = 0.85
             fakeselector = sel.FakeSelector1DExtendedABCD
-            scale = 1/1.15
         elif mode == "extended2D":
+            scale = 1.15
             fakeselector = sel.FakeSelector2DExtendedABCD
-            smoothen = smoothing_mode == "fakerate"
-            auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x="automatic" if smoothen else None))
+            auxiliary_info["integrate_shapecorrection_x"]=integrate_shapecorrection_x
+            if smoothing_mode == "fakerate" and not integrate_shapecorrection_x:
+                auxiliary_info.update(dict(smooth_shapecorrection=True, interpolate_x=True, rebin_x="automatic"))
+            else:
+                auxiliary_info.update(dict(smooth_shapecorrection=False, interpolate_x=False, rebin_x=None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
         elif mode == "simple":
-            scale = 1/1.2
+            scale = 0.85
             if simultaneousABCD:
                 fakeselector = sel.FakeSelectorSimultaneousABCD
             else:
@@ -231,9 +247,27 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smoothing_mode=smoothing_mode, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(
+                    h,
+                    global_scalefactor=scale,
+                    fakerate_axes=self.fakerate_axes,
+                    smoothing_mode=smoothing_mode,
+                    smoothing_order_fakerate=smoothingOrderFakerate,
+                    smoothing_order_spectrum=smoothingOrderSpectrum,
+                    **auxiliary_info, **kwargs
+                    )
+                if mode in ["simple", "extended1D", "extended2D"] and forceGlobalScaleFakes is None and (len(mcCorr)==0 or mcCorr[0] not in ["none", None]):
+                    # set QCD MC nonclosure corrections
+                    if "QCDmuEnrichPt15PostVFP" not in self.results:
+                        logger.warning("Dataset 'QCDmuEnrichPt15PostVFP' not in results, continue without fake correction")
+                        return
+                    if "unweighted" not in self.results["QCDmuEnrichPt15PostVFP"]["output"]:
+                        logger.warning("Histogram 'unweighted' not found, continue without fake correction")
+                        return
+                    hQCD = self.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+                    self.groups[g].histselector.set_correction(hQCD, axes_names=mcCorr)
             else:
-                self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
+                self.groups[g].histselector = signalselector(h, fakerate_axes=self.fakerate_axes, **kwargs)
 
     def setGlobalAction(self, action):
         # To be used for applying a selection, rebinning, etc.

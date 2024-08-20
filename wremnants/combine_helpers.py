@@ -1,5 +1,6 @@
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import input_tools
+from wremnants import syst_tools
 
 import numpy as np
 import hist
@@ -8,52 +9,74 @@ import re
 logger = logging.child_logger(__name__)
 
 
-def add_mass_diff_variations(cardTool, **kwargs):
-    mass_diff_args = kwargs.copy()
-    if args.fitMassDiff == "charge":
+def add_mass_diff_variations(
+    cardTool, 
+    mass_diff_var, 
+    name,
+    processes,
+    constrain=False,
+    suffix="", 
+    label="W",
+    passSystToFakes=True,
+):
+    mass_diff_args = dict(
+        name=name,
+        processes=processes,
+        rename=f"massDiff{suffix}{label}",
+        group=f"massDiff{label}",
+        systNameReplace=[("Shift",f"Diff{suffix}")],
+        skipEntries=syst_tools.massWeightNames(proc=label, exclude=50),
+        noi=not constrain,
+        noConstraint=not constrain,
+        mirror=False,
+        systAxes=["massShift"],
+        passToFakes=passSystToFakes,
+    )
+
+    if mass_diff_var == "charge":
         cardTool.addSystematic(**mass_diff_args,
             # # on gen level based on the sample, only possible for mW
             # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown"))
-            #     for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
+            #     for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
             # on reco level based on reco charge
             preOpMap={m.name: (lambda h:
                 hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0)
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
-    elif args.fitMassDiff == "cosThetaStarll":
+    elif mass_diff_var == "cosThetaStarll":
         cardTool.addSystematic(**mass_diff_args,
             preOpMap={m.name: (lambda h:
                 hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):])
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
-    elif args.fitMassDiff == "eta-sign":
+    elif mass_diff_var == "eta-sign":
         cardTool.addSystematic(**mass_diff_args,
             preOpMap={m.name: (lambda h:
                 hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):])
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
-    elif args.fitMassDiff == "eta-range":
+    elif mass_diff_var == "eta-range":
         cardTool.addSystematic(**mass_diff_args,
             preOpMap={m.name: (lambda h:
                 hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):])
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
-    elif args.fitMassDiff.startswith("etaRegion"):
+    elif mass_diff_var.startswith("etaRegion"):
         # 3 bins, use 3 unconstrained parameters: mass; mass0 - mass2; mass0 + mass2 - mass1
         mass_diff_args["rename"] = f"massDiff1{suffix}{label}"
         mass_diff_args["systNameReplace"] = [("Shift",f"Diff1{suffix}")]
         cardTool.addSystematic(**mass_diff_args,
             preOpMap={m.name: (lambda h: hh.swap_histogram_bins(
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 2), # invert for mass2
-                "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 2), # invert for mass2
+                "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
         mass_diff_args["rename"] = f"massDiff2{suffix}{label}"
         mass_diff_args["systNameReplace"] = [("Shift",f"Diff2{suffix}")]
         cardTool.addSystematic(**mass_diff_args,
             preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", args.fitMassDiff, 1)
-                ) for g in cardTool.procGroups[signal_samples_forMass[0]] for m in cardTool.datagroups.groups[g].members},
+                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 1)
+                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
         )
 
 
@@ -62,8 +85,17 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
     if flavor == "":
         flavor = input_tools.args_from_metadata(card_tool, "flavor")
     if pu_type == "highPU" and (met in ["RawPFMET", "DeepMETReso", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"]):
+        card_tool.addSystematic("recoil_stat",
+            processes=samples,
+            mirror = True,
+            group = "recoil" if group_compact else "recoil_stat",
+            splitGroup={"experiment": f".*"},
+            systAxes = ["recoil_unc"],
+            passToFakes=passSystToFakes,
+        )
 
-        '''
+    if pu_type == "lowPU":
+        group_compact = False
         card_tool.addSystematic("recoil_syst",
             processes=samples,
             mirror = True,
@@ -72,7 +104,6 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
         )
-        '''
 
         card_tool.addSystematic("recoil_stat",
             processes=samples,
