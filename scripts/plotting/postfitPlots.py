@@ -38,6 +38,7 @@ parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
+parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 
 args = parser.parse_args()
@@ -79,7 +80,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     else:
         binwnorm = None
         ylabel="Events/bin"
-    
+
+    if args.ylabel:
+        ylabel=args.ylabel
+
     histtype_data = "errorbar"
     histtype_mc = "fill"
 
@@ -210,7 +214,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" else None, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
         fontsize=fontsize, 
         label=args.cmsDecor, data=data)
 
@@ -280,7 +284,7 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
                 kwopts["run"] = lumi
             for a, i in idxs_centers.items():
                 print(a,i)
-            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs_centers.items()])
+            suffix = f"{channel}_" + "_".join([f"{a}_{i.replace(".","p").replace("-","m")}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
             make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, *opts, **kwopts)
     else:
