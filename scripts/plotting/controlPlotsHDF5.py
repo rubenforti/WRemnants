@@ -266,7 +266,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
             for i, (key, idx) in enumerate(selections.items()):
                 lo, hi = selection_edges[i]
                 if key=="charge":
-                    label = f"charge = {'-1' if i==0 else +1}"
+                    label = f"charge = {'-1' if hi==0 else '+1'}"
                 else:
                     label = styles.xlabels[key].replace(" (GeV)","")
                     if lo != None:

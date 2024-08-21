@@ -1,4 +1,5 @@
 {
+    "angularCoeffs": "Angular coefficients",
     "QCDscale": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale}$",
     "QCDscaleZMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (Z)}$",
     "QCDscaleWMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (W)}$",
@@ -28,7 +29,8 @@
     "pdfMSHT20NoAlphaS": "PDF",
     "pdfMSHT20AlphaS": "$\\alpha_\\mathrm{S} \\ \\mathrm{PDF}$",
     "pdfCT18ZAlphaS": "$\\alpha_\\mathrm{S} \\ \\mathrm{PDF}$",
-    "resum": "$p_{\\mathrm{T}}^{\\mathrm{V}} \\ \\mathrm{modelling}$",
+    "pTModeling": "$p_{\\mathrm{T}}^{\\mathrm{V}} \\ \\mathrm{modelling}$",
+    "resum": "Resummation",
     "resumTNP": "Non pert. trans.",
     "resumNonpert": "Non pert.",
     "muonCalibration": "Muon calibration",
