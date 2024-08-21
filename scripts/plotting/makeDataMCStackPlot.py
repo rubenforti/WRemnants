@@ -1,5 +1,7 @@
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import plot_tools,theory_tools,syst_tools
+from wremnants.regression import Regressor
+from wremnants.histselections import FakeSelectorSimpleABCD
 from utilities import boostHistHelpers as hh, common, logging
 from utilities.styles import styles
 from utilities.io_tools import output_tools
@@ -43,10 +45,11 @@ parser.add_argument("--selection", type=str, help="Specify custom selections as 
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
-parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
 parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
 parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
+parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=FakeSelectorSimpleABCD.smoothing_modes, help="Smoothing mode for fake estimate.")
 parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
+parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
@@ -147,6 +150,7 @@ if applySelection:
         args.baseName,
         smoothing_mode=args.fakeSmoothingMode,
         smoothingOrderSpectrum=args.fakeSmoothingOrder,
+        smoothingPolynomialSpectrum=args.fakeSmoothingPolynomial,
         integrate_x=all("mt" not in x.split("-") for x in args.hists),
         mode=args.fakeEstimation,
         forceGlobalScaleFakes=args.forceGlobalScaleFakes,

@@ -32,12 +32,14 @@ parser.add_argument("--noRatio", action='store_true', help="Don't make the ratio
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
+parser.add_argument("--filterProcs", type=str, nargs="*", default=None, help="Only plot the filtered processes")
 parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"], 
     help="List of axes where for each bin a seperate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
+parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 
 args = parser.parse_args()
@@ -79,7 +81,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     else:
         binwnorm = None
         ylabel="Events/bin"
-    
+
+    if args.ylabel:
+        ylabel=args.ylabel
+
     histtype_data = "errorbar"
     histtype_mc = "fill"
 
@@ -110,7 +115,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     else:
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
     if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, f"1/Pred.", args.rrange)
+        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, f"{args.dataName}/Pred.", args.rrange)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -210,7 +215,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" else None, 
+    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
         fontsize=fontsize, 
         label=args.cmsDecor, data=data)
 
@@ -242,18 +247,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
 def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, colors, channel="", *opts, **kwopts):
     if args.processGrouping is not None:
-        if args.processGrouping in styles.process_supergroups:
-            new_stack = {}
-            for new_name, old_procs in styles.process_supergroups[args.processGrouping].items():
-                stacks = [hist_stack[procs.index(p)] for p in old_procs if p in procs]
-                if len(stacks) == 0:
-                    continue
-                new_stack[new_name] = hh.sumHists(stacks)  
-            
-            labels, colors, procs = styles.get_labels_colors_procs_sorted([k for k in new_stack.keys()])
-            hist_stack = [new_stack[p] for p in procs]
-        else:
-            logger.warning(f"No supergroups found for input file with mode {args.processGrouping}, proceed without merging groups")
+        hist_stack, labels, colors, procs = styles.process_grouping(args.processGrouping, hist_stack, procs)
 
     # make plots in slices (e.g. for charge plus an minus separately)
     selection_axes = [a for a in axes if a.name in args.selectionAxes]
@@ -280,7 +274,7 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
                 kwopts["run"] = lumi
             for a, i in idxs_centers.items():
                 print(a,i)
-            suffix = f"{channel}_" + "_".join([f"{a}{i}" for a, i in idxs_centers.items()])
+            suffix = f"{channel}_" + "_".join([f"{a}_{str(i).replace('.','p').replace('-','m')}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
             make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, *opts, **kwopts)
     else:
@@ -294,6 +288,8 @@ if combinetf2:
         asimov = True
     meta_input=meta["meta_info_input"]
     procs = meta["procs"].astype(str)
+    if args.filterProcs is not None:
+        procs = [p for p in procs if p in args.filterProcs]
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     chi2=None
@@ -325,6 +321,8 @@ else:
     import ROOT
 
     procs = [k.replace("expproc_","").replace(f"_{fittype};1", "") for k in fitresult.keys() if fittype in k and k.startswith("expproc_") and "hybrid" not in k]
+    if args.filterProcs is not None:
+        procs = [p for p in procs if p in args.filterProcs]
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     if "meta" in fitresult_h5py:
