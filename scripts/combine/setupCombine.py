@@ -523,7 +523,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     actionRequiresNomi=True,
                     action=syst_tools.decorrelateByAxes,
                     actionArgs=dict(
-                        axesToDecorrNames=args.fitMassDecorr, newDecorrAxesNames=new_names, axlim=args.decorrAxlim, rebin=args.decorrRebin, absval=args.decorrAbsval)
+                        axesToDecorrNames=args.fitMassDecorr, 
+                        newDecorrAxesNames=new_names, 
+                        axlim=args.decorrAxlim, 
+                        rebin=args.decorrRebin, 
+                        absval=args.decorrAbsval,
+                        )
                 )
 
         if args.fitMassDiff:
