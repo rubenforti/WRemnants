@@ -1,4 +1,4 @@
-from utilities import logging
+from utilities import logging, boostHistHelpers as hh 
 
 logger = logging.child_logger(__name__)
 
@@ -33,7 +33,10 @@ process_supergroups = {
         "QCD": ["QCD"],
     },
     "w_mass":{
+        "Wmunu": ["Wmunu"], 
+        "Wtaunu": ["Wtaunu"],
         "Z": ["Ztautau", "Zmumu", "DYlowMass"],
+        "Fake": ["Fake"],
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
     "z_dilepton":{
@@ -314,11 +317,29 @@ def get_systematics_label(key, idx=0):
 
 
 def get_labels_colors_procs_sorted(procs):
-    # order of the processes in the plots
-    procs_sort = ["Wmunu", "Fake", "QCD", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced", "Prompt"][::-1]
+    # order of the processes in the plots by this list
+    procs_sort = ["Wmunu", "Fake", "QCD", "Z","Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced", "Prompt", "Rare"][::-1]
 
     procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
     logger.info(f"Found processes {procs} in fitresult")
     labels = [process_labels.get(p, p) for p in procs]
     colors = [process_colors.get(p, "red") for p in procs]
     return labels, colors, procs
+
+
+def process_grouping(grouping, hist_stack, procs):
+    if grouping in process_supergroups.keys():
+        new_stack = {}
+        for new_name, old_procs in process_supergroups[grouping].items():
+            stacks = [hist_stack[procs.index(p)] for p in old_procs if p in procs]
+            if len(stacks) == 0:
+                continue
+            new_stack[new_name] = hh.sumHists(stacks)  
+    else:
+        new_stack = hist_stack
+        logger.warning(f"No supergroups found for input file with mode {groupingg}, proceed without merging groups")
+
+    labels, colors, procs = get_labels_colors_procs_sorted([k for k in new_stack.keys()])
+    hist_stack = [new_stack[p] for p in procs]
+
+    return hist_stack, labels, colors, procs

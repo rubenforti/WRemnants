@@ -37,6 +37,7 @@ parser.add_argument("--hists", type=str, nargs='*', default=None,
     help="List of hists to plot; dash separated for unrolled hists")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
+parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 
 # variations
 parser.add_argument("--varName", type=str, nargs='*', default=[], help="Name of variation hist")
@@ -96,6 +97,9 @@ def make_plots(hists_proc, hist_data, *opts, **info):
 def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
     selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20
 ):
+    if args.processGrouping is not None:
+        hists_proc, labels, colors, procs = styles.process_grouping(args.processGrouping, hists_proc, procs)
+
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
