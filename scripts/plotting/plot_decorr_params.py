@@ -147,10 +147,6 @@ if __name__ == '__main__':
         else:
             central = 0
 
-        if args.showMCInput:
-            ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
-            central=0
-
         val -= central
 
         yticks = df_p["yticks"].values
@@ -189,9 +185,9 @@ if __name__ == '__main__':
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            plt.text(0.95, 0.76, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
+            plt.text(0.95, 0.74, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
                 fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
-            plt.text(0.95, 0.7, f"p = {str(round(p_value,2))}", 
+            plt.text(0.95, 0.68, f"p = {str(round(p_value,2))}", 
                 fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
 
             ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.4)
@@ -211,6 +207,10 @@ if __name__ == '__main__':
         ax1.errorbar(val, y, xerr=err, color='black', marker="", linestyle="", label="Measurement", zorder=1)
         ax1.plot(val, y, color='black', marker="o", linestyle="", zorder=4) # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
+
+        if args.showMCInput:
+            ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
+            central=0
 
         plot_tools.addLegend(ax1, ncols=1, text_size=16, loc="upper right")#" if val[-1]<offset else "upper left")
         # plot_tools.fix_axes(ax1, logy=args.logy)
