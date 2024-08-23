@@ -213,6 +213,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
         if include_ref:
             fig.add_trace(
                 go.Bar(
+                    base=df['pull_ref'],
                     x=df['constraint_ref'],
                     y=labels,
                     orientation='h',
@@ -223,6 +224,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
             )
             fig.add_trace(
                 go.Bar(
+                    base=df['pull_ref'],
                     x=-1*df['constraint_ref'],
                     y=labels,
                     orientation='h',

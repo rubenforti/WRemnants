@@ -27,8 +27,9 @@ env:
   OUTFILE_LOWPU_MU: "mw_lowPU_mu.hdf5"
   OUTFILE_LOWPU_EE: "mz_lowPU_ee.hdf5"
   OUTFILE_LOWPU_MUMU: "mz_lowPU_mumu.hdf5"
-  DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
+  DATAPATH: "/scratch/shared/NanoAOD/"
   DATAPATH_LOWPU: "/scratch/shared/NanoAOD/LowPU/"
+  NOMINAL_FAKE_SMOOTHING: "hybrid"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -67,6 +68,7 @@ jobs:
       NTHREADS: ${{steps.export.outputs.NTHREADS}}
       MAX_FILES: ${{steps.export.outputs.MAX_FILES}}
       LUMI_SCALE: ${{steps.export.outputs.LUMI_SCALE}}
+      NOMINAL_FAKE_SMOOTHING: ${{steps.export.outputs.NOMINAL_FAKE_SMOOTHING}}
 
     steps:
       - uses: actions/checkout@v4
@@ -110,6 +112,7 @@ jobs:
           echo "NTHREADS=64" >> $GITHUB_ENV
           echo "MAX_FILES=-2" >> $GITHUB_ENV
           echo "LUMI_SCALE=1" >> $GITHUB_ENV
+          echo "NOMINAL_FAKE_SMOOTHING=full" >> $GITHUB_ENV
 
       - name: setup outdir
         run: echo "WREMNANTS_OUTDIR=/tmp/${USER}/$(uuidgen)" >> $GITHUB_ENV
@@ -129,6 +132,7 @@ jobs:
           echo "NTHREADS=$NTHREADS" >> $GITHUB_OUTPUT
           echo "WREMNANTS_OUTDIR=$WREMNANTS_OUTDIR" >> $GITHUB_OUTPUT
           echo "WEB_DIR=$WEB_DIR" >> $GITHUB_OUTPUT
+          echo "NOMINAL_FAKE_SMOOTHING=$NOMINAL_FAKE_SMOOTHING" >> $GITHUB_OUTPUT
 
   w-analysis:
     # The type of runner that the job will run on
@@ -192,7 +196,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR
 
       - name: wmass combine fit 
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge WMass_plus.txt WMass_minus.txt 
+        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass ${WREMNANTS_OUTDIR}/WMass_eta_pt_charge WMass.hdf5
 
       - name: wmass combine impacts
         run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $WREMNANTS_OUTDIR/WMass_eta_pt_charge/fitresults_123456789.root $WEB_DIR/$PLOT_DIR impactsW.html
@@ -204,7 +208,7 @@ jobs:
           --lumiScale $LUMI_SCALE -o ${WREMNANTS_OUTDIR}/theoryAgnosticNormVar_poisAsNoi/ --analysisMode theoryAgnosticNormVar --poiAsNoi --scaleNormXsecHistYields 0.01
 
       - name: wmass theory agnostic combine fit
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass ${WREMNANTS_OUTDIR}/theoryAgnosticNormVar_poisAsNoi/WMass_eta_pt_charge WMass_plus.txt WMass_minus.txt 
+        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass ${WREMNANTS_OUTDIR}/theoryAgnosticNormVar_poisAsNoi/WMass_eta_pt_charge WMass.hdf5
 
       - name: wmass combine impacts
         run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh ${WREMNANTS_OUTDIR}/theoryAgnosticNormVar_poisAsNoi/WMass_eta_pt_charge/fitresults_123456789.root $WEB_DIR/$PLOT_DIR impactsW_theoryAgnosticNormVar.html
@@ -220,10 +224,12 @@ jobs:
           WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
           WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
           PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
+          NOMINAL_FAKE_SMOOTHING: ${{ needs.setenv.outputs.NOMINAL_FAKE_SMOOTHING }}
         run: |
           echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
           echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
           echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
+          echo "NOMINAL_FAKE_SMOOTHING=${NOMINAL_FAKE_SMOOTHING}" >> $GITHUB_ENV
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
       - uses: actions/checkout@v4
         with:
@@ -234,22 +240,22 @@ jobs:
         run: echo "The web dir is $WEB_DIR plot dir is ${PLOT_DIR}"
 
       - name: wmass plotting
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --fakeSmoothingMode $NOMINAL_FAKE_SMOOTHING --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: wmass plot lepton phi
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 10 --logy --baseName leptonPhi --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 10 --logy --baseName leptonPhi --fakeSmoothingMode fakerate --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
 
       - name: wmass plot mt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName transverseMass --hists mt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName transverseMass --fakeSmoothingMode fakerate --hists mt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot MET
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName MET --hists met -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName MET --hists met --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot MET phi
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName METPhi --hists phi -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName METPhi --hists phi --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot Wpt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.5 --baseName ptW  --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.5 --baseName ptW  --fakeSmoothingMode fakerate --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot massShift
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py -p massVariation --yscale 1.4 --hist pt --baseName nominal -r 0.98 1.02 -o $WEB_DIR -f $PLOT_DIR $HIST_FILE variation --varName massWeightW --selectEntries massShiftW100MeVUp massShiftW100MeVDown --varLabel massShift100MeVUp massShift100MeVDown --selectAxis massShift --color grey grey
@@ -283,27 +289,27 @@ jobs:
       - name: lowpu w mu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName
 
       - name: lowpu w mu plot ptW
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.0 --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p mu $HIST_FILE_MU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: lowpu w mu plot lepton pt
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --baseName lep_pt_eta_phi --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.0 --baseName lep_pt_eta_phi --hists pt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot lepton
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.0 --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot mt
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.0 --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
       - name: lowpu w mu plot response matrix
         run: >-  
@@ -313,27 +319,27 @@ jobs:
       - name: lowpu w e analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mw_lowPU.py 
-          --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor e --analysisMode unfolding
+          --dataPath $DATAPATH_LOWPU -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --flavor e --analysisMode unfolding
 
       - name: lowpu w e plot ptW
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.16 --hists ptW -o $WEB_DIR -f $PLOT_DIR/lowPU -p e $HIST_FILE_E variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: lowpu w e plot lepton pt
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --baseName lep_pt_eta_phi --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.16 --baseName lep_pt_eta_phi --hists pt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot lepton
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.16 --yscale 1.5 --baseName lep_pt_eta_phi --hists eta phi -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot mt
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
-          --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --fakeSmoothingMode binned
+          --forceGlobalScaleFakes 1.16 --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
       - name: lowpu w e plot response matrix
         run: >- 
@@ -342,8 +348,8 @@ jobs:
 
       - name: w mu/e combine mt setup
         run: >-
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation
-          -i $HIST_FILE_MU $HIST_FILE_E --baseName transverseMass transverseMass --fitvar mt-charge mt-charge --hdf5 -o $COMBINED_DIR
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --fakeSmoothingMode binned
+          -i $HIST_FILE_MU $HIST_FILE_E --baseName transverseMass transverseMass --fitvar mt-charge mt-charge -o $COMBINED_DIR
 
       - name: lowpu combine mt fit 
         run: >-
@@ -386,7 +392,7 @@ jobs:
       - name: lowpu z mumu analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName
 
       - name: lowpu z mumu plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p mumu $HIST_FILE_MUMU variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -400,7 +406,7 @@ jobs:
       - name: lowpu z ee analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_lowPU.py 
-          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --noRecoil --flavor ee
+          --dataPath $DATAPATH_LOWPU --analysisMode unfolding -o $WREMNANTS_OUTDIR -j $NTHREADS --forceDefaultName --flavor ee
 
       - name: lowpu z ee plot ptll yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --hists ptll yll -o $WEB_DIR -f $PLOT_DIR/lowPU -p ee $HIST_FILE_EE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -443,8 +449,8 @@ jobs:
 
       - name: lowpu combine unfolding setup
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation 
-          --analysisMode unfolding -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix ptll --hdf5 --sparse --ewUnc
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --fakeSmoothingMode binned
+          --analysisMode unfolding -i $HIST_FILE_MU $HIST_FILE_E $HIST_FILE_MUMU $HIST_FILE_EE --fitvar ptW-charge ptW-charge ptll ptll -o $COMBINED_DIR --postfix ptll --sparse --ewUnc
 
       - name: lowpu combine unfolding fit 
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ unfolding $COMBINED_DIR/Combination_WMass_lowPUZMass_lowPU_ptll Combination.hdf5
@@ -496,7 +502,7 @@ jobs:
       - name: wlike combine setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --hdf5 --pseudoData uncorr
+          -i $HIST_FILE --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --pseudoData uncorr
 
       - name: wlike combine fit 
         run: >-
@@ -592,10 +598,10 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName nominal --nominalRef nominal --hists etaAbsEta-mll mll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation --varName 'powhegFOEWCorr' --selectEntries weak_default --varLabel 'EW(virtual)' --selectAxis weak --color blue
 
       - name: dilepton combine mll setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar etaAbsEta-mll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --realData --hdf5
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar etaAbsEta-mll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --realData
 
       - name: dilepton combine mll_inc setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar mll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --realData --hdf5
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar mll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --realData
 
       - name: dilepton combine mll fit
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ dilepton $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll ZMassDilepton.hdf5
@@ -643,10 +649,10 @@ jobs:
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName
 
       - name: dilepton combine ptll setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR
 
       - name: dilepton combine ptll fit
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ dilepton $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton_inclusive.txt 
+        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ dilepton $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5
 
       # TODO: Needs a pending PR I think
       # - name: dilepton combine impacts
@@ -701,7 +707,7 @@ jobs:
       - name: dilepton combine ptll setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
-          -i $HIST_FILE --fitvar ptll --hdf5 --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --pseudoData uncorr
+          -i $HIST_FILE --fitvar ptll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --pseudoData uncorr
 
       - name: dilepton ptll from wlike setup
         run: >-

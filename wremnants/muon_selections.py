@@ -64,8 +64,9 @@ def select_veto_muons(df, nMuons=1, condition="==", ptCut=15.0, staPtCut=15.0, e
 
     return df
 
-def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoBranch="Muon_vtxAgnPfRelIso04_all", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False, requirePixelHits = False):
+def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuons=False, use_isolation=False, isoBranch="Muon_vtxAgnPfRelIso04_all", isoThreshold=0.15, condition="==", nonPromptFromSV=False, nonPromptFromLighMesonDecay=False, requirePixelHits = False, requireID=True):
 
+    # requireID can be set to False to remove ID from the selection (it doesn't override the nonprompt control regions with light mesons decay though)
     if use_trackerMuons:
         df = df.Define("Muon_category", "Muon_isTracker && Muon_innerTrackOriginalAlgo != 13 && Muon_innerTrackOriginalAlgo != 14 && Muon_highPurity")
     else:
@@ -77,13 +78,16 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
         # medium ID added afterwards
         df = select_good_secondary_vertices(df)
         # match by index
-        df = df.Define("Muon_goodSV", "ROOT::VecOps::Take(goodSV, Muon_svIdx, 0)")
-        goodMuonsSelection += " && Muon_sip3d > 4.0 && Muon_goodSV"
+        # FIXME: result is not as expected, somthing might be wrong here (either in nanoAOD or in accessing it) disabled for now
+        # df = df.Define("Muon_goodSV", "ROOT::VecOps::Take(goodSV, Muon_svIdx, 0)")
+        # goodMuonsSelection += " && Muon_sip3d > 4.0 && Muon_goodSV"
+
+        goodMuonsSelection += " && Muon_sip3d > 4.0 && wrem::hasMatchDR2(Muon_correctedEta,Muon_correctedPhi,SV_eta[goodSV],SV_phi[goodSV], 0.01)"
 
     if nonPromptFromLighMesonDecay:
         # looseID should be part of veto, but just in case, the global condition should also already exist
         goodMuonsSelection += " && Muon_looseId && Muon_isGlobal && !Muon_mediumId && Muon_trkKink > 20."
-    else:
+    elif requireID:
         goodMuonsSelection += " && Muon_mediumId"
 
     if use_isolation:
@@ -115,7 +119,6 @@ def define_trigger_muons(df, name_first="trigMuons", name_second="nonTrigMuons",
 
     df = muon_calibration.define_corrected_reco_muon_kinematics(df, name_first, ["pt", "eta", "phi"])
     df = muon_calibration.define_corrected_reco_muon_kinematics(df, name_second, ["pt", "eta", "phi"])
-
     return df
 
 def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuons"):    
