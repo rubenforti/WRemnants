@@ -186,7 +186,7 @@
                       $fragments = explode("/", $rel_dir);
                       foreach($fragments as $i=>$fragment) {
                         $href = implode("/", array_fill(0, count($fragments) - 1 - $i, ".."));
-                        echo "<li class=\"breadcrumb-item\"><a href=\"$href\">$fragment</a></li>";
+                        echo "<li class=\"breadcrumb-item\"><a href=\"" . htmlspecialchars($href) . "\">" . htmlspecialchars($fragment) . "</a></li>";
                       }
                     }
                   ?>
@@ -211,9 +211,9 @@
     <?
       if (isset($_GET["search"]) && !empty($_GET["search"])) {
         echo "<div id=\"search-description\" class=\"container-fluid\">";
-        echo "<i>Searching for '<b>" . $_GET["search"] . "</b>'";
+        echo "<i>Searching for '<b>" . htmlspecialchars($_GET["search"]) . "</b>'";
         if ($search_pattern_mode != "") {
-          echo " (mode '" . $search_pattern_mode . "')";
+          echo " (mode '" . htmlspecialchars($search_pattern_mode) . "')";
         }
         echo "</i></div>";
       }
@@ -236,7 +236,7 @@
           echo "<ul>";
           sort($dir_names);
           foreach($dir_names as $dir_name) {
-            echo "<li><a href=\"$dir_name\">$dir_name</a></li>";
+            echo "<li><a href=\"". htmlspecialchars($dir_name) . "\">" . htmlspecialchars($dir_name) . "</a></li>";
           }
           echo "</ul>";
         }
@@ -265,11 +265,10 @@
               echo "<div class=\"card text-center\">";
 
               echo "  <div class=\"card-header\">";
-              echo "    <a href=\"$plot_name\">" . substr($plot_name, 0, -4) . "</a>";
+              echo "    <a href=\"" . htmlspecialchars($plot_name) . "\">" . htmlspecialchars(substr($plot_name, 0, -4)) . "</a>";
               echo "  </div>";
-              echo "  <a href=\"$plot_name\">";
-              echo "    <img class=\"card-img-top\" src=\"$plot_name\">";
-              echo "  </a>";
+              echo "  <a href=\"" . htmlspecialchars($plot_name) . "\">";
+              echo "    <img class=\"card-img-top\" src=\"" . htmlspecialchars($plot_name) . "\">";
               echo "  <div class=\"card-footer\">";
               echo "    <p class=\"card-text\">";
 
@@ -325,7 +324,7 @@
           echo "<ul>";
           sort($file_names);
           foreach($file_names as $file_name) {
-            echo "  <li><a href=\"$file_name\">$file_name</a></li>";
+            echo "  <li><a href=\"" . htmlspecialchars($file_name) . "\">" . htmlspecialchars($file_name) . "</a></li>";
           }
           echo "</ul>";
         }
