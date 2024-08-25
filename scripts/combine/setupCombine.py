@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections
+from wremnants.regression import Regressor
+from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.syst_tools import massWeightNames
 from wremnants.datasets.datagroups import Datagroups
 
@@ -82,10 +84,11 @@ def make_parser(parser=None):
     parser.add_argument("--noMCStat", action='store_true', help="Do not include MC stat uncertainty in covariance for theory fit (only when using --fitresult)")
     parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
-    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "hybrid", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
     parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
+    parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=FakeSelectorSimpleABCD.smoothing_modes, help="Smoothing mode for fake estimate.")
     parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
+    parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -291,13 +294,17 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(
-            datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-            smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
+        histselector_kwargs = dict(
+            mode=args.fakeEstimation,
+            smoothing_mode=args.fakeSmoothingMode, 
+            smoothingOrderSpectrum=args.fakeSmoothingOrder,
+            smoothingPolynomialSpectrum=args.fakeSmoothingPolynomial,
             mcCorr=args.fakeMCCorr,
             integrate_x="mt" not in fitvar,
-            simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
-            )
+            simultaneousABCD=simultaneousABCD, 
+            forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+        )
+        datagroups.set_histselectors(datagroups.getNames(), inputBaseName, **histselector_kwargs)
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
@@ -375,13 +382,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
             if wmass and not xnorm:
                 pseudodataGroups.fakerate_axes=args.fakerateAxes
-                pseudodataGroups.set_histselectors(
-                    pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
-                    mcCorr=args.fakeMCCorr,
-                    integrate_x="mt" not in fitvar,
-                    simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
-                )
+                pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, **histselector_kwargs)
 
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     if args.pseudoDataFakes:
@@ -392,13 +393,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
-            pseudodataGroups.set_histselectors(
-                pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation, fake_processes=["QCD",],
-                smoothing_mode=args.fakeSmoothingMode, smoothingOrderSpectrum=args.fakeSmoothingOrder,
-                mcCorr=args.fakeMCCorr,
-                integrate_x="mt" not in fitvar,
-                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
-                )
+            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, fake_processes=["QCD",], **histselector_kwargs)
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
@@ -528,7 +523,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     actionRequiresNomi=True,
                     action=syst_tools.decorrelateByAxes,
                     actionArgs=dict(
-                        axesToDecorrNames=args.fitMassDecorr, newDecorrAxesNames=new_names, axlim=args.decorrAxlim, rebin=args.decorrRebin, absval=args.decorrAbsval)
+                        axesToDecorrNames=args.fitMassDecorr, 
+                        newDecorrAxesNames=new_names, 
+                        axlim=args.decorrAxlim, 
+                        rebin=args.decorrRebin, 
+                        absval=args.decorrAbsval,
+                        )
                 )
 
         if args.fitMassDiff:
@@ -794,7 +794,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if args.fakeSmoothingMode in ["hybrid", "full"] and args.fakeSmoothingOrder > 0:
             # add systematic of explicit parameter variation
             fakeSmoothingOrder = args.fakeSmoothingOrder
-            def fake_nonclosure(h, axesToDecorrNames, param_idx=1, variation_size=0.5, *args, **kwargs):
+            def fake_nonclosure(h, axesToDecorrNames, param_idx=1, variation_size=0.5, normalize=False, *args, **kwargs):
                 # apply variation by adding parameter value (assumes log space, e.g. in full smoothing)
                 fakeselector.spectrum_regressor.external_params = np.zeros(fakeSmoothingOrder + 1)
                 fakeselector.spectrum_regressor.external_params[param_idx] = variation_size
@@ -804,9 +804,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
                 hnom = fakeselector.get_hist(h, *args, **kwargs)
 
-                # normalize variation histogram to have the same integral as nominal
-                hScale = hh.divideHists(hnom[{"pt":hist.sum}], hvar[{"pt":hist.sum}])
-                hvar = hh.multiplyHists(hvar, hScale)
+                if normalize:
+                    # normalize variation histogram to have the same integral as nominal
+                    hScale = hh.divideHists(hnom[{"pt":hist.sum}], hvar[{"pt":hist.sum}])
+                    hvar = hh.multiplyHists(hvar, hScale)
 
                 if len(axesToDecorrNames) == 0:
                     # inclusive
@@ -821,7 +822,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 return hvar
 
             for axesToDecorrNames in [[], ]:
-                for idx, mag in [(1,0.2),(2,0.2),]:
+                for idx, mag in [(1,0.1),(2,0.1),]:
                     subgroup = f"{cardTool.getFakeName()}Param{idx}"
                     cardTool.addSystematic(
                         name=inputBaseName, 

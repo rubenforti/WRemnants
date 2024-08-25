@@ -32,51 +32,42 @@ def add_mass_diff_variations(
         systAxes=["massShift"],
         passToFakes=passSystToFakes,
     )
-
+    # mass difference by swapping the +50MeV with the -50MeV variations for half of the bins
+    args = ["massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown"]
     if mass_diff_var == "charge":
         cardTool.addSystematic(**mass_diff_args,
             # # on gen level based on the sample, only possible for mW
             # preOpMap={m.name: (lambda h, swap=swap_bins: swap(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown"))
             #     for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members if "minus" in m.name},
             # on reco level based on reco charge
-            preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "charge", 0)
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h: hh.swap_histogram_bins(h, *args, "charge", 0),
         )
+        
     elif mass_diff_var == "cosThetaStarll":
         cardTool.addSystematic(**mass_diff_args,
-            preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):])
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h:  hh.swap_histogram_bins(h, *args, "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):]),
         )
     elif mass_diff_var == "eta-sign":
         cardTool.addSystematic(**mass_diff_args,
-            preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[0:complex(0,0):])
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h: hh.swap_histogram_bins(h, *args, "eta", hist.tag.Slicer()[0:complex(0,0):]),
         )
     elif mass_diff_var == "eta-range":
         cardTool.addSystematic(**mass_diff_args,
-            preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):])
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h: hh.swap_histogram_bins(h, *args, "eta", hist.tag.Slicer()[complex(0,-0.9):complex(0,0.9):]),
         )
     elif mass_diff_var.startswith("etaRegion"):
         # 3 bins, use 3 unconstrained parameters: mass; mass0 - mass2; mass0 + mass2 - mass1
         mass_diff_args["rename"] = f"massDiff1{suffix}{label}"
         mass_diff_args["systNameReplace"] = [("Shift",f"Diff1{suffix}")]
         cardTool.addSystematic(**mass_diff_args,
-            preOpMap={m.name: (lambda h: hh.swap_histogram_bins(
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 2), # invert for mass2
-                "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 1, axis1_replace=f"massShift{label}0MeV") # set mass1 to nominal
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h: hh.swap_histogram_bins(
+                hh.swap_histogram_bins(h, *args, mass_diff_var, 2), # invert for mass2
+                *args, mass_diff_var, 1, axis1_replace=f"massShift{label}0MeV"), # set mass1 to nominal
         )
         mass_diff_args["rename"] = f"massDiff2{suffix}{label}"
         mass_diff_args["systNameReplace"] = [("Shift",f"Diff2{suffix}")]
         cardTool.addSystematic(**mass_diff_args,
-            preOpMap={m.name: (lambda h:
-                hh.swap_histogram_bins(h, "massShift", f"massShift{label}50MeVUp", f"massShift{label}50MeVDown", mass_diff_var, 1)
-                ) for p in processes for g in cardTool.procGroups[p] for m in cardTool.datagroups.groups[g].members},
+            preOp=lambda h: hh.swap_histogram_bins(h, *args, mass_diff_var, 1),
         )
 
 
