@@ -105,6 +105,8 @@ def make_parser(parser=None):
     parser.add_argument("--scaleTNP", default=1, type=float, help="Scale the TNP uncertainties by this factor")
     parser.add_argument("--scalePdf", default=-1., type=float, help="Scale the PDF hessian uncertainties by this factor (by default take the value in the pdfInfo map)")
     parser.add_argument("--pdfUncFromCorr", action='store_true', help="Take PDF uncertainty from correction hist (Requires having run that correction)")
+    parser.add_argument("--scaleMinnloScale", default=1., type=float, help="Scale the minnlo qcd scale uncertainties by this factor")
+    parser.add_argument("--symmetrizeMinnloScale", default="quadratic", type=str, help="Symmetrization type for minnlo scale variations")
     parser.add_argument("--massVariation", type=float, default=100, help="Variation of boson mass")
     parser.add_argument("--ewUnc", type=str, nargs="*", default=["renesanceEW", "powhegFOEW"], help="Include EW uncertainty (other than pure ISR or FSR)",
         choices=[x for x in theory_corrections.valid_theory_corrections() if ("ew" in x or "EW" in x) and "ISR" not in x and "FSR" not in x])
@@ -709,6 +711,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pdf_from_corr=args.pdfUncFromCorr,
             scale_pdf_unc=args.scalePdf,
             minnlo_unc=args.minnloScaleUnc,
+            minnlo_scale=args.scaleMinnloScale,
+            minnlo_symmetrize=args.symmetrizeMinnloScale,
         )
 
         theorySystSamples = ["signal_samples_inctau"]
