@@ -29,6 +29,7 @@ parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for 
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noRatio", action='store_true', help="Don't make the ratio in the plot")
+parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
@@ -41,6 +42,7 @@ parser.add_argument("--noChisq", action='store_true', help="skip printing chisq 
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
+parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
 
 args = parser.parse_args()
 
@@ -50,11 +52,12 @@ outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eos
 
 fittype = "prefit" if args.prefit else "postfit"
 ratio = not args.noRatio
+diff = args.logTransform
 data = not args.noData
-
 
 # load .hdf5 file first, must exist in combinetf and combinetf2
 fitresult_h5py = combinetf_input.get_fitresult(args.infile.replace(".root",".hdf5"))
+
 if "results" in fitresult_h5py.keys():
     fitresult = ioutils.pickle_load_h5py(fitresult_h5py["results"])
     combinetf2 = True
@@ -71,18 +74,21 @@ translate_selection = {
     }
 }
 
-def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
+def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=None, hdown=None, variation="",suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
     axes_names = [a.name for a in axes]
 
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
-        ylabel="Events/unit"
+        ylabel="Events/GeV"
     else:
         binwnorm = None
         ylabel="Events/bin"
 
-    if args.ylabel:
+    if args.logTransform:
+        ylabel = ylabel.replace("Events", "log(Events)")
+
+    if args.ylabel is not None:
         ylabel=args.ylabel
 
     histtype_data = "errorbar"
@@ -114,8 +120,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         xlabel=styles.xlabels.get(axes_names[0])
     else:
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
-    if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, f"{args.dataName}/Pred.", args.rrange)
+    if ratio or diff:
+        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
+            f"{args.dataName}-Pred." if diff else f"x/Pred.", 
+            args.rrange)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -147,11 +155,33 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             zorder=2,
             flow='none',
         )    
+    
+    if hup is not None:
+        hep.histplot(
+            [hup, hdown],
+            yerr=False,
+            histtype="step",
+            color="#7A21DD",
+            linestyle=["-","--"],
+            label=[variation,""],
+            binwnorm=binwnorm,
+            ax=ax1,
+            alpha=1.,
+            zorder=2,
+            flow='none',
+        )    
 
-    if ratio:
+    if ratio or diff:
+
+        if diff:
+            h1 = hh.addHists(h_inclusive, h_inclusive, scale2=-1)
+            h2 = hh.addHists(h_data, h_inclusive, scale2=-1)
+        else:
+            h1 = hh.divideHists(h_inclusive, h_inclusive, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False)
+            h2 = hh.divideHists(h_data, h_inclusive, cutoff=0.01, rel_unc=True)
 
         hep.histplot(
-            hh.divideHists(h_inclusive, h_inclusive, cutoff=1e-8, rel_unc=True, flow=False, by_ax_name=False),
+            h1,
             histtype="step",
             color="grey",
             alpha=0.5,
@@ -163,13 +193,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
 
         if data:
             hep.histplot(
-                hh.divideHists(h_data, h_inclusive, cutoff=0.01, rel_unc=True),
+                h2,
                 histtype="errorbar",
                 color="black",
                 label=args.dataName,
-                yerr=True,
+                yerr=True if not args.logTransform else h2.variances()**0.5,
                 linewidth=2,
-                ax=ax2
+                ax=ax2,
+                flow='none',
             )
 
             # for uncertaity bands
@@ -179,19 +210,38 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
             binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
             if h_inclusive.storage_type != hist.storage.Weight:
                 raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
+
             nom = h_inclusive.values() / binwidth
             std = np.sqrt(h_inclusive.variances()) / binwidth
-
+            
             hatchstyle = '///'
             ax1.fill_between(edges, 
                     np.append(nom+std, (nom+std)[-1]), 
                     np.append(nom-std, (nom-std)[-1]),
                 step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
 
-            ax2.fill_between(edges, 
-                    np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
-                    np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
-                step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+            if diff:
+                ax2.fill_between(edges, 
+                        np.append((nom+std)-nom, ((nom+std)-nom)[-1]), 
+                        np.append((nom-std)-nom, ((nom-std)-nom)[-1]),
+                    step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+            else:
+                ax2.fill_between(edges, 
+                        np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+                        np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
+                    step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+
+        if hup is not None:
+            hep.histplot(
+                [hh.divideHists(hup, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hdown, h_inclusive, cutoff=0.01, rel_unc=True)],
+                histtype="step",
+                color="#7A21DD",
+                linestyle=["-","--"],
+                yerr=False,
+                linewidth=2,
+                ax=ax2,
+                flow='none',
+            )
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
@@ -215,13 +265,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
-        fontsize=fontsize, 
-        label=args.cmsDecor, data=data)
+    hep.cms.label(ax=ax1, loc=2, 
+        fontsize=fontsize*0.7, label=args.cmsDecor, data=data,
+        lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
+        )
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, style="sci" if len(axes_names) == 1 and not args.logTransform else None)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
@@ -245,9 +296,22 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         args=args, **kwargs
     )
 
-def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, colors, channel="", *opts, **kwopts):
+def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, colors, hist_var=None, channel="", *opts, **kwopts):
     if args.processGrouping is not None:
         hist_stack, labels, colors, procs = styles.process_grouping(args.processGrouping, hist_stack, procs)
+
+    if hist_var is not None:
+        variations = {
+            "massShiftW100MeV": '$\pm \Delta m_\mathrm{W}$',
+            "massShiftZ100MeV": '$\pm \Delta m_\mathrm{Z}$',
+        }
+        variation = variations[hist_var.axes["nois"][0]]
+        hist_down = hist_var[{"downUpVar":0, "nois":0}]
+        hist_up = hist_var[{"downUpVar":1, "nois":0}]
+    else:
+        variation=None
+        hist_down = None
+        hist_up = None
 
     # make plots in slices (e.g. for charge plus an minus separately)
     selection_axes = [a for a in axes if a.name in args.selectionAxes]
@@ -266,6 +330,13 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
             h_inclusive = hist_inclusive[idxs]
             h_stack = [h[idxs] for h in hist_stack]
 
+            if hist_var is not None:
+                hdown = hist_down[idxs]
+                hup = hist_up[idxs]
+            else:
+                hdown = None
+                hup = None
+
             if "run" in [a.name for a in selection_axes]:
                 idx = idxs["run"]
                 lumis = common.run_edges_lumi
@@ -276,9 +347,9 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
                 print(a,i)
             suffix = f"{channel}_" + "_".join([f"{a}_{str(i).replace('.','p').replace('-','m')}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
-            make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, *opts, **kwopts)
+            make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, hup=hup, hdown=hdown, variation=variation, *opts, **kwopts)
     else:
-        make_plot(hist_data, hist_inclusive, hist_stack, axes, labels=labels, colors=colors, suffix=channel, *opts, **kwopts)
+        make_plot(hist_data, hist_inclusive, hist_stack, axes, labels=labels, colors=colors, suffix=channel, hup=hist_up, hdown=hist_down, variation=variation, *opts, **kwopts)
 
 if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
@@ -299,23 +370,46 @@ if combinetf2:
     for channel, info in meta_input["channel_info"].items():
         if channel.endswith("masked"):
             continue
+
         hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
-        
+
+        # vary poi by postfit uncertainty
+        if args.noiVariation:
+            hist_var = fitresult[f"hist_postfit_inclusive_variations_nois"][channel].get()
+        else:
+            hist_var = None
+
+        if args.logTransform:
+            hist_data.variances(flow=True)[...] = hist_data.variances(flow=True)[...]/hist_data.values(flow=True)[...]**2
+            for h in hist_stack:
+                h.variances(flow=True)[...] = h.variances(flow=True)[...]/h.values(flow=True)[...]**2
+
+            hist_data.values(flow=True)[...] = np.log(hist_data.values(flow=True)[...])
+            for h in hist_stack:
+                h.values(flow=True)[...] = np.log(h.values(flow=True)[...])
+
         if any(x in hist_data.axes.name for x in ["helicity"]):
             if asimov:
                 hist_data.values()[...] = 100000*np.log(hist_data.values())
             or_vals = np.copy(hist_inclusive.values())
             hist_inclusive.values()[...] = 100000*np.log(hist_inclusive.values())
             hist_inclusive.variances()[...] = 100000*100000*(hist_inclusive.variances())/np.square(or_vals)
+
+            if args.noiVariation:
+                hist_var.values()[...] = 100000*np.log(hist_var.values())
+                hist_var.variances()[...] = 100000*100000*(hist_var.variances())/np.square(or_vals)
+
             for h in hist_stack:
                 or_vals = np.copy(h.values())
                 h.values()[...] = 100000*np.log(h.values())
                 h.variances()[...] = 100000*100000*(h.variances())/np.square(or_vals)
                 
-        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], channel=channel, procs=procs, labels=labels, colors=colors, chi2=chi2, meta=meta, lumi=info["lumi"])
+        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], 
+            hist_var=hist_var, 
+            channel=channel, procs=procs, labels=labels, colors=colors, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
     import ROOT
