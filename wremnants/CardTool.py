@@ -198,6 +198,10 @@ class CardTool(object):
         # name for the pseudodata set to be written into the output file
         self.pseudoDataName = [ f"{n}{f'_{a}' if a is not None else ''}" for n, a in zip(self.pseudoData, self.pseudoDataAxes)]
 
+    def setPseudodataFitInput(self, fitInput, channel, downup):
+        self.pseudodataFitInput = fitInput
+        self.pseudoDataFitInputChannel = channel
+        self.pseudodataFitInputDownUp = downup
 
     # Needs to be increased from default for long proc names
     def setSpacing(self, spacing):
@@ -813,12 +817,27 @@ class CardTool(object):
         return hdata
 
     def loadPseudodata(self, forceNonzero=False):
+
+        hdatas = []
+
+        if self.pseudodataFitInput:
+            channel = self.pseudoDataFitInputChannel
+            for idx, pseudoData in enumerate(self.pseudoData):
+                if pseudoData == "nominal":
+                    phist = self.pseudodataFitInput.nominal_hists[channel]
+                elif pseudoData == "syst":
+                    phist = self.pseudodataFitInput.syst_hists[channel][{"DownUp" : self.pseudodataFitInputDownUp}]
+                else:
+                    raise ValueError("For pseudodata fit input the only valid names are 'nominal' and 'syst'.")
+
+                hdatas.append(phist)
+            return hdatas
+
         datagroups = self.pseudodata_datagroups
         processes = [x for x in datagroups.groups.keys() if x != self.getDataName() and self.pseudoDataProcsRegexp.match(x)]
         processes = self.expandProcesses(processes)
 
         processesFromNomi = [x for x in datagroups.groups.keys() if x != self.getDataName() and not self.pseudoDataProcsRegexp.match(x)]
-        hdatas = []
         for idx, pseudoData in enumerate(self.pseudoData):
             if pseudoData in ["closure", "truthMC"]:
                 # pseudodata for fakes [using closure from QCD MC as correction, using QCD MC as prediction]

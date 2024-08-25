@@ -12,6 +12,7 @@ import hist
 import math, copy
 import h5py
 import narf.ioutils
+import narf.combineutils
 import numpy as np
 
 def make_subparsers(parser):
@@ -132,6 +133,9 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
+    parser.add_argument("--pseudoDataFitInputFile", type=str, help="Input file for pseudodata (if it should be read from a fit input file)", default=None)
+    parser.add_argument("--pseudoDataFitInputChannel", type=str, help="Input chnnel name for pseudodata (if it should be read from a fit input file)", default="ch0")
+    parser.add_argument("--pseudoDataFitInputDownUp", type=str, help="DownUp variation for pseudodata (if it should be read from a fit input file)", default="Up")
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
     parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-binned", "extended1D-fakerate"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
@@ -385,6 +389,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, **histselector_kwargs)
 
             cardTool.setPseudodataDatagroups(pseudodataGroups)
+        elif args.pseudoDataFitInputFile:
+            indata = narf.combineutils.FitInputData(args.pseudoDataFitInputFile)
+            debugdata = narf.combineutils.FitDebugData(indata)
+            cardTool.setPseudodataFitInput(debugdata, args.pseudoDataFitInputChannel, args.pseudoDataFitInputDownUp)
     if args.pseudoDataFakes:
         cardTool.setPseudodata(args.pseudoDataFakes)
         # pseudodata for fakes, either using data or QCD MC
