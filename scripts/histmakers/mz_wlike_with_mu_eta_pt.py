@@ -163,11 +163,11 @@ if args.validateVetoSF:
     logger.warning("Validating veto SF using Wlike workflow: it will apply single muon scale factors on the triggering muon, and veto SF on the non triggering one")
     logger.warning("Note: single muon SF uncertainties are propagated using the triggering muon, and veto SF uncertainties are propagated using the non triggering one")
     if args.useRefinedVeto:
-        from wremnants.muon_efficiencies_veto_TEST import make_muon_efficiency_helpers_veto_TEST
-        muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto_TEST.make_muon_efficiency_helpers_veto_TEST(antiveto=False)
+        from wremnants.muon_efficiencies_veto_newVeto import make_muon_efficiency_helpers_newVeto
+        muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto_newVeto.make_muon_efficiency_helpers_newVeto
     else:
         pass
-    # we don't store the veto SF for this version at the moment, I think
+    # we don't store the veto SF for this version at the moment, I think, so I can't run this validation yet
     #    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
         
 pileup_helper = pileup.make_pileup_helper(era = era)

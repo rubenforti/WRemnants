@@ -564,7 +564,7 @@ def build_graph(df, dataset):
             ## for some tests with QCD MC only
             axis_eta_coarse_fakes = hist.axis.Regular(12, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
             axis_pt_coarse_fakes = hist.axis.Regular(8, 26, 58, name = "pt", overflow=False, underflow=False)
-            axis_mt_coarse_fakes = hist.axis.Regular(24, 0., 120., name = "mt", underflow=False, overflow=True)
+            axis_mt_coarse_fakes = hist.axis.Regular(12, 0., 120., name = "mt", underflow=False, overflow=True)
             axis_Njets_fakes = hist.axis.Regular(5, -0.5, 4.5, name = "NjetsClean", underflow=False, overflow=True)
             axis_leadjetPt_fakes = hist.axis.Regular(20, 0.0, 100.0, name = "leadjetPt", underflow=False, overflow=True)
             otherStudyForFakes_axes = [axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge,
@@ -576,10 +576,11 @@ def build_graph(df, dataset):
             df = df.Define("goodMuons_genPartFlav0", "Muon_genPartFlav[goodMuons][0]")
             df = df.Define("nJetsClean", "Sum(goodCleanJetsNoPt)")
             df = df.Define("leadjetPt", "(nJetsClean > 0) ? Jet_pt[goodCleanJetsNoPt][0] : 0.0")
+            df = df.Filter("goodMuons_genPartFlav0 == 3") # FOR TESTS
             #
             axis_genPartFlav = hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")
             results.append(df.HistoBoost("Muon_genPartFlav", [axis_genPartFlav], ["goodMuons_genPartFlav0", "nominal_weight"]))
-            results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "nominal_weight"]))
+            results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes, axis_passIso], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
             #
             otherStudyForFakes = df.HistoBoost("otherStudyForFakes", otherStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nJetsClean", "leadjetPt", "deltaPhiMuonMet", "nominal_weight"])
             results.append(otherStudyForFakes)
