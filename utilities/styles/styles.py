@@ -40,6 +40,7 @@ process_supergroups = {
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
     "z_dilepton":{
+        "Zmumu": ["Zmumu"],
         "Other": ["Other","PhotonInduced", "Ztautau"],
     },
     "w_lowpu":{
