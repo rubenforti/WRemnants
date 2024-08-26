@@ -60,6 +60,7 @@ class CardTool(object):
         self.pseudoDataIdxs = None
         self.pseudoDataName = None
         self.pseudoDataProcsRegexp = None
+        self.pseudodataFitInput = None
         self.excludeSyst = None
         self.writeByCharge = True
         self.unroll = False # unroll final histogram before writing to root
