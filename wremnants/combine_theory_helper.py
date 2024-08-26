@@ -141,7 +141,8 @@ class TheoryHelper(object):
         if self.minnlo_unc and self.minnlo_unc not in ["none", None]:
             # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
             helicities_to_exclude = None if self.resumUnc == "minnlo" else [-1]
-            for sample_group in self.samples:
+            # for sample_group in self.samples:
+            for sample_group in ["signal_samples_inctau","single_v_nonsig_samples"]:
                 if self.card_tool.procGroups.get(sample_group, None):
                     # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
                     # to avoid underestimating the correlated part of the uncertainty
@@ -248,7 +249,7 @@ class TheoryHelper(object):
             self.card_tool.addSystematic(scale_hist,
                 preOpMap=preop_map,
                 preOpArgs=preop_args,
-                symmetrize = "quadratic",
+                symmetrize = None,
                 processes=[sample_group],
                 group=group_name,
                 splitGroup={"QCDscale": ".*", "angularCoeffs" : ".*", "theory": ".*"},
@@ -560,8 +561,10 @@ class TheoryHelper(object):
         pdf_ax = self.syst_ax if self.pdf_from_corr else "pdfVar"
         symHessian = pdfInfo["combine"] == "symHessian"
 
-        processesZ = [] if self.skipFromSignal else ['single_v_samples']
-        processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        # processesZ = [] if self.skipFromSignal else ['single_v_samples']
+        # processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
+        processesZ = ['single_v_samples']
+        processesW = ['single_v_samples']
         processes = processesW if self.label=="W" else processesZ
 
         pdf_args = dict(
@@ -572,7 +575,7 @@ class TheoryHelper(object):
             passToFakes=self.propagate_to_fakes,
             preOpMap=operation,
             scale=pdfInfo.get("scale", 1)*scale,
-            symmetrize=symmetrize,
+            symmetrize=None,
             systAxes=[pdf_ax],
         )
         if self.pdf_from_corr:
