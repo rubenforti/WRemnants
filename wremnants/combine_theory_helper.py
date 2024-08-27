@@ -50,7 +50,9 @@ class TheoryHelper(object):
             pdf_from_corr=False,
             pdf_operation=None,
             scale_pdf_unc=-1.,
-            minnlo_unc='byHelicityPt'):
+            minnlo_unc='byHelicityPt',
+            minnlo_scale = 1.,
+            minnlo_symmetrize = "quadratic"):
 
         self.set_resum_unc_type(resumUnc)
         self.set_np_model(np_model)
@@ -66,6 +68,8 @@ class TheoryHelper(object):
         self.scale_pdf_unc = scale_pdf_unc
         self.samples = []
         self.skipFromSignal = False
+        self.minnlo_scale = minnlo_scale
+        self.minnlo_symmetrize = None if minnlo_symmetrize.lower()=="none" else minnlo_symmetrize
 
     def add_all_theory_unc(self, samples, skipFromSignal=False):
         self.samples = samples
@@ -130,7 +134,7 @@ class TheoryHelper(object):
                 for sample_group in self.samples:
                     if self.card_tool.procGroups.get(sample_group, None):
                         # add sigma -1 uncertainty from minnlo for pt>27 GeV
-                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "highpt", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=range(0, 8), pt_min=27.)
+                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "highpt", rebin_pt=common.ptV_binning[::2], helicities_to_exclude=range(0, 8), pt_min=27., scale = self.minnlo_scale, symmetrize=self.minnlo_symmetrize)
         elif self.resumUnc == "scale":
             # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
             # to avoid underestimating the correlated part of the uncertainty
@@ -155,14 +159,14 @@ class TheoryHelper(object):
                         nptfine = len(fine_pt_binning) - 1
                         scale_inclusive = np.sqrt((nptfine - 1)/nptfine)
 
-                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=fine_pt_binning, helicities_to_exclude=helicities_to_exclude)
+                        self.add_minnlo_scale_uncertainty(sample_group, extra_name = "fine", rebin_pt=fine_pt_binning, helicities_to_exclude=helicities_to_exclude, scale=self.minnlo_scale, symmetrize=self.minnlo_symmetrize)
 
-                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude, scale = scale_inclusive)
+                    self.add_minnlo_scale_uncertainty(sample_group, extra_name = "inclusive", rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]], helicities_to_exclude=helicities_to_exclude, scale = scale_inclusive*self.minnlo_scale, symmetrize=self.minnlo_symmetrize)
 
             # additional uncertainty for effect of shower and intrinsic kt on angular coeffs
             self.add_helicity_shower_kt_uncertainty()
 
-    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None, scale = 1.0):
+    def add_minnlo_scale_uncertainty(self, sample_group, extra_name="", use_hel_hist=True, rebin_pt=None, helicities_to_exclude=None, pt_min = None, scale = 1.0, symmetrize="quadratic"):
         if not sample_group or sample_group not in self.card_tool.procGroups:
             logger.warning(f"Skipping QCD scale syst '{self.minnlo_unc}' for group '{sample_group}.' No process to apply it to")
             return
@@ -248,7 +252,7 @@ class TheoryHelper(object):
             self.card_tool.addSystematic(scale_hist,
                 preOpMap=preop_map,
                 preOpArgs=preop_args,
-                symmetrize = "quadratic",
+                symmetrize = symmetrize,
                 processes=[sample_group],
                 group=group_name,
                 splitGroup={"QCDscale": ".*", "angularCoeffs" : ".*", "theory": ".*"},
