@@ -43,6 +43,7 @@ parser.add_argument("--dataName", type=str, default="Data", help="Data name for 
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
+parser.add_argument("--legendPos", type=str, default="upper right", help="Set legend position")
 
 args = parser.parse_args()
 
@@ -245,7 +246,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
-    fontsize = ax1.xaxis.label.get_size()*0.7
+    fontsize = ax1.xaxis.label.get_size()
 
     if chi2 is not None:
         p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
@@ -262,18 +263,12 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                 fontsize=fontsize)
 
-    if args.noSci:
-        plot_tools.redo_axis_ticks(ax1, "x")
-        plot_tools.redo_axis_ticks(ax2, "x")
-
-    hep.cms.label(ax=ax1,
-        fontsize=fontsize, label=args.cmsDecor, data=data,
-        lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
-        )
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
-        plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, noSci=args.noSciy)
+        plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), loc=args.legendPos)
+
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
