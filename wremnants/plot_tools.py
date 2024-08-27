@@ -38,7 +38,7 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
     bin_density = 300, cms_label = None, logy=False, logx=False,
-    width_scale=1, height=8, automatic_scale=True
+    width_scale=1, height=8, automatic_scale=True, logoPos=2,
 ):
     if isinstance(href, hist.Hist):
         fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
@@ -74,7 +74,7 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
 def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     grid_on_main_plot = False, grid_on_ratio_plot = False, plot_title = None, title_padding = 0,
     x_ticks_ndp = None, bin_density = 300, cms_label = None, logy=False, logx=False,
-    width_scale=1, automatic_scale=True, only_ratio=False
+    width_scale=1, automatic_scale=True, only_ratio=False, logoPos=2,
 ):
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
     
@@ -146,7 +146,7 @@ def makeStackPlotWithRatio(
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
     no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
-    ratio_error=True, normalize_to_data=False, cutoff=1e-6,
+    ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2,
 ):
     add_ratio = not (no_stack or no_ratio) 
     if ylabel is None:
@@ -183,10 +183,10 @@ def makeStackPlotWithRatio(
 
     if add_ratio:
         fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
-            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, logoPos=logoPos)
     else:
         fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
-            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, logoPos=logoPos)
 
     if fitresult:
         import uproot
@@ -284,6 +284,8 @@ def makeStackPlotWithRatio(
             data_idx = unstacked.index("Data") 
             linestyles[data_idx] = "None"
         linestyles = np.array(linestyles, dtype=object)
+        print("Number of linestyles", len(linestyles))
+        print("Length of unstacked", len(unstacked))
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
@@ -347,13 +349,13 @@ def makeStackPlotWithRatio(
             )
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-    fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
+    fix_axes(ax1, ax2, yscale=yscale, logy=logy, noSci=noSci)
 
     if cms_decor:
         lumi = float(f"{lumi:.3g}") if not density else None
         scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
         hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
-            label=cms_decor, data="Data" in histInfo)
+            label=cms_decor, data="Data" in histInfo, loc=logoPos)
 
     return fig
 
@@ -450,7 +452,7 @@ def makePlotWithRatioToRef(
         # This seems like a bug, but it's needed
         if not xlim:
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
-        fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
+        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
         if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     return fig
 
@@ -524,7 +526,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
 
     scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
     hep.cms.label(ax=ax, lumi=None, fontsize=20*scaleleg*scale, 
-        label=cms_label, data=has_data)
+        label=cms_label, data=has_data, loc=logoPos)
 
     return fig
 
@@ -544,15 +546,23 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
     else:
         return all_edges
 
-def fix_axes(ax1, ax2, fig, yscale=None, logy=False):
-    #TODO: Would be good to get this working
-    ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
-    ax1.yaxis.get_offset_text().set_x(-0.1/np.divide(*fig.get_size_inches()))
+def fix_axes(ax1, ax2, yscale=None, logy=False, noSci=False):
     if yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*yscale)
+
     if ax2 is not None:
         ax1.set_xticklabels([])
+
+    if noSci:
+        if not logy:
+            redo_axis_ticks(ax1, "y")
+        if ax2 is not None:
+            redo_axis_ticks(ax2, "x")
+        else:
+            redo_axis_ticks(ax1, "x")
+    else:
+        ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()

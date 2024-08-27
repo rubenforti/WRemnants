@@ -236,9 +236,9 @@ def collapseSyst(h):
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
     if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
-        # in case of variable bin width normalize to unit
+        # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
-        ylabel="Events/unit"
+        ylabel="Events/GeV"
     else:
         binwnorm = None
         ylabel="Events/bin"
@@ -257,7 +257,7 @@ for h in args.hists:
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
             cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
-            ratio_error=args.ratioError, normalize_to_data=args.normToData)
+            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos)
 
     fitresultstring=""
     if args.fitresult:
