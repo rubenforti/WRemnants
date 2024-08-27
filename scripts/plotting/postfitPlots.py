@@ -245,7 +245,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
-    fontsize = ax1.xaxis.label.get_size()
+    fontsize = ax1.xaxis.label.get_size()*0.7
 
     if chi2 is not None:
         p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
@@ -262,8 +262,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                 fontsize=fontsize)
 
-    plot_tools.redo_axis_ticks(ax1, "x")
-    plot_tools.redo_axis_ticks(ax2, "x")
+    if args.noSci:
+        plot_tools.redo_axis_ticks(ax1, "x")
+        plot_tools.redo_axis_ticks(ax2, "x")
 
     hep.cms.label(ax=ax1,
         fontsize=fontsize, label=args.cmsDecor, data=data,
@@ -272,7 +273,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, noSci=args.noSciy)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))

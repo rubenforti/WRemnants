@@ -465,7 +465,9 @@ def plot_parser():
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")
     parser.add_argument("--cmsDecor", default="Work in progress", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
     parser.add_argument("--lumi", type=float, default=16.8, help="Luminosity used in the fit, needed to get the absolute cross section")
+    parser.add_argument("--logoPos", type=int, default=2, help="CMS logo position")
     parser.add_argument("--eoscp", action='store_true', help="Override use of xrdcp and use the mount instead")
+    parser.add_argument("--noSciy", action='store_true', help="Don't allow scientific notation for y axis")
     parser.add_argument("--scaleleg", type=float, default=1.0, help="Scale legend text")
 
     return parser
