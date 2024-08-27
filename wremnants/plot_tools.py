@@ -563,7 +563,6 @@ def fix_axes(ax1, ax2=None, yscale=None, logy=False):
     else:
         redo_axis_ticks(ax1, "x", False)
 
-
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()
     # Need this to avoid a warning when you set the axis values manually
