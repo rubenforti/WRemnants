@@ -122,7 +122,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
     if ratio or diff:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            f"{args.dataName}-Pred." if diff else f"x/Pred.", 
+            f"{args.dataName}{'-' if diff else '/'}Pred.", 
             args.rrange)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
@@ -213,7 +213,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
             nom = h_inclusive.values() / binwidth
             std = np.sqrt(h_inclusive.variances()) / binwidth
-            
+
             hatchstyle = '///'
             ax1.fill_between(edges, 
                     np.append(nom+std, (nom+std)[-1]), 
@@ -265,14 +265,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     plot_tools.redo_axis_ticks(ax1, "x")
     plot_tools.redo_axis_ticks(ax2, "x")
 
-    hep.cms.label(ax=ax1, loc=2, 
-        fontsize=fontsize*0.7, label=args.cmsDecor, data=data,
+    hep.cms.label(ax=ax1,
+        fontsize=fontsize, label=args.cmsDecor, data=data,
         lumi=float(f"{lumi:.3g}") if lumi is not None and args.dataName=="Data" and not args.noData else None, 
         )
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), text_size=fontsize)
-    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, style="sci" if len(axes_names) == 1 and not args.logTransform else None)
+    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
 
     to_join = [fittype, args.postfix, axis_name, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
@@ -370,7 +370,6 @@ if combinetf2:
     for channel, info in meta_input["channel_info"].items():
         if channel.endswith("masked"):
             continue
-
         hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
@@ -393,19 +392,19 @@ if combinetf2:
 
         if any(x in hist_data.axes.name for x in ["helicity"]):
             if asimov:
-                hist_data.values()[...] = 100000*np.log(hist_data.values())
+                hist_data.values()[...] = 1e5*np.log(hist_data.values())
             or_vals = np.copy(hist_inclusive.values())
-            hist_inclusive.values()[...] = 100000*np.log(hist_inclusive.values())
-            hist_inclusive.variances()[...] = 100000*100000*(hist_inclusive.variances())/np.square(or_vals)
+            hist_inclusive.values()[...] = 1e5*np.log(hist_inclusive.values())
+            hist_inclusive.variances()[...] = 1e10*(hist_inclusive.variances())/np.square(or_vals)
 
             if args.noiVariation:
-                hist_var.values()[...] = 100000*np.log(hist_var.values())
-                hist_var.variances()[...] = 100000*100000*(hist_var.variances())/np.square(or_vals)
+                hist_var.values()[...] = 1e5*np.log(hist_var.values())
+                hist_var.variances()[...] = 1e10*(hist_var.variances())/np.square(or_vals)
 
             for h in hist_stack:
                 or_vals = np.copy(h.values())
-                h.values()[...] = 100000*np.log(h.values())
-                h.variances()[...] = 100000*100000*(h.variances())/np.square(or_vals)
+                h.values()[...] = 1e5*np.log(h.values())
+                h.variances()[...] = 1e10*(h.variances())/np.square(or_vals)
                 
         make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], 
             hist_var=hist_var, 
