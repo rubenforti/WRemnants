@@ -55,6 +55,7 @@
     "ZmassAndWidth": "Z mass & width",
     "bcQuarkMass" : "b,c quark masses",
     "experiment": "Experiment",
+    "expNoCalib": "Experiment (excl. calib.)",
     "theory": "Theory"
 }
 

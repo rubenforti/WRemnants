@@ -134,7 +134,7 @@ nuisance_groupings = {
         "stat",
         "binByBinStat",
         "theory", 
-        "experiment",
+        "expNoCalib",
         "muonCalibration",
     ],
     "max": common_groups + [

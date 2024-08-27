@@ -471,7 +471,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename=f"{cardTool.getFakeName()}Rate",
             processes=cardTool.getFakeName(),
             group="Fake",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             systNamePrepend=f"{cardTool.getFakeName()}Rate",
             noConstraint=True,
             mirror=True,
@@ -489,7 +489,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename=f"{cardTool.getFakeName()}Norm",
             processes=cardTool.getFakeName(),
             group="Fake",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             systNamePrepend=f"{cardTool.getFakeName()}Norm",
             noConstraint=True,
             mirror=True,
@@ -710,27 +710,27 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     # Below: experimental uncertainties
     if not lowPU: # lowPU does not include PhotonInduced as a process. skip it:
-        cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
+        cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
     if wmass:
         if args.logNormalWmunu > 0.0:
-            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
+            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         if args.logNormalFake > 0.0:
-            cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*"})
+            cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         elif args.logNormalFake < 0.0:
             cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
-        cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background", splitGroup = {"experiment": ".*"})
-        cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background", splitGroup = {"experiment": ".*"})
+        cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
+        cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         cardTool.addSystematic("luminosity",
                                 processes=['MCnoQCD'],
                                 outNames=["lumiDown", "lumiUp"],
                                 group="luminosity",
-                                splitGroup = {"experiment": ".*"},
+                                splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],
                                 passToFakes=passSystToFakes)
     else:
-        cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*"},)
-        cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
+        cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
+        cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
 
     if (
         (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD") 
@@ -756,7 +756,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Smoothing"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_smoothing=True),
             )
@@ -765,7 +765,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Rate"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_frf=True),
             )
@@ -774,7 +774,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Shape"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_scf=True),
             )
@@ -816,7 +816,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         name=inputBaseName, 
                         group="Fake",
                         rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
-                        splitGroup = {subgroup: f".*", "experiment": ".*"},
+                        splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                         systNamePrepend=subgroup,
                         processes=cardTool.getFakeName(),
                         noConstraint=False,
@@ -873,7 +873,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     mirror=mirror,
                     mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                     group=groupName,
-                    splitGroup={**splitGroupDict, "experiment": ".*"},
+                    splitGroup={**splitGroupDict, "experiment": ".*", "expNoCalib": ".*"},
                     systAxes=axes,
                     labelsByAxis=axlabels,
                     baseName=name+"_",
@@ -890,7 +890,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             mirror=mirror,
                             mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                             group=f"muon_eff_syst_{es}_altBkg",
-                            splitGroup={groupName: ".*", "muon_eff_all" : ".*", "experiment": ".*"},
+                            splitGroup={groupName: ".*", "muon_eff_all" : ".*", "experiment": ".*", "expNoCalib": ".*"},
                             systAxes = ["n_syst_variations"],
                             labelsByAxis = [f"{es}_altBkg_etaDecorr"],
                             baseName=name+"_",
@@ -950,7 +950,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         mirror=mirror,
                         mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                         group=groupName,
-                        splitGroup={**splitGroupDict, "experiment": ".*"},
+                        splitGroup={**splitGroupDict, "experiment": ".*", "expNoCalib": ".*"},
                         systAxes=axes,
                         labelsByAxis=axlabels,
                         baseName=name+"_",
@@ -971,7 +971,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     processes=cardTool.allMCProcesses(),
                     mirror = True,
                     group="CMS_lepton_eff",
-                    splitGroup = {"experiment": ".*"},
+                    splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                     baseName=lepEff,
                     systAxes = ["tensor_axis_0"],
                     labelsByAxis = [""],
@@ -990,7 +990,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 processes=cardTool.allMCProcesses(),
                 mirror = False,
                 group="CMS_prefire17",
-                splitGroup = {"experiment": ".*"},
+                splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                 baseName="CMS_prefire17",
                 systAxes = ["downUpVar"],
                 labelsByAxis = ["downUpVar"],
@@ -1032,7 +1032,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonL1PrefireSyst",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_syst_m",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -1041,7 +1041,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonL1PrefireStat",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_stat_m_",
         systAxes=["downUpVar", "etaPhiRegion"],
         labelsByAxis=["downUpVar", "etaPhiReg"],
@@ -1050,7 +1050,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("ecalL1Prefire",
         processes=['MCnoQCD'],
         group="ecalPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_ecal",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -1145,7 +1145,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename="timeStability",
             processes=['MCnoQCD'],
             group=f"timeStability",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
             labelsByAxis=[f"run"],
