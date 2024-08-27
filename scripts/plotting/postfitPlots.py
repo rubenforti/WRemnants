@@ -28,7 +28,7 @@ parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], he
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
-parser.add_argument("--noRatio", action='store_true', help="Don't make the ratio in the plot")
+parser.add_argument("--noLowerPanel", action='store_true', help="Don't plot the lower panel in the plot")
 parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
@@ -51,8 +51,8 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
 fittype = "prefit" if args.prefit else "postfit"
-ratio = not args.noRatio
-diff = args.logTransform
+ratio = not args.noLowerPanel and not args.logTransform
+diff = not args.noLowerPanel and args.logTransform
 data = not args.noData
 
 # load .hdf5 file first, must exist in combinetf and combinetf2
