@@ -23,17 +23,17 @@ hep.style.use(hep.style.ROOT)
 logger = logging.child_logger(__name__)
 
 def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scale=True):
+    base_size=8
     hax = href.axes[0]
     if not xlim:
         xlim = [hax.edges[0], hax.edges[-1]]
     if not automatic_scale:
-        return plt.figure(figsize=(width_scale*8,8)), xlim
+        return plt.figure(figsize=(width_scale*base_size,base_size)), xlim
     xlim_range = float(xlim[1] - xlim[0])
     original_xrange = float(hax.edges[-1] - hax.edges[0])
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
     width = math.ceil(raw_width)
-
-    return plt.figure(figsize=(width_scale*8*width,width_scale*8)), xlim
+    return plt.figure(figsize=(width_scale*base_size*width,width_scale*base_size)), xlim
 
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
@@ -129,7 +129,13 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
-    text_size = ax.xaxis.label.get_size() if text_size is None else text_size
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        text_size = ax.xaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        text_size = ax.xaxis.get_ticklabels()[0].get_fontsize() 
+
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
 
     if extra_text:
@@ -563,10 +569,9 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
 
     redo_axis_ticks(ax1, "x")
 
-    if noSci:
-        if not logy:
-            redo_axis_ticks(ax1, "y")
-    else:
+    if noSci and not logy:
+        redo_axis_ticks(ax1, "y")
+    elif not logy:
         ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
 
     if ax2 is not None:

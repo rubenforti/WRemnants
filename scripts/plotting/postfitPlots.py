@@ -119,11 +119,11 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     if len(axes_names) == 1:
         xlabel=styles.xlabels.get(axes_names[0])
     else:
-        xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])} bin"
+        xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
     if ratio or diff:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
             f"{args.dataName}{'-' if diff else '/'}Pred.", 
-            args.rrange)
+            args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -265,7 +265,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
-        plot_tools.addLegend(ax1, ncols=np.ceil(len(h_stack)/3), loc=args.legendPos)
+        plot_tools.addLegend(ax1, ncols=1 if len(axes_names) == 1 else np.ceil(len(h_stack)/3), 
+            loc=args.legendPos, text_size='small' if len(axes_names) == 1 else 'large')
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
