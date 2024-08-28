@@ -84,7 +84,7 @@ all_axes = {
     "ewMlly": hist.axis.Variable(ewMassBins, name = "ewMlly", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "ewLogDeltaM": hist.axis.Regular(100, -10, 4, name = "ewLogDeltaM", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "trigMuons_abseta0" : hist.axis.Regular(3, 0., 2.4, name = "trigMuons_abseta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "nonTrigMuons_eta0" : hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "nonTrigMuons_eta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "nonTrigMuons_eta0" : hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "nonTrigMuons_eta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "nonTrigMuons_pt0" : hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "nonTrigMuons_pt0"),
     "nonTrigMuons_charge0" : hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "nonTrigMuons_charge0"),
 }
@@ -300,8 +300,8 @@ def build_graph(df, dataset):
     else:
         cvhName = "cvhideal"
 
-    axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta")
-    axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt")
+    axis_eta = hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "eta")
+    axis_pt = hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "pt")
     axis_charge = common.axis_charge
     axis_nvalidpixel = hist.axis.Integer(0, 10, name="nvalidpixel")
 
