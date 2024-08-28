@@ -249,7 +249,7 @@ class TheoryHelper(object):
             self.card_tool.addSystematic(scale_hist,
                 preOpMap=preop_map,
                 preOpArgs=preop_args,
-                symmetrize = None,
+                symmetrize = "quadratic",
                 processes=[sample_group],
                 group=group_name,
                 splitGroup={"QCDscale": ".*", "angularCoeffs" : ".*", "theory": ".*"},
@@ -575,7 +575,7 @@ class TheoryHelper(object):
             passToFakes=self.propagate_to_fakes,
             preOpMap=operation,
             scale=pdfInfo.get("scale", 1)*scale,
-            symmetrize=None,
+            symmetrize=symmetrize,
             systAxes=[pdf_ax],
         )
         if self.pdf_from_corr:
