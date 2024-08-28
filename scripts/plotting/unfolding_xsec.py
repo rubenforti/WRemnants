@@ -258,7 +258,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
 
 
     plot_tools.addLegend(ax1, ncols=2, text_size=15*args.scaleleg)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
     hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 

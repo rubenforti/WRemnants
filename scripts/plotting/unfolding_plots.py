@@ -241,7 +241,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
             np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
 
-        plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
     hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 

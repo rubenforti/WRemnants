@@ -156,7 +156,7 @@ if __name__ == '__main__':
             label=" & ".join([styles.xlabels.get(l,l).replace("(GeV)","") for l in ls])+f" (auc={round(roc_auc,2)})")
 
     plot_tools.addLegend(ax1, ncols=2, text_size=12, loc="upper left")
-    plot_tools.fix_axes(ax1, logy=args.logy)
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     outfile="roc"
     if args.postfix:

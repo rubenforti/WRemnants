@@ -279,15 +279,9 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
 
         plot_tools.addLegend(ax1, 2, text_size=legtext_size)
         if add_ratio:
-            plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, logy=args.logy)
+            plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
         else:
             plot_tools.fix_axes(ax1, yscale=args.yscale, logy=args.logy)
-
-        # ax1.ticklabel_format(style='sci', axis='y', scilimits=(-2,2))
-
-        # # move scientific notation (e.g. 10^5) a bit to the left 
-        # offset_text = ax1.get_yaxis().get_offset_text()
-        # offset_text.set_position((-0.08,1.02))
 
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density and args.dataName=="Data" else None

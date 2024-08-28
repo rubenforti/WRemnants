@@ -43,7 +43,6 @@ parser.add_argument("--dataName", type=str, default="Data", help="Data name for 
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
-parser.add_argument("--legendPos", type=str, default="upper right", help="Set legend position")
 
 args = parser.parse_args()
 

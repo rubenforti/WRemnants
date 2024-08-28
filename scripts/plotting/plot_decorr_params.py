@@ -213,7 +213,7 @@ if __name__ == '__main__':
             central=0
 
         plot_tools.addLegend(ax1, ncols=1, text_size=16, loc="upper right")#" if val[-1]<offset else "upper left")
-        # plot_tools.fix_axes(ax1, logy=args.logy)
+        # plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)

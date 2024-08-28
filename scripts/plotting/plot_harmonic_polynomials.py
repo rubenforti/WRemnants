@@ -110,7 +110,7 @@ def plot_harmonic_polynomials(outdir, args):
             j += 1
 
         plot_tools.addLegend(ax1, ncols=2, text_size=12, loc="upper left")
-        plot_tools.fix_axes(ax1, logy=False)
+        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
         scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
         hep.cms.label(ax=ax1, lumi=None, fontsize=20*args.scaleleg*scale, 
