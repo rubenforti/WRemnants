@@ -145,8 +145,7 @@ class TheoryAgnosticHelper(object):
         )
         
         # open file with theory bands
-        # with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5", "r") as ff:
-        with h5py.File(f"theoryband_variations_corr.hdf5", "r") as ff:
+        with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_corr.hdf5", "r") as ff:
             scale_hists = narf.ioutils.pickle_load_h5py(ff["theorybands"])
 
         # First do in acceptance bins, then OOA later (for OOA we need to group bins into macro regions)
