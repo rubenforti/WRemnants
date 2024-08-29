@@ -63,14 +63,11 @@ for dataset in args.datasets:
 
     pdfInfo = theory_tools.pdfMap 
     pdfNames = [pdfInfo[pdf]["name"] for pdf in args.pdfs]
-    # histNames = pdfNames if not args.baseName else [f"{args.baseName}_{pdfName}" for pdfName in pdfNames]
-
-    # pdfHists = input_tools.read_all_and_scale(args.infile, args.datasets, histNames)
+    
     axis_label = "pdfVar"
 
     uncType = [pdfInfo[pdf]["combine"] for pdf in args.pdfs]
     uncScale = [pdfInfo[pdf]["scale"] if "scale" in pdfInfo[pdf] else 1. for pdf in args.pdfs]
-    # uncHists = [[h[{axis_label : 0}], *theory_tools.hessianPdfUnc(h, axis_label, unc, scale)] for h,unc,scale in zip(pdfHists, uncType, uncScale)]
     names = [[pdfName+" $\pm1\sigma$", "", ""] for pdfName in pdfNames]
     cmap = cm.get_cmap("tab10")
     colors = [[cmap(i)]*3 for i in range(len(args.pdfs))]
@@ -129,11 +126,12 @@ for dataset in args.datasets:
         coeffs_alpha = []
         axis_label_alpha = "alphasVar"
         for ipdf,pdf in enumerate(args.pdfs):
+
             has_as = "alphasRange" in pdfInfo[pdf]
             if has_as:
                 asr = pdfInfo[pdf]["alphasRange"] 
                 scale_alpha=(0.75 if asr == "002" else 1.5)
-                alphaNames.append(f"{args.baseName}_helicity_{args.baseName}_{pdfNames[ipdf]}alphaS{asr}")
+                alphaNames.append(f"{args.baseName}_helicity_{args.baseName}_helicity_{pdfNames[ipdf]}alphaS{asr}")
                 #nominal_gen_pdfMSHT20alphaS002
                 moments_alpha = input_tools.read_all_and_scale(args.infile, [dataset], alphaNames)
 
@@ -141,13 +139,11 @@ for dataset in args.datasets:
                 # ratioUL = hh.divideHists(coeffs[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}],scale_alpha*hel_alpha[{'helicity':-1.j}])
                 # coeffs_alpha.append(hh.multiplyHists(hel_alpha,ratioUL))
                 coeffs_alpha.append(hel_alpha)
-
-
-            uncHists[ipdf].extend([coeffs_alpha[ipdf][...,1]*scale_alpha,coeffs_alpha[ipdf][...,2]*scale_alpha])
+            uncHists[ipdf].extend([uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,1]-uncHists[ipdf][0])*scale_alpha,uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,2]-uncHists[ipdf][0])*scale_alpha])
             names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
-            # print(colors[ipdf])
-            colors[ipdf].extend([cmap(ipdf)]*2)
-            # print(colors[ipdf])
+            
+            colors[ipdf].extend([cmap(ipdf+1)]*2)
+            
 
         # add QCD scales
         uncHists.append([coeffs[{'muRfact':1.j,'muFfact':1.j}],*[coeffs[{"muRfact" : 2.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 0.5j, "muFfact" : 0.5j}],coeffs[{"muRfact" : 2.j, "muFfact" : 1.j}], coeffs[{"muRfact" : 0.5j, "muFfact" : 1.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 0.5j}]]])
@@ -187,7 +183,7 @@ for dataset in args.datasets:
                     if not "hel" in obs:
                         hists1D = [action(x,obs2unroll,binwnorm=True) for x in hists]
                     else:
-                        hists1D = [action(x[{'helicity': ihel*1.j}],obs2unroll,binwnorm=True,add_flow_bins=False) for x in hists]
+                        hists1D = [action(x[{'helicity': ihel*1.j}],obs2unroll,binwnorm=True,add_flow_bins=True) for x in hists]
 
                 all_hists.extend(hists1D)
                 all_hists_list.append(hists1D)
@@ -215,33 +211,35 @@ for dataset in args.datasets:
                 min_envelope = np.min(np.array(hvalues), axis=0)
                 ax1.fill_between(all_hists[0].axes[0].centers, min_envelope, max_envelope, color=all_colors_list[igroup][0], alpha=0.2, label='Envelope', step="mid")
                 ax2.fill_between(all_hists[0].axes[0].centers, min_envelope/np.abs(all_hists[0].values(flow=True)), max_envelope/np.abs(all_hists[0].values(flow=True)), color=all_colors_list[igroup][0], alpha=0.2, label='Envelope', step="mid")
+
             ax2.fill_between(all_hists[0].axes[0].centers,symm, 2-symm,color="grey",alpha=0.3, label="theory agnostic variation",hatch="//", step="mid")
             ax2.set_xticklabels([])
             ax2.set_xticks([])
             min_val = np.min(np.concatenate((symm,2-symm)))
             max_val = np.max(np.concatenate((symm,2-symm)))
+            
             if not ihel ==-1:
                 ax2.set_ylim(min_val,max_val)
             else:
                 ax2.set_ylim(0,2)
-            plot_tools.save_pdf_and_png(outdir, outfile)
-            plot_tools.write_index_and_log(outdir, outfile)
+            # plot_tools.save_pdf_and_png(outdir, outfile)
+            # plot_tools.write_index_and_log(outdir, outfile)
 
-#             vars = np.ones((len(axis_ptV.centers)+1,len(axis_yV.centers)+1))
-#             min_arr = np.minimum(symm,2-symm)
-#             max_arr = np.maximum(symm,2-symm)
-#             max_arr = max_arr-1
+            vars = np.ones((len(axis_ptV.centers)+1,len(axis_yV.centers)+1))
+            min_arr = np.minimum(symm,2-symm)
+            max_arr = np.maximum(symm,2-symm)
+            max_arr = max_arr-1
 
-#             vars = max_arr.reshape((len(axis_ptV.centers)+1,len(axis_yV.centers)+1))
-#             vars[-1:,:] = 0.5*np.ones_like(vars[-1:,:])
-#             vars[:,-1:] = 0.5*np.ones_like(vars[:,-1:])
+            vars = max_arr.reshape((len(axis_ptV.centers)+1,len(axis_yV.centers)+1))
+            vars[-1:,:] = 0.5*np.ones_like(vars[-1:,:])
+            vars[:,-1:] = 0.5*np.ones_like(vars[:,-1:])
             
-#             variations[...,int(ihel)+1]=vars
+            variations[...,int(ihel)+1]=vars
 
-#     hvariations = hist.Hist(axis_ptV,axis_yV,axis_helicity_multidim, name=f"theorybands_{dataset}",data=variations)
-#     band_hists[dataset] = hvariations
+    hvariations = hist.Hist(axis_ptV,axis_yV,axis_helicity_multidim, name=f"theorybands_{dataset}",data=variations)
+    band_hists[dataset] = hvariations
 
-# outfile = "theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5"
-# with h5py.File(outfile, 'w') as f:
-#     narf.ioutils.pickle_dump_h5py("theorybands", band_hists, f)
+outfile = "theoryband_variations_corr.hdf5"
+with h5py.File(outfile, 'w') as f:
+    narf.ioutils.pickle_dump_h5py("theorybands", band_hists, f)
 
