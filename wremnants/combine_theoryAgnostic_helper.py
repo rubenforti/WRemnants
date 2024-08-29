@@ -94,7 +94,7 @@ class TheoryAgnosticHelper(object):
             nom_hist = h[sum2nom]
 
             values = scale_hist.values()
-            # values[:-1,:-1,3+1] = values[:-1,:-1,3+1]*2 #rescale sigma3 and keep fixed
+
             #rescale if necessary
             for helicity in helicities:
                 values[:-1,:-1,helicity+1] = values[:-1,:-1,helicity+1]*scale #don't rescale OOA
@@ -106,6 +106,7 @@ class TheoryAgnosticHelper(object):
             for rebin_axis in rebin_axes:
                 edges = [scaled_hist.axes[rebin_axis].edges[0], scaled_hist.axes[rebin_axis].edges[-1]]
                 scaled_hist = hh.rebinHist(scaled_hist, rebin_axis, edges)
+                # scaled_hist = hh.scaleHist(scaled_hist, 1./len(scaled_hist.axes[rebin_axis].edges))
                 
             summed_hist = hh.addHists(nom_hist, scaled_hist)
 
@@ -144,7 +145,8 @@ class TheoryAgnosticHelper(object):
         )
         
         # open file with theory bands
-        with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5", "r") as ff:
+        # with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_decorr_OOA_alphaS_wUL_new_ct18z.hdf5", "r") as ff:
+        with h5py.File(f"theoryband_variations_corr.hdf5", "r") as ff:
             scale_hists = narf.ioutils.pickle_load_h5py(ff["theorybands"])
 
         # First do in acceptance bins, then OOA later (for OOA we need to group bins into macro regions)
@@ -168,92 +170,33 @@ class TheoryAgnosticHelper(object):
                                 labelsByAxis=["PtV", "YVBin", "Helicity"],
                                 systAxesFlow=["ptVgenSig","absYVgenSig"], # only bins in acceptance in this call
                                 skipEntries=[{"helicitySig" : [6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-                                # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
-                                splitGroup={f"{nuisanceBaseName}{sign}" : f".*{nuisanceBaseName}{sign}"},
+                                splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
+                                # splitGroup={f"{nuisanceBaseName}{sign}" : f".*{nuisanceBaseName}{sign}"},
                                 preOpMap=
                                     self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize),
                                 ),
-            self.card_tool.addSystematic("yieldsTheoryAgnostic",
-                            rename=f"{nuisanceBaseName}{sign}CorrAll",
-                            **common_noi_args,
-                            mirror=True,
-                            symmetrize = None,
-                            systAxes=["ptVgenSig","absYVgenSig"],
-                            processes=["signal_samples"],
-                            baseName=f"{nuisanceBaseName}{sign}CorrAll_",
-                            noConstraint=True if self.args.priorNormXsec < 0 else False,
-                            scale=1,
-                            formatWithValue=[None,None,"low"],
-                            #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
-                            labelsByAxis=["PtV", "YVBin", "Helicity"],
-                            systAxesFlow=[], # only bins in acceptance in this call
-                            skipEntries=[], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-                            # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
-                            splitGroup={f"{nuisanceBaseName}{sign}CorrAll" : f".*{nuisanceBaseName}{sign}CorrAll"},
-                            preOpMap=
-                                    self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["ptVgenSig","absYVgenSig"],sum_axes=["helicitySig"]),
-                                ),
-            
-            self.card_tool.addSystematic("yieldsTheoryAgnostic",
-                                rename=f"{nuisanceBaseName}CorrPt{sign}",
+            if sign == "": #only for Z
+                self.card_tool.addSystematic("yieldsTheoryAgnostic",
+                                rename=f"{nuisanceBaseName}{sign}CorrAll",
                                 **common_noi_args,
                                 mirror=True,
                                 symmetrize = None,
-                                systAxes=self.poi_axes,
+                                systAxes=["ptVgenSig","absYVgenSig"],
                                 processes=["signal_samples"],
-                                baseName=f"{nuisanceBaseName}CorrPt{sign}_",
+                                baseName=f"{nuisanceBaseName}{sign}CorrAll_",
                                 noConstraint=True if self.args.priorNormXsec < 0 else False,
                                 scale=1,
                                 formatWithValue=[None,None,"low"],
+                                #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
                                 labelsByAxis=["PtV", "YVBin", "Helicity"],
                                 systAxesFlow=[], # only bins in acceptance in this call
-                                skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-                                # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
-                                splitGroup={f"{nuisanceBaseName}CorrPt{sign}" : f".*{nuisanceBaseName}CorrPt{sign}"},
+                                skipEntries=[], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
+                                splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
+                                # splitGroup={f"{nuisanceBaseName}{sign}CorrAll" : f".*{nuisanceBaseName}{sign}CorrAll"},
                                 preOpMap=
-                                    self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["ptVgenSig"]),
-                                ),
+                                        self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["ptVgenSig","absYVgenSig"],sum_axes=["helicitySig"]),
+                                    ),
             
-            # self.card_tool.addSystematic("yieldsTheoryAgnostic",
-            #                     rename=f"{nuisanceBaseName}CorrExtra1{sign}",
-            #                     **common_noi_args,
-            #                     mirror=True,
-            #                     symmetrize = None,
-            #                     systAxes=["helicitySig"],
-            #                     processes=["signal_samples"],
-            #                     baseName=f"{nuisanceBaseName}CorrExtra1{sign}_",
-            #                     noConstraint=True if self.args.priorNormXsec < 0 else False,
-            #                     scale=1,
-            #                     formatWithValue=[None,None,"low"],
-            #                     labelsByAxis=["PtV", "YVBin", "Helicity"],
-            #                     systAxesFlow=[], # only bins in acceptance in this call
-            #                     skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-            #                     # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
-            #                     splitGroup={f"{nuisanceBaseName}CorrExtra1{sign}" : f".*{nuisanceBaseName}CorrExtra1{sign}"},
-            #                     preOpMap=
-            #                         self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["ptVgenSig","absYVgenSig"]),
-            #                     ),
-            
-            # self.card_tool.addSystematic("yieldsTheoryAgnostic",
-            #                     rename=f"{nuisanceBaseName}CorrExtra2{sign}",
-            #                     **common_noi_args,
-            #                     mirror=True,
-            #                     symmetrize = None,
-            #                     systAxes=["ptVgenSig","helicitySig"],
-            #                     processes=["signal_samples"],
-            #                     baseName=f"{nuisanceBaseName}CorrExtra2{sign}_",
-            #                     noConstraint=True if self.args.priorNormXsec < 0 else False,
-            #                     scale=1,
-            #                     formatWithValue=[None,None,"low"],
-            #                     labelsByAxis=["PtV", "YVBin", "Helicity"],
-            #                     systAxesFlow=[], # only bins in acceptance in this call
-            #                     skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-            #                     # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}{sign}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
-            #                     splitGroup={f"{nuisanceBaseName}CorrExtra2{sign}" : f".*{nuisanceBaseName}CorrExtra2{sign}"},
-            #                     preOpMap=
-            #                         self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["absYVgenSig"]),
-            #                     ),
-        
         if not sign_list == [""]:
             self.card_tool.addSystematic("yieldsTheoryAgnostic",
                                 rename=f"{nuisanceBaseName}CorrAllQ",
@@ -270,71 +213,11 @@ class TheoryAgnosticHelper(object):
                                 labelsByAxis=["PtV", "YVBin", "Helicity"],
                                 systAxesFlow=[], # only bins in acceptance in this call
                                 skipEntries=[], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-                                # splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
-                                splitGroup={f"{nuisanceBaseName}CorrAllQ" : f".*{nuisanceBaseName}CorrAllQ"},
+                                splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
+                                # splitGroup={f"{nuisanceBaseName}CorrAllQ" : f".*{nuisanceBaseName}CorrAllQ"},
                                 preOpMap=
                                         self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["ptVgenSig","absYVgenSig"],sum_axes=["helicitySig"]),
                                     ),
-            # self.card_tool.addSystematic("yieldsTheoryAgnostic",
-            #                     rename=f"{nuisanceBaseName}CorrAllHelQ",
-            #                     **common_noi_args,
-            #                     mirror=True,
-            #                     symmetrize = None,
-            #                     systAxes=["helicitySig"],
-            #                     processes=["signal_samples"],
-            #                     baseName=f"{nuisanceBaseName}CorrAllHelQ_",
-            #                     noConstraint=True if self.args.priorNormXsec < 0 else False,
-            #                     scale=1.0,
-            #                     formatWithValue=["low"],
-            #                     #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
-            #                     labelsByAxis=["Helicity"],
-            #                     systAxesFlow=[], # only bins in acceptance in this call
-            #                     skipEntries=[6,7,8], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-            #                     splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}.*Helicity{ihel}" for ihel in [-1, 0, 1, 2, 3, 4]},
-            #                     # splitGroup={f"{nuisanceBaseName}CorrAllQ" : f".*{nuisanceBaseName}CorrAllQ"},
-            #                     preOpMap=
-            #                             self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["ptVgenSig","absYVgenSig"]),
-            #                         ),
-            # self.card_tool.addSystematic("yieldsTheoryAgnostic",
-            #                     rename=f"{nuisanceBaseName}CorrPtQ",
-            #                     **common_noi_args,
-            #                     mirror=True,
-            #                     symmetrize = None,
-            #                     systAxes=self.poi_axes,
-            #                     processes=["signal_samples"],
-            #                     baseName=f"{nuisanceBaseName}CorrPtQ_",
-            #                     noConstraint=True if self.args.priorNormXsec < 0 else False,
-            #                     scale=1,
-            #                     formatWithValue=[None,None,"low"],
-            #                     #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
-            #                     labelsByAxis=["PtV", "YVBin", "Helicity"],
-            #                     systAxesFlow=[], # only bins in acceptance in this call
-            #                     skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-            #                     splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
-            #                     # splitGroup={f"{nuisanceBaseName}CorrPtQ" : f".*{nuisanceBaseName}CorrPtQ"},
-            #                     preOpMap=
-            #                             self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["ptVgenSig"]),
-            #                         ),
-            # self.card_tool.addSystematic("yieldsTheoryAgnostic",
-            #                     rename=f"{nuisanceBaseName}CorrYQ",
-            #                     **common_noi_args,
-            #                     mirror=True,
-            #                     symmetrize = None,
-            #                     systAxes=self.poi_axes,
-            #                     processes=["signal_samples"],
-            #                     baseName=f"{nuisanceBaseName}CorrYQ_",
-            #                     noConstraint=True if self.args.priorNormXsec < 0 else False,
-            #                     scale=1,
-            #                     formatWithValue=[None,None,"low"],
-            #                     #customizeNuisanceAttributes={".*AngCoeff4" : {"scale" : 1, "shapeType": "shapeNoConstraint"}},
-            #                     labelsByAxis=["PtV", "YVBin", "Helicity"],
-            #                     systAxesFlow=[], # only bins in acceptance in this call
-            #                     skipEntries=[{"helicitySig" : [0,6,7,8]}], # removing last three indices out of 9 (0,1,...,7,8) corresponding to A5,6,7
-            #                     splitGroup={f"{nuisanceBaseName}_Helicity{ihel}" : f".*{nuisanceBaseName}.*Helicity{ihel}" for ihel in [0, 1, 2, 3, 4]},
-            #                     # splitGroup={f"{nuisanceBaseName}CorrYQ" : f".*{nuisanceBaseName}CorrYQ"},
-            #                     preOpMap=
-            #                             self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=None,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize, rebin_axes=["absYVgenSig"]),
-            #                         ),
 
 
 
