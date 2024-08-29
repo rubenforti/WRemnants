@@ -243,7 +243,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
 
         plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
-    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=None, loc=args.logoPos)
     plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     outfile = f"{fittype}"

@@ -406,20 +406,13 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
         ax1.fill([0,18.5, 18.5, 0,0], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
         ax1.fill([hist_err.size-17.5, hist_err.size+0.5, hist_err.size+0.5, hist_err.size-17.5, hist_err.size-17.5], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
 
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-
-    plot_tools.addLegend(ax1, ncols=4, text_size=15*args.scaleleg*scale, loc="upper left")
-
     if args.yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*args.yscale)
 
-    if not logy:
-        plot_tools.redo_axis_ticks(ax1, "y")
-    plot_tools.redo_axis_ticks(ax1, "x", no_labels=len(axes_names) >= 2)
-
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+    plot_tools.fix_axes(ax1, None, fig, yscale=args.yscale, noSci=args.noSciy or logy)
 
     outfile = f"unfolded_{poi_type}{'_relative_' if relative_uncertainty else '_'}uncertainties"
     outfile += f"_{proc}"
@@ -615,21 +608,13 @@ def plot_uncertainties_with_ratio(
         ax1.fill([0,18.5, 18.5, 0,0], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
         ax1.fill([hist_err.size-17.5, hist_err.size+0.5, hist_err.size+0.5, hist_err.size-17.5, hist_err.size-17.5], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
 
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-
-    plot_tools.addLegend(ax1, ncols=4, text_size=15*args.scaleleg*scale, loc="upper left")
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
-
     if args.yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*args.yscale)
 
-    if not logy:
-        plot_tools.redo_axis_ticks(ax1, "y")
-    plot_tools.redo_axis_ticks(ax1, "x", no_labels=len(axes_names) >= 2)
-
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+    plot_tools.fix_axes(ax1, None, fig, yscale=args.yscale, noSci=args.noSciy or logy)
 
     outfile = f"diff_unfolded_{poi_type}{'_relative_' if relative_uncertainty else '_'}uncertainties"
     outfile += f"_{proc}"

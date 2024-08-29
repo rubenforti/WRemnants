@@ -260,8 +260,10 @@ for h in args.hists:
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
-            cms_decor=args.cmsDecor, legtext_size=args.legsize, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
-            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos)
+            cms_decor=args.cmsDecor, legtext_size=args.legSize, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
+            width_scale=1.25 if len(h.split("-")) == 1 else 1,
+            )
 
     fitresultstring=""
     if args.fitresult:

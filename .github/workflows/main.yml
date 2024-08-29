@@ -241,19 +241,19 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --fakeSmoothingMode $NOMINAL_FAKE_SMOOTHING --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: wmass plot lepton phi
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 10 --logy --baseName leptonPhi --fakeSmoothingMode fakerate --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 100 --logy --baseName leptonPhi --fakeSmoothingMode fakerate --hists phi --fineGroups -o $WEB_DIR -f $PLOT_DIR -p W $HIST_FILE
 
       - name: wmass plot mt
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName transverseMass --fakeSmoothingMode fakerate --hists mt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot MET
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --baseName MET --hists met --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 2 --yscale 1.5 --legCols 1 --baseName MET --hists met --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot MET phi
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName METPhi --hists phi --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.4 --baseName METPhi --hists phi --fakeSmoothingMode fakerate -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot Wpt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.5 --baseName ptW  --fakeSmoothingMode fakerate --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.3 --legCols 1 --baseName ptW  --fakeSmoothingMode fakerate --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot massShift
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py -p massVariation --yscale 1.4 --hist pt --baseName nominal -r 0.98 1.02 -o $WEB_DIR -f $PLOT_DIR $HIST_FILE variation --varName massWeightW --selectEntries massShiftW100MeVUp massShiftW100MeVDown --varLabel massShift100MeVUp massShift100MeVDown --selectAxis massShift --color grey grey
@@ -515,12 +515,12 @@ jobs:
       - name: wlike prefit plot
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --prefit
+          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2  --prefit
 
       - name: wlike postfit plot
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --rrange 1.03 0.97
+          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2 --rrange 1.03 0.97
 
       - name: wlike combine impacts
         run: >-
@@ -553,10 +553,10 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName nominal --nominalRef nominal --hists pt eta pt-eta -o $WEB_DIR -f $PLOT_DIR -p wlike $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: wlike plot mt
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName transverseMass --rebin 2 --hists mt -o $WEB_DIR -f $PLOT_DIR -p wlike $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName transverseMass --rebin 2 --legCols 1 --hists mt -o $WEB_DIR -f $PLOT_DIR -p wlike $HIST_FILE
 
       - name: wlike plot MET
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName MET --hists MET --fineGroups -o $WEB_DIR -f $PLOT_DIR -p wlike $HIST_FILE
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --baseName MET --yscale 1.2 --legCols 1 --logoPos 1 --hists MET --fineGroups -o $WEB_DIR -f $PLOT_DIR -p wlike $HIST_FILE
 
   dilepton-mll:
     # The type of runner that the job will run on
@@ -614,7 +614,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py $WREMNANTS_OUTDIR/ZMassDilepton_mll/ZMassDilepton.hdf5 --externalPostfit $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5  --saveHists --binByBinStat --computeHistErrors
 
       - name: dilepton postfit mll_inc plot
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5 -o $WEB_DIR -f $PLOT_DIR 
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5 --legCols 1 -o $WEB_DIR -f $PLOT_DIR 
 
   dilepton:
     # The type of runner that the job will run on
@@ -691,7 +691,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2
 
       - name: dilepton plotting ptll
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName nominal --nominalRef nominal --hists ptll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --legCols 1 --baseName nominal --nominalRef nominal --hists ptll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
 
       - name: dilepton plotting yll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --baseName nominal_yll --nominalRef nominal_yll --hists yll --fineGroups -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE
@@ -717,7 +717,7 @@ jobs:
       - name: dilepton ptll from wlike postfit
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py --postfix uncorr_fromWLike 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresult_combinetf2.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --rrange 1.03 0.97
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresult_combinetf2.hdf5 -o $WEB_DIR -f $PLOT_DIR --legCols 1 --yscale 1.2 --rrange 1.03 0.97
 
   gen:
     # The type of runner that the job will run on

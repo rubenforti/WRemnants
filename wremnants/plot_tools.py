@@ -164,7 +164,7 @@ def makeStackPlotWithRatio(
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
     no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
-    ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2,
+    ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2, width_scale=1.0,
 ):
     add_ratio = not (no_stack or no_ratio) 
     if ylabel is None:
@@ -201,10 +201,13 @@ def makeStackPlotWithRatio(
 
     if add_ratio:
         fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
-            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale
+            )
     else:
         fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
-            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale
+            )
+        ax2 = None
 
     if fitresult:
         import uproot
@@ -371,9 +374,7 @@ def makeStackPlotWithRatio(
 
     if cms_decor:
         lumi = float(f"{lumi:.3g}") if not density else None
-        scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
-            label=cms_decor, data="Data" in histInfo, loc=logoPos)
+        add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
 
     return fig
 
@@ -399,7 +400,7 @@ def makePlotWithRatioToRef(
         fig, ax2 = figureWithRatio(
             hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio
+            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
