@@ -157,12 +157,9 @@ if __name__ == '__main__':
 
             ax1.set_ylim([y_min-yrange*0.1, y_max+yrange*0.2])
 
-            plot_tools.addLegend(ax1, ncols=2, text_size=12, loc="upper left")
+            plot_tools.add_cms_decor(ax1, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
+            plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
             plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
-
-            scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-            hep.cms.label(ax=ax1, lumi=None, fontsize=20*args.scaleleg*scale, 
-                label=args.cmsDecor, data=False)
 
             if args.plotXsecs:
                 outfile = f"helicity_xsec_" + ("UL" if i==-1 else str(i))

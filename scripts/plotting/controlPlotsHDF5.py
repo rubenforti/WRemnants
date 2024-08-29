@@ -95,7 +95,7 @@ def make_plots(hists_proc, hist_data, *opts, **info):
 
 
 def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
-    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20
+    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, 
 ):
     if args.processGrouping is not None:
         hists_proc, labels, colors, procs = styles.process_grouping(args.processGrouping, hists_proc, procs)
@@ -277,7 +277,6 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
                 ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                     fontsize=20*args.scaleleg*scale)  
 
-        plot_tools.addLegend(ax1, 2, text_size=legtext_size)
         if add_ratio:
             plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
         else:
@@ -286,8 +285,8 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density and args.dataName=="Data" else None
             
-            hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
-                label= args.cmsDecor, data=hist_data is not None)
+        plot_tools.add_cms_decor(ax1, args.cmsDecor, data=hist_data is not None, lumi=lumi, loc=args.logoPos)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
         outfile = "hist_"
         if not args.noStack:

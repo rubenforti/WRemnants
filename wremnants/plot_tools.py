@@ -135,6 +135,8 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     elif text_size=="small":
         # legend size same as axis ticklabel size (numbers)
         text_size = ax.xaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        text_size = int(text_size)
 
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
 
@@ -300,8 +302,8 @@ def makeStackPlotWithRatio(
             data_idx = unstacked.index("Data") 
             linestyles[data_idx] = "None"
         linestyles = np.array(linestyles, dtype=object)
-        print("Number of linestyles", len(linestyles))
-        print("Length of unstacked", len(unstacked))
+        logger.debug("Number of linestyles", len(linestyles))
+        logger.debug("Length of unstacked", len(unstacked))
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)

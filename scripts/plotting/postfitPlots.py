@@ -265,8 +265,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
-        plot_tools.addLegend(ax1, ncols=1 if len(axes_names) == 1 else np.ceil(len(h_stack)/3), 
-            loc=args.legendPos, text_size='small' if len(axes_names) == 1 else 'large')
+        plot_tools.addLegend(ax1, ncols=args.legcols, loc=args.legendPos, text_size=args.legsize)
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
