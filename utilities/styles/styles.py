@@ -148,7 +148,6 @@ nuisance_groupings = {
         "prefire",
         "muonCalibration",
         "Fake",
-        "bcQuarkMass",
         "normWplus_Helicity-1",
         "normWplus_Helicity0",
         "normWplus_Helicity1",
