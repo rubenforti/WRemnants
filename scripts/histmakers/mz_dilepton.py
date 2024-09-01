@@ -9,8 +9,8 @@ parser,initargs = common.common_parser(analysis_label)
 import ROOT
 import narf
 import wremnants
-from wremnants import (theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_prefiring, muon_selections, unfolding_tools, 
-    muon_efficiencies_binned, muon_efficiencies_smooth, pileup, vertex)
+from wremnants import (helicity_utils,theory_tools,syst_tools,theory_corrections, muon_validation, muon_calibration, muon_prefiring, muon_selections, unfolding_tools, 
+    muon_efficiencies_binned, muon_efficiencies_smooth, pileup, vertex, theoryAgnostic_tools)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
@@ -22,10 +22,13 @@ import numpy as np
 parser.add_argument("--csVarsHist", action='store_true', help="Add CS variables to dilepton hist")
 parser.add_argument("--axes", type=str, nargs="*", default=["mll", "ptll"], help="")
 parser.add_argument("--finePtBinning", action='store_true', help="Use fine binning for ptll")
+parser.add_argument("--useTheoryAgnosticBinning", action='store_true', help="Use theory agnostic binning (coarser) to produce the results")
 parser.add_argument("--useDileptonTriggerSelection", action='store_true', help="Use dilepton trigger selection (default uses the Wlike one, with one triggering muon and odd/even event selection to define its charge, staying agnostic to the other)")
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--muonIsolation", type=int, nargs=2, default=[1,1], choices=[-1, 0, 1], help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+")
 parser.add_argument("--addRunAxis", action="store_true", help="Add axis with slices of luminosity based on run numbers (for data only)")
+parser.add_argument("--flipEventNumberSplitting", action="store_true", help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon")
+
 
 
 parser = common.set_parser_default(parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"])
@@ -58,6 +61,11 @@ mass_min, mass_max = common.get_default_mz_window()
 ewMassBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010)
 
 dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
+if args.useTheoryAgnosticBinning:
+    theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(ptV_flow=True, absYV_flow=True,wlike=True)
+    axis_ptV_thag = theoryAgnostic_axes[0]
+    dilepton_ptV_binning = axis_ptV_thag.edges
+    
 # available axes for dilepton validation plots
 all_axes = {
     # "mll": hist.axis.Regular(60, 60., 120., name = "mll", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
@@ -84,7 +92,7 @@ all_axes = {
     "ewMlly": hist.axis.Variable(ewMassBins, name = "ewMlly", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "ewLogDeltaM": hist.axis.Regular(100, -10, 4, name = "ewLogDeltaM", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "trigMuons_abseta0" : hist.axis.Regular(3, 0., 2.4, name = "trigMuons_abseta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
-    "nonTrigMuons_eta0" : hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "nonTrigMuons_eta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
+    "nonTrigMuons_eta0" : hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "nonTrigMuons_eta0", overflow=not args.excludeFlow, underflow=not args.excludeFlow),
     "nonTrigMuons_pt0" : hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "nonTrigMuons_pt0"),
     "nonTrigMuons_charge0" : hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "nonTrigMuons_charge0"),
 }
@@ -183,7 +191,7 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
 
-    df = df.Define("isEvenEvent", "event % 2 == 0")
+    df = df.Define("isEvenEvent", f"event % 2 {'!=' if args.flipEventNumberSplitting else '=='} 0")
 
     weightsum = df.SumAndCount("weight")
 
@@ -300,8 +308,8 @@ def build_graph(df, dataset):
     else:
         cvhName = "cvhideal"
 
-    axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta")
-    axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt")
+    axis_eta = hist.axis.Regular(int(args.eta[0]), args.eta[1], args.eta[2], name = "eta")
+    axis_pt = hist.axis.Regular(int(args.pt[0]), args.pt[1], args.pt[2], name = "pt")
     axis_charge = common.axis_charge
     axis_nvalidpixel = hist.axis.Integer(0, 10, name="nvalidpixel")
 
@@ -361,6 +369,16 @@ def build_graph(df, dataset):
 
         results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
+        
+        if isZ:
+            #theory agnostic stuff
+            theoryAgnostic_axes, theoryAgnostic_cols = differential.get_theoryAgnostic_axes(ptV_bins=[], absYV_bins=[], ptV_flow=True, absYV_flow=True, wlike=True)
+            axis_helicity = helicity_utils.axis_helicity_multidim
+            
+            df = theoryAgnostic_tools.define_helicity_weights(df)
+            noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsTheoryAgnostic")
+            logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for theory agnostic to treat POIs as NOIs")
+            results.append(df.HistoBoost(noiAsPoiHistName, [*axes, *theoryAgnostic_axes], [*cols, *theoryAgnostic_cols, "nominal_weight_helicity"], tensor_axes=[axis_helicity]))
 
     # histograms for corrections/uncertainties for pixel hit multiplicity
 
