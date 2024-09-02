@@ -186,8 +186,8 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
 
             plt.text(0.06, 0.94, title, horizontalalignment='left', verticalalignment='top', transform=ax.transAxes, fontsize=20)
 
-        hep.cms.label(ax=ax, fontsize=20, label=args.cmsDecor, data=False)
-        plot_tools.addLegend(ax, ncols=np.ceil(len(selections_slices)/2), text_size=15*args.scaleleg)
+        plot_tools.add_cms_decor(ax, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
+        plot_tools.addLegend(ax, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
         outfile = f"resolution_{g_name}_{'_'.join(axes_reco)}"
 
@@ -328,7 +328,7 @@ for g_name, group in datagroups.items():
             ax.set_xlim([min(xbins), max(xbins)])
             ax.set_ylim([min_y, max_y])
 
-            hep.cms.label(ax=ax, fontsize=20, label=args.cmsDecor, data=False)
+            plot_tools.add_cms_decor(ax, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
 
             outfile = "purity_"+outname
             plot_tools.save_pdf_and_png(outdir, outfile)
@@ -351,7 +351,7 @@ for g_name, group in datagroups.items():
             ax.set_xlim([min(ybins), max(ybins)])
             ax.set_ylim([min_y, max_y])
 
-            hep.cms.label(ax=ax, fontsize=20, label=args.cmsDecor, data=False)
+            plot_tools.add_cms_decor(ax, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
 
             outfile = "stability_"+outname
             plot_tools.save_pdf_and_png(outdir, outfile)
@@ -382,6 +382,8 @@ for g_name, group in datagroups.items():
             # ax.set_yticklabels(xlabels)
 
             hep.cms.label(ax=ax, fontsize=20, label=args.cmsDecor, data=False)
+
+
 
             outfile = "responce_matrix_"+outname
 

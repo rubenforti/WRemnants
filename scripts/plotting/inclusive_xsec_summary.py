@@ -209,9 +209,7 @@ ax.tick_params(top=False)
 plt.gca().set_yticklabels([])
 plt.gca().set_yticks([])
 
-scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
-hep.cms.label(ax=ax, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
-    label=args.cmsDecor, data=True)
+plot_tools.add_cms_decor(ax, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
 
 outname = "summary"
 if args.postfix:

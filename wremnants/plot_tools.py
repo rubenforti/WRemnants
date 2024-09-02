@@ -17,28 +17,29 @@ import datetime
 import json
 import narf 
 import socket
+import textwrap
 
 hep.style.use(hep.style.ROOT)
 
 logger = logging.child_logger(__name__)
 
 def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scale=True):
+    base_size=8
     hax = href.axes[0]
     if not xlim:
         xlim = [hax.edges[0], hax.edges[-1]]
     if not automatic_scale:
-        return plt.figure(figsize=(width_scale*8,8)), xlim
+        return plt.figure(figsize=(width_scale*base_size,base_size)), xlim
     xlim_range = float(xlim[1] - xlim[0])
     original_xrange = float(hax.edges[-1] - hax.edges[0])
     raw_width = (hax.size/float(bin_density)) * (xlim_range / original_xrange)
     width = math.ceil(raw_width)
-
-    return plt.figure(figsize=(width_scale*8*width,width_scale*8)), xlim
+    return plt.figure(figsize=(width_scale*base_size*width,width_scale*base_size)), xlim
 
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
-    bin_density = 300, cms_label = None, logy=False, logx=False,
-    width_scale=1, height=8, automatic_scale=True
+    bin_density = 300, logy=False, logx=False,
+    width_scale=1, height=8, automatic_scale=True,
 ):
     if isinstance(href, hist.Hist):
         fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
@@ -51,7 +52,6 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
         fig = plt.figure(figsize=(width_scale*height*width,height))
 
     ax1 = fig.add_subplot() 
-    if cms_label: hep.cms.text(cms_label)
 
     ax1.set_xlabel(xlabel)
     ax1.set_ylabel(ylabel)
@@ -67,14 +67,16 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     if logx:
         ax1.set_xscale('log')
 
-    if grid:  ax1.grid(which = "both")
-    if plot_title: ax1.set_title(plot_title, pad = title_padding)
+    if grid: 
+        ax1.grid(which = "both")
+    if plot_title: 
+        ax1.set_title(plot_title, pad = title_padding)
     return fig,ax1 
 
 def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     grid_on_main_plot = False, grid_on_ratio_plot = False, plot_title = None, title_padding = 0,
-    x_ticks_ndp = None, bin_density = 300, cms_label = None, logy=False, logx=False,
-    width_scale=1, automatic_scale=True, only_ratio=False
+    x_ticks_ndp = None, bin_density = 300, logy=False, logx=False,
+    width_scale=1, automatic_scale=True, only_ratio=False,
 ):
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
     
@@ -91,17 +93,19 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
 
         if logy:
             ax1.set_yscale('log')
-        if grid_on_main_plot:  ax1.grid(which = "both")
-        if plot_title: ax1.set_title(plot_title, pad = title_padding)
+        if grid_on_main_plot: 
+            ax1.grid(which = "both")
+        if plot_title: 
+            ax1.set_title(plot_title, pad = title_padding)
 
-    if cms_label: hep.cms.text(cms_label)
     ax2 = fig.add_subplot(4, 1, 4) 
 
     ax2.set_xlabel(xlabel)
     
     ax2.set_xlim(xlim)
-    if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
-    ax2.set_ylabel(rlabel, fontsize=22)
+    if x_ticks_ndp: 
+        ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
+    ax2.set_ylabel(rlabel)
     ax2.set_ylim(rrange)
 
     if logx:
@@ -109,13 +113,14 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
             ax1.set_xscale('log')
         ax2.set_xscale('log')
 
-    if grid_on_ratio_plot: ax2.grid(which = "both")
+    if grid_on_ratio_plot: 
+        ax2.grid(which = "both")
     if not only_ratio:
         return fig,ax1,ax2
     else:
         return fig,ax2
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=20, loc='upper right'):
+def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right'):
     handles, labels = ax.get_legend_handles_labels()
     
     shape = np.divide(*ax.get_figure().get_size_inches())
@@ -125,7 +130,15 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
-    text_size = text_size*(0.7 if shape == 1 else 1.3)
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        text_size = ax.yaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        text_size = int(text_size)
+
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
 
     if extra_text:
@@ -138,6 +151,42 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
         ax.text(*extra_text_loc, extra_text, transform=ax.transAxes, fontsize=text_size,
                 verticalalignment='top', bbox=props)
 
+
+def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
+    # wrap text within lower_x and upper_x, 
+    #  if text is already given as pieces in a list, use these pieces, 
+    #  otherwise calculate the pieces automatically
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        text_size = ax.yaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        text_size = int(text_size)
+
+    if isinstance(text, str):
+        # Get the width of the text in data coordinates
+        bbox = ax.get_window_extent().transformed(ax.transData.inverted())
+        width_data = upper_x - lower_x
+        width_display = bbox.width * (width_data / (ax.get_xlim()[1] - ax.get_xlim()[0]))
+        # Estimate the number of characters that fit in this width
+        # This is an approximation and may need adjustment
+        char_width = text_size * 0.2 # Approximate width of a character in inches
+        max_chars = int(width_display / char_width)
+        wrapped_text = '\n'.join(textwrap.wrap(text, width=max_chars))
+    else:
+        wrapped_text = '\n'.join(text)
+
+    x = (lower_x + upper_x) / 2
+    ax.text(x, y, wrapped_text, ha='center', va='center', fontsize=text_size, wrap=True)
+
+
+def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):
+    text_size = ax.yaxis.label.get_size() if text_size is None else text_size
+    hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
+
+
 def makeStackPlotWithRatio(
     histInfo, stackedProcs, histName="nominal", unstacked=None, 
     fitresult=None, prefit=False,
@@ -146,7 +195,7 @@ def makeStackPlotWithRatio(
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
     no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
-    ratio_error=True, normalize_to_data=False, cutoff=1e-6,
+    ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2, width_scale=1.0,
 ):
     add_ratio = not (no_stack or no_ratio) 
     if ylabel is None:
@@ -183,10 +232,13 @@ def makeStackPlotWithRatio(
 
     if add_ratio:
         fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
-            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale
+            )
     else:
         fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
-            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density)
+            plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale
+            )
+        ax2 = None
 
     if fitresult:
         import uproot
@@ -284,6 +336,8 @@ def makeStackPlotWithRatio(
             data_idx = unstacked.index("Data") 
             linestyles[data_idx] = "None"
         linestyles = np.array(linestyles, dtype=object)
+        logger.debug("Number of linestyles", len(linestyles))
+        logger.debug("Length of unstacked", len(unstacked))
         linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
 
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
@@ -347,16 +401,11 @@ def makeStackPlotWithRatio(
             )
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-    if add_ratio:
-        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
-    else:
-        fix_axes(ax1, yscale=yscale, logy=logy)
+    fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
 
     if cms_decor:
         lumi = float(f"{lumi:.3g}") if not density else None
-        scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
-            label=cms_decor, data="Data" in histInfo)
+        add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
 
     return fig
 
@@ -382,7 +431,7 @@ def makePlotWithRatioToRef(
         fig, ax2 = figureWithRatio(
             hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio
+            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
@@ -453,7 +502,7 @@ def makePlotWithRatioToRef(
         # This seems like a bug, but it's needed
         if not xlim:
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
-        fix_axes(ax1, ax2, yscale=yscale, logy=logy)
+        fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
         if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     return fig
 
@@ -527,7 +576,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
 
     scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
     hep.cms.label(ax=ax, lumi=None, fontsize=20*scaleleg*scale, 
-        label=cms_label, data=has_data)
+        label=cms_label, data=has_data, loc=logoPos)
 
     return fig
 
@@ -547,21 +596,35 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
     else:
         return all_edges
 
-def fix_axes(ax1, ax2=None, yscale=None, logy=False):
-    #TODO: Would be good to get this working
-    #ax1.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
     if yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*yscale)
-    if not logy:
+
+    redo_axis_ticks(ax1, "x")
+
+    if noSci and not logy:
         redo_axis_ticks(ax1, "y")
-        if ax2 is not None:
-            redo_axis_ticks(ax2, "x")
+    elif not logy:
+        ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
+
     if ax2 is not None:
-        redo_axis_ticks(ax1, "x", True)
+        redo_axis_ticks(ax2, "x")
         ax1.set_xticklabels([])
-    else:
-        redo_axis_ticks(ax1, "x", False)
+
+        # Function to get the position of the ylabel in axes coordinates
+        def get_ylabel_position(ax):
+            label = ax.get_yaxis().get_label()
+            fig.canvas.draw()  # This is necessary to update the figure
+            return ax.transAxes.inverted().transform(label.get_window_extent().get_points())[0, 0]
+
+        # Get the leftmost position of the y-axis labels
+        y_label_pos = min(get_ylabel_position(ax1), get_ylabel_position(ax2))
+
+        # Set both labels to the leftmost position
+        ax1.yaxis.set_label_coords(y_label_pos, 1.0)
+        ax2.yaxis.set_label_coords(y_label_pos, 1.0)
+
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
     autoloc = ticker.AutoLocator()
