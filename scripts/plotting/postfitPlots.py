@@ -35,7 +35,7 @@ parser.add_argument("--normToData", action='store_true', help="Normalize MC to d
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
 parser.add_argument("--filterProcs", type=str, nargs="*", default=None, help="Only plot the filtered processes")
 parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"], 
-    help="List of axes where for each bin a seperate plot is created")
+    help="List of axes where for each bin a separate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
@@ -43,6 +43,7 @@ parser.add_argument("--dataName", type=str, default="Data", help="Data name for 
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
+parser.add_argument("--binSeparationLines", type=float, default=None, nargs='*', help="Plot vertical lines for makro bin edges in unrolled plots, specify bin boundaries to plot lines, if empty plot for all")
 
 args = parser.parse_args()
 
@@ -99,11 +100,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         histtype_mc = "errorbar"
     
     if len(h_data.axes) > 1:
-        if "eta" in axes_names[-1]:
-            axes_names = axes_names[::-1]
         if args.invertAxes:
             logger.info("invert eta order")
             axes_names = axes_names[::-1]
+            axes = axes[::-1]
 
         # make unrolled 1D histograms
         h_data = hh.unrolledHist(h_data, binwnorm=binwnorm, obs=axes_names)
@@ -169,7 +169,40 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             alpha=1.,
             zorder=2,
             flow='none',
-        )    
+        )
+
+    if len(axes_names) > 1 and args.binSeparationLines is not None:
+        # plot dashed vertical lines to sepate makro bins
+
+        s_range = lambda x,n=1: int(x) if round(x, n) == float(int(round(x, n))) else round(x, n)
+        s_label = styles.xlabels.get(axes_names[0], axes_names[0])
+        if "(GeV)" in s_label:
+            s_label = s_label.replace('(GeV)','')
+            s_unit = r"GeV"
+        else:
+            s_unit = ""
+
+        max_y = np.max(h_inclusive.values()[...])
+        min_y = ax1.get_ylim()[0]
+
+        range_y = max_y - min_y
+
+        for i in range(1, axes[0].size + 1):
+            if len(args.binSeparationLines) > 0 and not any(np.isclose(x, axes[0].edges[i]) for x in args.binSeparationLines):
+                continue
+            
+            x = axes[-1].size * i
+            x_lo = axes[-1].size * (i-1)
+
+            if i < axes[0].size + 1:
+                # don't plot last line since it's the axis line already
+                ax1.plot([x,x],[min_y, max_y], linestyle="--", color="black")
+
+            if len(args.binSeparationLines) == 0 or any(np.isclose(x, axes[0].edges[i-1]) for x in args.binSeparationLines):
+                y = min_y+range_y* (0.15 if np.min(h_inclusive.values()[x_lo:x])>max_y*0.3 else 0.8)
+                lo = s_range(axes[0].edges[i-1])
+                hi = s_range(axes[0].edges[i])
+                plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, x, y, text_size="small")
 
     if ratio or diff:
 

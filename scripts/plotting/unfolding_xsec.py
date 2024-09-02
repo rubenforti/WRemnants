@@ -33,7 +33,7 @@ parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
 parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig", "A"], 
-    help="List of axes where for each bin a seperate plot is created")
+    help="List of axes where for each bin a separate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
     choices=poi_type_choices)

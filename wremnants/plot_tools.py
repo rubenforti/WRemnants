@@ -17,6 +17,7 @@ import datetime
 import json
 import narf 
 import socket
+import textwrap
 
 hep.style.use(hep.style.ROOT)
 
@@ -131,10 +132,10 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
         labels.insert(math.floor(len(labels)/2), ' ')
     if text_size=="large" or text_size is None:
         # legend size same as axis label size
-        text_size = ax.xaxis.label.get_size()
+        text_size = ax.yaxis.label.get_size()
     elif text_size=="small":
         # legend size same as axis ticklabel size (numbers)
-        text_size = ax.xaxis.get_ticklabels()[0].get_fontsize() 
+        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
     else:
         text_size = int(text_size)
 
@@ -151,8 +152,38 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
                 verticalalignment='top', bbox=props)
 
 
+def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
+    # wrap text within lower_x and upper_x, 
+    #  if text is already given as pieces in a list, use these pieces, 
+    #  otherwise calculate the pieces automatically
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        text_size = ax.yaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        text_size = int(text_size)
+
+    if isinstance(text, str):
+        # Get the width of the text in data coordinates
+        bbox = ax.get_window_extent().transformed(ax.transData.inverted())
+        width_data = upper_x - lower_x
+        width_display = bbox.width * (width_data / (ax.get_xlim()[1] - ax.get_xlim()[0]))
+        # Estimate the number of characters that fit in this width
+        # This is an approximation and may need adjustment
+        char_width = text_size * 0.2 # Approximate width of a character in inches
+        max_chars = int(width_display / char_width)
+        wrapped_text = '\n'.join(textwrap.wrap(text, width=max_chars))
+    else:
+        wrapped_text = '\n'.join(text)
+
+    x = (lower_x + upper_x) / 2
+    ax.text(x, y, wrapped_text, ha='center', va='center', fontsize=text_size, wrap=True)
+
+
 def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):
-    text_size = ax.xaxis.label.get_size() if text_size is None else text_size
+    text_size = ax.yaxis.label.get_size() if text_size is None else text_size
     hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
 
 
