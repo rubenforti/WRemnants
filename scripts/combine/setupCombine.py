@@ -12,6 +12,7 @@ import hist
 import math, copy
 import h5py
 import narf.ioutils
+import narf.combineutils
 import numpy as np
 
 def make_subparsers(parser):
@@ -76,7 +77,8 @@ def make_parser(parser=None):
     parser.add_argument("--sumChannels", action='store_true', help="Only use one channel")
     parser.add_argument("--fitXsec", action='store_true', help="Fit signal inclusive cross section")
     parser.add_argument("--fitWidth", action='store_true', help="Fit boson width")
-    parser.add_argument("--fitMassDiff", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the boson mass")
+    parser.add_argument("--fitMassDiffW", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the W boson mass")
+    parser.add_argument("--fitMassDiffZ", type=str, default=None, choices=["charge", "cosThetaStarll", "eta-sign", "eta-range", "etaRegion", "etaRegionSign", "etaRegionRange"], help="Fit an additional POI for the difference in the W boson mass")
     parser.add_argument("--fitMassDecorr", type=str, default=[], nargs='*', help="Decorrelate POI for given axes, fit multiple POIs for the different POIs")
     parser.add_argument("--decorrRebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
     parser.add_argument("--decorrAbsval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
@@ -105,6 +107,8 @@ def make_parser(parser=None):
     parser.add_argument("--scaleTNP", default=1, type=float, help="Scale the TNP uncertainties by this factor")
     parser.add_argument("--scalePdf", default=-1., type=float, help="Scale the PDF hessian uncertainties by this factor (by default take the value in the pdfInfo map)")
     parser.add_argument("--pdfUncFromCorr", action='store_true', help="Take PDF uncertainty from correction hist (Requires having run that correction)")
+    parser.add_argument("--scaleMinnloScale", default=1., type=float, help="Scale the minnlo qcd scale uncertainties by this factor")
+    parser.add_argument("--symmetrizeMinnloScale", default="quadratic", type=str, help="Symmetrization type for minnlo scale variations")
     parser.add_argument("--massVariation", type=float, default=100, help="Variation of boson mass")
     parser.add_argument("--ewUnc", type=str, nargs="*", default=["renesanceEW", "powhegFOEW"], help="Include EW uncertainty (other than pure ISR or FSR)",
         choices=[x for x in theory_corrections.valid_theory_corrections() if ("ew" in x or "EW" in x) and "ISR" not in x and "FSR" not in x])
@@ -133,13 +137,17 @@ def make_parser(parser=None):
     parser.add_argument("--pseudoDataAxes", type=str, nargs="+", default=[None], help="Variation axes to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataIdxs", type=str, nargs="+", default=[None], help="Variation indices to use as pseudodata for each of the histograms")
     parser.add_argument("--pseudoDataFile", type=str, help="Input file for pseudodata (if it should be read from a different file)", default=None)
+    parser.add_argument("--pseudoDataFitInputFile", type=str, help="Input file for pseudodata (if it should be read from a fit input file)", default=None)
+    parser.add_argument("--pseudoDataFitInputChannel", type=str, help="Input chnnel name for pseudodata (if it should be read from a fit input file)", default="ch0")
+    parser.add_argument("--pseudoDataFitInputDownUp", type=str, help="DownUp variation for pseudodata (if it should be read from a fit input file)", default="Up")
     parser.add_argument("--pseudoDataProcsRegexp", type=str, default=".*", help="Regular expression for processes taken from pseudodata file (all other processes are automatically got from the nominal file). Data is excluded automatically as usual")
     parser.add_argument("--pseudoDataFakes", type=str, nargs="+", choices=["truthMC", "closure", "simple", "extrapolate", "extended1D", "extended2D", "dataClosure", "mcClosure", "simple-binned", "extended1D-binned", "extended1D-fakerate"],
         help="Pseudodata for fakes are using QCD MC (closure), or different estimation methods (simple, extended1D, extended2D)")
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
-    parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
+    parser.add_argument("--massConstraintModeW", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether W mass is constrained within PDG value and uncertainty or unconstrained in the fit")
+    parser.add_argument("--massConstraintModeZ", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether Z mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
     parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.26, help="scaling of bin by bin statistical uncertainty for W mass analysis")
@@ -193,10 +201,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     simultaneousABCD = wmass and args.simultaneousABCD and not xnorm
 
-    if args.massConstraintMode == "automatic":
+    massConstraintMode = args.massConstraintModeW if wmass else args.massConstraintModeZ
+
+    if massConstraintMode == "automatic":
         constrainMass = args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
     else:
-        constrainMass = True if args.massConstraintMode == "constrained" else False
+        constrainMass = True if massConstraintMode == "constrained" else False
     logger.debug(f"constrainMass = {constrainMass}")
 
     if wmass:
@@ -395,6 +405,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, **histselector_kwargs)
 
             cardTool.setPseudodataDatagroups(pseudodataGroups)
+        elif args.pseudoDataFitInputFile:
+            indata = narf.combineutils.FitInputData(args.pseudoDataFitInputFile)
+            debugdata = narf.combineutils.FitDebugData(indata)
+            cardTool.setPseudodataFitInput(debugdata, args.pseudoDataFitInputChannel, args.pseudoDataFitInputDownUp)
     if args.pseudoDataFakes:
         cardTool.setPseudodata(args.pseudoDataFakes)
         # pseudodata for fakes, either using data or QCD MC
@@ -512,11 +526,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     if not (args.doStatOnly and constrainMass):
         if args.massVariation != 0:
             if len(args.fitMassDecorr)==0:
+                massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
                 cardTool.addSystematic(f"{massWeightName}{label}",
                                     processes=signal_samples_forMass,
                                     group=f"massShift",
                                     noi=not constrainMass,
-                                    skipEntries=massWeightNames(proc=label, exclude=args.massVariation),
+                                    skipEntries=massWeightNames(proc=label, exclude=massVariation),
                                     mirror=False,
                                     noConstraint=not constrainMass,
                                     systAxes=["massShift"],
@@ -548,11 +563,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         )
                 )
 
-        if args.fitMassDiff:
-            suffix = "".join([a.capitalize() for a in args.fitMassDiff.split("-")])
+        fitMassDiff = args.fitMassDiffW if wmass else args.fitMassDiffZ
+
+        if fitMassDiff:
+            suffix = "".join([a.capitalize() for a in fitMassDiff.split("-")])
             combine_helpers.add_mass_diff_variations(
                 cardTool, 
-                args.fitMassDiff,
+                fitMassDiff,
                 name=f"{massWeightName}{label}",
                 processes=signal_samples_forMass, 
                 constrain=constrainMass,
@@ -620,16 +637,39 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     if not args.noTheoryUnc:
         if wmass and not xnorm:
+            if args.massConstraintModeZ == "automatic":
+                constrainMassZ = True
+            else:
+                constrainMassZ = True if args.massConstraintModeZ == "constrained" else False
+
+            massVariationZ = 2.1 if constrainMassZ else args.massVariation
+
             cardTool.addSystematic(f"massWeightZ",
                                     processes=['single_v_nonsig_samples'],
                                     group="ZmassAndWidth",
                                     splitGroup = {"theory": ".*"},
-                                    skipEntries=massWeightNames(proc="Z", exclude=2.1),
+                                    skipEntries=massWeightNames(proc="Z", exclude=massVariationZ),
                                     mirror=False,
-                                    noConstraint=False,
+                                    noi=not constrainMassZ,
+                                    noConstraint=not constrainMassZ,
                                     systAxes=["massShift"],
                                     passToFakes=passSystToFakes,
             )
+
+
+            fitMassDiff = args.fitMassDiffZ
+            if fitMassDiff:
+                suffix = "".join([a.capitalize() for a in fitMassDiff.split("-")])
+                combine_helpers.add_mass_diff_variations(
+                    cardTool,
+                    fitMassDiff,
+                    name=f"{massWeightName}Z",
+                    processes=['single_v_nonsig_samples'],
+                    constrain=constrainMass,
+                    suffix=suffix,
+                    label="Z",
+                    passSystToFakes=passSystToFakes,
+                )
 
         # Experimental range
         #widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
@@ -689,6 +729,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pdf_from_corr=args.pdfUncFromCorr,
             scale_pdf_unc=args.scalePdf,
             minnlo_unc=args.minnloScaleUnc,
+            minnlo_scale=args.scaleMinnloScale,
+            minnlo_symmetrize=args.symmetrizeMinnloScale,
         )
 
         theorySystSamples = ["signal_samples_inctau"]
@@ -1278,6 +1320,9 @@ if __name__ == "__main__":
         args.doStatOnly = True
 
     if not args.root:
+        if len(args.inputFile)>1 and (args.fitWidth or args.decorMassWidth):
+            raise ValueError("Fitting multiple channels with fitWidth or decorMassWidth is not currently supported since this can lead to inconsistent treatment of mass variations between channels.")
+
         writer = HDF5Writer.HDF5Writer(sparse=args.sparse)
 
         if args.baseName == "xnorm":
