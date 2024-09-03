@@ -273,9 +273,7 @@ class TheoryHelper(object):
         else:
             op = lambda h: h[{"ptVgen" : hist.sum, self.syst_ax : ["pythia_shower_kt"]}]
 
-        processesZ = [] if self.skipFromSignal else ['single_v_samples']
-        processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
-        processes = processesW if self.label=="W" else processesZ
+        processes = ['single_v_samples']
         self.card_tool.addSystematic(name="qcdScaleByHelicity",
             processes=processes,
             passToFakes=self.propagate_to_fakes,
