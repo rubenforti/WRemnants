@@ -30,6 +30,7 @@ def make_subparsers(parser):
     parser.add_argument("--forceRecoChargeAsGen", action="store_true", help="Force gen charge to match reco charge in CardTool, this only works when the reco charge is used to define the channel")
     parser.add_argument("--genAxes", type=str, default=[], nargs="+", help="Specify which gen axes should be used in unfolding/theory agnostic, if 'None', use all (inferred from metadata).")
     parser.add_argument("--priorNormXsec", type=float, default=1, help="Prior for shape uncertainties on cross sections for theory agnostic or unfolding analysis with POIs as NOIs (1 means 100\%). If negative, it will use shapeNoConstraint in the fit")
+    parser.add_argument("--scaleNormXsecHistYields", type=float, default=None, help="Scale yields of histogram with cross sections variations for theory agnostic analysis with POIs as NOIs. Can be used together with --priorNormXsec")
 
     if "theoryAgnostic" in subparserName:
         if subparserName == "theoryAgnosticNormVar":
@@ -242,7 +243,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     if xnorm:
         datagroups.select_xnorm_groups(base_group)
         datagroups.globalAction = None # reset global action in case of rebinning or such
-        if not isUnfolding:
+        if isPoiAsNoi or not isUnfolding:
             # creating the xnorm model (e.g. for the theory fit)
             if wmass and "qGen" in fitvar:
                 # add gen charge as additional axis
@@ -251,13 +252,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 xnorm_axes = ["qGen", *datagroups.gen_axes_names]
             else:
                 xnorm_axes = datagroups.gen_axes_names[:]
-            datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar])
+            datagroups.setGenAxes(sum_gen_axes=[a for a in xnorm_axes if a not in fitvar], base_group=base_group)
 
     if isPoiAsNoi:
         constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
-        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes])
+        datagroups.setGenAxes(sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in poi_axes], base_group=base_group)
 
         # FIXME: temporary customization of signal and out-of-acceptance process names for theory agnostic with POI as NOI
         # There might be a better way to do it more homogeneously with the rest.
@@ -281,14 +282,20 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 datagroups.deleteGroup(f"{base_group}OOA") # remove out of acceptance signal
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
-        datagroups.setGenAxes(genvar)
+        datagroups.setGenAxes(genvar, base_group=base_group)
         logger.info(f"GEN axes are {genvar}")
         if wmass and "qGen" in datagroups.gen_axes_names:
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen0", member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(
+                    base_group, f"W_qGen0", 
+                    member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
+                    axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
             if "plus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, f"W_qGen1", member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), axesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
+                datagroups.defineSignalBinsUnfolding(base_group, 
+                    f"W_qGen1", 
+                    member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
+                    axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
 
@@ -358,17 +365,20 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     else:
         cardTool.setHistName(inputBaseName)
         cardTool.setNominalName(inputBaseName)
-        
+
+    if isUnfolding and isPoiAsNoi:
+        cardTool.addXsecGroups()
+
     # define sumGroups for integrated cross section
-    if isFloatingPOIs and not args.skipSumGroups:
+    if not args.skipSumGroups and (isUnfolding or isTheoryAgnostic):
         # TODO: make this less hardcoded to filter the charge (if the charge is not present this will duplicate things)
-        if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes:
+        if isTheoryAgnostic and wmass and "qGen" in datagroups.gen_axes_names:
             if "plus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen1")
+                cardTool.addSumXsecGroups(genCharge="qGen1")
             if "minus" in args.recoCharge:
-                cardTool.addPOISumGroups(genCharge="qGen0")
+                cardTool.addSumXsecGroups(genCharge="qGen0")
         else:
-            cardTool.addPOISumGroups()
+            cardTool.addSumXsecGroups(all_param_names=cardTool.cardXsecGroups if isUnfolding and isPoiAsNoi else None)
 
     if args.noHist:
         cardTool.skipHistograms()
@@ -475,7 +485,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename=f"{cardTool.getFakeName()}Rate",
             processes=cardTool.getFakeName(),
             group="Fake",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             systNamePrepend=f"{cardTool.getFakeName()}Rate",
             noConstraint=True,
             mirror=True,
@@ -493,7 +503,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename=f"{cardTool.getFakeName()}Norm",
             processes=cardTool.getFakeName(),
             group="Fake",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             systNamePrepend=f"{cardTool.getFakeName()}Norm",
             noConstraint=True,
             mirror=True,
@@ -503,6 +513,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     hh.expand_hist_by_duplicate_axes(h, fakenorm_axes, fakenorm_axes_syst),
                     scale2=0.1)
         )
+
+    if args.doStatOnly and isUnfolding and not isPoiAsNoi:
+        # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
+        cardTool.addLnNSystematic("dummy", 
+            processes=['MCnoQCD'], 
+            size=1.0001, 
+            group="dummy")
 
     decorwidth = args.decorMassWidth or args.fitWidth
     massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
@@ -578,45 +595,16 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             theoryAgnostic_helper.add_theoryAgnostic_uncertainty()
 
         elif isUnfolding:
-            noi_args = dict(
-                group=f"normXsec{label}",
-                passToFakes=passSystToFakes,
-                name=f"yieldsUnfolding",
-                systAxes=poi_axes,
-                processes=["signal_samples"],
-                noConstraint=True,
-                noi=True,
-                mirror=True,
-                scale=1 if args.priorNormXsec < 0 else args.priorNormXsec, # histogram represents an (args.priorNormXsec*100)% prior
-                systAxesFlow=[a for a in poi_axes if a in ["ptGen"]], # use underflow/overflow bins for ptGen
-                labelsByAxis=poi_axes,
+            combine_helpers.add_noi_unfolding_variations(
+                cardTool, 
+                label, 
+                passSystToFakes, 
+                xnorm, 
+                poi_axes, 
+                wmass=wmass,
+                prior_norm=args.priorNormXsec, 
+                scale_norm=args.scaleNormXsecHistYields,
             )
-            if wmass:
-                # add two sets of systematics, one for each charge
-                cardTool.addSystematic(**noi_args,
-                    rename=f"noiWminus",
-                    baseName=f"W_qGen0",
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}], h, scale2=args.scaleNormXsecHistYields))
-                            if "minus" in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}])
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
-                cardTool.addSystematic(**noi_args,
-                    rename=f"noiWplus",
-                    baseName=f"W_qGen1",
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}], h, scale2=args.scaleNormXsecHistYields))
-                            if "plus" in m.name else (lambda h: h[{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}])
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
-            else:
-                cardTool.addSystematic(**noi_args,
-                    baseName=f"{label}_",
-                    preOpMap={
-                        m.name: (lambda h: hh.addHists(
-                            h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, "acceptance": hist.tag.Slicer()[::hist.sum]}], h[{"acceptance":True}], scale2=args.scaleNormXsecHistYields))
-                        for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
-                )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
         muRmuFPolVar_helper = combine_theoryAgnostic_helper.TheoryAgnosticHelper(cardTool, externalArgs=args)
@@ -640,7 +628,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         else:
             None
 
-        combine_helpers.add_explicit_MCstat(cardTool, recovar, samples="signal_samples", wmass=wmass, source=source)
+        combine_helpers.add_explicit_BinByBinStat(cardTool, recovar, samples="signal_samples", wmass=wmass, source=source, label=label)
 
     if args.doStatOnly:
         # print a card with only mass weights
@@ -690,7 +678,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                                 rename="WidthZ0p8MeV",
                                 processes= ['single_v_nonsig_samples'] if wmass else signal_samples_forMass,
                                 action=lambda h: h[{"width" : ['widthZ2p49333GeV', 'widthZ2p49493GeV']}],
-                                group="ZmassAndWidth" if wmass else "widthZ",
+                                group="ZmassAndWidth" if wmass else "widthZ", 
                                 splitGroup = {"theory": ".*"},
                                 mirror=False,
                                 noi=args.fitWidth if not wmass else False,
@@ -764,27 +752,27 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     # Below: experimental uncertainties
     if not lowPU: # lowPU does not include PhotonInduced as a process. skip it:
-        cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
+        cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
     if wmass:
         if args.logNormalWmunu > 0.0:
-            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})
+            cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         if args.logNormalFake > 0.0:
-            cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*"})
+            cardTool.addLnNSystematic(f"CMS_{cardTool.getFakeName()}", processes=[cardTool.getFakeName()], size=args.logNormalFake, group="Fake", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         elif args.logNormalFake < 0.0:
             cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
-        cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background", splitGroup = {"experiment": ".*"})
-        cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background", splitGroup = {"experiment": ".*"})
+        cardTool.addLnNSystematic("CMS_Top", processes=["Top"], size=1.06, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
+        cardTool.addLnNSystematic("CMS_VV", processes=["Diboson"], size=1.16, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"})
         cardTool.addSystematic("luminosity",
                                 processes=['MCnoQCD'],
                                 outNames=["lumiDown", "lumiUp"],
                                 group="luminosity",
-                                splitGroup = {"experiment": ".*"},
+                                splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                                 systAxes=["downUpVar"],
                                 labelsByAxis=["downUpVar"],
                                 passToFakes=passSystToFakes)
     else:
-        cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*"},)
-        cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*"},)
+        cardTool.addLnNSystematic("CMS_background", processes=["Other"], size=1.15, group="CMS_background", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
+        cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
 
     if (
         (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD") 
@@ -810,7 +798,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Smoothing"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_smoothing=True),
             )
@@ -819,7 +807,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Rate"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_frf=True),
             )
@@ -828,7 +816,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             subgroup = f"{cardTool.getFakeName()}Shape"
             cardTool.addSystematic(**info,
                 rename=subgroup,
-                splitGroup = {subgroup: f".*", "experiment": ".*"},
+                splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                 systNamePrepend=subgroup,
                 actionArgs=dict(variations_scf=True),
             )
@@ -870,7 +858,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         name=inputBaseName, 
                         group="Fake",
                         rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
-                        splitGroup = {subgroup: f".*", "experiment": ".*"},
+                        splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
                         systNamePrepend=subgroup,
                         processes=cardTool.getFakeName(),
                         noConstraint=False,
@@ -927,7 +915,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     mirror=mirror,
                     mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                     group=groupName,
-                    splitGroup={**splitGroupDict, "experiment": ".*"},
+                    splitGroup={**splitGroupDict, "experiment": ".*", "expNoCalib": ".*"},
                     systAxes=axes,
                     labelsByAxis=axlabels,
                     baseName=name+"_",
@@ -944,7 +932,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                             mirror=mirror,
                             mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                             group=f"muon_eff_syst_{es}_altBkg",
-                            splitGroup={groupName: ".*", "muon_eff_all" : ".*", "experiment": ".*"},
+                            splitGroup={groupName: ".*", "muon_eff_all" : ".*", "experiment": ".*", "expNoCalib": ".*"},
                             systAxes = ["n_syst_variations"],
                             labelsByAxis = [f"{es}_altBkg_etaDecorr"],
                             baseName=name+"_",
@@ -1004,7 +992,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                         mirror=mirror,
                         mirrorDownVarEqualToNomi=mirrorDownVarEqualToNomi,
                         group=groupName,
-                        splitGroup={**splitGroupDict, "experiment": ".*"},
+                        splitGroup={**splitGroupDict, "experiment": ".*", "expNoCalib": ".*"},
                         systAxes=axes,
                         labelsByAxis=axlabels,
                         baseName=name+"_",
@@ -1025,7 +1013,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     processes=cardTool.allMCProcesses(),
                     mirror = True,
                     group="CMS_lepton_eff",
-                    splitGroup = {"experiment": ".*"},
+                    splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                     baseName=lepEff,
                     systAxes = ["tensor_axis_0"],
                     labelsByAxis = [""],
@@ -1044,7 +1032,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 processes=cardTool.allMCProcesses(),
                 mirror = False,
                 group="CMS_prefire17",
-                splitGroup = {"experiment": ".*"},
+                splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
                 baseName="CMS_prefire17",
                 systAxes = ["downUpVar"],
                 labelsByAxis = ["downUpVar"],
@@ -1086,7 +1074,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonL1PrefireSyst",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_syst_m",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -1095,7 +1083,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonL1PrefireStat",
         processes=['MCnoQCD'],
         group="muonPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_stat_m_",
         systAxes=["downUpVar", "etaPhiRegion"],
         labelsByAxis=["downUpVar", "etaPhiReg"],
@@ -1104,7 +1092,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("ecalL1Prefire",
         processes=['MCnoQCD'],
         group="ecalPrefire",
-        splitGroup = {f"prefire" : f".*", "experiment": ".*"},
+        splitGroup = {f"prefire" : f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_ecal",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -1114,7 +1102,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonScaleSyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleCrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="Scale_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1123,7 +1111,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonScaleClosSyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleClosCrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="ScaleClos_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1142,7 +1130,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     cardTool.addSystematic("muonScaleClosASyst_responseWeights",
         processes=['single_v_samples'],
         group="scaleClosACrctn",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="ScaleClosA_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -1152,7 +1140,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addSystematic("muonScaleClosMSyst_responseWeights",
             processes=['single_v_samples'],
             group="scaleClosMCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="ScaleClosM_correction_",
             systAxes=["unc", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -1163,7 +1151,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             mirror = True,
             processes=['single_v_samples'],
             group="resolutionCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="Resolution_correction_",
             systAxes=["smearing_variation"],
             passToFakes=passSystToFakes,
@@ -1174,7 +1162,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         mirror = True,
         processes=['single_v_samples'],
         group="pixelMultiplicitySyst",
-        splitGroup={f"muonCalibration" : f".*"},
+        splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
         baseName="pixel_multiplicity_syst_",
         systAxes=["var"],
         passToFakes=passSystToFakes,
@@ -1185,7 +1173,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             mirror = True,
             processes=['single_v_samples'],
             group="pixelMultiplicityStat",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="pixel_multiplicity_stat_",
             systAxes=["var"],
             passToFakes=passSystToFakes,
@@ -1199,7 +1187,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename="timeStability",
             processes=['MCnoQCD'],
             group=f"timeStability",
-            splitGroup = {"experiment": ".*"},
+            splitGroup = {"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
             labelsByAxis=[f"run"],
@@ -1215,7 +1203,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename="muonScaleSyst_responseWeightsDecorr",
             processes=['single_v_samples'],
             group="scaleCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="Scale_correction_",
             systAxes=["unc", "downUpVar", "run_"],
             passToFakes=passSystToFakes,
@@ -1230,7 +1218,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             rename="muonScaleClosSyst_responseWeightsDecorr",
             processes=['single_v_samples'],
             group="scaleClosCrctn",
-            splitGroup={f"muonCalibration" : f".*"},
+            splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
             baseName="ScaleClos_correction_",
             systAxes=["unc", "downUpVar", "run_"],
             passToFakes=passSystToFakes,
@@ -1246,7 +1234,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 mirror = True,
                 processes=['single_v_samples'],
                 group="resolutionCrctn",
-                splitGroup={f"muonCalibration" : f".*"},
+                splitGroup={f"muonCalibration" : f".*", "experiment": ".*"},
                 baseName="Resolution_correction_",
                 systAxes=["smearing_variation", "run_"],
                 passToFakes=passSystToFakes,
@@ -1348,7 +1336,7 @@ if __name__ == "__main__":
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
             
-            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None)
+            cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
@@ -1356,6 +1344,12 @@ if __name__ == "__main__":
                 fitvar = genvar if isPoiAsNoi else ["count"] 
                 cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=True)
                 writer.add_channel(cardTool)
+
+        if not args.skipSumGroups:
+            combine_helpers.add_ratio_xsec_groups(writer)
+            combine_helpers.add_asym_xsec_groups(writer)
+            combine_helpers.add_helicty_xsec_groups(writer)
+
         if args.fitresult:
             writer.set_fitresult(args.fitresult, mc_stat=not (args.noMCStat or args.explicitSignalMCstat))
 
