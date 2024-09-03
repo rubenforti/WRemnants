@@ -121,7 +121,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
     if ratio or diff:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            f"{args.dataName}{'-' if diff else '/'}Prefit", 
+            f"{args.dataName}{'-' if diff else '/'}Pred.", 
             args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
@@ -132,7 +132,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         yerr=False,
         histtype=histtype_mc,
         color=colors,
-        label=["Prefit"],
+        label=labels,
         stack=True,
         density=False,
         binwnorm=binwnorm,
@@ -397,15 +397,10 @@ if combinetf2:
     for channel, info in meta_input["channel_info"].items():
         if channel.endswith("masked"):
             continue
-        # hist_data = fitresult["hist_data_obs"][channel].get()
+        hist_data = fitresult["hist_data_obs"][channel].get()
         hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
         hist_stack = fitresult[f"hist_{fittype}"][channel].get()
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
-
-        hist_data = fitresult[f"hist_postfit"][channel].get()
-        hist_data = hh.sumHists([hist_data[{"processes" : p}] for p in procs])
-
-        hist_inclusive = hh.sumHists(hist_stack)
 
         # vary poi by postfit uncertainty
         if args.noiVariation:
