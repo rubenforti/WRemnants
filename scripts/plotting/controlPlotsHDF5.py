@@ -21,7 +21,6 @@ parser.add_argument("--logx", action='store_true', help="Enable log scale for x 
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
 parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")

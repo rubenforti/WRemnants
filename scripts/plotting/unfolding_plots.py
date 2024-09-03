@@ -23,7 +23,6 @@ parser.add_argument("infile", type=str, help="Output file of the analysis stage,
 parser.add_argument("--fitresult",  type=str, help="Combine fitresult root file")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=None, help="y range for ratio plot")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--debug", action='store_true', help="Print debug output")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--plots", type=str, nargs="+", default=["postfit"], choices=["prefit", "postfit"], help="Define which plots to make")
