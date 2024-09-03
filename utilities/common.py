@@ -471,6 +471,7 @@ def plot_parser():
     parser.add_argument("--legPos", type=str, default="upper right", help="Set legend position")
     parser.add_argument("--legSize", type=str, default="small", help="Legend text size (small: axis ticks size, large: axis label size, number)")
     parser.add_argument("--legCols", type=int, default=2, help="Number of columns in legend")
+    parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 
     return parser
 

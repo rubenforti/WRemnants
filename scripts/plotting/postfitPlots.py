@@ -27,7 +27,6 @@ parser.add_argument("infile", type=str, help="hdf5 file from combinetf2 or root 
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], help="y range for ratio plot")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noLowerPanel", action='store_true', help="Don't plot the lower panel in the plot")
 parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
