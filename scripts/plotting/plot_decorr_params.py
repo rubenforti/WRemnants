@@ -29,6 +29,8 @@ if __name__ == '__main__':
     parser.add_argument("--showMCInput", action="store_true", help="Show MC input value in the plot")
     parser.add_argument("--title", type=str, default=None, help="Add a title to the plot on the upper right")
 
+    parser = common.set_parser_default(parser, "legCols", 1)
+
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -37,7 +39,7 @@ if __name__ == '__main__':
     fitresult = combinetf_input.get_fitresult(args.infile.replace('.root','.hdf5'))
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
-    # lumi = sum([c["lumi"] for c in meta["channel_info"].values()])
+    lumi = sum([c["lumi"] for c in meta["channel_info"].values()])
 
     with uproot.open(f"{args.infile.replace('.hdf5','.root')}:fitresults") as utree:
         nll = utree['nllvalfull'].array(library="np")
@@ -162,7 +164,6 @@ if __name__ == '__main__':
 
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
         fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel="",#", ".join(ylabels), 
-            cms_label=args.cmsDecor, #lumi=lumi,
             grid=True, automatic_scale=False, width_scale=1.5, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
 
         if args.infileInclusive:
@@ -212,8 +213,9 @@ if __name__ == '__main__':
             ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
             central=0
 
-        plot_tools.addLegend(ax1, ncols=1, text_size=16, loc="upper right")#" if val[-1]<offset else "upper left")
-        # plot_tools.fix_axes(ax1, logy=args.logy)
+
+        plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)

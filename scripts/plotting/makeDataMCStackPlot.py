@@ -29,7 +29,6 @@ parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict
 parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
 parser.add_argument("--procFilters", type=str, nargs="*", help="Filter to plot (default no filter, only specify if you want a subset")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
@@ -240,16 +239,16 @@ def collapseSyst(h):
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
     if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
-        # in case of variable bin width normalize to unit
+        # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
-        ylabel="Events/unit"
+        ylabel="Events/GeV"
     else:
         binwnorm = None
         ylabel="Events/bin"
     if len(h.split("-")) > 1:
         sp = h.split("-")
         action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
-        xlabel=f"{'-'.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])} bin"
+        xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
         xlabel=styles.xlabels.get(h,h)
@@ -260,8 +259,10 @@ for h in args.hists:
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
-            cms_decor=args.cmsDecor, legtext_size=20*args.scaleleg, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
-            ratio_error=args.ratioError, normalize_to_data=args.normToData)
+            cms_decor=args.cmsDecor, legtext_size=args.legSize, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
+            width_scale=1.25 if len(h.split("-")) == 1 else 1,
+            )
 
     fitresultstring=""
     if args.fitresult:

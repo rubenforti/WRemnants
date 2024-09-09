@@ -21,7 +21,6 @@ parser.add_argument("--logx", action='store_true', help="Enable log scale for x 
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
 parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
@@ -95,7 +94,7 @@ def make_plots(hists_proc, hist_data, *opts, **info):
 
 
 def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
-    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, legtext_size=20
+    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, 
 ):
     if args.processGrouping is not None:
         hists_proc, labels, colors, procs = styles.process_grouping(args.processGrouping, hists_proc, procs)
@@ -277,23 +276,16 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
                 ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                     fontsize=20*args.scaleleg*scale)  
 
-        plot_tools.addLegend(ax1, 2, text_size=legtext_size)
         if add_ratio:
-            plot_tools.fix_axes(ax1, ax2, yscale=args.yscale, logy=args.logy)
+            plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
         else:
             plot_tools.fix_axes(ax1, yscale=args.yscale, logy=args.logy)
-
-        # ax1.ticklabel_format(style='sci', axis='y', scilimits=(-2,2))
-
-        # # move scientific notation (e.g. 10^5) a bit to the left 
-        # offset_text = ax1.get_yaxis().get_offset_text()
-        # offset_text.set_position((-0.08,1.02))
 
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density and args.dataName=="Data" else None
             
-            hep.cms.label(ax=ax1, lumi=lumi, fontsize=legtext_size*scale, 
-                label= args.cmsDecor, data=hist_data is not None)
+        plot_tools.add_cms_decor(ax1, args.cmsDecor, data=hist_data is not None, lumi=lumi, loc=args.logoPos)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
         outfile = "hist_"
         if not args.noStack:
