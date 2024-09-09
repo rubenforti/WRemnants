@@ -446,15 +446,24 @@ def build_graph(df, dataset):
         # also remove vertex weights since they depend on PU
         if dataset.is_data:
             df = df.DefinePerSample("nominal_weight_noPUandVtx", "1.0")
+            df = df.DefinePerSample("nominal_weight_noVtx", "1.0")
         else:
             df = df.Define("nominal_weight_noPUandVtx", "nominal_weight/(weight_pu*weight_vtx)")
+            df = df.Define("nominal_weight_noVtx", "nominal_weight/weight_vtx")
         axis_nRecoVtx = hist.axis.Regular(50, 0.5, 50.5, name="PV_npvsGood")
         axis_fixedGridRhoFastjetAll = hist.axis.Regular(50, 0, 50, name="fixedGridRhoFastjetAll")
         results.append(df.HistoBoost("PV_npvsGood_uncorr", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("PV_npvsGood_noVtx", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight_noVtx"]))
         results.append(df.HistoBoost("PV_npvsGood", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight"]))
         results.append(df.HistoBoost("fixedGridRhoFastjetAll_uncorr", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("fixedGridRhoFastjetAll_noVtx", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight_noVtx"]))
         results.append(df.HistoBoost("fixedGridRhoFastjetAll", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight"]))
-
+        df = df.Define("trigMuons_vertexZ0", "PV_z + Muon_dz[trigMuons][0]") # define at reco level as PV_z + Muon_dz
+        axis_vertexZ0 = hist.axis.Regular(400, -20, 20, name="muonVertexZ0")
+        results.append(df.HistoBoost("trigMuons_vertexZ0_uncorr", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noPUandVtx"]))
+        results.append(df.HistoBoost("trigMuons_vertexZ0_noVtx", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noVtx"]))
+        results.append(df.HistoBoost("trigMuons_vertexZ0", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight"]))
+        
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
