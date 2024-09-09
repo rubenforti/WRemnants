@@ -74,16 +74,16 @@ def dressed2DfromFit(h1d, binning, name, title='', shift=0,
 # if the flavour combinations was made, each charge sector is in turn divided in muons-electrons
 # at the end, there are N bins where N is the number of charges in the fit times number of masked channels for each charge
 
-def chargeUnrolledBinShifts(h1d, nCharges=2, nMaskedCha=2):
+def chargeUnrolledBinShifts(h1d, nCharges=2, nMaskedCha=0):
     nbins = int((h1d.GetNbinsX()-nCharges*nMaskedCha)/2)
     ret = {}
-    if h1d.Integral(0,nbins)==0:
+    if h1d.Integral(1,nbins)==0:
         ret = {'plus': nbins, 'minus': 0}
     else:
         ret = {'plus': 0, 'minus': nbins}
     return ret
 
-def singleChargeUnrolled(h1d, shift, nCharges=2, nMaskedCha=2, name="shift", nRecoBins=0):
+def singleChargeUnrolled(h1d, shift, nCharges=2, nMaskedCha=0, name="shift", nRecoBins=0):
     extrabins = 0 if 'obs' in h1d.GetName() else nCharges*nMaskedCha
     nbins = int((h1d.GetNbinsX()-extrabins)/2)
     h1d_shifted = ROOT.TH1D(name,'',nbins,0,nbins)
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     # FIXME: read binning from some input file
     parser.add_argument("--ptBins", default=None, type=float, nargs='*', help="Edges for pt bins (if not given it uses a default)")
     parser.add_argument("--etaBins", default=None, type=float, nargs='*', help="Edges for eta bins (if not given it uses a default)")
+    #parser.add_argument(     '--rootAndTxtFitInputs', action='store_true', help="If the fit was from the old root + txt datacard setup, it affects the way the unrolled plots are stored in the fit output file (the hdf5 version of setupCombine.py does not use channels for the charge)")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -177,6 +178,7 @@ if __name__ == "__main__":
     textForUnrolled = f"2 * (nllfull - nllsat) = {round(postfit_2deltaLL,1)}     ndof(+/-) = {ndof}     #chi^{{2}} prob = {round(100.0*postfit_chi2prob,1)}%::0.3,0.96,0.08,0.04"
 
     shifts = chargeUnrolledBinShifts(h1d, nCharges, nMaskedChanPerCharge)
+
     # get process names:
     predictedProcessNames = []
     for k in infile.GetListOfKeys():

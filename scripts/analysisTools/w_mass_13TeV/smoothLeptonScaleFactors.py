@@ -1318,6 +1318,7 @@ if __name__ == "__main__":
     canvas = ROOT.TCanvas("canvas","",700,625)
 
     # plot eigen variations
+    systVarTitle = "Alternate/nominal" # "Alternate - nominal"
     if not args.skipEff:
         nvars = int((hist_effMC_nomiAndAlt_etapt.GetNbinsZ() - 2) / 2)
         for iv in range(nvars):
@@ -1325,23 +1326,26 @@ if __name__ == "__main__":
             # MC
             hvar = getTH2fromTH3(hist_effMC_nomiAndAlt_etapt, f"effStatVar_p{iv}_effMC",binVar, binVar)
             hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-            hvar.Add(hmcSmoothCheck, -1.0)
-            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (MC efficiency)",
+            #hvar.Add(hmcSmoothCheck, -1.0)
+            hvar.Divide(hmcSmoothCheck)
+            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (MC efficiency)",
                                 hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                                 palette=args.palette, passCanvas=canvas)
             # data
             hvar = getTH2fromTH3(hist_effData_nomiAndAlt_etapt, f"effStatVar_p{iv}_effData",binVar, binVar)
             hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-            hvar.Add(hdataSmoothCheck, -1.0)
-            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+            #hvar.Add(hdataSmoothCheck, -1.0)
+            hvar.Divide(hdataSmoothCheck)
+            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                                 hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                                 palette=args.palette, passCanvas=canvas)
         # syst only for data
         systBin = hist_effData_nomiAndAlt_etapt.GetNbinsZ()
         hvar = getTH2fromTH3(hist_effData_nomiAndAlt_etapt, "effSystVar_effData", systBin, systBin)
         hvar.SetTitle("Eff. syst. nuisance")
-        hvar.Add(hdataSmoothCheck, -1.0)
-        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+        #hvar.Add(hdataSmoothCheck, -1.0)
+        hvar.Divide(hdataSmoothCheck)
+        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                             hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                             palette=args.palette, passCanvas=canvas)
 
@@ -1352,16 +1356,18 @@ if __name__ == "__main__":
         binVar = 2 + iv
         hvar = getTH2fromTH3(hist_SF_nomiAndAlt_etapt, f"effStatVar_p{iv}_SF",binVar, binVar)
         hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-        hvar.Add(hsfSmoothCheck, -1.0)
-        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (scale factor)",
+        #hvar.Add(hsfSmoothCheck, -1.0)
+        hvar.Divide(hsfSmoothCheck)
+        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (scale factor)",
                             hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                             palette=args.palette, passCanvas=canvas)
     #
     systBin = hist_SF_nomiAndAlt_etapt.GetNbinsZ()
     hvar = getTH2fromTH3(hist_SF_nomiAndAlt_etapt, "effSystVar_SF", systBin, systBin)
     hvar.SetTitle("Eff. syst. nuisance")
-    hvar.Add(hsfSmoothCheck, -1.0)
-    drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+    #hvar.Add(hsfSmoothCheck, -1.0)
+    hvar.Divide(hsfSmoothCheck)
+    drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                         hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                         palette=args.palette, passCanvas=canvas)
 
