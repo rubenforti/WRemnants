@@ -28,8 +28,10 @@ if __name__ == '__main__':
     parser.add_argument("--absoluteParam", action="store_true", help="Show plot as a function of absolute value of parameter (default is difference to SM prediction)")
     parser.add_argument("--showMCInput", action="store_true", help="Show MC input value in the plot")
     parser.add_argument("--title", type=str, default=None, help="Add a title to the plot on the upper right")
+    parser.add_argument("--widthScale", type=float, default=1.5, help="Scale the width of the figure with this factor")
 
     parser = common.set_parser_default(parser, "legCols", 1)
+    parser = common.set_parser_default(parser, "legPos", None)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -62,12 +64,12 @@ if __name__ == '__main__':
             xlabel = param.split("MeV")[0]
             if xlabel.startswith("massShift"):
                 proc = xlabel.replace("massShift","")[0]
-                xlabel = "$m_\mathrm{"+str(proc)+"}$ [MeV]"
+                xlabel = "$\mathit{m}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset = 80354 if proc=="W" else 91187.6
 
             if xlabel.startswith("Width"):
                 proc = xlabel.replace("Width","")[0]
-                xlabel = "$\Gamma_\mathrm{"+str(proc)+"}$ [MeV]"
+                xlabel = "$\mathit{\Gamma}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset= 2091.13 if proc=="W" else 2494.13
 
             scale = float(re.search(r'\d+(\.\d+)?', param.split("MeV")[0].replace("p",".")).group())
@@ -97,7 +99,7 @@ if __name__ == '__main__':
 
         # hardcode formatting of known axes
         if "eta" in axes:
-            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\eta^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
+            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
             if "charge" in axes:
                 df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("eta","eta^{+}") if x["charge"]==1 else x["yticks"].replace("eta","eta^{-}"), axis=1)
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
@@ -114,11 +116,11 @@ if __name__ == '__main__':
         elif "etaRegionRange" in axes:
             axis_ranges = {0:"2",1:"1",2:"0"}
             df_p["yticks"] = df_p["etaRegionRange"].apply(lambda x: str(axis_ranges[x])).astype(str)
-            ylabel = "$(|\eta^{\mu^+}| < 0.9) + (|\eta^{\mu^-}| < 0.9)$"
+            ylabel = "$(|\mathit{\eta}^{\mu^+}| < 0.9) + (|\mathit{\eta}^{\mu^-}| < 0.9)$"
         elif "etaRegionSign" in axes:
             axis_ranges = {0:"-2",1:"0",2:"2"}
             df_p["yticks"] = df_p["etaRegionSign"].apply(lambda x: str(axis_ranges[x])).astype(str)
-            ylabel="$\mathrm{sign}(\eta^{\mu^+}) + \mathrm{sign}(\eta^{\mu^-})$"
+            ylabel="$\mathrm{sign}(\mathit{\eta}^{\mu^+}) + \mathrm{sign}(\mathit{\eta}^{\mu^-})$"
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
@@ -167,7 +169,7 @@ if __name__ == '__main__':
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
 
         fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel=ylabel,#", ".join(ylabels), 
-            grid=True, automatic_scale=False, width_scale=0.75, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
+            grid=True, automatic_scale=False, width_scale=args.widthScale, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
 
         if args.infileInclusive:
             ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="", zorder=3)
@@ -181,16 +183,16 @@ if __name__ == '__main__':
 
             chi2_stat = 2*(nll_inclusive - nll)[0]
             if args.data:
-                chi2_label = "\chi^2/\mathrm{ndf}"
+                chi2_label = "\mathit{\chi}^2/\mathit{ndf}"
             else:
                 # in case of pseudodata fits there are no statistical fluctuations and we can only access the expected p-value, where ndf has to be added to the test statistic
                 chi2_stat += ndf
-                chi2_label = "<\chi^2/\mathrm{ndf}>"
+                chi2_label = "<\mathit{\chi}^2/\mathit{ndf}>"
 
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            if args.legPos == "center left":
+            if args.legPos in [None, "center left"]:
                 x_chi2 = 0.06
                 y_chi2 = 0.15
                 ha = "left"
@@ -199,7 +201,7 @@ if __name__ == '__main__':
                 raise NotImplementedError("Can only plot chi2 if legend is 'center left'")
 
             plot_tools.wrap_text(
-                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$p = {str(round(p_value*100))}\,\%$"], 
+                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"], 
                 ax1, x_chi2, y_chi2, text_size=args.legSize)
             
             ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.3)
@@ -226,7 +228,7 @@ if __name__ == '__main__':
             central=0
 
         plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
-        plot_tools.addLegend(ax1, ncols=args.legCols, loc=(0.02, 0.58),#args.legPos, 
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=(0.02, 0.58) if args.legPos is None else args.legPos, 
             text_size=args.legSize)
 
         if args.title:

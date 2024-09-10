@@ -83,10 +83,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen", "pt"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
-        ylabel="Events/GeV"
+        ylabel="$Events\,/\,GeV$"
     else:
         binwnorm = None
-        ylabel="Events/bin"
+        ylabel="$Events\,/\,bin$"
 
     if args.logTransform:
         ylabel = ylabel.replace("Events", "log(Events)")
@@ -124,7 +124,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
     if ratio or diff:
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            f"{args.dataName}{'-' if diff else '/'}Pred.", 
+            f"${args.dataName}"+('-' if diff else '\,/\,')+"Pred.$", 
             args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
@@ -245,15 +245,15 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 ax2.fill_between(edges, 
                         np.append((nom+std)-nom, ((nom+std)-nom)[-1]), 
                         np.append((nom-std)-nom, ((nom-std)-nom)[-1]),
-                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label=label_unc)
             else:
                 ax2.fill_between(edges, 
                         np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
                         np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
-                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label=label_unc)
 
         if hup is not None:
-            color_variation = "#7A21DD"
+            color_variation = "magenta"#"#7A21DD"
             hep.histplot(
                 [hh.divideHists(hup, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hdown, h_inclusive, cutoff=0.01, rel_unc=True)],
                 histtype="step",
