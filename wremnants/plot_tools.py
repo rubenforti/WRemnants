@@ -695,9 +695,9 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
         logger.info(f"Writing file {logname}")
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, out, outfolder, name, 
-                      legend_loc="upper right", double_colors=False, scale_leg=1, capsize=10, fontsize=24, width_scale=1.5, 
+                      legend_loc="upper right", double_colors=False, scale_leg=1, capsize=10, width_scale=1.5, 
                       center_color="black",
-                      offset=0, point_center_colors=None):
+                      offset=0, point_center_colors=None, cms_label="Preliminary"):
     nentries = len(df)+offset
 
     # This code makes me feel like an idiot by I can't think of a better way to do it
@@ -709,9 +709,9 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
         raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
 
     fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
-                    cms_label="Preliminary", 
+                    cms_label=cms_label, 
                     grid=True, automatic_scale=False, width_scale=width_scale, 
-                    height=4+0.24*nentries, xlim=xlim, ylim=[0, nentries+1], logoPos=2, fontsize=fontsize)
+                    height=4+0.24*nentries, xlim=xlim, ylim=[0, nentries+1])
 
     ax1.plot([centerline, centerline], [0, nentries+1], linestyle="dashdot", marker="none", color=center_color, label=center_label)
     ax1.fill_between([centerline-center_unc, centerline+center_unc], 0, nentries+1, color="grey", alpha=0.2)
@@ -729,6 +729,9 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
         ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize)
         if len(u) > 1:
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
+
+    if cms_label:
+        hep.cms.text(ax=ax1, text=cms_label, loc=2)
 
     if legend_loc is not None:
         addLegend(ax1, ncols=1, text_size=12*scale_leg, loc=legend_loc, reverse=True)

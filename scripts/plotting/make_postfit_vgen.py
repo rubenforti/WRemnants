@@ -10,7 +10,6 @@ parser = common.plot_parser()
 parser.add_argument("--unfolded", type=str, required=False)
 parser.add_argument("--gen", type=str, required=True)
 parser.add_argument("-w", action='store_true')
-parser.add_argument("--preliminary", action='store_true')
 parser.add_argument("--ptll-fit", type=str, required=True)
 parser.add_argument("--etapt-fit", type=str, required=True)
 parser.add_argument("--obs", type=str, default="ptVgen")
@@ -132,17 +131,19 @@ fig = plot_tools.makePlotWithRatioToRef(
                 xlim=None, binwnorm=1.0, baseline=True,
                 yerr=False,
                 fill_between=6,
-                cms_label=args.preliminary if args.preliminary else ' ',
+                cms_label=args.cmsDecor,
                 legtext_size=14,
                 dataIdx=3 if unfolded_data else None,
                 scale_cms=0.8,
 )
+eoscp = output_tools.is_eosuser_path(args.outpath)
+
 outdir = output_tools.make_plot_dir(args.outpath, "Z", eoscp=True)
 name = f"ptVgen_postfit_{'W' if args.w else 'Wlike'}_RecoPtll_PrefitRatio"
-if args.preliminary:
+if "preliminary" in args.cmsDecor.lower():
     name += "_preliminary"
 
 plot_tools.save_pdf_and_png(outdir, name)
 plot_tools.write_index_and_log(outdir, name)
-if output_tools.is_eosuser_path(args.outpath):
+if eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, "W" if args.w else "Z", deleteFullTmp=True)
