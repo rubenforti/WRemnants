@@ -38,8 +38,8 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
 
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
-    bin_density = 300, logy=False, logx=False,
-    width_scale=1, height=8, automatic_scale=True,
+    bin_density = 300, cms_label = None, logy=False, logx=False,
+    width_scale=1, height=8, automatic_scale=True
 ):
     if isinstance(href, hist.Hist):
         fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
@@ -120,7 +120,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     else:
         return fig,ax2
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right'):
+def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', reverse=False):
     handles, labels = ax.get_legend_handles_labels()
     
     shape = np.divide(*ax.get_figure().get_size_inches())
@@ -139,7 +139,7 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     else:
         text_size = int(text_size)
 
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, reverse=reverse)
 
     if extra_text:
         p = leg.get_frame()
@@ -414,7 +414,7 @@ def makePlotWithRatioToRef(
     xlabel="", ylabel="Events/bin", rlabel="x/nominal",
     rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2, binwnorm=None, alpha=1.,
     baseline=True, dataIdx=None, autorrange=None, grid = False, extra_text=None, extra_text_loc=(0.8, 0.7),
-    yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None,
+    yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None, logoPos=2, scale_cms=1,
     logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, cutoff=1e-6, only_ratio = False, width_scale = 1
 ):
     if len(hists) != len(labels) or len(hists) != len(colors):
@@ -425,13 +425,13 @@ def makePlotWithRatioToRef(
         fig, ax1, ax2 = figureWithRatio(
         hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
+            bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
     else:
         fig, ax2 = figureWithRatio(
             hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
+            bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
@@ -504,6 +504,10 @@ def makePlotWithRatioToRef(
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
         fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
         if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
+
+    if cms_label:
+        add_cms_decor(ax1, cms_label, loc=logoPos, text_size=ax1.yaxis.label.get_size()*scale_cms)
+
     return fig
 
 def makeHistPlot2D(h2d, flow=False, **kwargs):
@@ -689,3 +693,54 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
                 logf.write('\n'+'-'*80+"\n")
                 logf.write(json.dumps(analysis_info, indent=5).replace("\\n", "\n"))
         logger.info(f"Writing file {logname}")
+
+def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, out, outfolder, name, 
+                      legend_loc="upper right", double_colors=False, scale_leg=1, capsize=10, fontsize=24, width_scale=1.5, 
+                      center_color="black",
+                      offset=0, point_center_colors=None):
+    nentries = len(df)+offset
+
+    # This code makes me feel like an idiot by I can't think of a better way to do it
+    if colors == "auto":
+        cmap = mpl.cm.get_cmap("tab10")
+        colors = [cmap(i) for i in range(len(df))]
+
+    if len(colors) != len(df):
+        raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
+
+    fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
+                    cms_label="Preliminary", 
+                    grid=True, automatic_scale=False, width_scale=width_scale, 
+                    height=4+0.24*nentries, xlim=xlim, ylim=[0, nentries+1], logoPos=2, fontsize=fontsize)
+
+    ax1.plot([centerline, centerline], [0, nentries+1], linestyle="dashdot", marker="none", color=center_color, label=center_label)
+    ax1.fill_between([centerline-center_unc, centerline+center_unc], 0, nentries+1, color="grey", alpha=0.2)
+
+    for i, (x, row) in enumerate(df.iterrows()):
+        # Use for spacing purposes
+        #if df is None:
+        #    continue
+
+        vals = row.iloc[1:].values
+        u = vals[1:]
+        pos = nentries-i-offset
+        # Lazy way to arrange the legend properly
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], label=row.loc["Name"])
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize)
+        if len(u) > 1:
+            ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
+
+    if legend_loc is not None:
+        addLegend(ax1, ncols=1, text_size=12*scale_leg, loc=legend_loc, reverse=True)
+    ax1.minorticks_off()
+    ax1.set_yticklabels([])
+    ax1.xaxis.set_major_locator(ticker.LinearLocator(numticks=5))
+    eoscp = "/eos" in out[:4]
+    outdir = output_tools.make_plot_dir(out, outfolder, eoscp=eoscp)
+    save_pdf_and_png(outdir, name, fig)
+    write_index_and_log(outdir, name)
+    if eoscp:
+        output_tools.copy_to_eos(outdir, out, outfolder)
+    return fig
+    
+
