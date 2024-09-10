@@ -1,6 +1,7 @@
 import mplhep as hep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import itertools
 import os
 import hist
@@ -43,6 +44,8 @@ parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for p
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
 parser.add_argument("--binSeparationLines", type=float, default=None, nargs='*', help="Plot vertical lines for makro bin edges in unrolled plots, specify bin boundaries to plot lines, if empty plot for all")
+parser.add_argument("--lowerLegPos", type=str, default="upper left", help="Set legend position")
+parser.add_argument("--lowerLegCols", type=int, default=2, help="Number of columns in legend")
 
 args = parser.parse_args()
 
@@ -77,7 +80,7 @@ translate_selection = {
 def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=None, hdown=None, variation="",suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
     axes_names = [a.name for a in axes]
 
-    if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+    if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen", "pt"]):
         # in case of variable bin width normalize to unit
         binwnorm = 1.0
         ylabel="Events/GeV"
@@ -154,21 +157,6 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             zorder=2,
             flow='none',
         )    
-    
-    if hup is not None:
-        hep.histplot(
-            [hup, hdown],
-            yerr=False,
-            histtype="step",
-            color="#7A21DD",
-            linestyle=["-","--"],
-            label=[variation,""],
-            binwnorm=binwnorm,
-            ax=ax1,
-            alpha=1.,
-            zorder=2,
-            flow='none',
-        )
 
     if len(axes_names) > 1 and args.binSeparationLines is not None:
         # plot dashed vertical lines to sepate makro bins
@@ -203,8 +191,11 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 hi = s_range(axes[0].edges[i])
                 plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, x, y, text_size="small")
 
-    if ratio or diff:
 
+
+    if ratio or diff:
+        extra_handles = []
+        extra_labels = []
         if diff:
             h1 = hh.addHists(h_inclusive, h_inclusive, scale2=-1)
             h2 = hh.addHists(h_data, h_inclusive, scale2=-1)
@@ -228,7 +219,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 h2,
                 histtype="errorbar",
                 color="black",
-                label=args.dataName,
+                # label=args.dataName,
                 yerr=True if not args.logTransform else h2.variances()**0.5,
                 linewidth=2,
                 ax=ax2,
@@ -246,34 +237,36 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             nom = h_inclusive.values() / binwidth
             std = np.sqrt(h_inclusive.variances()) / binwidth
 
-            hatchstyle = '///'
-            ax1.fill_between(edges, 
-                    np.append(nom+std, (nom+std)[-1]), 
-                    np.append(nom-std, (nom-std)[-1]),
-                step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
+            hatchstyle = None
+            facecolor = "silver"
+            label_unc = "Pred. unc."
 
             if diff:
                 ax2.fill_between(edges, 
                         np.append((nom+std)-nom, ((nom+std)-nom)[-1]), 
                         np.append((nom-std)-nom, ((nom-std)-nom)[-1]),
-                    step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
             else:
                 ax2.fill_between(edges, 
                         np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
                         np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
-                    step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
+                    step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
 
         if hup is not None:
+            color_variation = "#7A21DD"
             hep.histplot(
                 [hh.divideHists(hup, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hdown, h_inclusive, cutoff=0.01, rel_unc=True)],
                 histtype="step",
-                color="#7A21DD",
+                color=color_variation,
                 linestyle=["-","--"],
                 yerr=False,
                 linewidth=2,
                 ax=ax2,
                 flow='none',
             )
+
+            extra_handles.append(Line2D([0], [0], color=color_variation))
+            extra_labels.append(variation)
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
@@ -298,6 +291,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+
+    if ratio or diff:
+        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, extra_handles=extra_handles, extra_labels=extra_labels)
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
@@ -329,8 +325,8 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
 
     if hist_var is not None:
         variations = {
-            "massShiftW100MeV": '$\pm \Delta m_\mathrm{W}$',
-            "massShiftZ100MeV": '$\pm \Delta m_\mathrm{Z}$',
+            "massShiftW100MeV": r'$\mathit{m}_\mathrm{W} \pm 9.9\,\mathrm{MeV}$',
+            "massShiftZ100MeV": r'$\mathit{m}_\mathrm{Z} \pm 4.8\,\mathrm{MeV}$',
         }
         variation = variations[hist_var.axes["nois"][0]]
         hist_down = hist_var[{"downUpVar":0, "nois":0}]

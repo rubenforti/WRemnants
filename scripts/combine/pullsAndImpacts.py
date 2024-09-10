@@ -297,7 +297,7 @@ def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[
     return df
 
 def parseArgs():
-    sort_choices = ["label", "abspull", "constraint", "absimpact"]
+    sort_choices = ["label", "pull", "abspull", "constraint", "absimpact"]
     sort_choices += [
         *[f"{c}_diff" for c in sort_choices],  # possibility to sort based on largest difference between input and referencefile
         *[f"{c}_ref" for c in sort_choices],   # possibility to sort based on reference file
@@ -404,7 +404,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
         if args.sort.endswith("diff"):
             logger.debug("Sort impacts")
             key = args.sort.replace("_diff","")
-            df[f"{key}_diff"] = df[key] - df[f"{key}_ref"]
+            df[f"{key}_diff"] = abs(df[key] - df[f"{key}_ref"])
         elif args.sort.endswith("both"):
             key = args.sort.replace("_both","")
             if args.ascending:

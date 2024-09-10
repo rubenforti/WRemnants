@@ -2,6 +2,13 @@ from utilities import logging, boostHistHelpers as hh
 
 logger = logging.child_logger(__name__)
 
+# colors from CAT (https://cms-analysis.docs.cern.ch/guidelines/plotting/colors/)
+# #5790fc blue
+# #f89c20 orange
+# #e42536 red
+# #964a8b light purple	
+# #9c9ca1 grey
+# #7a21dd dark purple
 
 process_colors = {
     "Data": "black",
@@ -16,13 +23,13 @@ process_colors = {
     "DYlowMass": "deepskyblue",
     "PhotonInduced": "gold",
     "Top": "green",
-    "Diboson": "#964A8B",
-    "Rare": "#964A8B",
-    "QCD": "#9C9CA1",
-    "Other": "#9C9CA1",
-    "Fake": "#9C9CA1",
-    "Fake_e": "#9C9CA1",
-    "Fake_mu": "#9C9CA1",
+    "Diboson": "#964a8b",
+    "Rare": "#964a8b",
+    "Other": "#964a8b",
+    "QCD": "#9c9ca1", #"#9C9CA1",
+    "Fake": "#9c9ca1",
+    "Fake_e": "#9c9ca1",
+    "Fake_mu": "#9c9ca1",
     "Prompt": "#E42536",
 }
 
@@ -40,8 +47,8 @@ process_supergroups = {
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
     "z_dilepton":{
-        "Zmumu": ["Zmumu"],
-        "Other": ["Other","PhotonInduced", "Ztautau"],
+        "Z": ["Zmumu", "Ztautau"],
+        "Other": ["Other","PhotonInduced"],
     },
     "w_lowpu":{
         "Z": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
@@ -53,15 +60,15 @@ process_supergroups["z_lowpu"]=process_supergroups["z_dilepton"]
 
 process_labels = {
     "Data": "Data",
-    "Zmumu": r"Z$\to\mu\mu$",
-    "Zee": r"Z$\to ee$",
-    "Zll": r"Z$\to\mu\mu$",
-    "Z": r"Z",
-    "Ztautau": r"Z$\to\tau\tau$",
+    "Zmumu": r"Z/$\gamma^{\star}\to\mu\mu$",
+    "Zee": r"Z/$\gamma^{\star}\to ee$",
+    "Zll": r"Z/$\gamma^{\star}\to\mu\mu$",
+    "Z": r"Z/$\gamma^{\star}\to\mu\mu/\tau\tau$",
+    "Ztautau": r"Z/$\gamma^{\star}\to\tau\tau$",
     "Wmunu":  r"W$^{\pm}\to\mu\nu$",
     "Wenu": r"W$^{\pm}\to e\nu$",
     "Wtaunu": r"W$^{\pm}\to\tau\nu$",
-    "DYlowMass": r"Z$\to\mu\mu$, $10<m<50$ GeV",
+    "DYlowMass": r"Z/$\gamma^{\star}\to\mu\mu$, $10<m<50$ GeV",
     "PhotonInduced": r"$\gamma$-induced",
     "Top": "Top",
     "Diboson": "Diboson",
@@ -74,42 +81,42 @@ process_labels = {
 }
 
 xlabels = {
-    "pt" : r"p$_{T}^{\mu}$ (GeV)",
-    "ptGen" : r"p$_{T}^{\mu}$ (GeV)",
-    "ptW" : r"p$_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
-    "ptVGen" : r"p$_{T}^\mathrm{V}$ (GeV)",
-    "muonJetPt": r"p$_{T}^\mathrm{jet[\mu]}$ (GeV)",
-    "eta" : r"$\eta^{\mu}$",
-    "etaGen" : r"$\eta^{\mu}$",
-    "abseta" : r"$|\eta^{\mu}|$",
-    "absEta" : r"$|\eta^{\mu}|$",
-    "absEtaGen" : r"$|\eta^{\mu}|$",
-    "ptll" : r"p$_{\mathrm{T}}^{\mu\mu}$ (GeV)",
-    "yll" : r"y$^{\mu\mu}$",
-    "absYVGen" : r"|Y$^\mathrm{V}$|",
-    "mll" : r"m$_{\mu\mu}$ (GeV)",
-    "ewMll" : r"m$^{\mathrm{EW}}_{\mu\mu}$ (GeV)",
-    "costhetastarll" : r"$\cos{\theta^{\star}_{\mu\mu}}$",
-    "cosThetaStarll" : r"$\cos{\theta^{\star}_{\mu\mu}}$",
-    "phistarll" : r"$\phi^{\star}_{\mu\mu}$",
-    "phiStarll" : r"$\phi^{\star}_{\mu\mu}$",
-    "MET_pt" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
-    "MET" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
-    "met" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
-    "mt" : r"m$_{T}^{\mu\nu}$ (GeV)",
-    "mtfix" : r"m$_{T}^\mathrm{fix}$ (GeV)",
-    "etaPlus" : r"$\eta^{\mu(+)}$",
-    "etaMinus" : r"$\eta^{\mu(-)}$",
-    "ptPlus" : r"p$_{\mathrm{T}}^{\mu(+)}$ (GeV)",
-    "ptMinus" : r"p$_{\mathrm{T}}^{\mu(-)}$ (GeV)",
-    "etaSum":r"$\eta^{\mu(+)} + \eta^{\mu(-)}$",
-    "etaDiff":r"$\eta^{\mu(+)} - \eta^{\mu(-)}$",
-    "etaDiff":r"$\eta^{\mu(+)} - \eta^{\mu(-)}$",
-    "etaAbsEta": r"$\eta^{\mu[\mathrm{argmax(|\eta^{\mu}|)}]}$",
+    "pt" : r"$\mathit{p}_{T}^{\mu}$ (GeV)",
+    "ptGen" : r"$\mathit{p}_{T}^{\mu}$ (GeV)",
+    "ptW" : r"$\mathit{p}_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
+    "ptVGen" : r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
+    "muonJetPt": r"$\mathit{p}_{T}^\mathrm{jet[\mu]}$ (GeV)",
+    "eta" : r"$\mathit{\eta}^{\mu}$",
+    "etaGen" : r"$\mathit{\eta}^{\mu}$",
+    "abseta" : r"$|\mathit{\eta}^{\mu}|$",
+    "absEta" : r"$|\mathit{\eta}^{\mu}|$",
+    "absEtaGen" : r"$|\mathit{\eta}^{\mu}|$",
+    "ptll" : r"$\mathit{p}_{\mathrm{T}}^{\mu\mu}$ (GeV)",
+    "yll" : r"$\mathit{y}^{\mu\mu}$",
+    "absYVGen" : r"|$\mathit{Y}^\mathrm{V}$|",
+    "mll" : r"$\mathit{m}_{\mu\mu}$ (GeV)",
+    "ewMll" : r"$\mathit{m}^{\mathrm{EW}}_{\mu\mu}$ (GeV)",
+    "costhetastarll" : r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
+    "cosThetaStarll" : r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
+    "phistarll" : r"$\mathit{\phi}^{\star}_{\mu\mu}$",
+    "phiStarll" : r"$\mathit{\phi}^{\star}_{\mu\mu}$",
+    "MET_pt" : r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
+    "MET" : r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
+    "met" : r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
+    "mt" : r"$\mathit{m}_{T}^{\mu\nu}$ (GeV)",
+    "mtfix" : r"$\mathit{m}_{T}^\mathrm{fix}$ (GeV)",
+    "etaPlus" : r"$\mathit{\eta}^{\mu(+)}$",
+    "etaMinus" : r"$\mathit{\eta}^{\mu(-)}$",
+    "ptPlus" : r"$\mathit{p}_{\mathrm{T}}^{\mu(+)}$ (GeV)",
+    "ptMinus" : r"$\mathit{p}_{\mathrm{T}}^{\mu(-)}$ (GeV)",
+    "etaSum":r"$\mathit{\eta}^{\mu(+)} + \mathit{\eta}^{\mu(-)}$",
+    "etaDiff":r"$\mathit{\eta}^{\mu(+)} - \mathit{\eta}^{\mu(-)}$",
+    "etaDiff":r"$\mathit{\eta}^{\mu(+)} - \mathit{\eta}^{\mu(-)}$",
+    "etaAbsEta": r"$\mathit{\eta}^{\mu[\mathrm{argmax(|\mathit{\eta}^{\mu}|)}]}$",
     "ewMll": "ewMll",
     "ewMlly": "ewMlly",
     "ewLogDeltaM": "ewLogDeltaM",
-    "dxy":r"$d_\mathrm{xy}$ (cm)",
+    "dxy":r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": r"$I$ (GeV)",
     "relIso": "$I_\mathrm{rel}$",
 }
@@ -356,7 +363,7 @@ def process_grouping(grouping, hist_stack, procs):
             new_stack[new_name] = hh.sumHists(stacks)  
     else:
         new_stack = hist_stack
-        logger.warning(f"No supergroups found for input file with mode {groupingg}, proceed without merging groups")
+        logger.warning(f"No supergroups found for input file with mode {grouping}, proceed without merging groups")
 
     labels, colors, procs = get_labels_colors_procs_sorted([k for k in new_stack.keys()])
     hist_stack = [new_stack[p] for p in procs]

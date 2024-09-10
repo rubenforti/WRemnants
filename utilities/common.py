@@ -465,7 +465,7 @@ def plot_parser():
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
     parser.add_argument("-f", "--outfolder", type=str, default="./test", help="Subfolder for output")
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")
-    parser.add_argument("--cmsDecor", default="Preliminary", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
+    parser.add_argument("--cmsDecor", default="Preliminary", nargs="?", type=str, choices=[None, "Preliminary", "Work in progress", "Internal"], help="CMS label")
     parser.add_argument("--lumi", type=float, default=16.8, help="Luminosity used in the fit, needed to get the absolute cross section")
     parser.add_argument("--logoPos", type=int, default=2, help="CMS logo position")
     parser.add_argument("--eoscp", action='store_true', help="Override use of xrdcp and use the mount instead")

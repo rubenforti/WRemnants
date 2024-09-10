@@ -3,6 +3,7 @@ import mplhep as hep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import patches, ticker
+from matplotlib.lines import Line2D
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools
@@ -81,7 +82,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
     
     if not only_ratio:
-        ax1 = fig.add_subplot(4, 1, (1, 3)) 
+        ax1 = fig.add_subplot(6, 1, (1, 4)) 
         ax1.set_xlabel(" ")
         ax1.set_ylabel(ylabel)
         ax1.set_xlim(xlim)
@@ -97,8 +98,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
             ax1.grid(which = "both")
         if plot_title: 
             ax1.set_title(plot_title, pad = title_padding)
-
-    ax2 = fig.add_subplot(4, 1, 4) 
+    ax2 = fig.add_subplot(6, 1, (5, 6)) 
 
     ax2.set_xlabel(xlabel)
     
@@ -120,26 +120,35 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     else:
         return fig,ax2
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right'):
+# Create a custom handler map
+class StackedLineHandler:
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        width, height = handlebox.width, handlebox.height
+        line1 = Line2D([x0, x0+width], [y0+height*0.75, y0+height*0.75],
+                       color=orig_handle.get_color(), lw=1.4*orig_handle.get_linewidth(), linestyle='-')
+        line2 = Line2D([x0, x0+width], [y0+height*0.25, y0+height*0.25],
+                       color=orig_handle.get_color(), lw=1.4*orig_handle.get_linewidth(), linestyle='--')
+        handlebox.add_artist(line1)
+        handlebox.add_artist(line2)
+        return [line1, line2]
+
+def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', extra_handles=[], extra_labels=[]):
     handles, labels = ax.get_legend_handles_labels()
-    
+
     shape = np.divide(*ax.get_figure().get_size_inches())
     #TODO: The goal is to leave the data in order, but it should be less hacky
     handles[:] = reversed(handles)
     labels[:] = reversed(labels)
+    handles.extend(extra_handles)
+    labels.extend(extra_labels)
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
-    if text_size=="large" or text_size is None:
-        # legend size same as axis label size
-        text_size = ax.yaxis.label.get_size()
-    elif text_size=="small":
-        # legend size same as axis ticklabel size (numbers)
-        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
-    else:
-        text_size = int(text_size)
 
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
+    text_size = get_textsize(ax, text_size)
+
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map={Line2D: StackedLineHandler()})
 
     if extra_text:
         p = leg.get_frame()
@@ -152,18 +161,22 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
                 verticalalignment='top', bbox=props)
 
 
-def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
+def get_textsize(ax, text_size):
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        return ax.yaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        return ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        return int(text_size)
+
+
+def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None):
     # wrap text within lower_x and upper_x, 
     #  if text is already given as pieces in a list, use these pieces, 
     #  otherwise calculate the pieces automatically
-    if text_size=="large" or text_size is None:
-        # legend size same as axis label size
-        text_size = ax.yaxis.label.get_size()
-    elif text_size=="small":
-        # legend size same as axis ticklabel size (numbers)
-        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
-    else:
-        text_size = int(text_size)
+    text_size = get_textsize(ax, text_size)
 
     if isinstance(text, str):
         # Get the width of the text in data coordinates
@@ -178,12 +191,17 @@ def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
     else:
         wrapped_text = '\n'.join(text)
 
-    x = (lower_x + upper_x) / 2
-    ax.text(x, y, wrapped_text, ha='center', va='center', fontsize=text_size, wrap=True)
+    if upper_x is not None:
+        x = (lower_x + upper_x) / 2
+        ha='center'
+    else:
+        x = lower_x
+        ha='left'
+    ax.text(x, y, wrapped_text, ha=ha, va='center', transform=ax.transAxes, fontsize=text_size, wrap=True)
 
 
 def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):
-    text_size = ax.yaxis.label.get_size() if text_size is None else text_size
+    text_size = get_textsize(ax, text_size)
     hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
 
 
@@ -403,9 +421,8 @@ def makeStackPlotWithRatio(
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
     fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
 
-    if cms_decor:
-        lumi = float(f"{lumi:.3g}") if not density else None
-        add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
+    lumi = float(f"{lumi:.3g}") if not density else None
+    add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
 
     return fig
 
@@ -601,6 +618,7 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*yscale)
 
+    ax1.tick_params(axis='y', pad=5)  # Set distance to axis for y-axis numbers
     redo_axis_ticks(ax1, "x")
 
     if noSci and not logy:
@@ -609,6 +627,7 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
 
     if ax2 is not None:
+        ax2.tick_params(axis='y', pad=5)  # Set distance to axis for y-axis numbers
         redo_axis_ticks(ax2, "x")
         ax1.set_xticklabels([])
 
@@ -622,8 +641,8 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         y_label_pos = min(get_ylabel_position(ax1), get_ylabel_position(ax2))
 
         # Set both labels to the leftmost position
-        ax1.yaxis.set_label_coords(y_label_pos, 1.0)
-        ax2.yaxis.set_label_coords(y_label_pos, 1.0)
+        ax1.yaxis.set_label_coords(y_label_pos*0.7, 1.0)
+        ax2.yaxis.set_label_coords(y_label_pos*0.7, 1.0)
 
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
