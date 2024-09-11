@@ -540,6 +540,9 @@ class CardTool(object):
         if self.outfile:
             self.outfile.cd() # needed to restore the current directory in case the action opens a new root file
 
+        if len(systAxes)==0:
+            return {syst : hvar}
+
         axNames = systAxes[:]
         axLabels = systAxesLabels[:]
         if hvar.axes[-1].name == "mirror":
