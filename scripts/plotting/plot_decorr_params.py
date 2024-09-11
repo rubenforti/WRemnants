@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
         if args.infileInclusive:
             ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="", zorder=3)
-            ax1.errorbar([c], [0.], xerr=c_err_cal, color='orange', linewidth=3, marker="", linestyle="", zorder=2)
+            ax1.errorbar([c], [0.], xerr=c_err_cal, color='orange', linewidth=5, marker="", linestyle="", zorder=2)
             ax1.errorbar([c], [0.], xerr=c_err, color='black', marker="o", linestyle="", zorder=1)
             ax1.plot([c], [0.], color='black', marker="o", linestyle="", zorder=4) # point on top
 
@@ -218,7 +218,7 @@ if __name__ == '__main__':
         ax1.minorticks_off()
 
         ax1.errorbar(val, y, xerr=err_stat, color='red', marker="", linestyle="", label="Stat. unc.", zorder=3)
-        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=3, label="Calib. unc.", zorder=2)
+        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=5, label="Calib. unc.", zorder=2)
         ax1.errorbar(val, y, xerr=err, color='black', marker="", linestyle="", label="Measurement", zorder=1)
         ax1.plot(val, y, color='black', marker="o", linestyle="", zorder=4) # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top

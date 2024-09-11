@@ -16,7 +16,7 @@ process_colors = {
     "Z": "#5790FC",
     "Zll": "#5790FC",
     "Zee": "#5790FC",
-    "Ztautau": "#7A21DD",
+    "Ztautau": "#964a8b",
     "Wmunu": "#E42536",
     "Wenu": "#E42536",
     "Wtaunu": "#F89C20",

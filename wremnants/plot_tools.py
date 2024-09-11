@@ -172,7 +172,7 @@ def get_textsize(ax, text_size):
         return int(text_size)
 
 
-def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None):
+def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=True):
     # wrap text within lower_x and upper_x, 
     #  if text is already given as pieces in a list, use these pieces, 
     #  otherwise calculate the pieces automatically
@@ -197,7 +197,7 @@ def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None):
     else:
         x = lower_x
         ha='left'
-    ax.text(x, y, wrapped_text, ha=ha, va='center', transform=ax.transAxes, fontsize=text_size, wrap=True)
+    ax.text(x, y, wrapped_text, ha=ha, va='center', transform=ax.transAxes if transform else ax.transData, fontsize=text_size, wrap=True)
 
 
 def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):

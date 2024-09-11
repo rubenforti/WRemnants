@@ -40,6 +40,7 @@ parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
 parser.add_argument("--noChisq", action='store_true', help="skip printing chisq on plot")
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
+parser.add_argument("--xlabel", type=str, default=None, help="x-axis label for plot labeling")
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
@@ -117,8 +118,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         h_stack = [hh.scaleHist(h, scale) for h in h_stack]
         h_inclusive = hh.scaleHist(h_inclusive, scale)
 
-    axis_name = "_".join([a for a in axes_names])
-    if len(axes_names) == 1:
+    if args.xlabel is not None:
+        xlabel=args.xlabel
+    elif len(axes_names) == 1:
         xlabel=styles.xlabels.get(axes_names[0])
     else:
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
@@ -189,9 +191,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 y = min_y+range_y* (0.15 if np.min(h_inclusive.values()[x_lo:x])>max_y*0.3 else 0.8)
                 lo = s_range(axes[0].edges[i-1])
                 hi = s_range(axes[0].edges[i])
-                plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, x, y, text_size="small")
-
-
+                plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, y, x, text_size="small", transform=False)
 
     if ratio or diff:
         extra_handles = []
@@ -297,7 +297,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
-    to_join = [fittype, args.postfix, axis_name, suffix]
+    to_join = [fittype, args.postfix, *axes_names, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
 
     plot_tools.save_pdf_and_png(outdir, outfile)
