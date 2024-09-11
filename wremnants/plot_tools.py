@@ -39,7 +39,7 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
 
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
-    bin_density = 300, cms_label = None, logy=False, logx=False,
+    bin_density = 300, logy=False, logx=False,
     width_scale=1, height=8, automatic_scale=True
 ):
     if isinstance(href, hist.Hist):
@@ -133,7 +133,7 @@ class StackedLineHandler:
         handlebox.add_artist(line2)
         return [line1, line2]
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', extra_handles=[], extra_labels=[], reverse=False):
+def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', extra_handles=[], extra_labels=[], stacked_handler=False, reverse=False):
     handles, labels = ax.get_legend_handles_labels()
 
     shape = np.divide(*ax.get_figure().get_size_inches())
@@ -148,7 +148,8 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
 
     text_size = get_textsize(ax, text_size)
 
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map={Line2D: StackedLineHandler()}, reverse=reverse)
+    handler_map = {Line2D: StackedLineHandler()} if stacked_handler else None
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, reverse=reverse)
 
     if extra_text:
         p = leg.get_frame()
@@ -728,7 +729,6 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
         raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
 
     fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
-                    cms_label=cms_label, 
                     grid=True, automatic_scale=False, width_scale=width_scale, 
                     height=4+0.24*nentries, xlim=xlim, ylim=[0, nentries+1])
 

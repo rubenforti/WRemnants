@@ -293,7 +293,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     if ratio or diff:
-        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, extra_handles=extra_handles, extra_labels=extra_labels)
+        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, extra_handles=extra_handles, extra_labels=extra_labels, stacked_handler=True)
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
