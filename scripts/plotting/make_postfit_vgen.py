@@ -82,24 +82,23 @@ hists = [x.project(args.obs) for x in [
 
 
 labels=[
-        # r"$SCETlib{+}DYTurbo\ N^{3}LL{+}NNLO$ (prefit)",
         r"prefit",
-        r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu})+\mathit{p}_{T}^{\mu\mu}$ postfit" if args.w else r"$\mathit{p}_{T}^{\mu\mu}$ postfit",
-        r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu})$ postfit",
+        r"$m_{W}$ $(p_{T}^{\mu}, \eta^{\mu})+p_{T}^{\mu\mu}$ postfit" if args.w else r"$p_{T}^{\mu\mu}$ postfit",
+        ("$m_{W}$ " if args.w else "$m_{Z}$ ")+ r"$(p_{T}^{\mu}, \eta^{\mu})$ postfit",
         "", "", 
         "", "",
         "", "",
         ]
 colors=[
+        "black",
+        "#5790FC",
+        "#E42536" if args.w else "#964A8B",
         "gray",
-        "#E42536" if args.w else "#5790FC",
-        "#964A8B",
         "gray",
-        "gray",
-        "#E42536" if args.w else "#5790FC",
-        "#E42536" if args.w else "#5790FC",
-        "#964A8B",
-        "#964A8B",
+        "#5790FC",
+        "#5790FC",
+        "#E42536" if args.w else "#964A8B",
+        "#E42536" if args.w else "#964A8B",
 ]
 
 if unfolded_data:
