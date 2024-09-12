@@ -121,6 +121,29 @@ xlabels = {
     "relIso": "$I_\mathrm{rel}$",
 }
 
+legend_labels = {
+    'gamma_cusp-1.': r'$\mathit{\Gamma}_{cusp}$',
+    'gamma_cusp1.': r'$\mathit{\Gamma}_{cusp}$',
+    'gamma_mu_q-1.': r'$\mathit{\gamma}_{\mu}$',
+    'gamma_mu_q1.': r'$\mathit{\gamma}_{\mu}$',
+    'gamma_nu-1.': r'$\mathit{\gamma}_{\nu}$',
+    'gamma_nu1.': r'$\mathit{\gamma}_{\nu}$',
+    'h_qqV-1.': r'$\mathit{H}$',
+    'h_qqV1.': r'$\mathit{H}$',
+    's-1.': r'$\mathit{S}$',
+    's1.': r'$\mathit{S}$',
+    'b_qqV-0.5': r'$\mathit{B}_{qqV}$',
+    'b_qqbarV-0.5': r'$\mathit{B}_{qqV}$',
+    'b_qqS-0.5': r'$\mathit{B}_{q\bar{q}V}$',
+    'b_qqDS-0.5': r'$\mathit{B}_{q\bar{q}V}$',
+    'b_qqV0.5': r'$\mathit{B}_{soft\ qq}$',
+    'b_qqbarV0.5': r'$\mathit{B}_{soft\ qq}$',
+    'b_qqS0.5': r'$\mathit{B}_{qq\Delta S}$',
+    'b_qqDS0.5': r'$\mathit{B}_{qq\Delta S}$',
+    'b_qg-0.5': r'$\mathit{B}_{qg}$',
+    'b_qg0.5': r'$\mathit{B}_{qg}$',
+}
+
 # uncertainties
 common_groups = [
     "Total",

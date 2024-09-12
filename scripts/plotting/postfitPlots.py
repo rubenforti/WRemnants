@@ -25,8 +25,6 @@ hep.style.use(hep.style.ROOT)
 
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="hdf5 file from combinetf2 or root file from combinetf1")
-parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], help="y range for ratio plot")
-parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--noLowerPanel", action='store_true', help="Don't plot the lower panel in the plot")
 parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
@@ -45,8 +43,6 @@ parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for p
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
 parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
 parser.add_argument("--binSeparationLines", type=float, default=None, nargs='*', help="Plot vertical lines for makro bin edges in unrolled plots, specify bin boundaries to plot lines, if empty plot for all")
-parser.add_argument("--lowerLegPos", type=str, default="upper left", help="Set legend position")
-parser.add_argument("--lowerLegCols", type=int, default=2, help="Number of columns in legend")
 
 args = parser.parse_args()
 
@@ -191,7 +187,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 y = min_y+range_y* (0.15 if np.min(h_inclusive.values()[x_lo:x])>max_y*0.3 else 0.8)
                 lo = s_range(axes[0].edges[i-1])
                 hi = s_range(axes[0].edges[i])
-                plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, y, x, text_size="small", transform=False)
+                plot_tools.wrap_text([s_label, f"${lo}-{hi}$", s_unit], ax1, x_lo, y, x, text_size="small", transform=False)
 
     if ratio or diff:
         extra_handles = []
@@ -293,12 +289,15 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     if ratio or diff:
-        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, extra_handles=extra_handles, extra_labels=extra_labels, stacked_handler=True)
+        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, 
+            extra_handles=extra_handles, extra_labels=extra_labels, custom_handlers=["stacked"])
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     to_join = [fittype, args.postfix, *axes_names, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
+    if args.cmsDecor == "Preliminary":
+        outfile += "_preliminary"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
 

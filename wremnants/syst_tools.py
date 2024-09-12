@@ -70,6 +70,8 @@ def syst_transform_map(base_hist, hist_name):
     resum_tnpsXp1_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-2.5', 'b_qqV-2.5', 'b_qqbarV-2.5', 'b_qqS-2.5', 'b_qqDS-2.5', 'b_qg-2.5']
     resum_tnpsXp0_up = ['pdf0', 'gamma_cusp1.', 'gamma_mu_q1.', 'gamma_nu1.', 's1.', 'b_qqV0.5', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
     resum_tnpsXp0_down = ['pdf0', 'gamma_cusp-1.', 'gamma_mu_q-1.', 'gamma_nu-1.', 's-1.', 'b_qqV-0.5', 'b_qqV-0.5', 'b_qqbarV-0.5', 'b_qqS-0.5', 'b_qqDS-0.5', 'b_qg-0.5']
+    resum_tnpbeam_up = ['pdf0', 'b_qqV0.5', 'b_qqbarV0.5', 'b_qqS0.5', 'b_qqDS0.5', 'b_qg0.5']
+    resum_tnpbeam_down = ['pdf0', 'b_qqV-0.5', 'b_qqV-0.5', 'b_qqbarV-0.5', 'b_qqS-0.5', 'b_qqDS-0.5', 'b_qg-0.5']
 
     transforms.update({
         "resumFOScaleUp" : {
@@ -90,6 +92,12 @@ def syst_transform_map(base_hist, hist_name):
                 ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7", 
                 "transition_points0.2_0.45_0.7", "transition_points0.4_0.75_1.1", ],
                  no_flow=["ptVgen"], do_min=True)},
+       "resumTNPBeamUp" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpbeam_up}], "vars")[0]
+        },
+       "resumTNPBeamDown" : {
+           "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpbeam_down}], "vars")[1]
+        },
        "resumTNPXp1Up" : {
            "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" : resum_tnpsXp0_up}], "vars")[0]
         },
