@@ -459,7 +459,7 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("fixedGridRhoFastjetAll_noVtx", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight_noVtx"]))
         results.append(df.HistoBoost("fixedGridRhoFastjetAll", [axis_nRecoVtx], ["fixedGridRhoFastjetAll", "nominal_weight"]))
         df = df.Define("trigMuons_vertexZ0", "PV_z + Muon_dz[trigMuons][0]") # define at reco level as PV_z + Muon_dz
-        axis_vertexZ0 = hist.axis.Regular(400, -20, 20, name="muonVertexZ0")
+        axis_vertexZ0 = hist.axis.Regular(200, -20, 20, name="muonVertexZ0")
         results.append(df.HistoBoost("trigMuons_vertexZ0_uncorr", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noPUandVtx"]))
         results.append(df.HistoBoost("trigMuons_vertexZ0_noVtx", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noVtx"]))
         results.append(df.HistoBoost("trigMuons_vertexZ0", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight"]))
