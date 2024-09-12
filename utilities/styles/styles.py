@@ -1,4 +1,4 @@
-from utilities import logging
+from utilities import logging, boostHistHelpers as hh 
 
 logger = logging.child_logger(__name__)
 
@@ -33,10 +33,14 @@ process_supergroups = {
         "QCD": ["QCD"],
     },
     "w_mass":{
+        "Wmunu": ["Wmunu"], 
+        "Wtaunu": ["Wtaunu"],
         "Z": ["Ztautau", "Zmumu", "DYlowMass"],
+        "Fake": ["Fake"],
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
     "z_dilepton":{
+        "Zmumu": ["Zmumu"],
         "Other": ["Other","PhotonInduced", "Ztautau"],
     },
     "w_lowpu":{
@@ -51,7 +55,7 @@ process_labels = {
     "Data": "Data",
     "Zmumu": r"Z$\to\mu\mu$",
     "Zee": r"Z$\to ee$",
-    "Zll": r"Z$\to\ell\ell$",
+    "Zll": r"Z$\to\mu\mu$",
     "Z": r"Z",
     "Ztautau": r"Z$\to\tau\tau$",
     "Wmunu":  r"W$^{\pm}\to\mu\nu$",
@@ -70,38 +74,38 @@ process_labels = {
 }
 
 xlabels = {
-    "pt" : r"p$_{T}^{\ell}$ (GeV)",
-    "ptGen" : r"p$_{T}^{\ell}$ (GeV)",
-    "ptW" : r"p$_{T}^{\ell+p_{\mathrm{T}}^{miss}}$ (GeV)",
+    "pt" : r"p$_{T}^{\mu}$ (GeV)",
+    "ptGen" : r"p$_{T}^{\mu}$ (GeV)",
+    "ptW" : r"p$_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
     "ptVGen" : r"p$_{T}^\mathrm{V}$ (GeV)",
-    "muonJetPt": r"p$_{T}^\mathrm{jet[\ell]}$ (GeV)",
-    "eta" : r"$\eta^{\ell}$",
-    "etaGen" : r"$\eta^{\ell}$",
-    "abseta" : r"$|\eta^{\ell}|$",
-    "absEta" : r"$|\eta^{\ell}|$",
-    "absEtaGen" : r"$|\eta^{\ell}|$",
-    "ptll" : r"p$_{\mathrm{T}}^{\ell\ell}$ (GeV)",
-    "yll" : r"y$^{\ell\ell}$",
+    "muonJetPt": r"p$_{T}^\mathrm{jet[\mu]}$ (GeV)",
+    "eta" : r"$\eta^{\mu}$",
+    "etaGen" : r"$\eta^{\mu}$",
+    "abseta" : r"$|\eta^{\mu}|$",
+    "absEta" : r"$|\eta^{\mu}|$",
+    "absEtaGen" : r"$|\eta^{\mu}|$",
+    "ptll" : r"p$_{\mathrm{T}}^{\mu\mu}$ (GeV)",
+    "yll" : r"y$^{\mu\mu}$",
     "absYVGen" : r"|Y$^\mathrm{V}$|",
-    "mll" : r"m$_{\ell\ell}$ (GeV)",
-    "ewMll" : r"m$^{\mathrm{EW}}_{\ell\ell}$ (GeV)",
-    "costhetastarll" : r"$\cos{\theta^{\star}_{\ell\ell}}$",
-    "cosThetaStarll" : r"$\cos{\theta^{\star}_{\ell\ell}}$",
-    "phistarll" : r"$\phi^{\star}_{\ell\ell}$",
-    "phiStarll" : r"$\phi^{\star}_{\ell\ell}$",
+    "mll" : r"m$_{\mu\mu}$ (GeV)",
+    "ewMll" : r"m$^{\mathrm{EW}}_{\mu\mu}$ (GeV)",
+    "costhetastarll" : r"$\cos{\theta^{\star}_{\mu\mu}}$",
+    "cosThetaStarll" : r"$\cos{\theta^{\star}_{\mu\mu}}$",
+    "phistarll" : r"$\phi^{\star}_{\mu\mu}$",
+    "phiStarll" : r"$\phi^{\star}_{\mu\mu}$",
     "MET_pt" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "MET" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
     "met" : r"p$_{\mathrm{T}}^{miss}$ (GeV)",
-    "mt" : r"m$_{T}^{\ell\nu}$ (GeV)",
+    "mt" : r"m$_{T}^{\mu\nu}$ (GeV)",
     "mtfix" : r"m$_{T}^\mathrm{fix}$ (GeV)",
-    "etaPlus" : r"$\eta^{\ell(+)}$",
-    "etaMinus" : r"$\eta^{\ell(-)}$",
-    "ptPlus" : r"p$_{\mathrm{T}}^{\ell(+)}$ (GeV)",
-    "ptMinus" : r"p$_{\mathrm{T}}^{\ell(-)}$ (GeV)",
-    "etaSum":r"$\eta^{\ell(+)} + \eta^{\ell(-)}$",
-    "etaDiff":r"$\eta^{\ell(+)} - \eta^{\ell(-)}$",
-    "etaDiff":r"$\eta^{\ell(+)} - \eta^{\ell(-)}$",
-    "etaAbsEta": r"$\eta^{\ell[\mathrm{argmax(|\eta^{\ell}|)}]}$",
+    "etaPlus" : r"$\eta^{\mu(+)}$",
+    "etaMinus" : r"$\eta^{\mu(-)}$",
+    "ptPlus" : r"p$_{\mathrm{T}}^{\mu(+)}$ (GeV)",
+    "ptMinus" : r"p$_{\mathrm{T}}^{\mu(-)}$ (GeV)",
+    "etaSum":r"$\eta^{\mu(+)} + \eta^{\mu(-)}$",
+    "etaDiff":r"$\eta^{\mu(+)} - \eta^{\mu(-)}$",
+    "etaDiff":r"$\eta^{\mu(+)} - \eta^{\mu(-)}$",
+    "etaAbsEta": r"$\eta^{\mu[\mathrm{argmax(|\eta^{\mu}|)}]}$",
     "ewMll": "ewMll",
     "ewMlly": "ewMlly",
     "ewLogDeltaM": "ewLogDeltaM",
@@ -115,7 +119,6 @@ common_groups = [
     "Total",
     "stat",
     "binByBinStat",
-    "statMC",
     "luminosity",
     "recoil",
     "CMS_background",
@@ -132,35 +135,48 @@ nuisance_groupings = {
         "stat",
         "binByBinStat",
         "theory", 
-        "experiment",
+        "expNoCalib",
         "muonCalibration",
     ],
     "max": common_groups + [
-        "QCDscale", 
+        "angularCoeffs", 
         "pdfCT18Z",
-        "resum",
+        "pTModeling",
         "muon_eff_syst",
         "muon_eff_stat",
         "prefire",
         "muonCalibration",
         "Fake",
-        "bcQuarkMass",
-        # "normWplus_Helicity-1",
-        # "normWplus_Helicity0",
-        # "normWplus_Helicity1",
-        # "normWplus_Helicity2",
-        # "normWplus_Helicity3",
-        # "normWplus_Helicity4",
-        # "normWminus_Helicity-1",
-        # "normWminus_Helicity0",
-        # "normWminus_Helicity1",
-        # "normWminus_Helicity2",
-        # "normWminus_Helicity3",
-        # "normWminus_Helicity4"
+        "normWplus_Helicity-1",
+        "normWplus_Helicity0",
+        "normWplus_Helicity1",
+        "normWplus_Helicity2",
+        "normWplus_Helicity3",
+        "normWplus_Helicity4",
+        "normWminus_Helicity-1",
+        "normWminus_Helicity0",
+        "normWminus_Helicity1",
+        "normWminus_Helicity2",
+        "normWminus_Helicity3",
+        "normWminus_Helicity4",
+        "normW_Helicity-1",
+        "normW_Helicity0",
+        "normW_Helicity1",
+        "normW_Helicity2",
+        "normW_Helicity3",
+        "normW_Helicity4",
+        "normZ",
+        "normZ_Helicity-1",
+        "normZ_Helicity0",
+        "normZ_Helicity1",
+        "normZ_Helicity2",
+        "normZ_Helicity3",
+        "normZ_Helicity4",
     ],
     "min": common_groups + [
         "massShiftW", "massShiftZ",
         "QCDscalePtChargeMiNNLO", "QCDscaleZPtChargeMiNNLO", "QCDscaleWPtChargeMiNNLO", "QCDscaleZPtHelicityMiNNLO", "QCDscaleWPtHelicityMiNNLO", "QCDscaleZPtChargeHelicityMiNNLO", "QCDscaleWPtChargeHelicityMiNNLO",
+        "pythia_shower_kt",
         "pdfCT18ZNoAlphaS", "pdfCT18ZAlphaS",
         "resumTNP", "resumNonpert", "resumTransition", "resumScale", "bcQuarkMass",
         "muon_eff_stat_reco", "muon_eff_stat_trigger", "muon_eff_stat_iso", "muon_eff_stat_idip",
@@ -173,17 +189,23 @@ nuisance_groupings = {
         "Total",
         "stat",
         "binByBinStat",
+        "binByBinStatW",
+        "binByBinStatZ",
         "experiment",
-        "QCDscale", 
+        "angularCoeffs", 
         "pdfCT18Z",
-        "resum",
+        "pTModeling",
         "theory_ew",
-        "bcQuarkMass",
     ],
     "unfolding_min": [
         "Total",
+        "stat",
+        "binByBinStatW",
+        "binByBinStat",
+        "binByBinStatZ",
+        "experiment",
         "QCDscalePtChargeMiNNLO", "QCDscaleZPtChargeMiNNLO", "QCDscaleWPtChargeMiNNLO", "QCDscaleZPtHelicityMiNNLO", "QCDscaleWPtHelicityMiNNLO", "QCDscaleZPtChargeHelicityMiNNLO", "QCDscaleWPtChargeHelicityMiNNLO",
-        "QCDscaleZMiNNLO", "QCDscaleWMiNNLO",
+        "QCDscaleZMiNNLO", "QCDscaleWMiNNLO", "pythia_shower_kt",
         "pdfCT18ZNoAlphaS", "pdfCT18ZAlphaS",
         "resumTNP", "resumNonpert", "resumTransition", "resumScale", "bcQuarkMass",
         "theory_ew",
@@ -212,26 +234,26 @@ poi_types = {
 }
 
 axis_labels = {
-    "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\ell\ell}$",
-    "ewMll": r"$\mathrm{Post\ FSR}\ m^{\ell\ell}$", 
-    "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\ell\ell}$",
-    "ewAbsYll": r"$\mathrm{Post\ FSR}\ |Y^{\ell\ell}|$",
-    "csCosTheta" : r"$\mathrm{Post\ FSR\ \cos{\theta^{\star}_{\ell\ell}}}$", 
-    "ptgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\ell}$",
-    "etagen": r"$\mathrm{Pre\ FSR}\ \eta^{\ell}$", 
-    "ptVgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\ell\ell}$",
-    "absYVgen": r"$\mathrm{Pre\ FSR}\ |Y^{\ell\ell}|$", 
-    "massVgen": r"$\mathrm{Pre\ FSR}\ m^{\ell\ell}$", 
-    "csCosThetagen" : r"$\mathrm{Pre\ FSR\ \cos{\theta^{\star}_{\ell\ell}}}$", 
-    "ptlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\ell}$",
-    "etalhe": r"$\mathrm{LHE}\ \eta^{\ell}$", 
-    "ptVlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\ell\ell}$",
-    "absYVlhe": r"$\mathrm{LHE}\ |Y^{\ell\ell}|$", 
-    "massVlhe": r"$\mathrm{LHE}\ m^{\ell\ell}$", 
-    "cosThetaStarlhe" : r"$\mathrm{LHE\ \cos{\theta^{\star}_{\ell\ell}}}$", 
-    "qT" : r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\ell\ell}$",
-    "Q" : r"$\mathrm{Pre\ FSR}\ m^{\ell\ell}$", 
-    "absY" : r"$\mathrm{Pre\ FSR}\ Y^{\ell\ell}$",
+    "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
+    "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$", 
+    "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\mu\mu}$",
+    "ewAbsYll": r"$\mathrm{Post\ FSR}\ |Y^{\mu\mu}|$",
+    "csCosTheta" : r"$\mathrm{Post\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "ptgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu}$",
+    "etagen": r"$\mathrm{Pre\ FSR}\ \eta^{\mu}$", 
+    "ptVgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
+    "absYVgen": r"$\mathrm{Pre\ FSR}\ |Y^{\mu\mu}|$", 
+    "massVgen": r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$", 
+    "csCosThetagen" : r"$\mathrm{Pre\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "ptlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\mu}$",
+    "etalhe": r"$\mathrm{LHE}\ \eta^{\mu}$", 
+    "ptVlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\mu\mu}$",
+    "absYVlhe": r"$\mathrm{LHE}\ |Y^{\mu\mu}|$", 
+    "massVlhe": r"$\mathrm{LHE}\ m^{\mu\mu}$", 
+    "cosThetaStarlhe" : r"$\mathrm{LHE\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "qT" : r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
+    "Q" : r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$", 
+    "absY" : r"$\mathrm{Pre\ FSR}\ Y^{\mu\mu}$",
     "charge" : r"$\mathrm{Pre\ FSR\ charge}$", 
 }
 
@@ -314,11 +336,29 @@ def get_systematics_label(key, idx=0):
 
 
 def get_labels_colors_procs_sorted(procs):
-    # order of the processes in the plots
-    procs_sort = ["Wmunu", "Fake", "QCD", "Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced", "Prompt"][::-1]
+    # order of the processes in the plots by this list
+    procs_sort = ["Wmunu", "Fake", "QCD", "Z","Zmumu", "Wtaunu", "Top", "DYlowMass", "Other", "Ztautau", "Diboson", "PhotonInduced", "Prompt", "Rare"][::-1]
 
     procs = sorted(procs, key=lambda x: procs_sort.index(x) if x in procs_sort else len(procs_sort))
     logger.info(f"Found processes {procs} in fitresult")
     labels = [process_labels.get(p, p) for p in procs]
     colors = [process_colors.get(p, "red") for p in procs]
     return labels, colors, procs
+
+
+def process_grouping(grouping, hist_stack, procs):
+    if grouping in process_supergroups.keys():
+        new_stack = {}
+        for new_name, old_procs in process_supergroups[grouping].items():
+            stacks = [hist_stack[procs.index(p)] for p in old_procs if p in procs]
+            if len(stacks) == 0:
+                continue
+            new_stack[new_name] = hh.sumHists(stacks)  
+    else:
+        new_stack = hist_stack
+        logger.warning(f"No supergroups found for input file with mode {groupingg}, proceed without merging groups")
+
+    labels, colors, procs = get_labels_colors_procs_sorted([k for k in new_stack.keys()])
+    hist_stack = [new_stack[p] for p in procs]
+
+    return hist_stack, labels, colors, procs

@@ -68,10 +68,20 @@ def make_eigenvector_predictons(params, cov, func, x1, x2=None, force_positive=F
     return np.stack((y_pred_up, y_pred_dn), axis=-1)
 
 
+def chebycshev(n, x):
+    # chebychev polynomials of first kind (see https://en.wikipedia.org/wiki/Chebyshev_polynomials)
+    if n==0:
+        return 1
+    if n==1: 
+        return x
+    return 2 * x * chebycshev(n-1, x) - chebycshev(n-2, x)
+
 def poly(pol, order, order2=None):
     if order2 is None:
         if pol=="power":
             return lambda x, n, p=1: p * x**n
+        elif pol=="chebyshev":
+            return lambda x, n, p=1, o=order: p * chebycshev(n, x)
         elif pol=="bernstein":
             return lambda x, n, p=1, o=order: p * comb(o, n) * x**n * (1 - x)**(o - n)
         elif pol=="monotonic":
@@ -213,8 +223,8 @@ def get_solver(polynomial):
 
 
 def transform_bernstein(x, min_x, max_x, cap_x=False):
+    # transform x to [0,1] (where bernstein polinomials are defined)
     # get x axes values for interpolation/smoothing with transformation
-    # transform bernstein polinomials to [0,1]
     x = (x - min_x) / (max_x - min_x)
     if np.sum(x < 0) or np.sum(x > 1):
         if cap_x:
@@ -225,10 +235,14 @@ def transform_bernstein(x, min_x, max_x, cap_x=False):
             raise RuntimeError(f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 ({x[x < 0]}) and {np.sum(x > 1)} larger 1 ({x[x > 1]}) found after transformation with xmin={xmin} and xmax={xmax}")
     return x
 
-def transform_power(x, *args, **kwargs):
+def transform_chebyshev(x, *args, **kwargs):
+    # transform x to [-1,1] (where chebyshev polinomials are defined)
     return transform_bernstein(x, *args, **kwargs) * 2 - 1
 
 class Regressor(object):
+    # supported polynomials
+    polynomials=["power", "bernstein", "monotonic", "chebyshev"]
+
     def __init__(
         self, 
         polynomial, 
@@ -239,6 +253,8 @@ class Regressor(object):
         max_x=1,
         nnls=None,
     ):
+        if polynomial not in Regressor.polynomials:
+            raise NotImplementedError(f"Polynomial {polynomial} not implemented. Supported polynomials are: {Regressor.polynomials}")
         self.polynomial = polynomial
         self.order = order
 
@@ -264,7 +280,7 @@ class Regressor(object):
         if self.polynomial in ["bernstein", "monotonic"]:
             x = transform_bernstein(x, self.min_x, self.max_x, self.cap_x)
         else:
-            x = transform_power(x, self.min_x, self.max_x, self.cap_x)
+            x = transform_chebyshev(x, self.min_x, self.max_x, self.cap_x)
         return x
 
     def solve(self, x, y, w, chi2_info=True):
@@ -363,8 +379,8 @@ class Regressor2D(Regressor):
             x1 = transform_bernstein(x1, self.min_x[0], self.max_x[0], self.cap_x[0])
             x2 = transform_bernstein(x2, self.min_x[1], self.max_x[1], self.cap_x[1])
         else:
-            x1 = transform_power(x1, self.min_x[0], self.max_x[0], self.cap_x[0])
-            x2 = transform_power(x2, self.min_x[1], self.max_x[1], self.cap_x[1])
+            x1 = transform_chebyshev(x1, self.min_x[0], self.max_x[0], self.cap_x[0])
+            x2 = transform_chebyshev(x2, self.min_x[1], self.max_x[1], self.cap_x[1])
         return x1, x2
 
     def solve(self, x1, x2, y, w, flatten=False):

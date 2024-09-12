@@ -243,23 +243,27 @@ class SignalSelectorABCD(HistselectorABCD):
         return self.get_hist_passX_passY(h)
 
 class FakeSelectorSimpleABCD(HistselectorABCD):
+    # supported smoothing mode choices
+    smoothing_modes = ['binned', 'fakerate', 'hybrid', 'full']
     # simple ABCD method
     def __init__(self, h, *args, 
         smoothing_mode="full",
         smoothing_order_fakerate=3,
         smoothing_order_spectrum=3,
+        smoothing_polynomial_spectrum="power",
         throw_toys=None, #"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
     ):
-        """
-        :smoothing_mode: choices: ['binned', 'fakerate', 'hybrid', 'full']
-        """
         super().__init__(h, *args, **kwargs)
 
         # nominal histogram to be used to transfer variances for systematic variations
         self.h_nominal = None
         self.global_scalefactor = global_scalefactor
+
+        if smoothing_mode not in FakeSelectorSimpleABCD.smoothing_modes:
+            raise NotImplementedError(f"Smoothing mode {smoothing_mode} is not implemented. Supported smoothing modes are {FakeSelectorSimpleABCD.smoothing_modes}")
+
         self.smoothing_mode = smoothing_mode
 
         # select appropriate regressor objects depending on type of smoothing
@@ -275,8 +279,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         if self.smoothing_mode in ["fakerate", "hybrid", "full"]:
             self.spectrum_regressor = Regressor(
-                # "monotonic",
-                "power",
+                smoothing_polynomial_spectrum,
                 smoothing_order_spectrum,
                 min_x=self.smoothing_axis_min,
                 max_x=self.smoothing_axis_max,

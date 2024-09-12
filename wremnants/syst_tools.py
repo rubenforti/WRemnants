@@ -132,12 +132,14 @@ def syst_transform_map(base_hist, hist_name):
                     do_min=True)},
        "resumNPUp" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                 ["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 #["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 ["Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
                      "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",],
                  no_flow=["ptVgen"], do_min=False) if "vars" in h.axes.name else h},
         "resumNPDown" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                 ["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 #["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 ["Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
                      "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",],
                  no_flow=["ptVgen"], do_min=True) if "vars" in h.axes.name else h},
        "resumNPOmegaUp" : {
@@ -260,16 +262,16 @@ def decorrelateByAxes(hvar, hnom, axesToDecorrNames, newDecorrAxesNames=[], axli
     hvar = hh.addHists(hvar, hnom, scale2=-1)
     # expand edges for variations on diagonal elements
     hvar = hh.expand_hist_by_duplicate_axes(hvar, axesToDecorrNames, newDecorrAxesNames, put_trailing=True)
-    # add back nominal histogram while broadcasting
-    hvar = hh.addHists(hvar, hnom)
+    # rebin duplicated axes
     if len(axlim) or len(rebin):
         hvar = hh.rebinHistMultiAx(hvar, newDecorrAxesNames, rebin, axlim[::2], axlim[1::2])
-
 
     for ax, absval in zip(newDecorrAxesNames, absval):
         if absval:
             logger.info(f"Taking the absolute value of axis '{ax}'")
             hvar = hh.makeAbsHist(hvar, ax, rename=False)
+    # add back nominal histogram while broadcasting
+    hvar = hh.addHists(hvar, hnom)
 
     # if there is a mirror axis, put it at the end, since CardTool.py requires it like that
     if "mirror" in hvar.axes.name and hvar.axes.name.index("mirror") != len(hvar.shape)-1:
@@ -760,7 +762,8 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
 
 
 def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
-                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", customHistNameTag="", smooth3D=False, **kwargs
+                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False,
+                                  singleMuonCollection="goodMuons", customHistNameTag="", **kwargs
     ):
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
@@ -827,7 +830,8 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
 
 
 def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
-                                         what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
+                                         what_analysis=ROOT.wrem.AnalysisType.Wmass,
+                                         singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
     ):
 
     SAvarTag = "SA" if step == "tracking" else "" 

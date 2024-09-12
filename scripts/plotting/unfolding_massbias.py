@@ -131,11 +131,8 @@ for analysis, df_ana in df.groupby("analysis"):
         elif diffs:
             ax2.errorbar(xarr, rarr,  yerr=rerr, linestyle="", marker=".", color=color)
 
-    plot_tools.addLegend(ax1, ncols=1, text_size=25, loc='upper left')
-
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data="True")
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     outfile = f"massbias_{analysis}"
     if args.postfix:

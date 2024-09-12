@@ -28,12 +28,11 @@ parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], he
 parser.add_argument("--ylabel", type=str, default=None, help="Specify a y-axis label (if not it will be set automatic)")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
 parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig", "A"], 
-    help="List of axes where for each bin a seperate plot is created")
+    help="List of axes where for each bin a separate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
     choices=poi_type_choices)
@@ -256,13 +255,9 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
             y = hr.values()
             ax2.plot(centers, y, linewidth=0, marker='o', color="blue")
 
-
-    plot_tools.addLegend(ax1, ncols=2, text_size=15*args.scaleleg)
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
-
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     outfile = f"unfolded_{poi_type}"
     outfile += f"_{proc}"
@@ -410,20 +405,13 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
         ax1.fill([0,18.5, 18.5, 0,0], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
         ax1.fill([hist_err.size-17.5, hist_err.size+0.5, hist_err.size+0.5, hist_err.size-17.5, hist_err.size-17.5], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
 
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-
-    plot_tools.addLegend(ax1, ncols=4, text_size=15*args.scaleleg*scale, loc="upper left")
-
     if args.yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*args.yscale)
 
-    if not logy:
-        plot_tools.redo_axis_ticks(ax1, "y")
-    plot_tools.redo_axis_ticks(ax1, "x", no_labels=len(axes_names) >= 2)
-
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+    plot_tools.fix_axes(ax1, None, fig, yscale=args.yscale, noSci=args.noSciy or logy)
 
     outfile = f"unfolded_{poi_type}{'_relative_' if relative_uncertainty else '_'}uncertainties"
     outfile += f"_{proc}"
@@ -619,21 +607,13 @@ def plot_uncertainties_with_ratio(
         ax1.fill([0,18.5, 18.5, 0,0], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
         ax1.fill([hist_err.size-17.5, hist_err.size+0.5, hist_err.size+0.5, hist_err.size-17.5, hist_err.size-17.5], [ylim[0],*ylim,ylim[1],ylim[0]], color="grey", alpha=0.3)
 
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-
-    plot_tools.addLegend(ax1, ncols=4, text_size=15*args.scaleleg*scale, loc="upper left")
-    plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
-
     if args.yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*args.yscale)
 
-    if not logy:
-        plot_tools.redo_axis_ticks(ax1, "y")
-    plot_tools.redo_axis_ticks(ax1, "x", no_labels=len(axes_names) >= 2)
-
-    hep.cms.label(ax=ax1, lumi=float(f"{lumi:.3g}") if lumi is not None else None, fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=lumi, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+    plot_tools.fix_axes(ax1, None, fig, yscale=args.yscale, noSci=args.noSciy or logy)
 
     outfile = f"diff_unfolded_{poi_type}{'_relative_' if relative_uncertainty else '_'}uncertainties"
     outfile += f"_{proc}"

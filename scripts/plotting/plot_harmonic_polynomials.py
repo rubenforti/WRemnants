@@ -109,12 +109,9 @@ def plot_harmonic_polynomials(outdir, args):
             ax1.plot(val_x, val_y, color=colors(i), linestyle=linestyles[j], label=label)
             j += 1
 
-        plot_tools.addLegend(ax1, ncols=2, text_size=12, loc="upper left")
-        plot_tools.fix_axes(ax1, logy=False)
-
-        scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-        hep.cms.label(ax=ax1, lumi=None, fontsize=20*args.scaleleg*scale, 
-            label=args.cmsDecor, data=False)
+        plot_tools.add_cms_decor(ax1, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
         outfile = "harmonic_polynomial"
         outfile += f"_{axis_name}"

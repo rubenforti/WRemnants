@@ -497,6 +497,8 @@ def runStudy(fname, charges, mainOutputFolder, args):
     etaLabel = "#eta" if not args.absEta else "|#eta|"
     
     xAxisName = args.xAxisName
+    if args.absEta and "|#eta|" not in xAxisName and "#eta" in xAxisName:
+        xAxisName.replace("#eta", "|#eta|")
     yAxisName = args.yAxisName
     zAxisName = args.met + " " + args.zAxisName
 
@@ -546,6 +548,11 @@ def runStudy(fname, charges, mainOutputFolder, args):
             s = hist.tag.Slicer()
             #print(d)
             hnarfTMP = histInfo[d].hists[inputHistName]
+            if charge == "inclusive":
+                # integrate but keep charge axis with 1 single bin
+                hnarfTMP = hnarfTMP[{"charge" : s[::hist.rebin(2)]}]
+            if args.absEta:
+                hnarfTMP = hh.makeAbsHist(hnarfTMP, "eta", rename=False)
             if "absdz_cm" in hnarfTMP.axes.name:
                 #hnarfTMP = hnarfTMP[{"absdz_cm": s[:complex(0,0.1):hist.sum]}] # FIXME: JUST A TEST !!!
                 hnarfTMP = hnarfTMP[{"absdz_cm": s[::hist.sum]}] # FIXME: JUST A TEST !!!
@@ -579,7 +586,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                         hnarf_fakerateDeltaPhi = hnarf_fakerateDeltaPhi[{"hasJets": s[::hist.sum]}]
                 lowMtUpperBound = int(args.mtNominalRange.split(",")[1])
                 hnarf_fakerateDeltaPhi = hnarf_fakerateDeltaPhi[{"mt" : s[:complex(0,lowMtUpperBound):hist.sum]}]
-                chargeIndex = 0 if charge == "minus" else 1
+                chargeIndex = 0 if charge in ["minus", "inclusive"] else 1
                 hnarf_fakerateDeltaPhi = hnarf_fakerateDeltaPhi[{"charge" : s[chargeIndex:chargeIndex+1:hist.sum]}]
                 hnarf_fakerateDeltaPhi = hnarf_fakerateDeltaPhi[{"DphiMuonMet" : s[::hist.rebin(2)]}]
                 # make all TH of FRF in bins of dphi
@@ -620,7 +627,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
                 for ipt in range(histo_FRFvsDphi["inclusive"].GetNbinsY()):
                     ptBinRanges.append("[{ptmin},{ptmax}] GeV".format(ptmin=int(histo_FRFvsDphi["inclusive"].GetYaxis().GetBinLowEdge(ipt+1)),
                                                                       ptmax=int(histo_FRFvsDphi["inclusive"].GetYaxis().GetBinLowEdge(ipt+2))))
-                drawNTH1(hists, legEntries, "Unrolled #eta-p_{T} bin", "Fakerate factor",
+                drawNTH1(hists, legEntries, "Unrolled "+etaLabel+"-p_{{T}} bin", "Fakerate factor",
                          f"FRFvsDeltaPhi_{charge}", outfolder,
                          leftMargin=0.06, rightMargin=0.01, labelRatioTmp="BinX/inclusive::0.7,1.3",
                          legendCoords="0.06,0.99,0.91,0.99;6", lowerPanelHeight=0.5, skipLumi=True, passCanvas=canvas_unroll,
@@ -668,7 +675,7 @@ def runStudy(fname, charges, mainOutputFolder, args):
             nPtBins = hnarf_asNominal.axes["pt"].size
             hnarf_forMtWithDataDrivenFakes = hnarf_forMtWithDataDrivenFakes[{"eta" : s[::hist.sum],
                                                                              "pt"  : s[0:nPtBins:hist.sum],
-                                                                             "charge" : 0 if charge == "minus" else 1,
+                                                                             "charge" : 0 if charge in ["minus", "inclusive"] else 1,
                                                                              }]
             if d in datasetsNoQCD:
                 rootHists_forMtWithDataDrivenFakes[d] = narf.hist_to_root(hnarf_forMtWithDataDrivenFakes)
@@ -692,14 +699,14 @@ def runStudy(fname, charges, mainOutputFolder, args):
         etaPtChargeTemplate.SetTitle("FRF correction uncertainty (quadrature sum, Up)")
         etaPtChargeTemplate.Reset("ICESM")
 
-        axisVar = {0 : ["muon_eta", "#eta"],
+        axisVar = {0 : ["muon_eta", etaLabel],
                    1 : ["muon_pt",  "p_{T} (GeV)"],
                    3 : ["mT", args.met + " m_{T} (GeV)"],
                    6 : ["deltaPhiMuonMET", "#Delta#phi(#mu,MET) (GeV)"]
         }
 
         # bin number from root histogram
-        chargeBin = 1 if charge == "minus" else 2
+        chargeBin = 1 if charge in ["minus", "inclusive"] else 2
 
         # plot mT with data-driven fakes, as a test (should add the mT correction in fact)
         hmcMt = {}
@@ -1337,6 +1344,11 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
 
         for d in datasetsForStudy:
             hnarfTMP = histInfo[d].hists[inputHistName]
+            if charge == "inclusive":
+                # integrate but keep charge axis with 1 single bin
+                hnarfTMP = hnarfTMP[{"charge" : s[::hist.rebin(2)]}]
+            if args.absEta:
+                hnarfTMP = hh.makeAbsHist(hnarfTMP, "eta", rename=False)
             hnarf = hnarfTMP.copy()
             # rebin eta-pt for actual test with fakes, while collapsing other axes for the simple plots as needed,
             # this is only to avoid that THn are too big
@@ -1365,7 +1377,7 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
             lowMtUpperBound = int(args.mtNominalRange.split(",")[1])
             hnarf = hnarf[{"mt" : s[:complex(0,lowMtUpperBound):hist.sum]}]
             #hnarf = hnarf[{"mt" : s[::hist.sum]}]
-            chargeIndex = 0 if charge == "minus" else 1
+            chargeIndex = 0 if charge in ["minus", "inclusive"] else 1
             hnarf = hnarf[{"charge" : s[chargeIndex:chargeIndex+1:hist.sum]}]
 
             for ipt in range(nPtBins):
@@ -1412,7 +1424,7 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
                 legEntries = []
                 for b in etapt_bins:
                     hs.append(hists[b])
-                    etaText = f"{htmp.GetXaxis().GetBinLowEdge(b[0]):.1f} < #eta < {htmp.GetXaxis().GetBinLowEdge(b[0]+1):.1f}"
+                    etaText = f"{htmp.GetXaxis().GetBinLowEdge(b[0]):.1f} < {etaLabel} < {htmp.GetXaxis().GetBinLowEdge(b[0]+1):.1f}"
                     ptText = f"{htmp.GetYaxis().GetBinLowEdge(b[1]):.0f} < p_{{T}} < {htmp.GetYaxis().GetBinLowEdge(b[1]+1):.0f}"
                     legEntries.append(f"{etaText} && {ptText} GeV")
 
@@ -1435,7 +1447,7 @@ if __name__ == "__main__":
     parser.add_argument("-y", "--yAxisName", default="Muon p_{T} (GeV)", help="y axis name")
     parser.add_argument("-z", "--zAxisName", default="m_{T} (GeV)", help="z axis name")
     parser.add_argument("--met", default="deepMET", choices=["deepMET","PFMET"], help="Met type, which also updates the mT definition when used as axis labels")
-    parser.add_argument("-c", "--charge", default="both", choices=["plus", "minus", "both"], help="charge")
+    parser.add_argument("-c", "--charge", default="both", choices=["plus", "minus", "both", "inclusive"], help="charge")
     parser.add_argument("--mtBinEdges", default="0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75", type=str, help="Comma-separated list of bin edges for mT")
     parser.add_argument("--mtNominalRange", default="0,40", type=str, help="Comma-separated list of 2 bin edges for mT, representing the nominal range, used to derive the correction using also option --mt-value-correction")
     parser.add_argument("--mtFitRange", default="0,40", type=str, help="Comma-separated list of 2 bin edges for mT, representing the fit range, might be the same as --mtNominalRange but not necessarily")
@@ -1456,9 +1468,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
-    if args.absEta:
-        logger.error("Option --absolute-eta not implemented correctly yet. Abort")
-        quit()
+    #if args.absEta:
+    #    logger.error("Option --absolute-eta not implemented correctly yet. Abort")
+    #    quit()
 
     if args.charge == "both":
         charges = ["plus", "minus"]
@@ -1480,6 +1492,8 @@ if __name__ == "__main__":
         subFolder += f"_maxPt{int(args.maxPt)}"
     if args.useQCDMC:
         subFolder += "_QCDMCtruth"
+    if args.absEta:
+        subFolder += f"_absEta"
     if args.postfix:
         subFolder += f"_{args.postfix}"
     subFolder += "/"

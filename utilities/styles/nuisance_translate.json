@@ -1,4 +1,5 @@
 {
+    "angularCoeffs": "Angular coefficients",
     "QCDscale": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale}$",
     "QCDscaleZMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (Z)}$",
     "QCDscaleWMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (W)}$",
@@ -10,6 +11,8 @@
     "QCDscaleZPtChargeHelicityMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (Z)}$",
     "QCDscaleWPtChargeHelicityMiNNLO": "$\\mu_\\mathrm{R} \\mu_\\mathrm{F} \\ \\mathrm{scale (W)}$",
     "binByBinStat": "Simulated samples stat.",
+    "binByBinStatW": "Bin-by-bin stat. (W)",
+    "binByBinStatZ": "Bin-by-bin stat. (Z)",
     "recoil": "recoil",
     "CMS_background": "Bkg.",
     "FakeHighMT": "FakeHighMT",
@@ -28,7 +31,8 @@
     "pdfMSHT20NoAlphaS": "PDF",
     "pdfMSHT20AlphaS": "$\\alpha_\\mathrm{S} \\ \\mathrm{PDF}$",
     "pdfCT18ZAlphaS": "$\\alpha_\\mathrm{S} \\ \\mathrm{PDF}$",
-    "resum": "$p_{\\mathrm{T}}^{\\mathrm{V}} \\ \\mathrm{modelling}$",
+    "pTModeling": "$p_{\\mathrm{T}}^{\\mathrm{V}} \\ \\mathrm{modelling}$",
+    "resum": "Resummation",
     "resumTNP": "Non pert. trans.",
     "resumNonpert": "Non pert.",
     "muonCalibration": "Muon calibration",
@@ -51,6 +55,7 @@
     "ZmassAndWidth": "Z mass & width",
     "bcQuarkMass" : "b,c quark masses",
     "experiment": "Experiment",
+    "expNoCalib": "Experiment (excl. calib.)",
     "theory": "Theory"
 }
 

@@ -101,7 +101,8 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
 
     drawTH1dataMCstack(hdata, stack_1D, xAxisName, "Fraction of events" if scaleToUnitArea else "Events", plotName,
                        outfolder_dataMC, legend, ratioPadYaxisNameTmp=ratioPadYaxisTitle, passCanvas=canvas1Dshapes,
-                       xcmsText=-1 if scaleToUnitArea else 0.3, lumi="16.8", drawLumiLatex=True, noLegendRatio=True,
+                       #xcmsText=-1 if scaleToUnitArea else 0.3,
+                       lumi="16.8", drawLumiLatex=True, noLegendRatio=True,
                        draw_both0_noLog1_onlyLog2=draw_both0_noLog1_onlyLog2, noRatioPanel=noRatioPanel, topMargin=0.06)
 
 if __name__ == "__main__":
@@ -115,10 +116,12 @@ if __name__ == "__main__":
                         help='Choose what distribution to plot by name')
     parser.add_argument("-x", "--xAxisName", nargs='+', type=str, help="x axis name")
     parser.add_argument("-r", "--ratioRange", nargs=2, type=float, default=[0.9,1.1], help="Min and max of ratio range")
-    parser.add_argument(     '--plot2D', action='store_true',   help='To plot 2D histograms and 1D projections')
+    parser.add_argument(     '--plot2D', action='store_true',   help='To plot 2D histograms')
     parser.add_argument("-y", "--yAxisName", nargs='+', type=str, help="y axis name (only for 2D plots)")
     parser.add_argument("-l", "--lumi", type=float, default=None, help="Normalization for 2D plots (if the input does not have data the luminosity is set to 1/fb)")
     parser.add_argument(     '--normUnitArea', action='store_true',   help='Scale histogram to unit area')
+    parser.add_argument("--project1D", type=str, default=None, help="Project n-dimensional distribution into this 1D variable")
+    parser.add_argument("--selectAxis", nargs='*', default=[], type=str, help="Select axes by slicing, as axName=min,max, or just axName to integrate all range")
     args = parser.parse_args()
     
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -157,13 +160,37 @@ if __name__ == "__main__":
     for ip,p in enumerate(args.plot):
 
         groups.setNominalName(p)
-        groups.loadHistsForDatagroups(p, syst="", procsToRead=datasets)
 
+        if len(args.selectAxis):
+            s = hist.tag.Slicer()
+            presel = {}
+            logger.debug(args.selectAxis)
+            logger.debug(f"Will apply the global preselection")
+            epsilon = 0.00001
+            for ps in args.selectAxis:
+                if "=" in ps:
+                    axName,axRange = ps.split("=")
+                    axMin,axMax = map(float, axRange.split(","))
+                    logger.info(f"{axName} in [{axMin},{axMax}]")
+                    presel[axName] = s[complex(0, axMin):complex(0, axMax+epsilon):hist.sum]
+                else:
+                    logger.info(f"Integrating {ps} axis")
+                    presel[ps] = s[::hist.sum]
+                    groups.setGlobalAction(lambda h: h[presel])
+
+        groups.loadHistsForDatagroups(p, syst="", procsToRead=datasets)        
         histInfo = groups.getDatagroups()
         rootHists = {}
         
         for d in datasets:
             hnarf = histInfo[d].hists[p]
+            if args.project1D:
+                if args.project1D not in hnarf.axes.name:
+                    raise ValueError(f"Histogram has axes {h.axes.name} but requested axis for projection is {args.project1D}")
+                else:
+                    if any(ax != args.project1D for ax in hnarf.axes.name):
+                        logger.info(f"Projecting {hnarf.name} into 1D histogram versus {args.project1D}")
+                        hnarf = hnarf.project(args.project1D)
             rootHists[d] = narf.hist_to_root(hnarf)
             rootHists[d].SetName(f"{p}_{d}")
 

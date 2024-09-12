@@ -157,18 +157,19 @@ def get_binning_fakes_relIso(high_iso_bins=False):
 def get_dilepton_ptV_binning(fine=False):
     return [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 20, 23, 27, 32, 40, 54, 100] if not fine else range(60)
 
-
-def get_gen_axes(flow=False, dilepton_ptV_binning=None, inclusive=False):
+def get_gen_axes(dilepton_ptV_binning=None, inclusive=False, flow=False):
     if dilepton_ptV_binning is None:
         dilepton_ptV_binning = get_dilepton_ptV_binning()
 
     gen_axes = {
-        "ptVGen": hist.axis.Variable(dilepton_ptV_binning, name = "ptVGen", underflow=False, overflow=flow),
-        "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
+        "ptVGen": hist.axis.Variable(dilepton_ptV_binning[:-1], name = "ptVGen", underflow=False, overflow=flow),
+        # "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=flow)
+        "absYVGen": hist.axis.Variable([0, 0.35, 0.7, 1.1, 1.5, 2.5], name = "absYVGen", underflow=False, overflow=flow),
     }
-    if inclusive:
-        binning = (*gen_axes["absYVGen"].edges[:-1], 5.)
-        gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
+    # if inclusive:
+    #     binning = (*gen_axes["absYVGen"].edges[:-1], 5.)
+    #     gen_axes["absYVGen"] = hist.axis.Variable(binning, name="absYVGen", underflow=False, overflow=flow)
+
     return gen_axes
 
 
@@ -253,6 +254,7 @@ def set_subparsers(subparser, name, analysis_label):
                                help="Generator level definition for unfolding")
         subparser.add_argument("--genBins", type=int, nargs="+", default=[18, 0] if "wlike" in analysis_label else [16, 0],
                                help="Number of generator level bins")
+        subparser.add_argument("--fitresult", type=str, help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI unfolding)")
         subparser.add_argument("--inclusive", action='store_true', help="No fiducial selection (mass window only)")
     elif "theoryAgnostic" in name:
         # specific for theory agnostic
@@ -463,10 +465,15 @@ def plot_parser():
     parser.add_argument("-o", "--outpath", type=str, default=os.path.expanduser("~/www/WMassAnalysis"), help="Base path for output")
     parser.add_argument("-f", "--outfolder", type=str, default="./test", help="Subfolder for output")
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name")
-    parser.add_argument("--cmsDecor", default="Work in progress", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
+    parser.add_argument("--cmsDecor", default="Preliminary", type=str, choices=[None,"Preliminary", "Work in progress", "Internal"], help="CMS label")
     parser.add_argument("--lumi", type=float, default=16.8, help="Luminosity used in the fit, needed to get the absolute cross section")
+    parser.add_argument("--logoPos", type=int, default=2, help="CMS logo position")
     parser.add_argument("--eoscp", action='store_true', help="Override use of xrdcp and use the mount instead")
-    parser.add_argument("--scaleleg", type=float, default=1.0, help="Scale legend text")
+    parser.add_argument("--noSciy", action='store_true', help="Don't allow scientific notation for y axis")
+    parser.add_argument("--legPos", type=str, default="upper right", help="Set legend position")
+    parser.add_argument("--legSize", type=str, default="small", help="Legend text size (small: axis ticks size, large: axis label size, number)")
+    parser.add_argument("--legCols", type=int, default=2, help="Number of columns in legend")
+    parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 
     return parser
 

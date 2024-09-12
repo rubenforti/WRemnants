@@ -3,6 +3,7 @@ import numpy as np
 from functools import reduce
 import collections
 from utilities import common, logging
+from wremnants import plot_tools
 import copy
 import itertools
 
@@ -166,10 +167,10 @@ def multiplyHists(h1, h2, allowBroadcast=True, createNew=True, flow=True):
     return outh
 
 # TODO: Figure out the overflow
-def concatenateHists(h1, h2, allowBroadcast=True, by_ax_name=True):
+def concatenateHists(h1, h2, allowBroadcast=True, by_ax_name=True, flow=False):
     if allowBroadcast:
-        h1 = broadcastSystHist(h1, h2, flow=False, by_ax_name=by_ax_name)
-        h2 = broadcastSystHist(h2, h1, flow=False, by_ax_name=by_ax_name)
+        h1 = broadcastSystHist(h1, h2, flow=flow, by_ax_name=by_ax_name)
+        h2 = broadcastSystHist(h2, h1, flow=flow, by_ax_name=by_ax_name)
 
     axes = []
     for ax1, ax2 in zip(h1.axes, h2.axes):
@@ -750,7 +751,7 @@ def expand_hist_by_duplicate_axes(href, ref_ax_names, new_ax_names, **kwargs):
         href = expand_hist_by_duplicate_axis(href, ax_name, new_ax_name, **kwargs)
     return href
 
-def swap_histogram_bins(histo, axis1, axis1_bin1, axis1_bin2, axis2=None, axis2_slice=None, flow=False, axis1_replace=None):
+def swap_histogram_bins(histo, axis1, axis1_bin1, axis1_bin2, axis2=None, axis2_slice=None, flow=True, axis1_replace=None):
     # swap content from axis1: axis1_bin1 with axis1: axis1_bin2 
     # optionally for a subset of the histogram defined by axis2: axis2_slice
     # optionally the selected bin content can be replaced by axis1_replace (example use case: setting up and down variations to nominal)

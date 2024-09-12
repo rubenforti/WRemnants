@@ -26,7 +26,10 @@ if __name__ == '__main__':
     parser.add_argument("--xlim", type=float, nargs=2, default=None, help="x-axis range of the plot")
     parser.add_argument("--axes", nargs="+", type=str, default=["charge", "eta"], help="Names of decorrelation axes")
     parser.add_argument("--absoluteParam", action="store_true", help="Show plot as a function of absolute value of parameter (default is difference to SM prediction)")
+    parser.add_argument("--showMCInput", action="store_true", help="Show MC input value in the plot")
     parser.add_argument("--title", type=str, default=None, help="Add a title to the plot on the upper right")
+
+    parser = common.set_parser_default(parser, "legCols", 1)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -36,7 +39,7 @@ if __name__ == '__main__':
     fitresult = combinetf_input.get_fitresult(args.infile.replace('.root','.hdf5'))
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
-    # lumi = sum([c["lumi"] for c in meta["channel_info"].values()])
+    lumi = sum([c["lumi"] for c in meta["channel_info"].values()])
 
     with uproot.open(f"{args.infile.replace('.hdf5','.root')}:fitresults") as utree:
         nll = utree['nllvalfull'].array(library="np")
@@ -128,6 +131,26 @@ if __name__ == '__main__':
         err_stat = df_p["err_stat"].values * scale
         err_cal = df_p["err_muonCalibration"].values * scale
 
+        if args.infileInclusive:
+            if len(dfInclusive) > 1:
+                logger.warning(f"Found {len(dfInclusive)} values from the inclusive fit but was expecting 1, take first value")
+            elif len(dfInclusive) == 0:
+                raise RuntimeError (f"Found 0 values from the inclusive fit but was expecting 1")
+
+            central = dfInclusive["value"].values[0] * scale + offset
+            c_err_stat = dfInclusive["err_stat"].values[0] * scale
+            c_err_cal = dfInclusive["err_muonCalibration"].values[0] * scale
+            c_err = dfInclusive["err_total"].values[0] * scale
+
+            if args.showMCInput:
+                c = central
+            else:
+                c = 0
+        else:
+            central = 0
+
+        val -= central
+
         yticks = df_p["yticks"].values
 
         if args.xlim is None:
@@ -141,23 +164,12 @@ if __name__ == '__main__':
 
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
         fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel="",#", ".join(ylabels), 
-            cms_label=args.cmsDecor, #lumi=lumi,
             grid=True, automatic_scale=False, width_scale=1.5, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
 
         if args.infileInclusive:
-            if len(dfInclusive) > 1:
-                logger.warning(f"Found {len(dfInclusive)} values from the inclusive fit but was expecting 1, take first value")
-            elif len(dfInclusive) == 0:
-                raise RuntimeError (f"Found 0 values from the inclusive fit but was expecting 1")
-
-            central = dfInclusive["value"].values[0] * scale + offset
-            c_err_stat = dfInclusive["err_stat"].values[0] * scale
-            c_err_cal = dfInclusive["err_muonCalibration"].values[0] * scale
-            c_err = dfInclusive["err_total"].values[0] * scale
-
-            ax1.errorbar([central], [0.], xerr=c_err_cal, color='orange', linewidth=3, marker="", linestyle="")
-            ax1.errorbar([central], [0.], xerr=c_err, color='black', marker="o", linestyle="")
-            ax1.errorbar([central], [0.], xerr=c_err_stat, color='red', marker="", linestyle="")
+            ax1.errorbar([c], [0.], xerr=c_err_cal, color='orange', linewidth=3, marker="", linestyle="")
+            ax1.errorbar([c], [0.], xerr=c_err, color='black', marker="o", linestyle="")
+            ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="")
 
             ndf = len(df_p)-1
 
@@ -174,23 +186,19 @@ if __name__ == '__main__':
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            plt.text(0.95, 0.25, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
+            plt.text(0.95, 0.74, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
                 fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
-            plt.text(0.95, 0.15, f"p = {str(round(p_value,2))}", 
+            plt.text(0.95, 0.68, f"p = {str(round(p_value,2))}", 
                 fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
 
-            ax1.fill_between([central-c_err, central+c_err], ylim[0], ylim[1], color='gray', alpha=0.4)
-            ax1.fill_between([central-c_err_cal, central+c_err_cal], ylim[0], ylim[1], color='orange', alpha=0.8)
-            ax1.fill_between([central-c_err_stat, central+c_err_stat], ylim[0], ylim[1], color='red', alpha=0.6)
+            ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.4)
+            ax1.fill_between([c-c_err_stat, c+c_err_stat], ylim[0], ylim[1], color='cyan', alpha=0.6)
+            ax1.fill_between([c-c_err_cal, c+c_err_cal], ylim[0], ylim[1], color='lightskyblue', alpha=0.8)
 
             yticks = ["Inclusive", *yticks]
             ytickpositions = [0., *y]
-
         else:
             ytickpositions = y
-
-
-        ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
 
         ax1.set_yticks(ytickpositions, labels=yticks)
         ax1.minorticks_off()
@@ -201,8 +209,13 @@ if __name__ == '__main__':
         ax1.plot(val, y, color='black', marker="o", linestyle="", zorder=4) # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
 
-        plot_tools.addLegend(ax1, ncols=1, text_size=16, loc="center right")#" if val[-1]<offset else "upper left")
-        # plot_tools.fix_axes(ax1, logy=args.logy)
+        if args.showMCInput:
+            ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
+            central=0
+
+
+        plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)

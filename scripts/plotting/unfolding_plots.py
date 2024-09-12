@@ -23,7 +23,6 @@ parser.add_argument("infile", type=str, help="Output file of the analysis stage,
 parser.add_argument("--fitresult",  type=str, help="Combine fitresult root file")
 parser.add_argument("-r", "--rrange", type=float, nargs=2, default=None, help="y range for ratio plot")
 parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--yscale", type=float, help="Scale the upper y axis by this factor (useful when auto scaling cuts off legend)")
 parser.add_argument("--debug", action='store_true', help="Print debug output")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--plots", type=str, nargs="+", default=["postfit"], choices=["prefit", "postfit"], help="Define which plots to make")
@@ -241,13 +240,10 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
             np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
 
-        plot_tools.fix_axes(ax1, ax2, yscale=args.yscale)
+        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
-    scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax1, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
-        label=args.cmsDecor, data=not args.noData)
-
-    plot_tools.addLegend(ax1, ncols=2, text_size=20*args.scaleleg)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=not args.noData, lumi=None, loc=args.logoPos)
+    plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     outfile = f"{fittype}"
     outfile += (f"_{args.postfix}" if args.postfix else "") 

@@ -100,8 +100,7 @@ def make_plot_2d(h2d, name, proc, axes, corr=None, plot_error=False, clim=None, 
     ax.text(0.02, 0.98, styles.text_dict.get(proc, proc), transform=ax.transAxes, fontsize=30,
             verticalalignment='top', horizontalalignment="left")
 
-    scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax, lumi=None, fontsize=20*args.scaleleg*scale, label=args.cmsDecor, data=False)
+    plot_tools.add_cms_decor(ax, args.cmsDecor, data=False, lumi=None, loc=args.logoPos)
 
     outfile = f"hist2d_{'_'.join(axes)}_{proc}_{name}"
     if corr:
@@ -170,7 +169,7 @@ def make_plot_1d(h1ds, names, proc, axis, labels=None, corr=None,
     plot_tools.addLegend(ax, ncols=1+int(len(names)/7), text_size=12)
 
     scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax, lumi=None, fontsize=20*args.scaleleg*scale, label=args.cmsDecor, data=False)
+    hep.cms.label(ax=ax, lumi=None, fontsize=legsize*scale, label=args.cmsDecor, data=False)
 
     outfile = f"hist_{axis}_{proc}"
     if corr:
