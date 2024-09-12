@@ -241,10 +241,10 @@ for h in args.hists:
     if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
         # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
-        ylabel="Events/GeV"
+        ylabel="$Events\,/\,GeV$"
     else:
         binwnorm = None
-        ylabel="Events/bin"
+        ylabel="$Events\,/\,bin$"
     if len(h.split("-")) > 1:
         sp = h.split("-")
         action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
@@ -257,9 +257,9 @@ for h in args.hists:
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
-            ratio_to_data=args.ratioToData, rlabel="Pred./Data" if args.ratioToData else "Data/Pred.",
+            ratio_to_data=args.ratioToData, rlabel="$Pred.\,/\,Data$" if args.ratioToData else "$Data\,/\,Pred.$",
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
-            cms_decor=args.cmsDecor, legtext_size=args.legSize, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
             ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
             width_scale=1.25 if len(h.split("-")) == 1 else 1,
             )

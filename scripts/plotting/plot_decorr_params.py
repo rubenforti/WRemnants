@@ -28,8 +28,10 @@ if __name__ == '__main__':
     parser.add_argument("--absoluteParam", action="store_true", help="Show plot as a function of absolute value of parameter (default is difference to SM prediction)")
     parser.add_argument("--showMCInput", action="store_true", help="Show MC input value in the plot")
     parser.add_argument("--title", type=str, default=None, help="Add a title to the plot on the upper right")
+    parser.add_argument("--widthScale", type=float, default=1.5, help="Scale the width of the figure with this factor")
 
     parser = common.set_parser_default(parser, "legCols", 1)
+    parser = common.set_parser_default(parser, "legPos", None)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -62,12 +64,12 @@ if __name__ == '__main__':
             xlabel = param.split("MeV")[0]
             if xlabel.startswith("massShift"):
                 proc = xlabel.replace("massShift","")[0]
-                xlabel = "$m_\mathrm{"+str(proc)+"}$ [MeV]"
+                xlabel = "$\mathit{m}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset = 80354 if proc=="W" else 91187.6
 
             if xlabel.startswith("Width"):
                 proc = xlabel.replace("Width","")[0]
-                xlabel = "$\Gamma_\mathrm{"+str(proc)+"}$ [MeV]"
+                xlabel = "$\mathit{\Gamma}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset= 2091.13 if proc=="W" else 2494.13
 
             scale = float(re.search(r'\d+(\.\d+)?', param.split("MeV")[0].replace("p",".")).group())
@@ -97,30 +99,32 @@ if __name__ == '__main__':
 
         # hardcode formatting of known axes
         if "eta" in axes:
-            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\eta<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
+            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
             if "charge" in axes:
                 df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("eta","eta^{+}") if x["charge"]==1 else x["yticks"].replace("eta","eta^{-}"), axis=1)
-
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
+            ylabel = " "
         elif "etaAbsEta" in axes:
             axis_label = styles.xlabels.get("etaAbsEta", "etaAbsEta")
             axis_ranges = [-2.4, -2.0, -1.6, -1.4, -1.2, -1.0, -0.6, 0.0, 0.6, 1.0, 1.2, 1.4, 1.6, 2.0, 2.4]
             df_p["yticks"] = df_p["etaAbsEta"].apply(lambda x: round(axis_ranges[x],1)).astype(str)+f"<{axis_label}<"+df_p["etaAbsEta"].apply(lambda x: round(axis_ranges[x+1],1)).astype(str)
-
+            ylabel = " "
         elif "lumi" in axes:
             axis_ranges = [[278769, 278808], [278820, 279588], [279653, 279767], [279794, 280017], [280018, 280385], [281613, 282037], [282092, 283270], [283283, 283478], [283548, 283934], [283946, 284044]]
             df_p["yticks"] = df_p["lumi"].apply(lambda x: "Run $\in$ ["+str(axis_ranges[x][0])+", "+str(axis_ranges[x][1])+"]").astype(str)
-
+            ylabel = " "
         elif "etaRegionRange" in axes:
-            axis_ranges = {0:"BB",1:"BE",2:"EE"}
+            axis_ranges = {0:"2",1:"1",2:"0"}
             df_p["yticks"] = df_p["etaRegionRange"].apply(lambda x: str(axis_ranges[x])).astype(str)
+            ylabel = "$(|\mathit{\eta}^{\mu^+}| < 0.9) + (|\mathit{\eta}^{\mu^-}| < 0.9)$"
         elif "etaRegionSign" in axes:
-            axis_ranges = {0:"--",1:"+-",2:"++"}
+            axis_ranges = {0:"-2",1:"0",2:"2"}
             df_p["yticks"] = df_p["etaRegionSign"].apply(lambda x: str(axis_ranges[x])).astype(str)
-
+            ylabel="$\mathrm{sign}(\mathit{\eta}^{\mu^+}) + \mathrm{sign}(\mathit{\eta}^{\mu^-})$"
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
+            ylabel = " "
 
         df_p.sort_values(by=axes, ascending=False, inplace=True)
 
@@ -163,13 +167,15 @@ if __name__ == '__main__':
         ylim = (-1*(args.infileInclusive!=None), len(df_p) + (args.infileInclusive!=None))
 
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
-        fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel="",#", ".join(ylabels), 
-            grid=True, automatic_scale=False, width_scale=1.5, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
+
+        fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel=ylabel,#", ".join(ylabels), 
+            grid=True, automatic_scale=False, width_scale=args.widthScale, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
 
         if args.infileInclusive:
-            ax1.errorbar([c], [0.], xerr=c_err_cal, color='orange', linewidth=3, marker="", linestyle="")
-            ax1.errorbar([c], [0.], xerr=c_err, color='black', marker="o", linestyle="")
-            ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="")
+            ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="", zorder=3)
+            ax1.errorbar([c], [0.], xerr=c_err_cal, color='orange', linewidth=5, marker="", linestyle="", zorder=2)
+            ax1.errorbar([c], [0.], xerr=c_err, color='black', marker="o", linestyle="", zorder=1)
+            ax1.plot([c], [0.], color='black', marker="o", linestyle="", zorder=4) # point on top
 
             ndf = len(df_p)-1
 
@@ -177,23 +183,31 @@ if __name__ == '__main__':
 
             chi2_stat = 2*(nll_inclusive - nll)[0]
             if args.data:
-                chi2_label = "\chi^2/\mathrm{ndf}"
+                chi2_label = "\mathit{\chi}^2/\mathit{ndf}"
             else:
                 # in case of pseudodata fits there are no statistical fluctuations and we can only access the expected p-value, where ndf has to be added to the test statistic
                 chi2_stat += ndf
-                chi2_label = "<\chi^2/\mathrm{ndf}>"
+                chi2_label = "<\mathit{\chi}^2/\mathit{ndf}>"
 
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            plt.text(0.95, 0.74, f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", 
-                fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
-            plt.text(0.95, 0.68, f"p = {str(round(p_value,2))}", 
-                fontsize=20, horizontalalignment='right', verticalalignment='top', transform=ax1.transAxes)
+            if args.legPos in [None, "center left"]:
+                x_chi2 = 0.06
+                y_chi2 = 0.15
+                ha = "left"
+                va = "bottom"
+            else:
+                raise NotImplementedError("Can only plot chi2 if legend is 'center left'")
 
-            ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.4)
-            ax1.fill_between([c-c_err_stat, c+c_err_stat], ylim[0], ylim[1], color='cyan', alpha=0.6)
-            ax1.fill_between([c-c_err_cal, c+c_err_cal], ylim[0], ylim[1], color='lightskyblue', alpha=0.8)
+            plot_tools.wrap_text(
+                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"], 
+                ax1, x_chi2, y_chi2, text_size=args.legSize)
+            
+            ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.3)
+            ax1.fill_between([c-c_err_stat, c+c_err_stat], ylim[0], ylim[1], color='gray', alpha=0.3)
+            ax1.fill_between([c-c_err_cal, c+c_err_cal], ylim[0], ylim[1], color='gray', alpha=0.3)
+            ax1.plot([c, c], ylim, color='black', linestyle="--")
 
             yticks = ["Inclusive", *yticks]
             ytickpositions = [0., *y]
@@ -204,7 +218,7 @@ if __name__ == '__main__':
         ax1.minorticks_off()
 
         ax1.errorbar(val, y, xerr=err_stat, color='red', marker="", linestyle="", label="Stat. unc.", zorder=3)
-        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=3, label="Calib. unc.", zorder=2)
+        ax1.errorbar(val, y, xerr=err_cal, color='orange', marker="", linestyle="", linewidth=5, label="Calib. unc.", zorder=2)
         ax1.errorbar(val, y, xerr=err, color='black', marker="", linestyle="", label="Measurement", zorder=1)
         ax1.plot(val, y, color='black', marker="o", linestyle="", zorder=4) # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
@@ -213,9 +227,9 @@ if __name__ == '__main__':
             ax1.plot([offset, offset], ylim, linestyle="--", marker="none", color="black", label="MC input")
             central=0
 
-
         plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
-        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=(0.02, 0.58) if args.legPos is None else args.legPos, 
+            text_size=args.legSize)
 
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)

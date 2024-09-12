@@ -610,7 +610,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.root $WEB_DIR/$PLOT_DIR impactsZ.html
 
       - name: dilepton postfit mll-etaAbsEta plot
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --binSeparationLines -2.4 -2.0 -0.6 0.0
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.4 --binSeparationLines -0.6 0.0 --logoPos 1
 
       - name: dilepton mll_inc postfit2D
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py $WREMNANTS_OUTDIR/ZMassDilepton_mll/ZMassDilepton.hdf5 --externalPostfit $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.hdf5 -o $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5  --saveHists --binByBinStat --computeHistErrors

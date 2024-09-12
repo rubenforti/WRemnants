@@ -3,6 +3,7 @@ import mplhep as hep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import patches, ticker
+from matplotlib.lines import Line2D
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools
@@ -39,7 +40,7 @@ def cfgFigure(href, xlim=None, bin_density = 300,  width_scale=1, automatic_scal
 def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     grid = False, plot_title = None, title_padding = 0,
     bin_density = 300, logy=False, logx=False,
-    width_scale=1, height=8, automatic_scale=True,
+    width_scale=1, height=8, automatic_scale=True
 ):
     if isinstance(href, hist.Hist):
         fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
@@ -81,7 +82,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
     
     if not only_ratio:
-        ax1 = fig.add_subplot(4, 1, (1, 3)) 
+        ax1 = fig.add_subplot(6, 1, (1, 4)) 
         ax1.set_xlabel(" ")
         ax1.set_ylabel(ylabel)
         ax1.set_xlim(xlim)
@@ -97,8 +98,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
             ax1.grid(which = "both")
         if plot_title: 
             ax1.set_title(plot_title, pad = title_padding)
-
-    ax2 = fig.add_subplot(4, 1, 4) 
+    ax2 = fig.add_subplot(6, 1, (5, 6)) 
 
     ax2.set_xlabel(xlabel)
     
@@ -120,26 +120,36 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     else:
         return fig,ax2
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right'):
+# Create a custom handler map
+class StackedLineHandler:
+    def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+        x0, y0 = handlebox.xdescent, handlebox.ydescent
+        width, height = handlebox.width, handlebox.height
+        line1 = Line2D([x0, x0+width], [y0+height*0.75, y0+height*0.75],
+                       color=orig_handle.get_color(), lw=1.4*orig_handle.get_linewidth(), linestyle='-')
+        line2 = Line2D([x0, x0+width], [y0+height*0.25, y0+height*0.25],
+                       color=orig_handle.get_color(), lw=1.4*orig_handle.get_linewidth(), linestyle='--')
+        handlebox.add_artist(line1)
+        handlebox.add_artist(line2)
+        return [line1, line2]
+
+def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', extra_handles=[], extra_labels=[], stacked_handler=False, reverse=False):
     handles, labels = ax.get_legend_handles_labels()
-    
+
     shape = np.divide(*ax.get_figure().get_size_inches())
     #TODO: The goal is to leave the data in order, but it should be less hacky
     handles[:] = reversed(handles)
     labels[:] = reversed(labels)
+    handles.extend(extra_handles)
+    labels.extend(extra_labels)
     if len(handles) % 2 and ncols == 2:
         handles.insert(math.floor(len(handles)/2), patches.Patch(color='none', label = ' '))
         labels.insert(math.floor(len(labels)/2), ' ')
-    if text_size=="large" or text_size is None:
-        # legend size same as axis label size
-        text_size = ax.yaxis.label.get_size()
-    elif text_size=="small":
-        # legend size same as axis ticklabel size (numbers)
-        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
-    else:
-        text_size = int(text_size)
 
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc)
+    text_size = get_textsize(ax, text_size)
+
+    handler_map = {Line2D: StackedLineHandler()} if stacked_handler else None
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, reverse=reverse)
 
     if extra_text:
         p = leg.get_frame()
@@ -152,18 +162,22 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
                 verticalalignment='top', bbox=props)
 
 
-def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
+def get_textsize(ax, text_size):
+    if text_size=="large" or text_size is None:
+        # legend size same as axis label size
+        return ax.yaxis.label.get_size()
+    elif text_size=="small":
+        # legend size same as axis ticklabel size (numbers)
+        return ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    else:
+        return int(text_size)
+
+
+def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=True):
     # wrap text within lower_x and upper_x, 
     #  if text is already given as pieces in a list, use these pieces, 
     #  otherwise calculate the pieces automatically
-    if text_size=="large" or text_size is None:
-        # legend size same as axis label size
-        text_size = ax.yaxis.label.get_size()
-    elif text_size=="small":
-        # legend size same as axis ticklabel size (numbers)
-        text_size = ax.yaxis.get_ticklabels()[0].get_fontsize() 
-    else:
-        text_size = int(text_size)
+    text_size = get_textsize(ax, text_size)
 
     if isinstance(text, str):
         # Get the width of the text in data coordinates
@@ -178,12 +192,17 @@ def wrap_text(text, ax, lower_x, upper_x, y, text_size=None):
     else:
         wrapped_text = '\n'.join(text)
 
-    x = (lower_x + upper_x) / 2
-    ax.text(x, y, wrapped_text, ha='center', va='center', fontsize=text_size, wrap=True)
+    if upper_x is not None:
+        x = (lower_x + upper_x) / 2
+        ha='center'
+    else:
+        x = lower_x
+        ha='left'
+    ax.text(x, y, wrapped_text, ha=ha, va='center', transform=ax.transAxes if transform else ax.transData, fontsize=text_size, wrap=True)
 
 
 def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):
-    text_size = ax.yaxis.label.get_size() if text_size is None else text_size
+    text_size = get_textsize(ax, text_size)
     hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
 
 
@@ -403,9 +422,8 @@ def makeStackPlotWithRatio(
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
     fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
 
-    if cms_decor:
-        lumi = float(f"{lumi:.3g}") if not density else None
-        add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
+    lumi = float(f"{lumi:.3g}") if not density else None
+    add_cms_decor(ax1, cms_decor, data="Data" in histInfo, lumi=lumi, loc=logoPos)
 
     return fig
 
@@ -414,7 +432,7 @@ def makePlotWithRatioToRef(
     xlabel="", ylabel="Events/bin", rlabel="x/nominal",
     rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2, binwnorm=None, alpha=1.,
     baseline=True, dataIdx=None, autorrange=None, grid = False, extra_text=None, extra_text_loc=(0.8, 0.7),
-    yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None,
+    yerr=False, legtext_size=20, plot_title=None, x_ticks_ndp = None, bin_density = 300, yscale=None, logoPos=2, scale_cms=1,
     logy=False, logx=False, fill_between=0, title_padding = 0, cms_label = None, cutoff=1e-6, only_ratio = False, width_scale = 1
 ):
     if len(hists) != len(labels) or len(hists) != len(colors):
@@ -425,13 +443,13 @@ def makePlotWithRatioToRef(
         fig, ax1, ax2 = figureWithRatio(
         hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
+            bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
     else:
         fig, ax2 = figureWithRatio(
             hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
-            bin_density = bin_density, cms_label = cms_label, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
+            bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
 
     linestyles = linestyles+['solid']*(len(hists)-len(linestyles))
@@ -504,6 +522,10 @@ def makePlotWithRatioToRef(
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
         fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
         if x_ticks_ndp: ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
+
+    if cms_label:
+        add_cms_decor(ax1, cms_label, loc=logoPos, text_size=ax1.yaxis.label.get_size()*scale_cms)
+
     return fig
 
 def makeHistPlot2D(h2d, flow=False, **kwargs):
@@ -601,6 +623,7 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax*yscale)
 
+    ax1.tick_params(axis='y', pad=5)  # Set distance to axis for y-axis numbers
     redo_axis_ticks(ax1, "x")
 
     if noSci and not logy:
@@ -609,6 +632,7 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0,0))
 
     if ax2 is not None:
+        ax2.tick_params(axis='y', pad=5)  # Set distance to axis for y-axis numbers
         redo_axis_ticks(ax2, "x")
         ax1.set_xticklabels([])
 
@@ -622,8 +646,8 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
         y_label_pos = min(get_ylabel_position(ax1), get_ylabel_position(ax2))
 
         # Set both labels to the leftmost position
-        ax1.yaxis.set_label_coords(y_label_pos, 1.0)
-        ax2.yaxis.set_label_coords(y_label_pos, 1.0)
+        ax1.yaxis.set_label_coords(y_label_pos*0.7, 1.0)
+        ax2.yaxis.set_label_coords(y_label_pos*0.7, 1.0)
 
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
@@ -689,3 +713,56 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
                 logf.write('\n'+'-'*80+"\n")
                 logf.write(json.dumps(analysis_info, indent=5).replace("\\n", "\n"))
         logger.info(f"Writing file {logname}")
+
+def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, out, outfolder, name, 
+                      legend_loc="upper right", double_colors=False, scale_leg=1, capsize=10, width_scale=1.5, 
+                      center_color="black",
+                      offset=0, point_center_colors=None, cms_label="Preliminary"):
+    nentries = len(df)+offset
+
+    # This code makes me feel like an idiot by I can't think of a better way to do it
+    if colors == "auto":
+        cmap = mpl.cm.get_cmap("tab10")
+        colors = [cmap(i) for i in range(len(df))]
+
+    if len(colors) != len(df):
+        raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
+
+    fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
+                    grid=True, automatic_scale=False, width_scale=width_scale, 
+                    height=4+0.24*nentries, xlim=xlim, ylim=[0, nentries+1])
+
+    ax1.plot([centerline, centerline], [0, nentries+1], linestyle="dashdot", marker="none", color=center_color, label=center_label)
+    ax1.fill_between([centerline-center_unc, centerline+center_unc], 0, nentries+1, color="grey", alpha=0.2)
+
+    for i, (x, row) in enumerate(df.iterrows()):
+        # Use for spacing purposes
+        #if df is None:
+        #    continue
+
+        vals = row.iloc[1:].values
+        u = vals[1:]
+        pos = nentries-i-offset
+        # Lazy way to arrange the legend properly
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], label=row.loc["Name"])
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize)
+        if len(u) > 1:
+            ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
+
+    if cms_label:
+        hep.cms.text(ax=ax1, text=cms_label, loc=2)
+
+    if legend_loc is not None:
+        addLegend(ax1, ncols=1, text_size=12*scale_leg, loc=legend_loc, reverse=True)
+    ax1.minorticks_off()
+    ax1.set_yticklabels([])
+    ax1.xaxis.set_major_locator(ticker.LinearLocator(numticks=5))
+    eoscp = "/eos" in out[:4]
+    outdir = output_tools.make_plot_dir(out, outfolder, eoscp=eoscp)
+    save_pdf_and_png(outdir, name, fig)
+    write_index_and_log(outdir, name)
+    if eoscp:
+        output_tools.copy_to_eos(outdir, out, outfolder)
+    return fig
+    
+
