@@ -673,11 +673,12 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     # lat.DrawLatex(xmin, yhi-0.05, lineChi2);
 
     ### Draw band to highlight acceptance
-    hAcceptBand = copy.deepcopy(histo.Clone("hAcceptBand"))
+    #hAcceptBand = copy.deepcopy(histo.Clone("hAcceptBand"))
+    hAcceptBand = ROOT.TH1D("hAcceptBand","", 41, 24, 65)
     if step != "tracking" and "veto" not in step:
         yMaxBand = downLeg * (canvas.GetY2() - canvas.GetY1()) + canvas.GetY1()
         for i in range(1, 1 + hAcceptBand.GetNbinsX()):
-            if hAcceptBand.GetBinCenter(i) > 26.0 and hAcceptBand.GetBinCenter(i) < 55.0:
+            if hAcceptBand.GetBinCenter(i) > 26.0 and hAcceptBand.GetBinCenter(i) < 56.0:
                 hAcceptBand.SetBinContent(i, 0.0)
                 hAcceptBand.SetBinError(i, 0.0)
             else:
@@ -790,12 +791,14 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     # ###########
 
     ### Draw band to highlight acceptance
-    hAcceptBandRatio = copy.deepcopy(histo.Clone("hAcceptBandRatio"))
+    #hAcceptBandRatio = copy.deepcopy(histo.Clone("hAcceptBandRatio"))
+    hAcceptBandRatio = ROOT.TH1D("hAcceptBand","", 41, 24, 65)
+
     if step != "tracking" and "veto" not in step:
         hAcceptBandRatio.Reset("ICESM")
-        yMaxBand = maxy
+        yMaxBand = rmaxy
         for i in range(1, 1 + hAcceptBandRatio.GetNbinsX()):
-            if hAcceptBandRatio.GetBinCenter(i) > 26.0 and hAcceptBandRatio.GetBinCenter(i) < 55.0:
+            if hAcceptBandRatio.GetBinCenter(i) > 26.0 and hAcceptBandRatio.GetBinCenter(i) < 56.0:
                 hAcceptBandRatio.SetBinContent(i, 0.0)
                 hAcceptBandRatio.SetBinError(i, 0.0)
             else:
