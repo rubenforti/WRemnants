@@ -80,7 +80,7 @@ else:
     raise IOError("Unknown source, input file must be either from combinetf2 or combinetf1 (in case of combinetf1 both .root and .hdf5 files must exist)")
 
 meta = input_tools.get_metadata(args.infile)
-is_normalized = meta["args"].get("normalize", False)
+is_normalized = meta["args"].get("normalize", False) if meta is not None else False
 
 translate_selection = {
     "charge": {
