@@ -190,7 +190,18 @@ def get_custom_handler_map(keys):
     return handler_map
 
 
-def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size=None, loc='upper right', extra_handles=[], extra_labels=[], custom_handlers=[], reverse=True):
+def addLegend(
+    ax, 
+    ncols=2, 
+    extra_text=None, 
+    extra_text_loc=None, 
+    text_size=None, 
+    loc='upper right', 
+    extra_handles=[], 
+    extra_labels=[], 
+    custom_handlers=[], 
+    reverse=True
+):
     handles, labels = ax.get_legend_handles_labels()
 
     handles.extend(extra_handles)
@@ -206,16 +217,25 @@ def addLegend(ax, ncols=2, extra_text=None, extra_text_loc=(0.8, 0.7), text_size
     handler_map = get_custom_handler_map(custom_handlers)
     leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, reverse=reverse)
 
-    if extra_text:
-        p = leg.get_frame()
-        bounds = leg.get_bbox_to_anchor().bounds
-        # these are matplotlib.patch.Patch properties
-        props = dict(boxstyle='square', facecolor='white', alpha=0.5)
+    if extra_text is not None:
+        if extra_text_loc is None:
+            # Add text to the left of the legend
+            # Get the bounding box of the legend
+            bbox = leg.get_window_extent()
 
-        # TODO: Figure out how to make this dynamic wrt the legend
-        ax.text(*extra_text_loc, extra_text, transform=ax.transAxes, fontsize=text_size,
-                verticalalignment='top', bbox=props)
+            # Convert the bbox to display coordinates (relative to the figure)
+            bbox_transform = plt.gcf().transFigure.inverted()
+            bbox_disp = bbox_transform.transform(bbox)
 
+            # Adjust the x position by moving it to the left
+            extra_text_loc = bbox_disp[0, 0] - 0.25, bbox_disp[1, 1]-0.01
+
+            transform = plt.gcf().transFigure
+        else:
+            transform=None
+
+        wrap_text(extra_text, ax, *extra_text_loc, text_size=text_size, ha='left', va='top', transform=transform)
+        
 
 def get_textsize(ax, text_size):
     if text_size=="large" or text_size is None:
@@ -228,7 +248,7 @@ def get_textsize(ax, text_size):
         return int(text_size)
 
 
-def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=True):
+def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=None, ha=None, va='center'):
     # wrap text within lower_x and upper_x, 
     #  if text is already given as pieces in a list, use these pieces, 
     #  otherwise calculate the pieces automatically
@@ -247,13 +267,15 @@ def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=True
     else:
         wrapped_text = '\n'.join(text)
 
-    if upper_x is not None:
+    if ha is not None:
+        x = lower_x
+    elif upper_x is not None:
         x = (lower_x + upper_x) / 2
         ha='center'
     else:
         x = lower_x
         ha='left'
-    ax.text(x, y, wrapped_text, ha=ha, va='center', transform=ax.transAxes if transform else ax.transData, fontsize=text_size, wrap=True)
+    ax.text(x, y, wrapped_text, ha=ha, va=va, transform=transform if transform is not None else ax.transAxes, fontsize=text_size, wrap=True)
 
 
 def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):

@@ -142,6 +142,8 @@ legend_labels = {
     'b_qqDS0.5': r'$\mathit{B}_{qq\Delta S}$',
     'b_qg-0.5': r'$\mathit{B}_{qg}$',
     'b_qg0.5': r'$\mathit{B}_{qg}$',
+    "massShiftW100MeV": r'$\mathit{m}_\mathrm{W} \pm 100\,\mathrm{MeV}$',
+    "massShiftZ100MeV": r'$\mathit{m}_\mathrm{Z} \pm 100\,\mathrm{MeV}$',
 }
 
 # uncertainties
