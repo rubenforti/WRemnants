@@ -856,21 +856,12 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
 
     for i, (x, row) in enumerate(df.iterrows()):
         # Use for spacing purposes
-        #if df is None:
-        #    continue
-        if label_points:
-            label = row.loc["Name"]
-        elif i==0: 
-            label = "Data"
-        else:
-            label = None
-
         vals = row.iloc[1:].values
         u = vals[1:]
         pos = nentries-i-top_offset
         # Lazy way to arrange the legend properly
         # ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i])
-        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize, label=label)
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize, label=row.loc["Name"] if label_points else None)
         if len(u) > 1:
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
 

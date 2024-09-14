@@ -74,7 +74,7 @@ for i,row in dfw_cms.iterrows():
     isCMS = row.loc["Name"] == "CMS" 
     pos = top-step*i
     ax.annotate(row["Name"], (xpos, pos), fontsize=text_size_large, ha="left", annotation_clip=False, color=row.loc["color"])#, weight=600)
-    if row.loc["Name"] in ["CMS", "CDF", "ATLAS"]:
+    if row.loc["Name"] in ["CMS", "CDF", "ATLAS", "PDG Average"]:
         label = f"{row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f}"
     else:
         label = f"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"

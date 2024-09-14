@@ -125,7 +125,7 @@ if args.w:
 else:
     xlabel=r'$\mathit{p}_{T}^{Z}$ (GeV)'
     ylabel = r'$Z\to\mu\mu'
-ylabel += r'\ Cross\ section\,/\,GeV$'
+ylabel += r'\ Cross\ section\ (pb) \,/\,GeV$'
 
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nominals,

@@ -100,7 +100,7 @@ if __name__ == '__main__':
         if "eta" in axes:
             df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
             if "charge" in axes:
-                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("eta","eta^{+}") if x["charge"]==1 else x["yticks"].replace("eta","eta^{-}"), axis=1)
+                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("\mu","\mu^{+}") if x["charge"]==1 else x["yticks"].replace("\mu","\mu^{-}"), axis=1)
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
             ylabel = " "
         elif "etaAbsEta" in axes:
@@ -238,9 +238,12 @@ if __name__ == '__main__':
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)
 
-        outfile=f"decorr_{param}"
+        outfile=f"decorr_{param}_"
+        outfile += "_".join(axes)
         if args.postfix:
             outfile += f"_{args.postfix}"
+        if args.cmsDecor == "Preliminary":
+            outfile += "_preliminary"
 
         plot_tools.save_pdf_and_png(outdir, outfile)
         plot_tools.write_index_and_log(outdir, outfile, 

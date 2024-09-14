@@ -144,8 +144,18 @@ legend_labels = {
     'b_qqDS0.5': r'$\mathit{B}_{qq\Delta S}$',
     'b_qg-0.5': r'$\mathit{B}_{qg}$',
     'b_qg0.5': r'$\mathit{B}_{qg}$',
+}
+
+legend_labels_combine = {
     "massShiftW100MeV": r'$\mathit{m}_\mathrm{W} \pm 100\,\mathrm{MeV}$',
     "massShiftZ100MeV": r'$\mathit{m}_\mathrm{Z} \pm 100\,\mathrm{MeV}$',
+    "QCDscaleWinclusive_PtV0_13000helicity_0_SymAvg": r'$\mathit{A}_0$',
+    "QCDscaleWinclusive_PtV0_13000helicity_1_SymAvg": r'$\mathit{A}_1$',
+    "QCDscaleWinclusive_PtV0_13000helicity_2_SymAvg": r'$\mathit{A}_2$',
+    "QCDscaleWinclusive_PtV0_13000helicity_3_SymAvg": r'$\mathit{A}_3$',
+    "resumTNP_gamma_nu" : r'$\mathit{\gamma}_{\nu}$',
+    "chargeVgenNP0scetlibNPWLambda2": r'$\mathit{\Lambda}_{2}$',
+    "pythia_shower_kt": r"Pythia shower $\mathit{k}_T$"
 }
 
 # uncertainties

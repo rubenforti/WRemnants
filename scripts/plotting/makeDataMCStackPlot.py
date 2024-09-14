@@ -75,7 +75,7 @@ if args.fitresult and len(args.hists) > 1:
 	raise ValueError("Multiple hists not supported for combine-based pre/post-fit plotting")
 
 entries = []
-varLabels = args.varLabel
+varLabels = args.varLabel if addVariation else []
 if addVariation and (args.selectAxis or args.selectEntries):
     if not (args.selectAxis and args.selectEntries):
         raise ValueError("Must --selectAxis and --selectEntries together")
