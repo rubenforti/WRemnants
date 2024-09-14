@@ -429,7 +429,6 @@ def makeStackPlotWithRatio(
     extra_handles = []
     extra_labels = []
     if unstacked:
-
         linestyles = ['solid']*len(unstacked)
         data_idx = -1
         if "Data" in unstacked:
@@ -475,7 +474,7 @@ def makeStackPlotWithRatio(
             if proc != "Data":
                 unstack = unstack*scale
 
-            if i > lower_panel_variations or proc=="Data":
+            if i >= lower_panel_variations or proc=="Data":
                 # unstacked that are filled between are only plot in the lower panel
                 hep.histplot(
                     unstack,

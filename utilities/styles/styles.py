@@ -128,6 +128,8 @@ legend_labels = {
     'gamma_mu_q1.': r'$\mathit{\gamma}_{\mu}$',
     'gamma_nu-1.': r'$\mathit{\gamma}_{\nu}$',
     'gamma_nu1.': r'$\mathit{\gamma}_{\nu}$',
+    'Lambda20.25': r'$\mathit{\Lambda}_{2}$',
+    'Lambda2-0.25': r'$\mathit{\Lambda}_{2}$',
     'h_qqV-1.': r'$\mathit{H}$',
     'h_qqV1.': r'$\mathit{H}$',
     's-1.': r'$\mathit{S}$',

@@ -75,7 +75,7 @@ if args.fitresult and len(args.hists) > 1:
 	raise ValueError("Multiple hists not supported for combine-based pre/post-fit plotting")
 
 entries = []
-varLabels = []
+varLabels = args.varLabel
 if addVariation and (args.selectAxis or args.selectEntries):
     if not (args.selectAxis and args.selectEntries):
         raise ValueError("Must --selectAxis and --selectEntries together")
@@ -90,8 +90,6 @@ if addVariation and (args.selectAxis or args.selectEntries):
     elif len(args.varLabel) != 1 and len(args.varLabel) != len(args.selectEntries):
         raise ValueError("Must specify the same number of args for --selectEntries, and --varLabel"
                          f" found selectEntries={len(args.selectEntries)} and varLabel={len(args.varLabel)}")
-    else:
-        varLabels = args.varLabel
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
