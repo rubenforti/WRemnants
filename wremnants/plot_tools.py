@@ -828,10 +828,10 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
                 logf.write(json.dumps(analysis_info, indent=5).replace("\\n", "\n"))
         logger.info(f"Writing file {logname}")
 
-def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, out, outfolder, name, 
+def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
                       legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
                       center_color="black", cms_loc=2, label_points=True, legtext_size=None,
-                      top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary"):
+                      top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
 
     # This code makes me feel like an idiot by I can't think of a better way to do it
@@ -841,45 +841,48 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
 
     if len(colors) != len(df):
         raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
+    if ylim is None:
+        ylim = [0, nentries+1]
 
     fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
                     grid=True, automatic_scale=False, width_scale=width_scale, 
-                    height=padding+point_size*nentries, xlim=xlim, ylim=[0, nentries+1])
+                    height=padding+point_size*nentries, xlim=xlim, ylim=ylim)
 
-    ax1.plot([centerline, centerline], [0, nentries+1], linestyle="dashdot", marker="none", color=center_color)
-    ax1.fill_between([centerline-center_unc, centerline+center_unc], 0, nentries+1, color="grey", alpha=0.2)
-    extra_handles = [(Polygon([[0,0], [0,0], [0,0], [0,0]], color=center_color, linestyle="solid", alpha=0.2),
-                      Line2D([0], [0], color="black", linestyle="dashdot", linewidth=1))]
+    ax1.plot([centerline, centerline], ylim, linestyle="dashdot", marker="none", color=center_color, linewidth=2)
+    ax1.fill_between([centerline-center_unc, centerline+center_unc], *ylim, color="silver", alpha=0.6)
+    extra_handles = [(Polygon([[0,0], [0,0], [0,0], [0,0]], color="silver", linestyle="solid", alpha=0.6),
+                      Line2D([0], [0], color="black", linestyle="dashdot", linewidth=2))]
     extra_labels = [center_label]
 
     for i, (x, row) in enumerate(df.iterrows()):
         # Use for spacing purposes
         #if df is None:
         #    continue
+        if label_points:
+            label = row.loc["Name"]
+        elif i==0: 
+            label = "Data"
+        else:
+            label = None
 
         vals = row.iloc[1:].values
         u = vals[1:]
         pos = nentries-i-top_offset
         # Lazy way to arrange the legend properly
-        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], label=row.loc["Name"] if label_points else None)
-        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize)
+        # ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i])
+        ax1.errorbar([vals[0]], [pos], xerr=u[0], linestyle="", linewidth=3, marker="o", color=colors[i], capsize=capsize, label=label)
         if len(u) > 1:
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
 
     if cms_label:
-        hep.cms.text(ax=ax1, text=cms_label, loc=cms_loc, fontsize=legtext_size)
+        add_cms_decor(ax1, cms_label, loc=logoPos)
 
     if legend_loc is not None:
         addLegend(ax1, ncols=1, text_size=legtext_size, loc=legend_loc, reverse=True, extra_labels=extra_labels, extra_handles=extra_handles)
     ax1.minorticks_off()
     ax1.set_yticklabels([])
     ax1.xaxis.set_major_locator(ticker.LinearLocator(numticks=5))
-    eoscp = "/eos" in out[:4]
-    outdir = output_tools.make_plot_dir(out, outfolder, eoscp=eoscp)
-    save_pdf_and_png(outdir, name, fig)
-    write_index_and_log(outdir, name)
-    if eoscp:
-        output_tools.copy_to_eos(outdir, out, outfolder)
+
     return fig
     
 

@@ -15,9 +15,16 @@ dfw = pd.DataFrame.from_dict({
     "value" : [80376, 80375, 80433.5, 80354, 80366.5, 80369.2],
     "err_total" : [33, 23, 9.4, 32, 15.9, 13.3],
     "err_stat" : [25, 11, 6.4, 23, 9.8, 13.3],
-    "Reference" : ["Phys. Rep. 532 (2013) 119", "Phys. Rev. Lett. 108 (2012) 151804",
-                  "Science 376 (2022) 6589", "JHEP 01 (2022) 036", "arxiv:2403.15085 Submitted to EPJC", 
-                   "Eur.Phys.J.C 84 (2024) 5, 451"],
+    "Reference" : [
+        "Phys. Rep. 532 (2013) 119", 
+        # "Phys. Rev. Lett. 108 (2012) 151804",
+        "PRL 108 (2012) 151804",
+        "Science 376 (2022) 6589", 
+        "JHEP 01 (2022) 036", 
+        "arxiv:2403.15085 Subm. to EPJC", 
+        # "Eur.Phys.J.C 84 (2024) 5, 451",
+        "EPJC 84 (2024) 5, 451",
+    ],
     "color" : ["black"]*5+["navy"],
 })
 
@@ -26,24 +33,17 @@ cms_res["color"] = "#E42536"
 cms_res["Reference"] = "This Work" 
 dfw_cms = pd.concat((dfw, cms_res), ignore_index=True)
 
-name = "resultsSummary"
-if args.postfix:
-    name += postfix
-
 eoscp = output_tools.is_eosuser_path(args.outpath)
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
 
-#offset=-0.25
-offset=0
+nentries = len(dfw_cms)
 
 fig = plot_tools.make_summary_plot(80353, 6, "EW fit",
     dfw_cms.loc[:,("Name", "value", "err_total")],
     colors=list(dfw_cms["color"]),
-    xlim=[80275, 80475],
+    xlim=[80255, 80465],
+    ylim=[0, nentries+1.3],
     xlabel=r"$\mathit{m}_{W}$ (MeV)", 
-    out=outdir, 
-    outfolder=args.outfolder,
-    name=name,
     capsize=6,
     width_scale=1.25,
     cms_label=args.cmsDecor,
@@ -53,33 +53,49 @@ fig = plot_tools.make_summary_plot(80353, 6, "EW fit",
     #top_offset=offset,
     #bottom_offset=offset*2,
     label_points=False,
-    legend_loc='upper left',
-    legtext_size=18,
+    legend_loc='lower right',
+    legtext_size="small",
+    logoPos=args.logoPos,
 )
 
-nentries = len(dfw_cms)
 
-top = nentries+0.5
-step = (top+0.25)/nentries
+top = nentries#+0.5
+# step = (top+0.25)/nentries
+step = top/nentries
 
 ax = plt.gca()
-xpos = 80190
+xpos = 80135
+
+text_size = 15 #
+text_size_large = plot_tools.get_textsize(ax, "small")
+
+ax.annotate("$\mathit{m}_{{W}}\pm$ unc. in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
 for i,row in dfw_cms.iterrows():
     isCMS = row.loc["Name"] == "CMS" 
     pos = top-step*i
-    ax.annotate(row["Name"], (xpos, pos), fontsize=18, ha="left", annotation_clip=False, color=row.loc["color"], weight=600)
+    ax.annotate(row["Name"], (xpos, pos), fontsize=text_size_large, ha="left", annotation_clip=False, color=row.loc["color"])#, weight=600)
     if row.loc["Name"] in ["CMS", "CDF", "ATLAS"]:
-        label = f"$m_{{W}}$ = {row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f} MeV"
+        label = f"{row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f}"
     else:
-        label = f"$m_{{W}}$ = {row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f} MeV"
-    ax.annotate(label, (xpos, pos-0.3), fontsize=10, ha="left", color="black", annotation_clip=False)
-    ax.annotate(row["Reference"], (xpos, pos-.6), fontsize=10, ha="left", color="dimgrey", annotation_clip=False, style='italic' if isCMS else None)
+        label = f"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"
+    
+    # label = $\mathit{m}_{{W}}$ = "+label+" MeV"
+
+    ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color="black", annotation_clip=False)
+    ax.annotate(row["Reference"], (xpos, pos-0.42), fontsize=text_size, ha="left", color="dimgrey", annotation_clip=False, style='italic' if isCMS else None)
 
 ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(25))
 ax.xaxis.grid(False, which='both')
 ax.yaxis.grid(False, which='both')
+
+name = "resultsSummary"
+if args.postfix:
+    name += postfix
+if args.cmsDecor == "Preliminary":
+    name += "_preliminary"
+
 plot_tools.save_pdf_and_png(outdir, name, fig)
 plot_tools.write_index_and_log(outdir, name)
 if eoscp:
