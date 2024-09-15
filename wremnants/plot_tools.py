@@ -278,9 +278,12 @@ def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=None
     ax.text(x, y, wrapped_text, ha=ha, va=va, transform=transform if transform is not None else ax.transAxes, fontsize=text_size, wrap=True)
 
 
-def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None):
+def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None, no_energy=False):
     text_size = get_textsize(ax, text_size)
-    hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
+    if no_energy:
+        hep.cms.text(ax=ax, text=label, loc=loc, fontsize=text_size)
+    else:
+        hep.cms.label(ax=ax, lumi=lumi, lumi_format="{0:.3g}", fontsize=text_size, label=label, data=data, loc=loc)
 
 
 def makeStackPlotWithRatio(
@@ -866,7 +869,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
 
     if cms_label:
-        add_cms_decor(ax1, cms_label, loc=logoPos)
+        add_cms_decor(ax1, cms_label, loc=logoPos, no_energy=True)
 
     if legend_loc is not None:
         addLegend(ax1, ncols=1, text_size=legtext_size, loc=legend_loc, reverse=True, extra_labels=extra_labels, extra_handles=extra_handles)
