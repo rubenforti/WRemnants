@@ -215,14 +215,14 @@ def define_dressed_vars(df, mode, flavor="mu"):
         logger.debug("LHE variables are already defined, do nothing here.")
         return df
 
-    logger.info("Defining dressed variables")
+    logger.info(f"Defining dressed variables for mode '{mode}' and flavor '{flavor}'")
 
     # use postfsr neutrinos
     df = define_postfsr_vars(df, mode)
 
     lep_pdgId = 13 if flavor == "mu" else 11
 
-    if mode in ["wlike", "dilepton"]:
+    if mode[0] == 'z':
         df = df.Define("dressedLep", f"GenDressedLepton_pdgId=={lep_pdgId}")
         df = df.Define("dressedAntiLep", f"GenDressedLepton_pdgId==-{lep_pdgId}")
         
@@ -266,7 +266,7 @@ def define_dressed_vars(df, mode, flavor="mu"):
 
     return df
 
-def define_lhe_vars(df, mode=None):
+def define_lhe_vars(df):
     if "lheLeps" in df.GetColumnNames():
         logger.debug("LHE leptons are already defined, do nothing here.")
         return df
@@ -283,7 +283,6 @@ def define_lhe_vars(df, mode=None):
     df = df.Define("lheV_idx", 'if (Sum(lheVs) != 1) throw std::runtime_error("LHE V not found."); return ROOT::VecOps::ArgMax(lheVs);')
     df = df.Define("lheV_pdgId", "LHEPart_pdgId[lheV_idx]")
     df = df.Define("lheV_pt", "LHEPart_pt[lheV_idx]")
-
 
     df = df.Define("lheLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheLep_idx], LHEPart_eta[lheLep_idx], LHEPart_phi[lheLep_idx], LHEPart_mass[lheLep_idx])")
     df = df.Define("lheAntiLep_mom", "ROOT::Math::PtEtaPhiMVector(LHEPart_pt[lheAntiLep_idx], LHEPart_eta[lheAntiLep_idx], LHEPart_phi[lheAntiLep_idx], LHEPart_mass[lheAntiLep_idx])")
@@ -307,7 +306,7 @@ def define_lhe_vars(df, mode=None):
 
     return df
 
-def define_prefsr_vars(df, mode=None):
+def define_prefsr_vars(df):
     if "prefsrLeps" in df.GetColumnNames():
         logger.debug("PreFSR leptons are already defined, do nothing here.")
         return df
@@ -360,6 +359,8 @@ def define_postfsr_vars(df, mode=None):
     if "postfsrLeptons" in df.GetColumnNames():
         logger.debug("PostFSR leptons are already defined, do nothing here.")
         return df
+
+    logger.info(f"Defining postFSR variables for mode '{mode}'")
 
     # status flags in NanoAOD: https://cms-nanoaod-integration.web.cern.ch/autoDoc/NanoAODv9/2016ULpostVFP/doc_TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8_RunIISummer20UL16NanoAODv9-106X_mcRun2_asymptotic_v17-v1.html
     # post fsr definition: is stable && (isPrompt or isDirectPromptTauDecayProduct) && is lepton

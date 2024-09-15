@@ -251,16 +251,16 @@ def build_graph(df, dataset):
                 axes = [*nominal_axes, *unfolding_axes] 
                 cols = [*nominal_cols, *unfolding_cols]
 
-    if not args.noAuxiliaryHistograms and isZ:
+    if not args.noAuxiliaryHistograms and isZ and len(auxiliary_gen_axes):
         # gen level variables before selection
+        df_gen = df
+        df_gen = df_gen.DefinePerSample("exp_weight", "1.0")
+        df_gen = theory_tools.define_theory_weights_and_corrs(df_gen, dataset.name, corr_helpers, args)
+
         for obs in auxiliary_gen_axes:
-            df_gen = df
-            df_gen = df_gen.DefinePerSample("exp_weight", "1.0")
-
-            df_gen = theory_tools.define_theory_weights_and_corrs(df_gen, dataset.name, corr_helpers, args)
-
             results.append(df_gen.HistoBoost(f"gen_{obs}", [all_axes[obs]], [obs, "nominal_weight"]))
-            df_gen = syst_tools.add_theory_hists(results, df_gen, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, [all_axes[obs]], [obs], base_name=f"gen_{obs}", for_wmass=False)
+            syst_tools.add_theory_hists(results, df_gen, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, [all_axes[obs]], [obs], base_name=f"gen_{obs}", for_wmass=False)
+    
     df = df.Filter(muon_selections.hlt_string(era))
 
     df = muon_selections.veto_electrons(df)
@@ -435,13 +435,14 @@ def build_graph(df, dataset):
         else:
             results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))  
 
-    for obs in ["ptll", "mll", "yll", "cosThetaStarll", "phiStarll", "etaPlus", "etaMinus", "ptPlus", "ptMinus"]:
-        if dataset.is_data:
-            results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs]))
-        else:
-            results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs, "nominal_weight"]))
-            if isWorZ:
-                df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, [all_axes[obs]], [obs], base_name=f"nominal_{obs}", for_wmass=False)
+    if not args.noAuxiliaryHistograms:
+        for obs in ["ptll", "mll", "yll", "cosThetaStarll", "phiStarll", "etaPlus", "etaMinus", "ptPlus", "ptMinus"]:
+            if dataset.is_data:
+                results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs]))
+            else:
+                results.append(df.HistoBoost(f"nominal_{obs}", [all_axes[obs]], [obs, "nominal_weight"]))
+                if isWorZ:
+                    df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, [all_axes[obs]], [obs], base_name=f"nominal_{obs}", for_wmass=False)
 
     if not args.noAuxiliaryHistograms and isZ:
         # gen level variables
@@ -499,6 +500,7 @@ def build_graph(df, dataset):
         hparmgradsres = df.HistoBoost("hparmgradsres", parmgradres_axes, parmgradres_cols, tensor_axes = [axis_res_parms])
         results.append(hparmgradsres)
 
+
     if not dataset.is_data and not args.onlyMainHistograms:
 
         df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, smooth3D=args.smooth3dsf)
@@ -511,7 +513,7 @@ def build_graph(df, dataset):
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
         if isWorZ:
-
+            
             df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, for_wmass=False)
 
             reco_sel = "vetoMuonsPre"
@@ -659,7 +661,7 @@ def build_graph(df, dataset):
     return results, weightsum
 
 logger.debug(f"Datasets are {[d.name for d in datasets]}")
-resultdict = narf.build_and_run(datasets, build_graph)
+resultdict = narf.build_and_run(datasets[::-1], build_graph)
 
 if not args.noScaleToData:
     scale_to_data(resultdict)
