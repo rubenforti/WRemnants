@@ -13,7 +13,6 @@ parser.add_argument("-w", action='store_true')
 parser.add_argument("--ptll-fit", type=str, required=True)
 parser.add_argument("--etapt-fit", type=str, required=True)
 parser.add_argument("--obs", type=str, default="ptVgen")
-parser.add_argument("--xlim", type=float, nargs=2)
 
 args = parser.parse_args()
 
@@ -81,8 +80,9 @@ hists = [x.project(args.obs) for x in [
     *hist_to_up_down_unc(etapth),
 ]]
 
+
 labels=[
-        r"SCETlib+DYTurbo N$^{3}LL+NNLO$ (prefit)",
+        r"prefit",
         r"$m_{W}$ $(p_{T}^{\mu}, \eta^{\mu})+p_{T}^{\mu\mu}$ postfit" if args.w else r"$p_{T}^{\mu\mu}$ postfit",
         ("$m_{W}$ " if args.w else "$m_{Z}$ ")+ r"$(p_{T}^{\mu}, \eta^{\mu})$ postfit",
         "", "", 
@@ -117,30 +117,43 @@ if unfolded_data:
 if args.xlim:
     hists = [x[complex(0, args.xlim[0]):complex(0, args.xlim[1])] for x in hists]
 
+hists_nominals = hists[:3+(unfolded_data is not None)]
+
+if args.w:
+    xlabel=r'$\mathit{p}_{T}^{W}$ (GeV)'
+    ylabel = r'$W\to\mu\nu'
+else:
+    xlabel=r'$\mathit{p}_{T}^{Z}$ (GeV)'
+    ylabel = r'$Z\to\mu\mu'
+ylabel += r'\ Cross\ section\ (pb) \,/\,GeV$'
+
 fig = plot_tools.makePlotWithRatioToRef(
-                hists=hists,
-                labels=labels,
-                colors=colors,
-                linestyles=["solid",]*(4 if unfolded_data else 3)+["dotted"]*2+["dashed"]*4,
-                xlabel=f"p$_{{T}}^{'W' if args.w else 'Z'}$ (GeV)", 
-                ylabel="$\sigma$/bin",
-                rlabel="postfit / prefit" if args.w else "ratio to prefit",
-                rrange=[0.9, 1.1],
-                nlegcols=1,
-                yscale=1.2,
-                xlim=None, binwnorm=1.0, baseline=True,
-                yerr=False,
-                fill_between=6,
-                cms_label=args.cmsDecor,
-                legtext_size=14,
-                dataIdx=3 if unfolded_data else None,
-                scale_cms=0.8,
+    hists=hists_nominals,
+    hists_ratio=hists,
+    labels=labels,
+    colors=colors,
+    linestyles=["solid",]*(4 if unfolded_data else 3)+["dotted"]*2+["dashdot"]*2+["dashed"]*2,
+    xlabel=xlabel, ylabel=ylabel,
+    rlabel="Ratio to prefit",
+    rrange=args.rrange,
+    nlegcols=args.legCols,
+    lowerLegCols=args.lowerLegCols,
+    lowerLegPos=args.lowerLegPos,
+    yscale=args.yscale,
+    ylim=args.ylim,
+    xlim=None, binwnorm=1.0, baseline=True,
+    yerr=False,
+    fill_between=6,
+    cms_label=args.cmsDecor,
+    legtext_size=args.legSize,
+    dataIdx=3 if unfolded_data else None,
+    width_scale=1.25,
 )
 eoscp = output_tools.is_eosuser_path(args.outpath)
 
 outdir = output_tools.make_plot_dir(args.outpath, "Z", eoscp=True)
 name = f"ptVgen_postfit_{'W' if args.w else 'Wlike'}_RecoPtll_PrefitRatio"
-if "preliminary" in args.cmsDecor.lower():
+if args.cmsDecor == "Preliminary":
     name += "_preliminary"
 
 plot_tools.save_pdf_and_png(outdir, name)

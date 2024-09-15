@@ -23,7 +23,6 @@ if __name__ == '__main__':
     parser.add_argument("--infileInclusive", type=str, default=None, help="Fitresult file from combinetf with inclusive fit")
     parser.add_argument("--data", action="store_true", help="Specify if the fit is performed on data, needed for correct p-value calculation")
     parser.add_argument("--poiType", type=str, default="nois", help="Parameter type")
-    parser.add_argument("--xlim", type=float, nargs=2, default=None, help="x-axis range of the plot")
     parser.add_argument("--axes", nargs="+", type=str, default=["charge", "eta"], help="Names of decorrelation axes")
     parser.add_argument("--absoluteParam", action="store_true", help="Show plot as a function of absolute value of parameter (default is difference to SM prediction)")
     parser.add_argument("--showMCInput", action="store_true", help="Show MC input value in the plot")
@@ -101,7 +100,7 @@ if __name__ == '__main__':
         if "eta" in axes:
             df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
             if "charge" in axes:
-                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("eta","eta^{+}") if x["charge"]==1 else x["yticks"].replace("eta","eta^{-}"), axis=1)
+                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("\mu","\mu^{+}") if x["charge"]==1 else x["yticks"].replace("\mu","\mu^{-}"), axis=1)
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
             ylabel = " "
         elif "etaAbsEta" in axes:
@@ -114,17 +113,22 @@ if __name__ == '__main__':
             df_p["yticks"] = df_p["lumi"].apply(lambda x: "Run $\in$ ["+str(axis_ranges[x][0])+", "+str(axis_ranges[x][1])+"]").astype(str)
             ylabel = " "
         elif "etaRegionRange" in axes:
-            axis_ranges = {0:"2",1:"1",2:"0"}
+            # axis_ranges = {0:"2",1:"1",2:"0"}
+            axis_ranges = {0:"Both $|\mathit{\eta}^{\mu}| < 0.9$",1:"One $|\mathit{\eta}^{\mu}| < 0.9$",2:"Both $|\mathit{\eta}^{\mu}| > 0.9$"}
+            # axis_ranges = {0:"Both central",1:"One central",2:"Both forward"}
             df_p["yticks"] = df_p["etaRegionRange"].apply(lambda x: str(axis_ranges[x])).astype(str)
+
             ylabel = "$(|\mathit{\eta}^{\mu^+}| < 0.9) + (|\mathit{\eta}^{\mu^-}| < 0.9)$"
         elif "etaRegionSign" in axes:
-            axis_ranges = {0:"-2",1:"0",2:"2"}
+            # axis_ranges = {0:"-2",1:"0",2:"2"}
+            axis_ranges = {0:"Both $\mathit{\eta}^{\mu} < 0$",1:"One $\mathit{\eta}^{\mu} < 0$",2:"Both $\mathit{\eta}^{\mu} > 0$"}
+            # axis_ranges = {0:"$SS\ \eta\ neg.$",1:"$OS\ \eta$",2:"$SS\ \eta\ pos.$"}
             df_p["yticks"] = df_p["etaRegionSign"].apply(lambda x: str(axis_ranges[x])).astype(str)
-            ylabel="$\mathrm{sign}(\mathit{\eta}^{\mu^+}) + \mathrm{sign}(\mathit{\eta}^{\mu^-})$"
+            # ylabel="$\mathrm{sign}(\mathit{\eta}^{\mu^+}) + \mathrm{sign}(\mathit{\eta}^{\mu^-})$"
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
-            ylabel = " "
+        ylabel = " "
 
         df_p.sort_values(by=axes, ascending=False, inplace=True)
 
@@ -234,9 +238,12 @@ if __name__ == '__main__':
         if args.title:
             ax1.text(1.0,1.005, args.title, fontsize=28, horizontalalignment='right', verticalalignment='bottom', transform=ax1.transAxes)
 
-        outfile=f"decorr_{param}"
+        outfile=f"decorr_{param}_"
+        outfile += "_".join(axes)
         if args.postfix:
             outfile += f"_{args.postfix}"
+        if args.cmsDecor == "Preliminary":
+            outfile += "_preliminary"
 
         plot_tools.save_pdf_and_png(outdir, outfile)
         plot_tools.write_index_and_log(outdir, outfile, 

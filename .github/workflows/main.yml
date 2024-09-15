@@ -258,7 +258,7 @@ jobs:
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --rebin 1 --yscale 1.3 --legCols 1 --baseName ptW  --fakeSmoothingMode fakerate --normToData --fineGroups --hists recoWpt -o $WEB_DIR -f $PLOT_DIR $HIST_FILE
 
       - name: wmass plot massShift
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py -p massVariation --yscale 1.4 --hist pt --baseName nominal -r 0.98 1.02 -o $WEB_DIR -f $PLOT_DIR $HIST_FILE variation --varName massWeightW --selectEntries massShiftW100MeVUp massShiftW100MeVDown --varLabel massShift100MeVUp massShift100MeVDown --selectAxis massShift --color grey grey
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py -p massVariation --yscale 1.4 --hist pt --baseName nominal --rrange 0.98 1.02 -o $WEB_DIR -f $PLOT_DIR $HIST_FILE variation --varName massWeightW --selectEntries massShiftW100MeVUp massShiftW100MeVDown --varLabel massShift100MeVUp massShift100MeVDown --selectAxis massShift --color grey grey
 
   lowpu-w:
     # The type of runner that the job will run on

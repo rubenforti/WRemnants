@@ -22,14 +22,11 @@ parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the fi
 parser.add_argument("--nominalRef", type=str, help="Specify the nominal hist if baseName is a variation hist (for plotting alt hists)")
 parser.add_argument("--hists", type=str, nargs='+', required=True, help="List of histograms to plot")
 parser.add_argument("-c", "--channel", type=str, choices=["plus", "minus", "all"], default="all", help="Select channel to plot")
-parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9, 1.1], help="y range for ratio plot")
 parser.add_argument("--rebin", type=int, nargs='*', default=[], help="Rebin axis by this value (default, 1, does nothing)")
 parser.add_argument("--absval", type=int, nargs='*', default=[], help="Take absolute value of axis if 1 (default, 0, does nothing)")
 parser.add_argument("--axlim", type=float, default=[], nargs='*', help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)")
 parser.add_argument("--rebinBeforeSelection", action='store_true', help="Rebin before the selection operation (e.g. before fake rate computation), default if after")
 parser.add_argument("--logy", action='store_true', help="Enable log scale for y axis")
-parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
-parser.add_argument("--xlim", type=float, nargs=2, help="min and max for x axis")
 parser.add_argument("--procFilters", type=str, nargs="*", help="Filter to plot (default no filter, only specify if you want a subset")
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--noFill", action='store_true', help="Don't fill")
@@ -40,6 +37,7 @@ parser.add_argument("--flow", type=str, choices=["show", "sum", "hint", "none"],
 parser.add_argument("--fitresult", type=str, help="Specify a fitresult root file to draw the postfit distributions with uncertainty bands")
 parser.add_argument("--prefit", action='store_true', help="Use the prefit uncertainty from the fitresult root file, instead of the postfit. (--fitresult has to be given)")
 parser.add_argument("--noRatioErr", action='store_false', dest="ratioError", help="Don't show stat unc in ratio")
+parser.add_argument("--rlabel", type=str, default=None, help="Ratio y-axis label for plot labeling")
 parser.add_argument("--selection", type=str, help="Specify custom selections as comma seperated list (e.g. '--selection passIso=0,passMT=[2::hist.sum]' )")
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
@@ -51,17 +49,18 @@ parser.add_argument("--fakeSmoothingOrder", type=int, default=3, help="Order of 
 parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", choices=Regressor.polynomials, help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
-
+parser.add_argument("--subplotSizes", nargs=2, type=int, default=[4,2], help="Relative sizes for upper and lower panels")
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser("variation", help="Arguments for adding variation hists")
 variation.add_argument("--varName", type=str, nargs='+', required=True, help="Name of variation hist")
-variation.add_argument("--varLabel", type=str, nargs='+', required=True, help="Label(s) of variation hist for plotting")
+variation.add_argument("--varLabel", type=str, nargs='*', default=None, help="Label(s) of variation hist for plotting")
 variation.add_argument("--selectAxis", type=str, nargs='+', help="If you need to select a variation axis")
 variation.add_argument("--selectEntries", type=str, nargs='+', help="entries to read from the selected axis")
 variation.add_argument("--colors", type=str, nargs='+', help="Variation colors")
 variation.add_argument("--linestyle", type=str, default=[], nargs='+', help="Linestyle for variations")
 variation.add_argument("--doubleColors", action='store_true', help="Auto generate colors in pairs (useful for systematics)")
 variation.add_argument("--fillBetween", type=int, help="Fill between first n variation hists in ratio")
+variation.add_argument("--lowerPanelVariations", type=int, default=0, help="Plot n first variations in lower panel only")
 
 args = parser.parse_args()
 
@@ -76,16 +75,21 @@ if args.fitresult and len(args.hists) > 1:
 	raise ValueError("Multiple hists not supported for combine-based pre/post-fit plotting")
 
 entries = []
+varLabels = args.varLabel if addVariation else []
 if addVariation and (args.selectAxis or args.selectEntries):
     if not (args.selectAxis and args.selectEntries):
         raise ValueError("Must --selectAxis and --selectEntries together")
-    if len(args.varLabel) != 1 and len(args.varLabel) != len(args.selectEntries):
-        raise ValueError("Must specify the same number of args for --selectEntries, and --varLabel"
-                         f" found selectEntries={len(args.selectEntries)} and varLabel={len(args.varLabel)}")
     if len(args.varName) < len(args.selectEntries):
         args.varName = padArray(args.varName, args.selectEntries)
     axes = padArray(args.selectAxis, args.varName)
     entries = padArray(args.selectEntries, args.varName)
+
+    if args.varLabel is None:
+        # try to get labels from predefined styles
+        varLabels = [styles.legend_labels.get(e, e) for e in entries]
+    elif len(args.varLabel) != 1 and len(args.varLabel) != len(args.selectEntries):
+        raise ValueError("Must specify the same number of args for --selectEntries, and --varLabel"
+                         f" found selectEntries={len(args.selectEntries)} and varLabel={len(args.varLabel)}")
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
@@ -175,7 +179,7 @@ transforms = syst_tools.syst_transform_map(nominalName, args.hists[0])
 
 if addVariation:
     logger.info(f"Adding variation {args.varName}")
-    varLabels = padArray(args.varLabel, args.varName)
+    varLabels = padArray(varLabels, args.varName)
     # If none matplotlib will pick a random color
     ncols = len(args.varName) if not args.doubleColors else int(len(args.varName)/2)
     colors = args.colors if args.colors else [colormaps["tab10" if ncols < 10 else "tab20"](int(i/2) if args.doubleColors else i) for i in range(len(args.varName))]
@@ -245,6 +249,11 @@ for h in args.hists:
     else:
         binwnorm = None
         ylabel="$Events\,/\,bin$"
+
+    if args.rlabel is None:
+        rlabel = "$Pred.\,/\,Data$" if args.ratioToData else "$Data\,/\,Pred.$"
+    else:
+        rlabel = args.rlabel
     if len(h.split("-")) > 1:
         sp = h.split("-")
         action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
@@ -254,14 +263,16 @@ for h in args.hists:
         xlabel=styles.xlabels.get(h,h)
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
+            lower_panel_variations=args.lowerPanelVariations if hasattr(args, "lowerPanelVariations") else 0,
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
-            ratio_to_data=args.ratioToData, rlabel="$Pred.\,/\,Data$" if args.ratioToData else "$Data\,/\,Pred.$",
+            ratio_to_data=args.ratioToData, rlabel=rlabel,
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
             cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
             ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
-            width_scale=1.25 if len(h.split("-")) == 1 else 1,
+            width_scale=1.25 if len(h.split("-")) == 1 else 1, lowerLegCols=args.lowerLegCols, lowerLegPos=args.lowerLegPos,
+            subplotsizes=args.subplotSizes,
             )
 
     fitresultstring=""
@@ -274,6 +285,8 @@ for h in args.hists:
             var_arg = args.selectEntries[0] if not args.selectEntries[0].isdigit() else (var_arg+args.selectEntries[0])
     to_join = [f"{h.replace('-','_')}"]+[var_arg]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
     outfile = "_".join(filter(lambda x: x, to_join))
+    if args.cmsDecor == "Preliminary":
+        outfile += "_preliminary"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
 

@@ -2,6 +2,7 @@ import mplhep as hep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib import colormaps
 import itertools
 import os
 import hist
@@ -17,7 +18,7 @@ import scipy.stats
 from utilities import common, logging, differential, boostHistHelpers as hh
 from utilities.styles import styles
 from wremnants import plot_tools
-from utilities.io_tools import output_tools, combinetf_input, combinetf2_input
+from utilities.io_tools import input_tools, output_tools, combinetf_input, combinetf2_input
 
 import pdb
 
@@ -25,12 +26,11 @@ hep.style.use(hep.style.ROOT)
 
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="hdf5 file from combinetf2 or root file from combinetf1")
-parser.add_argument("-r", "--rrange", type=float, nargs=2, default=[0.9,1.1], help="y range for ratio plot")
-parser.add_argument("--ylim", type=float, nargs=2, help="Min and max values for y axis (if not specified, range set automatically)")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--noLowerPanel", action='store_true', help="Don't plot the lower panel in the plot")
 parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
 parser.add_argument("--noData", action='store_true', help="Don't plot the data")
+parser.add_argument("--noUncertainty", action='store_true', help="Don't plot total uncertainty band")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
 parser.add_argument("--filterProcs", type=str, nargs="*", default=None, help="Only plot the filtered processes")
@@ -43,16 +43,34 @@ parser.add_argument("--dataName", type=str, default="Data", help="Data name for 
 parser.add_argument("--xlabel", type=str, default=None, help="x-axis label for plot labeling")
 parser.add_argument("--ylabel", type=str, default=None, help="y-axis label for plot labeling")
 parser.add_argument("--processGrouping", type=str, default=None, help="key for grouping processes")
-parser.add_argument("--noiVariation", action='store_true', help="Plot NOI up/down variations")
 parser.add_argument("--binSeparationLines", type=float, default=None, nargs='*', help="Plot vertical lines for makro bin edges in unrolled plots, specify bin boundaries to plot lines, if empty plot for all")
-parser.add_argument("--lowerLegPos", type=str, default="upper left", help="Set legend position")
-parser.add_argument("--lowerLegCols", type=int, default=2, help="Number of columns in legend")
+parser.add_argument("--extraTextLoc", type=float, nargs=2, default=None, help="Location in (x,y) for additional text, aligned to upper left")
+parser.add_argument("--varNames", type=str, nargs='*', default=None, help="Name of variation hist")
+parser.add_argument("--varLabels", type=str, nargs='*', default=None, help="Label(s) of variation hist for plotting")
+parser.add_argument("--varColors", type=str, nargs='*', default=None, help="Color(s) of variation hist for plotting")
+parser.add_argument("--varOneSided",  type=int, nargs='*', help="Only plot one sided variation (1) or two default two-sided (0)")
 
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
+
+
+varNames = args.varNames
+if varNames is not None:
+    varLabels = args.varLabels
+    varColors = args.varColors
+    if varLabels is None:
+        # try to get labels from predefined styles
+        varLabels = [styles.legend_labels_combine.get(e, e) for e in varNames]
+    elif len(varLabels) != len(varNames):
+        raise ValueError("Must specify the same number of args for --varNames, and --varLabels"
+            f" found varNames={len(varNames)} and varLabels={len(varLabels)}")
+    if varColors is None:
+        varColors = [colormaps["tab10" if len(varNames) < 10 else "tab20"](i) for i in range(len(varNames))]
+
+    varOneSided = [args.varOneSided[i] if i < len(args.varOneSided) else 0 for i in range(len(varNames))]
 
 fittype = "prefit" if args.prefit else "postfit"
 ratio = not args.noLowerPanel and not args.logTransform
@@ -71,14 +89,21 @@ elif os.path.isfile(args.infile.replace(".hdf5",".root")):
 else:
     raise IOError("Unknown source, input file must be either from combinetf2 or combinetf1 (in case of combinetf1 both .root and .hdf5 files must exist)")
 
+meta = input_tools.get_metadata(args.infile)
+is_normalized = meta["args"].get("normalize", False) if meta is not None else False
+
 translate_selection = {
+    "charge": "$\mathit{q}^\mu$ = ",
+}
+translate_selection_value = {
     "charge": {
-        0 : "minus",
-        1 : "plus"
-    }
+        -1.0: "-1",
+        1.0: "+1",
+    },
 }
 
-def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=None, hdown=None, variation="",suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None):
+
+def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=None, hdown=None, variation="",suffix="", chi2=None, meta=None, saturated_chi2=False, lumi=None, selection=None):
     axes_names = [a.name for a in axes]
 
     if any(x in axes_names for x in ["ptll", "mll", "ptVgen", "ptVGen", "pt"]):
@@ -125,8 +150,13 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     else:
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
     if ratio or diff:
+        if args.noData:
+            rlabel = ('Diff.' if diff else 'Ratio') + " to pred."
+        else:
+            rlabel = f"${args.dataName}"+('-' if diff else '\,/\,')+"Pred.$"
+
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            f"${args.dataName}"+('-' if diff else '\,/\,')+"Pred.$", 
+            rlabel, 
             args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
@@ -191,7 +221,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 y = min_y+range_y* (0.15 if np.min(h_inclusive.values()[x_lo:x])>max_y*0.3 else 0.8)
                 lo = s_range(axes[0].edges[i-1])
                 hi = s_range(axes[0].edges[i])
-                plot_tools.wrap_text([f"{lo}", "<" + s_label + "<", f"{hi}{s_unit}"], ax1, x_lo, y, x, text_size="small", transform=False)
+                plot_tools.wrap_text([s_label, f"${lo}-{hi}$", s_unit], ax1, x_lo, y, x, text_size="small", transform=ax1.transData)
 
     if ratio or diff:
         extra_handles = []
@@ -226,14 +256,15 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 flow='none',
             )
 
-            # for uncertaity bands
-            edges = h_inclusive.axes[0].edges
+        # for uncertaity bands
+        edges = h_inclusive.axes[0].edges
 
-            # need to divide by bin width
-            binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
-            if h_inclusive.storage_type != hist.storage.Weight:
-                raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
+        # need to divide by bin width
+        binwidth = edges[1:]-edges[:-1] if binwnorm else 1.
+        if h_inclusive.storage_type != hist.storage.Weight:
+            raise ValueError(f"Did not find uncertainties in {fittype} hist. Make sure you run combinetf with --computeHistErrors!")
 
+        if not args.noUncertainty:
             nom = h_inclusive.values() / binwidth
             std = np.sqrt(h_inclusive.variances()) / binwidth
 
@@ -253,52 +284,70 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                     step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label=label_unc)
 
         if hup is not None:
-            color_variation = "magenta"#"#7A21DD"
-            hep.histplot(
-                [hh.divideHists(hup, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hdown, h_inclusive, cutoff=0.01, rel_unc=True)],
-                histtype="step",
-                color=color_variation,
-                linestyle=["-","--"],
-                yerr=False,
-                linewidth=2,
-                ax=ax2,
-                flow='none',
-            )
-
-            extra_handles.append(Line2D([0], [0], color=color_variation))
-            extra_labels.append(variation)
+            linewidth = 2
+            for i, (hu, hd) in enumerate(zip(hup, hdown)):
+                if varOneSided[i]:
+                    hvars = hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True)
+                    linestyle="-"
+                else:
+                    hvars = [hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hd, h_inclusive, cutoff=0.01, rel_unc=True)]
+                    linestyle=["-","--"]
+                hep.histplot(
+                    hvars,
+                    histtype="step",
+                    color=varColors[i],
+                    linestyle=linestyle,
+                    yerr=False,
+                    linewidth=linewidth,
+                    label=varLabels[i] if varOneSided[i] else None,
+                    ax=ax2,
+                    flow='none',
+                )
+                if not varOneSided[i]:
+                    extra_handles.append(Line2D([0], [0], color=varColors[i], linewidth=linewidth))
+                    extra_labels.append(varLabels[i])
 
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
-    fontsize = ax1.xaxis.label.get_size()
+    text_pieces = []
+    if is_normalized:
+        text_pieces.append(fittype.capitalize()+" (normalized)")
+    else:
+        text_pieces.append(fittype.capitalize())
+
+    if selection is not None:
+        text_pieces.extend(selection)
 
     if chi2 is not None:
-        p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
+        p_val = int(round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100))
         if saturated_chi2:
-            chi2_name = "\chi_{\mathrm{sat.}}^2/ndf"
+            chi2_name = "\mathit{\chi}_{\mathrm{sat.}}^2/\mathit{ndf}"
         else:
-            chi2_name = "\chi^2/ndf"
-        if len(h_data.values())<100:
-            plt.text(0.05, 0.84, f"${chi2_name}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=fontsize)  
-            plt.text(0.05, 0.76, f"$= {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=fontsize)  
-        else:
-            plt.text(0.05, 0.84, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                fontsize=fontsize)
+            chi2_name = "\mathit{\chi}^2/\mathit{ndf}"
 
+        if len(h_data.values())<100:
+            text_pieces.append(f"${chi2_name}$")
+            text_pieces.append(f"$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
+        else:
+            text_pieces.append(f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
+    
     plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
-        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize, extra_text=text_pieces, extra_text_loc=args.extraTextLoc)
 
     if ratio or diff:
-        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, extra_handles=extra_handles, extra_labels=extra_labels, stacked_handler=True)
+        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, 
+            extra_handles=extra_handles, extra_labels=extra_labels, custom_handlers=["stacked"])
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     to_join = [fittype, args.postfix, *axes_names, suffix]
     outfile = "_".join(filter(lambda x: x, to_join))
+    if is_normalized:
+        outfile += "_normalized"
+    if args.cmsDecor == "Preliminary":
+        outfile += "_preliminary"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
 
@@ -324,17 +373,11 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
         hist_stack, labels, colors, procs = styles.process_grouping(args.processGrouping, hist_stack, procs)
 
     if hist_var is not None:
-        variations = {
-            "massShiftW100MeV": r'$\mathit{m}_\mathrm{W} \pm 9.9\,\mathrm{MeV}$',
-            "massShiftZ100MeV": r'$\mathit{m}_\mathrm{Z} \pm 4.8\,\mathrm{MeV}$',
-        }
-        variation = variations[hist_var.axes["nois"][0]]
-        hist_down = hist_var[{"downUpVar":0, "nois":0}]
-        hist_up = hist_var[{"downUpVar":1, "nois":0}]
+        hists_down = [hist_var[{"downUpVar":0, "vars":n}] for n in varNames]
+        hists_up = [hist_var[{"downUpVar":1, "vars":n}] for n in varNames]
     else:
-        variation=None
-        hist_down = None
-        hist_up = None
+        hists_down = None
+        hists_up = None
 
     # make plots in slices (e.g. for charge plus an minus separately)
     selection_axes = [a for a in axes if a.name in args.selectionAxes]
@@ -354,8 +397,8 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
             h_stack = [h[idxs] for h in hist_stack]
 
             if hist_var is not None:
-                hdown = hist_down[idxs]
-                hup = hist_up[idxs]
+                hdown = [h[idxs] for h in hists_down]
+                hup = [h[idxs] for h in hists_up]
             else:
                 hdown = None
                 hup = None
@@ -368,11 +411,12 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
                 kwopts["run"] = lumi
             for a, i in idxs_centers.items():
                 print(a,i)
+            selection = [f"{translate_selection[a]}{translate_selection_value[a][i]}" for a, i in idxs_centers.items()]
             suffix = f"{channel}_" + "_".join([f"{a}_{str(i).replace('.','p').replace('-','m')}" for a, i in idxs_centers.items()])
             logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
-            make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, hup=hup, hdown=hdown, variation=variation, *opts, **kwopts)
+            make_plot(h_data, h_inclusive, h_stack, other_axes, labels=labels, colors=colors, suffix=suffix, hup=hup, hdown=hdown, selection=selection, *opts, **kwopts)
     else:
-        make_plot(hist_data, hist_inclusive, hist_stack, axes, labels=labels, colors=colors, suffix=channel, hup=hist_up, hdown=hist_down, variation=variation, *opts, **kwopts)
+        make_plot(hist_data, hist_inclusive, hist_stack, axes, labels=labels, colors=colors, suffix=channel, hup=hists_up, hdown=hists_down, *opts, **kwopts)
 
 if combinetf2:
     meta = ioutils.pickle_load_h5py(fitresult_h5py["meta"])
@@ -399,8 +443,8 @@ if combinetf2:
         hist_stack = [hist_stack[{"processes" : p}] for p in procs]
 
         # vary poi by postfit uncertainty
-        if args.noiVariation:
-            hist_var = fitresult[f"hist_postfit_inclusive_variations_nois"][channel].get()
+        if varNames is not None:
+            hist_var = fitresult[f"hist_{fittype}_inclusive_variations"][channel].get()
         else:
             hist_var = None
 
@@ -420,7 +464,7 @@ if combinetf2:
             hist_inclusive.values()[...] = 1e5*np.log(hist_inclusive.values())
             hist_inclusive.variances()[...] = 1e10*(hist_inclusive.variances())/np.square(or_vals)
 
-            if args.noiVariation:
+            if varNames is not None:
                 hist_var.values()[...] = 1e5*np.log(hist_var.values())
                 hist_var.variances()[...] = 1e10*(hist_var.variances())/np.square(or_vals)
 
