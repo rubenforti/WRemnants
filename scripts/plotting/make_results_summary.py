@@ -58,8 +58,9 @@ fig = plot_tools.make_summary_plot(80353, 6, "EW fit",
     #bottom_offset=offset*2,
     label_points=False,
     legend_loc='lower right',
-    legtext_size="small",
+    legtext_size="verysmall",
     logoPos=args.logoPos,
+    lumi=16.8,
 )
 
 
