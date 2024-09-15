@@ -244,6 +244,9 @@ def get_textsize(ax, text_size):
     elif text_size=="small":
         # legend size same as axis ticklabel size (numbers)
         return ax.yaxis.get_ticklabels()[0].get_fontsize() 
+    elif text_size=="verysmall":
+        # legend size same as axis ticklabel size (numbers)
+        return ax.yaxis.get_ticklabels()[0].get_fontsize()*0.6
     else:
         return int(text_size)
 
@@ -833,7 +836,7 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
                       legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
-                      center_color="black", cms_loc=2, label_points=True, legtext_size=None,
+                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None,
                       top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
 
@@ -869,7 +872,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker="o", color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
 
     if cms_label:
-        add_cms_decor(ax1, cms_label, loc=logoPos, no_energy=True)
+        add_cms_decor(ax1, cms_label, loc=logoPos, lumi=lumi, no_energy=lumi is not None)
 
     if legend_loc is not None:
         addLegend(ax1, ncols=1, text_size=legtext_size, loc=legend_loc, reverse=True, extra_labels=extra_labels, extra_handles=extra_handles)
