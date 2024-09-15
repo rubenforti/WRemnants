@@ -8,10 +8,11 @@ from wremnants import plot_tools
 
 parser = common.plot_parser()
 parser.add_argument("-i", "--fitresult", type=str, required=True, help="fitresults file from combinetf")
+parser.add_argument("--no-pdg", action='store_true', help="Don't show PDG value")
 args = parser.parse_args()
 
 dfw = pd.DataFrame.from_dict({
-    "Name" : ["LEP Combination", "D0", "CDF", "LHCb", "ATLAS", "PDG Average"],
+    "Name" : ["LEP combination", "D0", "CDF", "LHCb", "ATLAS", "PDG Average"],
     "value" : [80376, 80375, 80433.5, 80354, 80366.5, 80369.2],
     "err_total" : [33, 23, 9.4, 32, 15.9, 13.3],
     "err_stat" : [25, 11, 6.4, 23, 9.8, 13.3],
@@ -21,12 +22,15 @@ dfw = pd.DataFrame.from_dict({
         "PRL 108 (2012) 151804",
         "Science 376 (2022) 6589", 
         "JHEP 01 (2022) 036", 
-        "arxiv:2403.15085 Subm. to EPJC", 
-        # "Eur.Phys.J.C 84 (2024) 5, 451",
-        "EPJC 84 (2024) 5, 451",
+        "arxiv:2403.15085, subm. to EPJC", 
+        #"EPJC 84 (2024) 5, 451",
+        "Phys. Rev. D 110, 030001",
     ],
     "color" : ["black"]*5+["navy"],
 })
+
+if args.no_pdg:
+    dfw = dfw[dfw["Name"] != "PDG Average"]
 
 cms_res = combinetf_input.read_groupunc_df(args.fitresult, ["stat",], name="CMS")
 cms_res["color"] = "#E42536" 
@@ -64,12 +68,12 @@ top = nentries#+0.5
 step = top/nentries
 
 ax = plt.gca()
-xpos = 80135
+xpos = 80135-args.no_pdg*10
 
 text_size = 15 #
 text_size_large = plot_tools.get_textsize(ax, "small")
 
-ax.annotate("$\mathit{m}_{{W}}\pm$ unc. in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
+ax.annotate("$\mathit{m}_{{W}}$ in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
 for i,row in dfw_cms.iterrows():
     isCMS = row.loc["Name"] == "CMS" 
     pos = top-step*i
@@ -81,10 +85,10 @@ for i,row in dfw_cms.iterrows():
     
     # label = $\mathit{m}_{{W}}$ = "+label+" MeV"
 
-    ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color="black", annotation_clip=False)
+    ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color=row.loc["color"] if isCMS else "black", annotation_clip=False)
     ax.annotate(row["Reference"], (xpos, pos-0.42), fontsize=text_size, ha="left", color="dimgrey", annotation_clip=False, style='italic' if isCMS else None)
 
-ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+ax.set_yticks(range(1, nentries+1))
 ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(25))
 ax.xaxis.grid(False, which='both')
@@ -92,7 +96,7 @@ ax.yaxis.grid(False, which='both')
 
 name = "resultsSummary"
 if args.postfix:
-    name += postfix
+    name += args.postfix
 if args.cmsDecor == "Preliminary":
     name += "_preliminary"
 
