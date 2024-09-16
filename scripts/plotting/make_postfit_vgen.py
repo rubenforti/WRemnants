@@ -15,6 +15,7 @@ parser.add_argument("--ptll-fit", type=str, default=None)
 parser.add_argument("--ptll-yll-fit", type=str, default=None)
 parser.add_argument("--obs", type=str, default="ptVgen")
 parser.add_argument("--prefit", action='store_true')
+parser.add_argument("--noetapt-postfit", action='store_true', help="Only take prefit but not postfit")
 
 args = parser.parse_args()
 
@@ -39,7 +40,6 @@ unfolded_data = pickle.load(open(args.unfolded, "rb")) if args.unfolded else Non
 procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"] if args.w else ["ZmumuPostVFP"] 
 
 etapt_fit = combinetf2_input.get_fitresult(args.etapt_fit)
-etapth = etapt_fit[f"hist_{fittype}_inclusive"]["ch0"].get()/1000.
 
 if args.gen:
     # only use subset of nuisances for prefit band
@@ -77,22 +77,27 @@ else:
     gen = etapt_fit[f"hist_prefit_inclusive"]["ch0"].get()/1000.
     theory_up, theory_down = hist_to_up_down_unc(gen)
 
-hists_nom = [gen, etapth,]
-hists_err = [
-    theory_up, theory_down,
-    *hist_to_up_down_unc(etapth),
-    ]
+hists_nom = [gen,]
+hists_err = [theory_up, theory_down,]
 
-labels=[
-        r'prefit',
-        ("$\mathit{m}_{W}$ " if args.w else "$\mathit{m}_{Z}$ ")+ r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu})$ " + fittype,
-        ]
-colors=[
-        "gray",
-        "#E42536" if args.w else "#964A8B",
-]
+labels=[r'prefit',]
+colors=["gray",]
+
+if not args.noetapt_postfit:
+    etapth = etapt_fit[f"hist_{fittype}_inclusive"]["ch0"].get()/1000.
+    hists_nom.append(etapth)
+    hists_err.extend(hist_to_up_down_unc(etapth))
+    if args.w:
+        label = "$\mathit{m}_{Z}$ "
+    else: 
+        label = "$\mathit{m}_{W}$ "
+    label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ " + fittype
+    labels.append(label)
+    colors.append("#E42536" if args.w else "#964A8B")
 
 if unfolded_data:
+    idx_unfolded = len(hists_nom)
+
     unfoldedh = unfolded_data["results"]['xsec']['chan_13TeV']["Z"][f"hist_{args.obs.replace('gen','Gen')}"]
 
     # Thanks Obama (David)
@@ -101,7 +106,6 @@ if unfolded_data:
     hists_nom.append(unfoldedh)
     labels.append("Unfolded asimov data" if args.prefit else "Unfolded data")
     colors.append("black")
-    idx_unfolded = 2
 else:
     idx_unfolded = None
 
@@ -111,7 +115,7 @@ if args.ptll_fit:
     hists_nom.append(ptllh)
     hists_err.extend(hist_to_up_down_unc(ptllh))
     if args.w:
-        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu})+\mathit{p}_{T}^{\mu\mu}$ ")
+        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+\mathit{p}_{T}^{\mu\mu}$ ")
     else: 
         labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ " + fittype)
     colors.append("#f89c20")
@@ -122,9 +126,9 @@ if args.ptll_yll_fit:
     hists_nom.append(ptllyllh)
     hists_err.extend(hist_to_up_down_unc(ptllyllh))
     if args.w:
-        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu})+\mathit{p}_{T}^{\mu\mu},\mathit{Y}^{\mu\mu}$ ") 
+        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ") 
     else: 
-        labels.append(r"$\mathit{p}_{T}^{\mu\mu},\mathit{Y}^{\mu\mu}$ " + fittype)
+        labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ " + fittype)
     colors.append("#5790FC")
 
 linestyles = ["solid",] * len(hists_nom)
@@ -141,7 +145,7 @@ if args.xlim:
 hists = hists_nom + hists_err
 
 xlabels = {
-    "absYVgen": "\mathit{Y}",
+    "absYVgen": "\mathit{y}",
     "ptVgen": "\mathit{p}_{T}"
 }
 xlabel = xlabels[args.obs]
@@ -186,7 +190,9 @@ eoscp = output_tools.is_eosuser_path(args.outpath)
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
 
-name = f"{args.obs}_{fittype}_{'W' if args.w else 'Wlike'}_RecoPtll"
+name = f"{args.obs}_{fittype}_{'W' if args.w else 'Wlike'}"
+if not args.noetapt_postfit:
+    name += "_RecoPtll"
 if args.ptll_fit:
     name += "_ptll"
 if args.ptll_yll_fit:
