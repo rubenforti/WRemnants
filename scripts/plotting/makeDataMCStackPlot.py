@@ -242,7 +242,7 @@ def collapseSyst(h):
 
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
-    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen", "ptWgen", "ptZgen"]):
         # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
         ylabel="$Events\,/\,GeV$"
@@ -254,13 +254,18 @@ for h in args.hists:
         rlabel = "$Pred.\,/\,Data$" if args.ratioToData else "$Data\,/\,Pred.$"
     else:
         rlabel = args.rlabel
+
     if len(h.split("-")) > 1:
         sp = h.split("-")
         action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
-        xlabel=styles.xlabels.get(h,h)
+        print(prednames)
+        href = h if h != "ptVgen" else ("ptWgen" if "Wmunu" in prednames else "ptZgen")
+        xlabel=styles.xlabels.get(href,href)
+
+
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             lower_panel_variations=args.lowerPanelVariations if hasattr(args, "lowerPanelVariations") else 0,
@@ -283,7 +288,7 @@ for h in args.hists:
         var_arg = args.varName[0]
         if "selectEntries" in args and args.selectEntries:
             var_arg = args.selectEntries[0] if not args.selectEntries[0].isdigit() else (var_arg+args.selectEntries[0])
-    to_join = [f"{h.replace('-','_')}"]+[var_arg]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
+    to_join = [f"{h.replace('-','_')}"]+[var_arg.replace(".","")]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
     outfile = "_".join(filter(lambda x: x, to_join))
     if args.cmsDecor == "Preliminary":
         outfile += "_preliminary"
