@@ -93,8 +93,15 @@ def build_graph(df, dataset):
             common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
             add_out_of_acceptance_axis=False,
         )
-        axis_ptVgen = unfolding_axes[0]
-        axis_absYVgen = unfolding_axes[1]
+        axis_absYVgen = hist.axis.Variable(
+            unfolding_axes[1].edges,
+            name = "absYVgen", underflow=False, overflow=False,
+        )
+        axis_ptVgen = hist.axis.Variable(
+            unfolding_axes[0].edges,
+            name = "ptVgen", underflow=False,
+        )
+
         axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
     
     elif args.useTheoryAgnosticBinning:
@@ -150,7 +157,7 @@ def build_graph(df, dataset):
             mode += "_wlike"
 
         df = unfolding_tools.define_gen_level(df, "preFSR", dataset.name, mode=mode)
-        df = unfolding_tools.select_fiducial_space(df, mode=mode, fiducial=args.fiducial, unfolding=True)
+        df = unfolding_tools.select_fiducial_space(df, mode=mode, fiducial=args.fiducial, unfolding=True, selections=unfolding_selections)
 
     if args.singleLeptonHists and (isW or isZ):
         results.append(df.HistoBoost("nominal_genlep", lep_axes, [*lep_cols, "nominal_weight"], storage=hist.storage.Weight()))
