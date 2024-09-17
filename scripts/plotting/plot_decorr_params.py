@@ -213,7 +213,7 @@ if __name__ == '__main__':
             ax1.fill_between([c-c_err_cal, c+c_err_cal], ylim[0], ylim[1], color='gray', alpha=0.3)
             ax1.plot([c, c], ylim, color='black', linestyle="--")
 
-            yticks = ["Inclusive", *yticks]
+            yticks = ["Nominal", *yticks]
             ytickpositions = [0., *y]
         else:
             ytickpositions = y

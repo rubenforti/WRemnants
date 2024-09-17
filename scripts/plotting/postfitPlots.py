@@ -50,6 +50,8 @@ parser.add_argument("--varNames", type=str, nargs='*', default=None, help="Name 
 parser.add_argument("--varLabels", type=str, nargs='*', default=None, help="Label(s) of variation hist for plotting")
 parser.add_argument("--varColors", type=str, nargs='*', default=None, help="Color(s) of variation hist for plotting")
 parser.add_argument("--varOneSided",  type=int, nargs='*', default=[], help="Only plot one sided variation (1) or two default two-sided (0)")
+parser.add_argument("--scaleVariation", nargs='*', type=float, default=[], help="Scale a variation by this factor")
+parser.add_argument("--subplotSizes", nargs=2, type=int, default=[4,2], help="Relative sizes for upper and lower panels")
 
 args = parser.parse_args()
 
@@ -71,6 +73,7 @@ if varNames is not None:
         varColors = [colormaps["tab10" if len(varNames) < 10 else "tab20"](i) for i in range(len(varNames))]
 
     varOneSided = [args.varOneSided[i] if i < len(args.varOneSided) else 0 for i in range(len(varNames))]
+    scaleVariation = [args.scaleVariation[i] if i < len(args.scaleVariation) else 1 for i in range(len(varNames))]
 
 fittype = "prefit" if args.prefit else "postfit"
 ratio = not args.noLowerPanel and not args.logTransform
@@ -160,8 +163,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             rlabel = f"${args.dataName}"+('-' if diff else '\,/\,')+"Pred.$"
 
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            rlabel, 
-            args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
+            rlabel, args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1, 
+            subplotsizes=args.subplotSizes)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -290,12 +293,24 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         if hup is not None:
             linewidth = 2
             for i, (hu, hd) in enumerate(zip(hup, hdown)):
+
+                if scaleVariation[i] != 1:
+                    hdiff = hh.addHists(hu, h_inclusive, scale2=-1)
+                    hdiff = hh.scaleHist(hdiff, scaleVariation[i])
+                    hu = hh.addHists(hdiff, h_inclusive)
+
+                    if not varOneSided[i]:
+                        hdiff = hh.addHists(hd, h_inclusive, scale2=-1)
+                        hdiff = hh.scaleHist(hdiff, scaleVariation[i])
+                        hd = hh.addHists(hdiff, h_inclusive)
+
                 if varOneSided[i]:
                     hvars = hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True)
                     linestyle="-"
                 else:
                     hvars = [hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hd, h_inclusive, cutoff=0.01, rel_unc=True)]
                     linestyle=["-","--"]
+                
                 hep.histplot(
                     hvars,
                     histtype="step",
@@ -335,7 +350,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         else:
             text_pieces.append(f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
     
-    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data or "Nonprompt" in labels, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize, extra_text=text_pieces, extra_text_loc=args.extraTextLoc)
@@ -388,8 +403,8 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
         hist_inclusive.variances(flow=True)[...] = hist_unc.variances(flow=True)
 
     if hist_var is not None:
-        hists_down = [hist_var[{"downUpVar":0, "vars":n}].project(*axes.name) for n in varNames]
-        hists_up = [hist_var[{"downUpVar":1, "vars":n}].project(*axes.name) for n in varNames]
+        hists_down = [hist_var[{"downUpVar":0, "vars":n}].project(*[a.name for a in axes]) for n in varNames]
+        hists_up = [hist_var[{"downUpVar":1, "vars":n}].project(*[a.name for a in axes]) for n in varNames]
     else:
         hists_down = None
         hists_up = None

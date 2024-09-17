@@ -88,10 +88,10 @@ if not args.noetapt_postfit:
     hists_nom.append(etapth)
     hists_err.extend(hist_to_up_down_unc(etapth))
     if args.w:
-        label = "$\mathit{m}_{Z}$ "
-    else: 
         label = "$\mathit{m}_{W}$ "
-    label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ " + fittype
+    else: 
+        label = "$\mathit{m}_{Z}$ "
+    label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ "
     labels.append(label)
     colors.append("#E42536" if args.w else "#964A8B")
 
@@ -117,7 +117,7 @@ if args.ptll_fit:
     if args.w:
         labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+\mathit{p}_{T}^{\mu\mu}$ ")
     else: 
-        labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ " + fittype)
+        labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ ")
     colors.append("#f89c20")
 
 if args.ptll_yll_fit:
@@ -128,7 +128,7 @@ if args.ptll_yll_fit:
     if args.w:
         labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ") 
     else: 
-        labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ " + fittype)
+        labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ")
     colors.append("#5790FC")
 
 linestyles = ["solid",] * len(hists_nom)

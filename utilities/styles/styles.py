@@ -155,7 +155,16 @@ legend_labels_combine = {
     "QCDscaleWinclusive_PtV0_13000helicity_3_SymAvg": r'$\mathit{A}_3$',
     "resumTNP_gamma_nu" : r'$\mathit{\gamma}_{\nu}$',
     "chargeVgenNP0scetlibNPWLambda2": r'$\mathit{\Lambda}_{2}$',
-    "pythia_shower_kt": r"Pythia shower $\mathit{k}_T$"
+    "pythia_shower_kt": r"Pythia shower $\mathit{k}_T$",
+    "nlo_ew_virtual": "EW virtual",
+    "weak_default": "EW virtual",
+    "virtual_ewCorr0": "EW virtual",
+    "horacelophotosmecoffew_FSRCorr0": "FSR MEC off",
+    "horaceqedew_FSRCorr0": "FSR horace",
+    "pythiaew_ISRCorr0": "ISR off",
+    "horacelophotosmecoffew_FSRCorr1": "FSR MEC off",
+    "horaceqedew_FSRCorr1": "FSR horace",
+    "pythiaew_ISRCorr1": "ISR off",
 }
 
 # uncertainties
