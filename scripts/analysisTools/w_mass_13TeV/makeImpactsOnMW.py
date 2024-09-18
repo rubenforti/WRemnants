@@ -117,10 +117,10 @@ def readNuisances(args, infile=None, logger=None):
     for iy in range(1,impMat.GetNbinsY()+1):
         label = impMat.GetYaxis().GetBinLabel(iy)
         if args.keepNuisgroups and matchKeep.match(label):
-            nuisGroup_nameVal[label] = impMat.GetBinContent(1,iy)
+            nuisGroup_nameVal[label] = impMat.GetBinContent(args.xBin,iy)
         elif args.excludeNuisgroups and matchExclude.match(label):
             continue
-        nuisGroup_nameVal[label] = impMat.GetBinContent(1,iy)
+        nuisGroup_nameVal[label] = impMat.GetBinContent(args.xBin,iy)
     return totalUncertainty,nuisGroup_nameVal
 
 
@@ -149,6 +149,7 @@ if __name__ == "__main__":
     parser.add_argument(     '--printAltVal', action='store_true', help='When comparing to a second file, also print the values for the alternative')
     parser.add_argument(     '--justPrint', action='store_true', help='Print without plotting')
     parser.add_argument(     '--roundImpacts', default=1, type=int, help='Number of decimal digits to print impacts in the plot')
+    parser.add_argument(     '--xBin',     default='1',   type=int, help='Bin on the x axis of the histogram, to be read for the impacts')
     args = parser.parse_args()
 
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
