@@ -139,17 +139,39 @@ def syst_transform_map(base_hist, hist_name):
                  [x for x in h.axes["vars"] if any(re.match(y, x) for y in ["pdf0", "^nuB.*", "nuS.*", "^muB.*", "^muS.*"])],
                     do_min=True)},
        "resumNPUp" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                 #["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
-                 ["Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
-                     "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",],
-                 no_flow=["ptVgen"], do_min=False) if "vars" in h.axes.name else h},
-        "resumNPDown" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                 #["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
-                 ["Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
-                     "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",],
-                 no_flow=["ptVgen"], do_min=True) if "vars" in h.axes.name else h},
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                     "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",]}], syst_axis="vars", scale=0.5)[0]
+        },
+       "resumNPDown" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                     "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",]}], syst_axis="vars", scale=0.5)[1]
+        },
+       "scaleTransUp" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "renorm_scale_pt20_envelope_Up", 'transition_points0.2_0.35_1.0', 'transition_points0.2_0.75_1.0']}], syst_axis="vars", scale=0.5)[0]
+        },
+       "scaleTransDown" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "renorm_scale_pt20_envelope_Down", 'transition_points0.2_0.75_1.0', 'transition_points0.2_0.75_1.0']}], syst_axis="vars", scale=0.5)[1]
+        },
+       "resumCSNPUp" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "c_nu-0.1-omega_nu0.5", "omega_nu0.5"]}], syst_axis="vars", scale=0.5)[0]
+        },
+       "resumCSNPDown" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "c_nu-0.1-omega_nu0.5", "omega_nu0.5"]}], syst_axis="vars", scale=0.5)[1]
+        },
+       "resumCSNPhalfUp" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "c_nu-0.1-omega_nu0.5", "omega_nu0.5"]}], syst_axis="vars", scale=0.25)[0]
+        },
+       "resumCSNPhalfDown" : {
+               "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
+                 ["pdf0", "c_nu-0.1-omega_nu0.5", "omega_nu0.5"]}], syst_axis="vars", scale=0.25)[1]
+        },
        "resumNPOmegaUp" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
                 [x for x in h.axes["vars"] if re.match("^Omega-*\d+", x)],

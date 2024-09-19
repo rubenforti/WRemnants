@@ -6,6 +6,7 @@ from matplotlib import patches, ticker
 from matplotlib.patches import Polygon
 from matplotlib.lines import Line2D
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
+from matplotlib.legend_handler import HandlerLine2D
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools
 import hist
@@ -187,7 +188,16 @@ def get_custom_handler_map(keys):
             handler_map[Polygon] = StackFilledHandler()
         elif key == "bandfilled":
             handler_map[Polygon] = BandFilledHandler()
+        elif key == "verticleline":
+            handler_map[Line2D] = HandlerLine2D(update_func=update_prop)
     return handler_map
+
+
+# https://stackoverflow.com/questions/53122592/legend-with-vertical-line
+def update_prop(handle, orig):
+    handle.update_from(orig)
+    x,y = handle.get_data()
+    handle.set_data([np.mean(x)]*2, [0, 2*y[0]])
 
 
 def addLegend(
@@ -197,10 +207,13 @@ def addLegend(
     extra_text_loc=None, 
     text_size=None, 
     loc='upper right', 
+    bbox_to_anchor=None,
     extra_handles=[], 
     extra_labels=[], 
     custom_handlers=[], 
-    reverse=True
+    markerfirst=True,
+    reverse=True,
+    labelcolor=None,
 ):
     handles, labels = ax.get_legend_handles_labels()
 
@@ -215,7 +228,8 @@ def addLegend(
 
     text_size = get_textsize(ax, text_size)
     handler_map = get_custom_handler_map(custom_handlers)
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, reverse=reverse)
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, 
+                    reverse=reverse, bbox_to_anchor=bbox_to_anchor, markerfirst=markerfirst, labelcolor=labelcolor)
 
     if extra_text is not None:
         if extra_text_loc is None:
@@ -235,7 +249,6 @@ def addLegend(
             transform=None
 
         wrap_text(extra_text, ax, *extra_text_loc, text_size=text_size, ha='left', va='top', transform=transform)
-        
 
 def get_textsize(ax, text_size):
     if text_size=="large" or text_size is None:
@@ -836,7 +849,7 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
                       legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
-                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None,
+                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None, bbox_to_anchor=None,
                       top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
 
@@ -854,10 +867,10 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
                     grid=True, automatic_scale=False, width_scale=width_scale, 
                     height=padding+point_size*nentries, xlim=xlim, ylim=ylim)
 
-    ax1.plot([centerline, centerline], ylim, linestyle="dashdot", marker="none", color=center_color, linewidth=2)
+    ax1.plot([centerline, centerline], ylim, linestyle="solid", marker="none", color=center_color, linewidth=2)
     ax1.fill_between([centerline-center_unc, centerline+center_unc], *ylim, color="silver", alpha=0.6)
     extra_handles = [(Polygon([[0,0], [0,0], [0,0], [0,0]], color="silver", linestyle="solid", alpha=0.6),
-                      Line2D([0], [0], color="black", linestyle="dashdot", linewidth=2))]
+                      Line2D([0,0], [0, 0], color=center_color, linestyle="solid", linewidth=2))]
     extra_labels = [center_label]
 
     for i, (x, row) in enumerate(df.iterrows()):
@@ -874,12 +887,19 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
     if cms_label:
         add_cms_decor(ax1, cms_label, loc=logoPos, lumi=lumi, no_energy=lumi is not None)
 
-    if legend_loc is not None:
-        addLegend(ax1, ncols=1, text_size=legtext_size, loc=legend_loc, reverse=True, extra_labels=extra_labels, extra_handles=extra_handles)
+    if legend_loc is not None or bbox_to_anchor is not None:
+        # Assume these are data coords, and convert to figure coords
+        # Probably should be an option instead of guessing
+        if bbox_to_anchor is not None and any(abs(x) > 1 for x in bbox_to_anchor):
+            data_to_figure = ax1.transData + ax1.transAxes.inverted()
+            bbox_to_anchor = data_to_figure.transform(bbox_to_anchor)
+            print(bbox_to_anchor)
+
+        addLegend(ax1, ncols=1, text_size=legtext_size, bbox_to_anchor=bbox_to_anchor, loc=legend_loc, reverse=True, 
+            extra_labels=extra_labels, markerfirst=False, labelcolor="navy", extra_handles=extra_handles, custom_handlers=["verticleline"])
+
     ax1.minorticks_off()
     ax1.set_yticklabels([])
     ax1.xaxis.set_major_locator(ticker.LinearLocator(numticks=5))
 
     return fig
-    
-
