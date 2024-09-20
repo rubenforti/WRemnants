@@ -849,7 +849,7 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
                       legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
-                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None, bbox_to_anchor=None, markers=None,
+                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None,
                       top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
 
