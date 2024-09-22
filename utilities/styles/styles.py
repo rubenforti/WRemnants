@@ -165,6 +165,8 @@ legend_labels_combine = {
     "horacelophotosmecoffew_FSRCorr1": "FSR MEC off",
     "horaceqedew_FSRCorr1": "FSR horace",
     "pythiaew_ISRCorr1": "ISR off",
+    'pdfMSHT20mbrangeSymAvg': r'$\mathit{m}_b + 1.25\, GeV$',
+    'pdfMSHT20mcrangeSymAvg': r'$\mathit{m}_c + 0.2\, GeV$',
 }
 
 # uncertainties

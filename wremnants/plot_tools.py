@@ -290,9 +290,9 @@ def makeStackPlotWithRatio(
     binwnorm=None, select={},  action = (lambda x: x), extra_text=None, extra_text_loc=(0.8, 0.7), grid = False, 
     plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
-    no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[],
+    no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[], double_lines=False,
     ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2, width_scale=1.0,
-    linewidth=2, alpha=0.7, lowerLegCols=2, lowerLegPos="upper right", lower_panel_variations=0, subplotsizes=[4,2],
+    linewidth=2, alpha=0.7, lowerLegCols=2, lowerLegPos="upper right", lower_panel_variations=0, scaleRatioUnstacked=[], subplotsizes=[4,2],
 ):
     add_ratio = not (no_stack or no_ratio) 
     if ylabel is None:
@@ -437,8 +437,12 @@ def makeStackPlotWithRatio(
         linestyles = np.array(linestyles, dtype=object)
         logger.debug("Number of linestyles", len(linestyles))
         logger.debug("Length of unstacked", len(unstacked))
-        linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
-
+        if unstacked_linestyles:
+            linestyles[data_idx+1:data_idx+1+len(unstacked_linestyles)] = unstacked_linestyles
+        elif double_lines:
+            linestyles[data_idx+1::2] = ['solid']*len(linestyles[data_idx+1::2])
+            linestyles[data_idx+2::2] = ['dashed']*len(linestyles[data_idx+2::2])
+        
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
         if baseline and add_ratio:
             hep.histplot(
@@ -473,6 +477,10 @@ def makeStackPlotWithRatio(
                 unstack = action(unstack)[select]
             if proc != "Data":
                 unstack = unstack*scale
+            if len(scaleRatioUnstacked) > i:
+                hdiff = hh.addHists(unstack, ratio_ref, scale2=-1)
+                hdiff = hh.scaleHist(hdiff, scaleRatioUnstacked[i])
+                unstack = hh.addHists(hdiff, ratio_ref)
 
             if i >= lower_panel_variations or proc=="Data":
                 # unstacked that are filled between are only plot in the lower panel
@@ -512,7 +520,8 @@ def makeStackPlotWithRatio(
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
     if add_ratio:
         addLegend(ax2, lowerLegCols, text_size=legtext_size, loc=lowerLegPos, 
-            extra_handles=extra_handles, extra_labels=extra_labels, custom_handlers=["bandfilled"] if fill_between is not None else [])
+            extra_handles=extra_handles, extra_labels=extra_labels, 
+            custom_handlers=["bandfilled"] if fill_between is not None else ["stacked"] if double_lines else [])
 
     fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
 
