@@ -8,7 +8,7 @@ import hist
 logger = logging.child_logger(__name__)
 
 class TheoryHelper(object):
-    valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Lambda_Correlated", "Delta_Omega", "binned_Omega", "none"]
+    valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Lambda_Correlated", "Delta_Lambda_Correlated", "Delta_Omega", "binned_Omega", "none"]
     def __init__(self, label, card_tool, args, hasNonsigSamples=False):
         toCheck = ['signal_samples', 'signal_samples_inctau', 'single_v_samples']
         if hasNonsigSamples:
