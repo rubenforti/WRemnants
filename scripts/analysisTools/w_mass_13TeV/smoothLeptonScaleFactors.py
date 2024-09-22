@@ -98,10 +98,10 @@ def antiErf_tf(xvals, parms):
 def getReducedChi2andLabel(func):
     if func.GetNDF():
         reducedChi2 = func.GetChisquare() / func.GetNDF()
-        lineChi2 = "#chi^{{2}} = {chi2:.2g} / {ndf}".format(chi2=func.GetChisquare(),ndf=int(func.GetNDF()))
+        lineChi2 = "#chi^{{2}}/ndf = {chi2:.2g} / {ndf}".format(chi2=func.GetChisquare(),ndf=int(func.GetNDF()))
     else:
         reducedChi2 = 0
-        lineChi2 = "BAD! #chi^{{2}} = {chi2:.2g} / {ndf}".format(chi2=func.GetChisquare(),ndf=int(func.GetNDF()))
+        lineChi2 = "BAD! #chi^{{2}}/ndf = {chi2:.2g} / {ndf}".format(chi2=func.GetChisquare(),ndf=int(func.GetNDF()))
 
     return float(reducedChi2),lineChi2
 
@@ -136,10 +136,19 @@ def copyHisto(h1, h2, copyError=False):
 
 def make1Dhist(namePrefix, h2D, ptbins, step):
     hpt = {}
+    # add labels as needed
+    stepDict = {"reco" : "Reconstruction",
+                "tracking": "Tracking",
+                "idip" : "ID + impact parameter", #"ID + d_{xy}",
+                "trigger" : "Trigger",
+                "iso" : "Isolation",
+                "antiiso" : "Failed isolation",
+                "veto" : "Veto"}
+    stepStr = stepDict[step.replace("plus","").replace("minus","").replace("both","")]
     for x in range(1, h2D.GetNbinsX()+1):
         binID = x-1
         hpt[binID] = ROOT.TH1D(f"{namePrefix}_{binID}",
-                               "%s: %.4g < #eta < %.4g" % (step, h2D.GetXaxis().GetBinLowEdge(x), h2D.GetXaxis().GetBinLowEdge(x+1)),
+                               "%s: %.4g < #eta^{#mu} < %.4g" % (stepStr, h2D.GetXaxis().GetBinLowEdge(x), h2D.GetXaxis().GetBinLowEdge(x+1)),
                                len(ptbins)-1, array('d',ptbins)
         )
         for y in range(1, h2D.GetNbinsY()+1):
@@ -190,10 +199,13 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
 
     doingSF = True if mc == "SF" else False
     doSpline = True if efficiencyFitPolDegree < 0 else False
-    
+
+    histoTitle = histo.GetTitle()
+    histo.SetTitle("")
+
     chargeText = ""
-    if charge == "plus": chargeText = "positive"
-    if charge == "minus": chargeText = "negative"
+    if charge == "plus": chargeText = "Positive"
+    if charge == "minus": chargeText = "Negative"
     
     originalMaxPt = histo.GetXaxis().GetBinLowEdge(1+histo.GetNbinsX())
 
@@ -201,8 +213,8 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     createPlotDirAndCopyPhp(outfolder)
     adjustSettings_CMS_lumi()
     
-    leftMargin = 0.15
-    rightMargin = 0.04
+    leftMargin = 0.16
+    rightMargin = 0.03
     bottomMargin = 0.12
     canvas = ROOT.TCanvas(f"canvas_{mc}_{key}","",700,900)
     canvas.SetTickx(1)
@@ -216,7 +228,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     setTDRStyle()
     lowerPanelHeight = 0.3 # for bottom panel with pulls or residuals
     canvas.SetBottomMargin(lowerPanelHeight)
-    pad2 = ROOT.TPad("pad2","pad2",0,0.,1,0.9)
+    pad2 = ROOT.TPad("pad2","pad2",0,0.,1,0.95)
     pad2.SetTopMargin(1-lowerPanelHeight)
     pad2.SetRightMargin(rightMargin)
     pad2.SetLeftMargin(leftMargin)
@@ -248,12 +260,13 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     #histo.GetXaxis().SetRangeUser(minFitRange, maxFitRange)
 
     if mc == "SF":
-        histo.GetYaxis().SetTitle("Data/MC scale factor")
+        histo.GetYaxis().SetTitle("Data_{ }/^{ }MC efficiency scale factor")
     else:
         histo.GetYaxis().SetTitle("{mc} efficiency".format(mc=mc))
-    histo.GetYaxis().SetTitleOffset(1.45)
+    histo.GetYaxis().SetTitleOffset(1.55)
     histo.GetYaxis().SetTitleSize(0.05)
     histo.GetYaxis().SetLabelSize(0.04)
+    histo.GetYaxis().SetLabelOffset(0.01)
     if histoAlt:
         histoAlt.SetStats(0)
         histoAlt.SetLineColor(ROOT.kGray+2)
@@ -264,7 +277,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     else:
         miny,maxy = getMinMaxHisto(histo, sumError=True)
     offset = 0.1 * (maxy - miny)
-    upOffset = offset * (3.5 if doingSF else 3.5)
+    upOffset = offset * 4.2 # was 3.5 with 2 lines in the legend and no header
     miny -= offset
     maxy += upOffset
     histo.GetYaxis().SetRangeUser(miny, maxy)
@@ -294,8 +307,11 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     defaultFunc = ""
     badFitsID = None
     badCovMatrixID = None
-    
+
     xFitRange = maxFitRange - minFitRange
+
+    redColor = ROOT.TColor.GetColor("#e42536")
+    blueColor = ROOT.TColor.GetColor("#5790fc")
 
     if doingSF:
 
@@ -310,7 +326,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
             tf1_pol2 = ROOT.TF1("tf1_pol2", pol2_tf_scaled, minFitRange, maxFitRange, len(params))
             tf1_pol2.SetParameters( np.array( res_tf1_pol2["x"], dtype=np.float64 ) )
             tf1_pol2.SetLineWidth(3)
-            tf1_pol2.SetLineColor(ROOT.kRed+2)
+            tf1_pol2.SetLineColor(redColor)
 
             fitres_TF = {"pol2_tf" : res_tf1_pol2}
             fitFunction = {
@@ -327,7 +343,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
                 tf1_pol2_alt = ROOT.TF1("tf1_pol2_alt", pol2_tf_scaled, minFitRange, maxFitRange, len(params))
                 tf1_pol2_alt.SetParameters( np.array( res_tf1_pol2_alt["x"], dtype=np.float64 ) )
                 tf1_pol2_alt.SetLineWidth(2)
-                tf1_pol2_alt.SetLineColor(ROOT.kAzure+2)
+                tf1_pol2_alt.SetLineColor(blueColor)
                 fitres_TF["pol2_alt_tf"] = res_tf1_pol2_alt
                 fitFunction["pol2_alt_tf"] = {"func" : tf1_pol2_alt,
                                               "leg" : "dataAltSig",
@@ -342,7 +358,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
             tf1_pol3 = ROOT.TF1("tf1_pol3", pol3_tf_scaled, minFitRange, maxFitRange, len(params))
             tf1_pol3.SetParameters( np.array( res_tf1_pol3["x"], dtype=np.float64 ) )
             tf1_pol3.SetLineWidth(3)
-            tf1_pol3.SetLineColor(ROOT.kRed+2)
+            tf1_pol3.SetLineColor(redColor)
 
             # tf1_pol3_test = ROOT.TF1("tf1_pol3_test", pol3_tf_scaled, minFitRange, maxFitRange, len(params))
             # tf1_pol3_test.SetParameters( np.array( res_tf1_pol3["x"], dtype=np.float64 ) )
@@ -367,7 +383,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
                 tf1_pol3_alt = ROOT.TF1("tf1_pol3_alt", pol3_tf_scaled, minFitRange, maxFitRange, len(params))
                 tf1_pol3_alt.SetParameters( np.array( res_tf1_pol3_alt["x"], dtype=np.float64 ) )
                 tf1_pol3_alt.SetLineWidth(2)
-                tf1_pol3_alt.SetLineColor(ROOT.kAzure+2)
+                tf1_pol3_alt.SetLineColor(blueColor)
                 fitres_TF["pol3_alt_tf"] = res_tf1_pol3_alt
                 fitFunction["pol3_alt_tf"] = {"func" : tf1_pol3_alt,
                                               "leg" : "dataAltSig",
@@ -393,7 +409,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
         if doSpline:
             tf1_polN = ROOT.TSpline3(histo, "b1e1")
             tf1_polN.SetLineWidth(3)
-            tf1_polN.SetLineColor(ROOT.kRed+2)
+            tf1_polN.SetLineColor(redColor)
             # tf1_polN.Draw("pclsame")
             res_tf1_polN = None
         else:
@@ -405,7 +421,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
             tf1_polN = ROOT.TF1(f"tf1_pol{efficiencyFitPolDegree}", polN_tf_scaled, minFitRange, maxFitRange, len(params))
             tf1_polN.SetParameters( np.array( res_tf1_polN["x"], dtype=np.float64 ) )
             tf1_polN.SetLineWidth(3)
-            tf1_polN.SetLineColor(ROOT.kRed+2)
+            tf1_polN.SetLineColor(redColor)
         #
             
         fitres_TF = {"erf" : res_tf1_erf,
@@ -430,7 +446,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
             if doSpline:
                 tf1_polN_alt = ROOT.TSpline3(histo, "b1e1")
                 tf1_polN_alt.SetLineWidth(2)
-                tf1_polN_alt.SetLineColor(ROOT.kAzure+2)
+                tf1_polN_alt.SetLineColor(blueColor)
                 # tf1_polN.Draw("pclsame")
                 res_tf1_polN_alt = None
             else:
@@ -439,7 +455,7 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
                 tf1_polN_alt = ROOT.TF1("tf1_polN_alt", polN_tf_scaled, minFitRange, maxFitRange, len(params))
                 tf1_polN_alt.SetParameters( np.array( res_tf1_polN_alt["x"], dtype=np.float64 ) )
                 tf1_polN_alt.SetLineWidth(2)
-                tf1_polN_alt.SetLineColor(ROOT.kAzure+2)
+                tf1_polN_alt.SetLineColor(blueColor)
             fitres_TF["polN_alt_tf"] = res_tf1_polN_alt
             fitFunction["polN_alt_tf"] = {"func" : tf1_polN_alt,
                                           "leg" : "dataAltSig",
@@ -593,35 +609,51 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
 
     nFits = len(fitFunction.keys())
 
-    upLeg = 0.92
-    downLeg = max(0.5, upLeg - 0.06 * nFits)
+    legLineWidth = 0.065
+    upLeg = 0.93 - legLineWidth
+    downLeg = max(0.5, upLeg - legLineWidth * nFits)
     if addCurve:
         downLeg = max(0.5, downLeg - 0.03) # add some more vertical space, but not too much
     leftLeg = 0.16
-    rightLeg = 0.95
-    
+    rightLeg = 0.98
+
+    lat = ROOT.TLatex()
+    lat.SetNDC();
+    lat.SetTextSize(0.04);
+    lat.SetTextFont(42);
+    lat.SetTextColor(ROOT.kBlack);        
+    lat.DrawLatex(leftLeg + 0.03, upLeg + 0.015, histoTitle);
+
     leg = ROOT.TLegend(leftLeg, downLeg, rightLeg, upLeg)
+    #leg.SetHeader(histoTitle)
     leg.SetFillColor(0)
     #leg.SetFillStyle(0)
     leg.SetBorderSize(0)
     leg.SetFillColorAlpha(0,0.6)
+    leg.SetNColumns(2)
+    leg.SetTextSize(0.032)
 
     hNomiForLegend = ROOT.TH1D("hNomiForLegend", "", 1, 0, 1)
     hNomiForLegend.SetStats(0)
     hAltForLegend = ROOT.TH1D("hAltForLegend", "", 1, 0, 1)
     hAltForLegend.SetStats(0)
-    
+    hNomiFitForLegend = ROOT.TH1D("hNomiFitForLegend", "", 1, 0, 1)
+    hNomiFitForLegend.SetStats(0)
+    hAltFitForLegend = ROOT.TH1D("hAltFitForLegend", "", 1, 0, 1)
+    hAltFitForLegend.SetStats(0)
+
     # for chosen function
     reducedChi2 = 0.0
     for f in fitFunction.keys():
-        legEntry = f"Nomi {fitFunction[f]['leg']}" if f == defaultFunc else fitFunction[f]["leg"]
+        #legEntry = f"Nomi {fitFunction[f]['leg']}" if f == defaultFunc else fitFunction[f]["leg"]
+        legEntry = f"Model + unc." if f == defaultFunc else "Alt. model"
         if doSpline:
             chi2 = 0
             ndof = 1
         else:
             chi2 = fitres_TF[f]["loss_val"]
             ndof = int(nHistPointsForChi2 - fitFunction[f]["func"].GetNpar())
-            legEntry += f"   #chi^{{2}} = {round(chi2,1)} / {ndof}"
+            legEntry += f"   #chi^{{2}} / ndf = {round(chi2,1)} / {ndof}"
             chi2prob = ROOT.TMath.Prob(chi2, ndof)
             if chi2prob < 0.05:
                 perc_chi2prob = 100.0 * chi2prob
@@ -633,15 +665,21 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
         if f == defaultFunc:
             hNomiForLegend.SetMarkerColor(histo.GetMarkerColor())
             hNomiForLegend.SetMarkerStyle(histo.GetMarkerStyle())
-            hNomiForLegend.SetFillColor(hband.GetFillColor())
-            hNomiForLegend.SetLineColor(fitFunction[f]["func"].GetLineColor())
-            leg.AddEntry(hNomiForLegend, legEntry, 'EPLF')  
+            hNomiFitForLegend.SetFillColor(hband.GetFillColor())
+            hNomiFitForLegend.SetLineWidth(2)
+            hNomiFitForLegend.SetLineColor(fitFunction[f]["func"].GetLineColor())
+            leg.AddEntry(hNomiForLegend, "Nominal", 'EPL')  
+            leg.AddEntry(hNomiFitForLegend, legEntry, 'LF')  
             reducedChi2 = chi2/ndof
         elif "_alt_tf" in f:
             hAltForLegend.SetMarkerColor(histoAlt.GetMarkerColor())
+            hAltForLegend.SetLineColor(histoAlt.GetMarkerColor())
             hAltForLegend.SetMarkerStyle(histoAlt.GetMarkerStyle())
-            hAltForLegend.SetLineColor(fitFunction[f]["func"].GetLineColor())            
-            leg.AddEntry(hAltForLegend, legEntry, 'EPL')
+            hAltFitForLegend.SetLineColor(fitFunction[f]["func"].GetLineColor())
+            hAltFitForLegend.SetLineWidth(2)
+            #
+            leg.AddEntry(hAltForLegend, "Alternate", 'EPL')
+            leg.AddEntry(hAltFitForLegend, legEntry, 'L')
         else:
             leg.AddEntry(fitFunction[f]["func"], legEntry, 'L')  
 
@@ -673,11 +711,12 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     # lat.DrawLatex(xmin, yhi-0.05, lineChi2);
 
     ### Draw band to highlight acceptance
-    hAcceptBand = copy.deepcopy(histo.Clone("hAcceptBand"))
+    #hAcceptBand = copy.deepcopy(histo.Clone("hAcceptBand"))
+    hAcceptBand = ROOT.TH1D("hAcceptBand","", 41, 24, 65)
     if step != "tracking" and "veto" not in step:
         yMaxBand = downLeg * (canvas.GetY2() - canvas.GetY1()) + canvas.GetY1()
         for i in range(1, 1 + hAcceptBand.GetNbinsX()):
-            if hAcceptBand.GetBinCenter(i) > 26.0 and hAcceptBand.GetBinCenter(i) < 55.0:
+            if hAcceptBand.GetBinCenter(i) > 26.0 and hAcceptBand.GetBinCenter(i) < 56.0:
                 hAcceptBand.SetBinContent(i, 0.0)
                 hAcceptBand.SetBinError(i, 0.0)
             else:
@@ -686,7 +725,17 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
         hAcceptBand.SetFillColorAlpha(ROOT.kYellow+1, 0.5)
         hAcceptBand.Draw("HIST SAME")
     ########################################
-    
+
+    lumi = "16.8"
+    latCMS = ROOT.TLatex()
+    latCMS.SetNDC()
+    latCMS.SetTextFont(42)
+    latCMS.SetTextColor(ROOT.kBlack);
+    latCMS.SetTextSize(0.042)
+    latCMS.DrawLatex(leftMargin, 0.94, '#bf{CMS} #it{Preliminary}')
+    if lumi != None: latCMS.DrawLatex(0.675, 0.94, '%s fb^{-1} (13 TeV)' % lumi)
+    else:            latCMS.DrawLatex(0.775, 0.94, '(13 TeV)')
+
     # Now the bottom panel
     pad2.Draw()
     pad2.cd()
@@ -701,12 +750,14 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     frame.GetXaxis().SetRangeUser(minFitRange, maxFitRange)
     frame.GetYaxis().SetNdivisions(5)
     denLabel = fitFunction[defaultFunc]["leg"]
-    frame.GetYaxis().SetTitle(f"X / {denLabel}") # or Pulls
-    frame.GetYaxis().SetTitleOffset(1.45)
+    #frame.GetYaxis().SetTitle(f"X / {denLabel}") # or Pulls
+    frame.GetYaxis().SetTitle(f"Ratio to fit") # or Pulls
+    frame.GetYaxis().SetTitleOffset(1.55)
     frame.GetYaxis().SetTitleSize(0.05)
     frame.GetYaxis().SetLabelSize(0.04)
+    frame.GetYaxis().SetLabelOffset(0.01)
     frame.GetYaxis().CenterTitle()
-    frame.GetXaxis().SetTitle(f"{chargeText} muon p_{{T}} (GeV)")
+    frame.GetXaxis().SetTitle(f"{chargeText} muon #it{{p}}_{{T}} (GeV)")
 
     ratios = []
     defaultIndex = 0
@@ -790,12 +841,14 @@ def fitTurnOnTF(histo, key, outdir, mc, channel="el", hist_chosenFunc=0, drawFit
     # ###########
 
     ### Draw band to highlight acceptance
-    hAcceptBandRatio = copy.deepcopy(histo.Clone("hAcceptBandRatio"))
+    #hAcceptBandRatio = copy.deepcopy(histo.Clone("hAcceptBandRatio"))
+    hAcceptBandRatio = ROOT.TH1D("hAcceptBand","", 41, 24, 65)
+
     if step != "tracking" and "veto" not in step:
         hAcceptBandRatio.Reset("ICESM")
-        yMaxBand = maxy
+        yMaxBand = rmaxy
         for i in range(1, 1 + hAcceptBandRatio.GetNbinsX()):
-            if hAcceptBandRatio.GetBinCenter(i) > 26.0 and hAcceptBandRatio.GetBinCenter(i) < 55.0:
+            if hAcceptBandRatio.GetBinCenter(i) > 26.0 and hAcceptBandRatio.GetBinCenter(i) < 56.0:
                 hAcceptBandRatio.SetBinContent(i, 0.0)
                 hAcceptBandRatio.SetBinError(i, 0.0)
             else:
@@ -1318,6 +1371,7 @@ if __name__ == "__main__":
     canvas = ROOT.TCanvas("canvas","",700,625)
 
     # plot eigen variations
+    systVarTitle = "Alternate/nominal" # "Alternate - nominal"
     if not args.skipEff:
         nvars = int((hist_effMC_nomiAndAlt_etapt.GetNbinsZ() - 2) / 2)
         for iv in range(nvars):
@@ -1325,23 +1379,26 @@ if __name__ == "__main__":
             # MC
             hvar = getTH2fromTH3(hist_effMC_nomiAndAlt_etapt, f"effStatVar_p{iv}_effMC",binVar, binVar)
             hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-            hvar.Add(hmcSmoothCheck, -1.0)
-            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (MC efficiency)",
+            #hvar.Add(hmcSmoothCheck, -1.0)
+            hvar.Divide(hmcSmoothCheck)
+            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (MC efficiency)",
                                 hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                                 palette=args.palette, passCanvas=canvas)
             # data
             hvar = getTH2fromTH3(hist_effData_nomiAndAlt_etapt, f"effStatVar_p{iv}_effData",binVar, binVar)
             hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-            hvar.Add(hdataSmoothCheck, -1.0)
-            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+            #hvar.Add(hdataSmoothCheck, -1.0)
+            hvar.Divide(hdataSmoothCheck)
+            drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                                 hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                                 palette=args.palette, passCanvas=canvas)
         # syst only for data
         systBin = hist_effData_nomiAndAlt_etapt.GetNbinsZ()
         hvar = getTH2fromTH3(hist_effData_nomiAndAlt_etapt, "effSystVar_effData", systBin, systBin)
         hvar.SetTitle("Eff. syst. nuisance")
-        hvar.Add(hdataSmoothCheck, -1.0)
-        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+        #hvar.Add(hdataSmoothCheck, -1.0)
+        hvar.Divide(hdataSmoothCheck)
+        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                             hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                             palette=args.palette, passCanvas=canvas)
 
@@ -1352,16 +1409,18 @@ if __name__ == "__main__":
         binVar = 2 + iv
         hvar = getTH2fromTH3(hist_SF_nomiAndAlt_etapt, f"effStatVar_p{iv}_SF",binVar, binVar)
         hvar.SetTitle(f"Eff. stat. nuisance p{iv}")
-        hvar.Add(hsfSmoothCheck, -1.0)
-        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (scale factor)",
+        #hvar.Add(hsfSmoothCheck, -1.0)
+        hvar.Divide(hsfSmoothCheck)
+        drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (scale factor)",
                             hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                             palette=args.palette, passCanvas=canvas)
     #
     systBin = hist_SF_nomiAndAlt_etapt.GetNbinsZ()
     hvar = getTH2fromTH3(hist_SF_nomiAndAlt_etapt, "effSystVar_SF", systBin, systBin)
     hvar.SetTitle("Eff. syst. nuisance")
-    hvar.Add(hsfSmoothCheck, -1.0)
-    drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), "Alternate - nominal (data efficiency)",
+    #hvar.Add(hsfSmoothCheck, -1.0)
+    hvar.Divide(hsfSmoothCheck)
+    drawCorrelationPlot(hvar, "{lep} #eta".format(lep=lepton), "{lep} p_{{T}} [GeV]".format(lep=lepton), f"{systVarTitle} (data efficiency)",
                         hvar.GetName(), "ForceTitle", outfolder_eigenVars,
                         palette=args.palette, passCanvas=canvas)
 
@@ -1551,7 +1610,7 @@ if __name__ == "__main__":
         for ieta in range(len(etabins)-1):
             etaLow = round(etabins[ieta], 1)
             etaHigh = round(etabins[ieta+1], 1)
-            etaRange = f"{etaLow} < #eta < {etaHigh}"
+            etaRange = f"{etaLow} < #eta^{{#mu}} < {etaHigh}"
             etaCenter = 0.5 * (etaHigh + etaLow)
             eta_index = eff_boost.axes[0].index(etaCenter)
             eff_boost_pt = eff_boost[{0 : eta_index}] # from 2D (eta-pt) to 1D (pt)

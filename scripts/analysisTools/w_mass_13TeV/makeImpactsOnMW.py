@@ -36,7 +36,8 @@ from scripts.analysisTools.plotUtils.utility import *
 
 def getBetterLabel(k, isWlike):
     if k == "binByBinStat":
-        label = "MC stat" if isWlike else "MC + QCD bkg stat"
+        label = "MC stat" # if isWlike else "MC + QCD bkg stat"
+        #label = "Prediction stat"
     elif k == "stat":
         label = "Data stat"
     elif k == "muon_eff_all":
@@ -116,10 +117,10 @@ def readNuisances(args, infile=None, logger=None):
     for iy in range(1,impMat.GetNbinsY()+1):
         label = impMat.GetYaxis().GetBinLabel(iy)
         if args.keepNuisgroups and matchKeep.match(label):
-            nuisGroup_nameVal[label] = impMat.GetBinContent(1,iy)
+            nuisGroup_nameVal[label] = impMat.GetBinContent(args.xBin,iy)
         elif args.excludeNuisgroups and matchExclude.match(label):
             continue
-        nuisGroup_nameVal[label] = impMat.GetBinContent(1,iy)
+        nuisGroup_nameVal[label] = impMat.GetBinContent(args.xBin,iy)
     return totalUncertainty,nuisGroup_nameVal
 
 
@@ -132,7 +133,7 @@ if __name__ == "__main__":
     parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
     parser.add_argument('-k',  '--keepNuisgroups', default=None,   type=str, help='nuis groups for which you want to show the impacts, using regular expressions')
-    parser.add_argument('-x', '--excludeNuisgroups', default=".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ", type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
+    parser.add_argument('-x', '--excludeNuisgroups', default=".*Fake|.*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ", type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
     parser.add_argument(     '--setStat',   default=-1.0, type=float, help='If positive, use this value for stat (this is before scaling to MeV) until combinetf is fixed')
     parser.add_argument(     '--postfix',     default='',   type=str, help='postfix for the output name')
     parser.add_argument(     '--canvasSize', default='800,1200', type=str, help='Pass canvas dimensions as "width,height" ')
@@ -148,6 +149,7 @@ if __name__ == "__main__":
     parser.add_argument(     '--printAltVal', action='store_true', help='When comparing to a second file, also print the values for the alternative')
     parser.add_argument(     '--justPrint', action='store_true', help='Print without plotting')
     parser.add_argument(     '--roundImpacts', default=1, type=int, help='Number of decimal digits to print impacts in the plot')
+    parser.add_argument(     '--xBin',     default='1',   type=int, help='Bin on the x axis of the histogram, to be read for the impacts')
     args = parser.parse_args()
 
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)

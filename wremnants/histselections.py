@@ -36,7 +36,6 @@ def get_selection_edges(axis_name, upper_bound=False):
     else:
         raise RuntimeError(f"Can not find threshold for abcd axis {axis_name}")
 
-
 def extend_edges(traits, x):
     # extend array for underflow/overflow with distance from difference of two closest values 
     if traits.underflow:
