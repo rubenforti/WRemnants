@@ -678,7 +678,8 @@ def drawTH1(htmp,
             statBoxSpec=None, # to specify what to print (None uses a default which depends on having or not fitString
             fitString="", # can be "gaus;LEMSQ+;;-5;5"
             plotTitleLatex="",
-            setLogY=False
+            setLogY=False,
+            histFillColor=None
 ):
 
 
@@ -717,6 +718,8 @@ def drawTH1(htmp,
     # force drawing stat box
     h.SetStats(1 if drawStatBox else 0)
     if "TH1" in h.ClassName():
+        if histFillColor:
+            h.SetFillColor(histFillColor)
         h.Draw("HIST")
     else:
         h.SetLineColor(ROOT.kBlack)

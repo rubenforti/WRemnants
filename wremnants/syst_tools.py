@@ -770,7 +770,8 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
 
 
 def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
-                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", customHistNameTag="", smooth3D=False, **kwargs
+                                  what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False,
+                                  singleMuonCollection="goodMuons", customHistNameTag="", **kwargs
     ):
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
@@ -837,7 +838,8 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
 
 
 def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
-                                         what_analysis=ROOT.wrem.AnalysisType.Wmass, singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
+                                         what_analysis=ROOT.wrem.AnalysisType.Wmass,
+                                         singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
     ):
 
     SAvarTag = "SA" if step == "tracking" else "" 

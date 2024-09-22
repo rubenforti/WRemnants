@@ -41,6 +41,7 @@ parser.add_argument("--useGlobalOrTrackerVeto", action="store_true", help="Use g
 parser.add_argument("--useRefinedVeto", action="store_true", help="Temporary option, it uses a different computation of the veto SF (only implemented for global muons)")
 parser.add_argument("--noVetoSF", action="store_true", help="Don't use SF for the veto, for tests")
 parser.add_argument("--scaleDYvetoFraction", type=float, default=-1.0, help="Scale fraction of DY background that should receive veto SF by this amount. Negative values do nothing")
+parser.add_argument("--addAxisSignUt", action="store_true", help="Add another fit axis with the sign of the uT recoil projection")
 #
 
 args = parser.parse_args()
@@ -124,18 +125,27 @@ axis_met = hist.axis.Regular(25, 0., 100., name = "met", underflow=False, overfl
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
 # may not exactly reproduce the same pt range as analysis, though
-axis_fakes_eta = hist.axis.Regular(int((template_maxeta-template_mineta)*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
+axis_fakes_eta = hist.axis.Regular(round((template_maxeta-template_mineta)*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(template_minpt, template_maxpt), name = "pt", overflow=False, underflow=False)
 
 axis_mtCat = hist.axis.Variable(common.get_binning_fakes_mt(mtw_min, high_mt_bins=False), name = "mt", underflow=False, overflow=True)
 axis_isoCat = hist.axis.Variable(common.get_binning_fakes_relIso(high_iso_bins=False), name = "relIso",underflow=False, overflow=True)
 axes_abcd = [axis_mtCat, axis_isoCat]
-axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
-columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
+axis_ut_analysis = hist.axis.Regular(2, -2, 2, underflow=False, overflow=False, name = "ut_angleSign") # used only to separate positive/negative uT for now
 
-nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
-nominal_cols = columns_fakerate
+if args.addAxisSignUt:
+    axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, axis_ut_analysis, *axes_abcd]
+    columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "goodMuons_angleSignUt0", "transverseMass", "goodMuons_relIso0"]
+
+    nominal_axes = [axis_eta, axis_pt, axis_charge, axis_ut_analysis, *axes_abcd]
+    nominal_cols = columns_fakerate
+else:
+    axes_fakerate = [axis_fakes_eta, axis_fakes_pt, axis_charge, *axes_abcd]
+    columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "goodMuons_relIso0"]
+
+    nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
+    nominal_cols = columns_fakerate
 
 if args.nToysMC > 0:
     axis_toys = hist.axis.Integer(0, args.nToysMC, underflow=False, overflow=False, name = "toys")
@@ -511,6 +521,8 @@ def build_graph(df, dataset):
         # TODO: fix it for not W/Z processes
         columnsForSF = ["goodMuons_pt0", "goodMuons_eta0", "goodMuons_SApt0", "goodMuons_SAeta0", "goodMuons_uT0", "goodMuons_charge0", "passIso"]
         df = muon_selections.define_muon_uT_variable(df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="goodMuons")
+        # define_muon_uT_variable defined a uT variable using gen information, to get a more precise value for the purpose of applying scale factors
+        # for using it as a fit observable we need another definition based only on reco observables, since it is also needed for data
         if not args.smooth3dsf:
             columnsForSF.remove("goodMuons_uT0")
 
@@ -562,6 +574,9 @@ def build_graph(df, dataset):
         df = df.Alias("MET_corr_rec_pt", f"{met}_pt")
         df = df.Alias("MET_corr_rec_phi", f"{met}_phi")
 
+    if args.addAxisSignUt:
+        df = df.Define("goodMuons_angleSignUt0", "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+
     df = df.Define("ptW", "wrem::pt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
 
@@ -574,7 +589,7 @@ def build_graph(df, dataset):
             ## for some tests with QCD MC only
             axis_eta_coarse_fakes = hist.axis.Regular(12, -2.4, 2.4, name = "eta", overflow=False, underflow=False)
             axis_pt_coarse_fakes = hist.axis.Regular(8, 26, 58, name = "pt", overflow=False, underflow=False)
-            axis_mt_coarse_fakes = hist.axis.Regular(24, 0., 120., name = "mt", underflow=False, overflow=True)
+            axis_mt_coarse_fakes = hist.axis.Regular(12, 0., 120., name = "mt", underflow=False, overflow=True)
             axis_Njets_fakes = hist.axis.Regular(5, -0.5, 4.5, name = "NjetsClean", underflow=False, overflow=True)
             axis_leadjetPt_fakes = hist.axis.Regular(20, 0.0, 100.0, name = "leadjetPt", underflow=False, overflow=True)
             otherStudyForFakes_axes = [axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge,
@@ -586,10 +601,11 @@ def build_graph(df, dataset):
             df = df.Define("goodMuons_genPartFlav0", "Muon_genPartFlav[goodMuons][0]")
             df = df.Define("nJetsClean", "Sum(goodCleanJetsNoPt)")
             df = df.Define("leadjetPt", "(nJetsClean > 0) ? Jet_pt[goodCleanJetsNoPt][0] : 0.0")
+            df = df.Filter("goodMuons_genPartFlav0 == 3") # FOR TESTS
             #
             axis_genPartFlav = hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")
             results.append(df.HistoBoost("Muon_genPartFlav", [axis_genPartFlav], ["goodMuons_genPartFlav0", "nominal_weight"]))
-            results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "nominal_weight"]))
+            results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes, axis_passIso], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
             #
             otherStudyForFakes = df.HistoBoost("otherStudyForFakes", otherStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nJetsClean", "leadjetPt", "deltaPhiMuonMet", "nominal_weight"])
             results.append(otherStudyForFakes)

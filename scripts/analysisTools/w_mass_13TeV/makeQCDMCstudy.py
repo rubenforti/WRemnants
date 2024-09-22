@@ -48,7 +48,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--baseName", type=str, help="Histogram name in the file (it depends on what study you run)", default="otherStudyForFakes")
     parser.add_argument('-p','--processes', default=["QCD"], nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
-    parser.add_argument("-r", "--runStudy", type=int, default=0, choices=range(4), help="What to run");
+    parser.add_argument("-r", "--runStudy", type=int, default=0, choices=range(5), help="What to run");
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -523,6 +523,115 @@ if __name__ == "__main__":
 
         copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
+    def runGenMuonFlavor(args):
+
+        fname = args.inputfile[0]
+        outdir_original = f"{args.outdir[0]}/genMuonFlavor/"
+        outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
+
+        ROOT.TH1.SetDefaultSumw2()
+
+        canvas = ROOT.TCanvas("canvas", "", 800, 700)
+        adjustSettings_CMS_lumi()
+        canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
+        #canvas1D.SetGridx(1)
+        canvas1D.SetGridy(1)
+        
+        groups = Datagroups(fname, mode="w_mass")
+        datasets = groups.getNames()
+        if args.processes is not None and len(args.processes):
+            datasets = list(filter(lambda x: x in args.processes, datasets))
+        else:
+            datasets = list(filter(lambda x: x == "QCD", datasets))
+
+        logger.debug(f"Using these processes: {datasets}")
+        inputHistName = args.baseName # Muon_genPartFlav_multi
+        groups.setNominalName(inputHistName)
+        groups.loadHistsForDatagroups(inputHistName, syst="", procsToRead=datasets, applySelection=False)
+        histInfo = groups.getDatagroups() # keys are same as returned by groups.getNames()
+        s = hist.tag.Slicer()
+        for d in datasets:
+            logger.info(f"Running on process {d}")
+            hin = histInfo[d].hists[inputHistName]
+            logger.debug(hin.axes)
+            # ('goodMuons_genPartFlav0', 'eta', 'pt', 'charge', 'mt', 'passIso')
+            # integrate charge and fold eta into abseta 
+            hin = hin[{"charge" : s[::hist.sum]}]
+            hAbsetaPt = hh.makeAbsHist(hin, "eta")
+            # integrate eta-pt-charge for now        
+            hin = hin[{"pt"     : s[::hist.sum],
+                       "eta"    : s[::hist.sum]}]
+            # make eta into abseta for now
+            #makeAbsEta = True # make an option for this
+            #etaAxisName = "eta"
+            #if makeAbsEta:
+            #    hin = hh.makeAbsHist(hin, "eta")
+            #    etaAxisName = "abseta"
+
+            newMtEdges = [0, 20, 40, 60, 80, 120]
+            nMtBins = len(newMtEdges) - 1
+            hin = hh.rebinHist(hin, "mt", newMtEdges)
+
+            hpass = hin[{"passIso": True}]
+            hfail = hin[{"passIso": False}]
+
+            muonFlavAxisName = "0=unmatched, 1=prompt, 3=light, 4=c, 5=b"
+            
+            hFRF = hh.divideHists(hpass, hfail)
+            hrootFRF  = narf.hist_to_root(hFRF)
+            minFRF, maxFRF = getMinMaxHisto(hrootFRF, sumError=False)
+            hrootFRF.SetName("fakerateFactor_genPartFlav_mT")
+            hrootFRF.SetTitle(f"min = {round(minFRF, 1)},   max = {round(maxFRF, 1)}")
+
+            drawCorrelationPlot(hrootFRF, muonFlavAxisName, "m_{T} (GeV)", f"Fakerate factor (QCD MC)",
+                                hrootFRF.GetName(), plotLabel="ForceTitle", outdir=outdir,
+                                smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
+                                draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+            # zoomed range
+            drawCorrelationPlot(hrootFRF, muonFlavAxisName, "m_{T} (GeV)", f"Fakerate factor (QCD MC)::{minFRF},2.5",
+                                f"{hrootFRF.GetName()}_zoom", plotLabel="ForceTitle", outdir=outdir,
+                                smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
+                                draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+
+            hrootPass  = narf.hist_to_root(hpass)
+            hrootPass.SetName("yields_passIso_genPartFlav_mT")
+            hrootPass.SetTitle(f"Pass isolation")
+
+            hrootFail  = narf.hist_to_root(hfail)
+            hrootFail.SetName("yields_failIso_genPartFlav_mT")
+            hrootFail.SetTitle(f"Fail isolation")
+            
+            drawCorrelationPlot(hrootPass, muonFlavAxisName, "m_{T} (GeV)", f"Events (QCD MC)",
+                                hrootPass.GetName(), plotLabel="ForceTitle", outdir=outdir,
+                                smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
+                                draw_both0_noLog1_onlyLog2=0, passCanvas=canvas,
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+            drawCorrelationPlot(hrootFail, muonFlavAxisName, "m_{T} (GeV)", f"Events (QCD MC)",
+                                hrootFail.GetName(), plotLabel="ForceTitle", outdir=outdir,
+                                smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
+                                draw_both0_noLog1_onlyLog2=0, passCanvas=canvas,
+                                nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
+
+            # now plot 1D distribution of events for each iso-mT bin (with binning from ABCD method)
+            mtBinSlicesABCD = [s[0:1:hist.sum], s[1:2:hist.sum], s[2::hist.sum]]
+            for ips, passIso in enumerate([False, True]):
+                for imt, mtSlice in enumerate(mtBinSlicesABCD):
+                    hin1D = hin[{"passIso" : passIso,
+                                 "mt"      : mtSlice}]
+                    isoTag = "pass iso" if passIso else "fail iso"
+                    mtTag = "m_{T} < 20 GeV" if imt == 0 else "20 < m_{T} < 40 GeV" if imt == 1 else "m_{T} > 40 GeV"
+                    hroot1D = narf.hist_to_root(hin1D)
+                    hroot1D.SetName(f"muonGenPartFlav_iso{ips}_mt{imt}")
+                    hroot1D.SetTitle(f"QCD MC, {isoTag}, {mtTag}")
+                    hroot1D.Scale(1./hroot1D.Integral())
+                    drawTH1(hroot1D, muonFlavAxisName, "Fraction of events::0,0.75", hroot1D.GetName(),
+                            outdir, passCanvas=canvas1D, plotTitleLatex=hroot1D.GetTitle(),
+                            drawStatBox=False, histFillColor=ROOT.kGray)
+                    
+        copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
+
     ###############################################################################################
     ###############################################################################################
     ###############################################################################################
@@ -535,3 +644,5 @@ if __name__ == "__main__":
         runGenMt(args)
     elif args.runStudy == 3:
         runJetMuon(args)
+    elif args.runStudy == 4:
+        runGenMuonFlavor(args)

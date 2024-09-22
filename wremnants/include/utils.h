@@ -337,6 +337,14 @@ float zqtproj0(float pt, float phi, float ptOther, float phiOther) {
     return (lep*boson)/pt;
 }
 
+int zqtproj0_angleSign(float pt, float phi, float ptOther, float phiOther) {
+    TVector2 lep, boson;
+    lep.SetMagPhi(pt,phi);
+    boson.SetMagPhi(ptOther,phiOther);
+    boson += lep;
+    return std::copysign(1, lep*boson);
+}
+
 float zqtproj0_boson(float pt, float phi, float bosonPt, float bosonPhi) {
     TVector2 lep, boson;
     lep.SetMagPhi(pt,phi);
