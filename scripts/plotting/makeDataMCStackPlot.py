@@ -50,6 +50,7 @@ parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", 
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 parser.add_argument("--subplotSizes", nargs=2, type=int, default=[4,2], help="Relative sizes for upper and lower panels")
+parser.add_argument("--scaleRatioUnstacked", nargs='*', type=float, default=[], help="Scale a variation by this factor")
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser("variation", help="Arguments for adding variation hists")
 variation.add_argument("--varName", type=str, nargs='+', required=True, help="Name of variation hist")
@@ -62,7 +63,6 @@ variation.add_argument("--doubleColors", action='store_true', help="Auto generat
 variation.add_argument("--doubleLines", action='store_true', help="Auto generate colors in pairs (useful for systematics)")
 variation.add_argument("--fillBetween", type=int, help="Fill between first n variation hists in ratio")
 variation.add_argument("--lowerPanelVariations", type=int, default=0, help="Plot n first variations in lower panel only")
-variation.add_argument("--scaleRatioUnstacked", nargs='*', type=float, default=[], help="Scale a variation by this factor")
 
 args = parser.parse_args()
 
