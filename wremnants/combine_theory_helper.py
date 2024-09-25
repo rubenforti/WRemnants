@@ -8,7 +8,7 @@ import hist
 logger = logging.child_logger(__name__)
 
 class TheoryHelper(object):
-    valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Delta_Omega", "binned_Omega", "none"]
+    valid_np_models = ["Lambda", "Omega", "Delta_Lambda", "Lambda_Correlated", "Delta_Lambda_Correlated", "Delta_Omega", "binned_Omega", "none"]
     def __init__(self, label, card_tool, args, hasNonsigSamples=False):
         toCheck = ['signal_samples', 'signal_samples_inctau', 'single_v_samples']
         if hasNonsigSamples:
@@ -394,7 +394,10 @@ class TheoryHelper(object):
         self.set_np_model(model)
         if self.np_model:
             self.add_gamma_np_uncertainties()
-            self.add_uncorrelated_np_uncertainties()
+            if "Correlated" in self.np_model:
+                self.add_correlated_np_uncertainties()
+            else:
+                self.add_uncorrelated_np_uncertainties()
         else:
             logger.warning("Will not add any nonperturbative uncertainty!")
 
@@ -412,7 +415,9 @@ class TheoryHelper(object):
 
         self.scale_hist_name = self.corr_hist_name.replace("Corr", "PtDepScales")
 
-        var_name = model.replace("binned_", "")
+        var_name = model
+        var_name = var_name.replace("binned_", "")
+        var_name = var_name.replace("_Correlated", "")
 
         if not any(var_name in x for x in self.np_hist.axes[self.syst_ax]):
             raise ValueError(f"NP model choice was '{model}' but did not find corresponding variations in the histogram")
@@ -485,6 +490,41 @@ class TheoryHelper(object):
             outNames=[f"scetlib_kappa{name_append}Up", f"scetlib_kappa{name_append}Down", f"scetlib_muF{name_append}Up", f"scetlib_muF{name_append}Down"],
             rename=f"resumFOScale{name_append}",
             systNamePrepend=f"resumScale{name_append}_",
+        )
+
+    def add_correlated_np_uncertainties(self):
+
+        np_map = {
+            "Lambda2" : ["-0.25", "0.25",],
+            "Delta_Lambda2" : ["-0.02", "0.02",],
+            "Lambda4" : [".01", ".16"],
+        } if "Lambda" in self.np_model else {
+            "Omega" : ["0.", "0.8"],
+            "Delta_Omega" : ["-0.02", "0.02"],
+        }
+
+        if "Delta" not in self.np_model:
+            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys()))
+            for k in to_remove:
+                np_map.pop(k)
+
+        def operation(h, entries):
+            return h[{self.syst_ax : entries}]
+
+        for nuisance,vals in np_map.items():
+            entries = [nuisance+v for v in vals]
+            rename = f"scetlibNP{nuisance}"
+            # operation = lambda h : h[{self.syst_ax : entries}]
+            self.card_tool.addSystematic(name=self.corr_hist_name,
+                processes=["single_v_samples"],
+                group="resumNonpert",
+                splitGroup={"resum": ".*", "pTModeling" : ".*", "theory": ".*"},
+                systAxes=[self.syst_ax],
+                passToFakes=self.propagate_to_fakes,
+                preOp=operation,
+                preOpArgs=dict(entries=entries),
+                outNames = [f"{rename}Down", f"{rename}Up"],
+                rename=rename,
         )
 
     def add_uncorrelated_np_uncertainties(self):
