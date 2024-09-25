@@ -53,7 +53,7 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
                  "EWandTop"   : ROOT.TColor.GetColor("#5790fc"),
 }
 
-legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
+legEntries_plots_ = {"Wmunu"      : "W^{#pm }#rightarrow^{ }#mu#nu",
                      "Zmumu"      : "Z#rightarrow#mu#mu",
                      "Z"          : "Z#rightarrow#mu#mu",
                      "ZmumuVeto"  : "veto Z#rightarrow#mu#mu",
