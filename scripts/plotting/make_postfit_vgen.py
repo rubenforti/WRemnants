@@ -156,7 +156,7 @@ if args.w:
 else:
     xlabel=r'$'+xlabel+'^{Z}$'
     ylabel = r'$Z'
-ylabel += r'\ Cross\ section\ '
+ylabel += r'\ cross\ section\ '
 
 if args.obs in ["ptVgen"]:
     xlabel += ' (GeV)'
