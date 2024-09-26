@@ -849,7 +849,7 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
                       legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
-                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None,
+                      center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None, bbox_to_anchor=None, markers=None,
                       top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
 
@@ -889,7 +889,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
             ax1.errorbar([vals[0]], [pos], xerr=u[1], linestyle="", linewidth=3, marker=markers[i], color=colors[i] if not point_center_colors else point_center_colors[i], capsize=capsize)
 
     if cms_label:
-        add_cms_decor(ax1, cms_label, loc=logoPos, lumi=lumi, no_energy=lumi is not None)
+        add_cms_decor(ax1, cms_label, loc=logoPos, lumi=lumi, no_energy=lumi is not None, text_size=get_textsize(ax1, "small"))
 
     if legend_loc is not None or bbox_to_anchor is not None:
         # Assume these are data coords, and convert to figure coords
@@ -900,7 +900,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
             print(bbox_to_anchor)
 
         addLegend(ax1, ncols=1, text_size=legtext_size, bbox_to_anchor=bbox_to_anchor, loc=legend_loc, reverse=True, 
-            extra_labels=extra_labels, markerfirst=False, labelcolor="navy", extra_handles=extra_handles, custom_handlers=["verticleline"])
+            extra_labels=extra_labels, markerfirst=True, labelcolor=center_color, extra_handles=extra_handles, custom_handlers=["verticleline"])
 
     ax1.minorticks_off()
     ax1.set_yticklabels([])
