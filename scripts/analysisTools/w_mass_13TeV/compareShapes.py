@@ -206,8 +206,8 @@ if __name__ == "__main__":
     latCMS.SetTextFont(42)
     latCMS.SetTextSize(0.04)
     latCMS.DrawLatex(leftMargin, 0.95, f'#bf{{CMS}} #it{{{args.CMStext}}}')
-    if lumi != None: latCMS.DrawLatex(0.68, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
-    else:            latCMS.DrawLatex(0.68, 0.95, '(13 TeV)')
+    if lumi != None: latCMS.DrawLatex(0.678, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
+    else:            latCMS.DrawLatex(0.678, 0.95, '(13 TeV)')
 
     if lowerPanelHeight:
         pad2.Draw()

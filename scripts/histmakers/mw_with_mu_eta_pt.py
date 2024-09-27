@@ -33,7 +33,7 @@ parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC 
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=15.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
-parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt preFSR muons in acceptance")
+parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt postFSR muons in acceptance")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLightMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
