@@ -130,26 +130,30 @@ if __name__ == "__main__":
     syst1DDown.SetLineWidth(3)
     syst1DDown.SetLineColor(ROOT.TColor.GetColor("#964A8B"))
 
+    procLegend = legEntries_plots_[p]
+    if p == "Wmunu":
+        procLegend = "W^{+ }#rightarrow^{ }#mu^{+}#nu" if args.charge == "plus" else "W^{ - }#rightarrow^{ }#mu^{-}#nu"
+
     xAxisName = chargetext + " muon #it{p}_{T} (GeV)"
     yAxisName = "Events"
-    yRatioAxisName = f"Ratio to {legEntries_plots_[p]}"
+    yRatioAxisName = f"Ratio to {procLegend}"
     yAxisTitleOffset = 1.58
     transparentLegend = True
     legendCoords=f"{leftMargin+0.02},{1-rightMargin-0.01},0.74,0.92;2"
     moreTextLatex = ""
     lumi = "16.8"
-    
+
     frame = h1.Clone("frame")
     frame.GetXaxis().SetLabelSize(0.04)
     frame.SetStats(0)
 
     hlist = [h1, alt1D, syst1DUp, syst1DDown]
-    leglist = [legEntries_plots_[p], args.altLeg, "#it{m}_{W} + 100 MeV", "#it{m}_{W} - 100 MeV"]
+    leglist = [procLegend, args.altLeg, "#it{m}_{W} + 100 MeV", "#it{m}_{W} - 100 MeV"]
     ymin, ymax = getMinMaxMultiHisto(hlist, excludeEmpty=True, sumError=False,
                                      excludeUnderflow=True, excludeOverflow=True)
     diff = ymax - ymin
     ymax = ymax + 0.7 * diff
-    
+
     h1.GetXaxis().SetLabelSize(0)
     h1.GetXaxis().SetTitle("")  
     h1.GetYaxis().SetTitle(yAxisName)

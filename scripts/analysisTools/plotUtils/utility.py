@@ -1738,7 +1738,7 @@ def drawNTH1(hists=[],
         # ymin *= 0.9
         # ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         # if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
         ymin = 9999.9
         ymax = -9999.9
         for h in hists:
@@ -2121,7 +2121,7 @@ def drawDataAndMC(h1, h2,
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
@@ -2879,7 +2879,7 @@ def drawCheckTheoryBand(h1, h2, h3,
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
@@ -3305,7 +3305,7 @@ def drawXsecAndTheoryband(h1, h2,  # h1 is data, h2 is total uncertainty band
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
