@@ -289,15 +289,15 @@ for h in args.hists:
             subplotsizes=args.subplotSizes,
             )
 
-    fitresultstring=""
-    if args.fitresult:
-        fitresultstring = "prefit" if args.prefit else "postfit"
-    var_arg = None
+    to_join = [f"{h.replace('-','_')}"]
     if "varName" in args and args.varName:
         var_arg = args.varName[0]
         if "selectEntries" in args and args.selectEntries:
             var_arg = args.selectEntries[0] if not args.selectEntries[0].isdigit() else (var_arg+args.selectEntries[0])
-    to_join = [f"{h.replace('-','_')}"]+[var_arg.replace(".","")]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
+        to_join.append(var_arg)
+    if args.fitresult:
+        to_join.append("prefit" if args.prefit else "postfit")
+    to_join.extend([args.postfix, args.channel.replace("all", "")])
     outfile = "_".join(filter(lambda x: x, to_join))
     if args.cmsDecor == "Preliminary":
         outfile += "_preliminary"
