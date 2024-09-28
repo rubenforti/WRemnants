@@ -237,7 +237,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
         ax1.plot(centers, y, linewidth=0, marker='o', color="blue", label=args.refName)
 
         if pulls:
-            hdiff = hh.addHists(hist_ref, hden, scale2=-1.)
+            hdiff = hh.addHists(hist_ref, hden, scale2=-1., flow=False)
             pull_values = hdiff.values() / np.sqrt(hden.variances())
             hdiff.values()[...] = pull_values
 
@@ -308,7 +308,8 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
 
     err = np.sqrt(hist_xsec.variances(flow=flow)) * scale
     err_stat = np.sqrt(hist_stat.variances(flow=flow)) * scale
-    err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
+
+    err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1, flow=flow).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
     # err_syst = hist_syst.values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
 
     hist_err = hist.Hist(*hist_xsec.axes, storage=hist.storage.Double())
@@ -483,11 +484,11 @@ def plot_uncertainties_with_ratio(
         hist_err_stat_ref.view(flow=flow)[...] = err_stat_ref
 
     if hist_syst is not None:
-        err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
+        err_syst = hh.addHists(hist_syst, hist_xsec, scale2=-1, flow=flow).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
         hist_err_syst = hist.Hist(*hist_syst.axes, storage=hist.storage.Double())
         hist_err_syst.view(flow=flow)[...] = err_syst
 
-        err_syst_ref = hh.addHists(hist_syst_ref, hist_xsec, scale2=-1).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
+        err_syst_ref = hh.addHists(hist_syst_ref, hist_xsec, scale2=-1, flow=flow).values(flow=flow) * (scale[...,np.newaxis] if relative_uncertainty else scale)
         hist_err_syst_ref = hist.Hist(*hist_syst.axes, storage=hist.storage.Double())
         hist_err_syst_ref.view(flow=flow)[...] = err_syst_ref
 
