@@ -3,7 +3,7 @@ export APPTAINER_BIND="/scratch,/cvmfs"
 if [[ -d $WREM_BASE ]]; then
     export APPTAINER_BIND="${APPTAINER_BIND},${WREM_BASE}/.."
 fi
-CONTAINER=/cvmfs/unpacked.cern.ch/gitlab-registry.cern.ch/bendavid/cmswmassdocker/wmassdevrolling\:v31
+CONTAINER=/cvmfs/unpacked.cern.ch/gitlab-registry.cern.ch/bendavid/cmswmassdocker/wmassdevrolling\:v34
 
 # Ensure kerberos permissions for eos access (requires systemd kerberos setup)
 if [ -d $XDG_RUNTIME_DIR/krb5cc ]; then
