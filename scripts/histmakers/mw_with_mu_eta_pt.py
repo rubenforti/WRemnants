@@ -24,7 +24,7 @@ from utilities import common,boostHistHelpers as hh
 import pathlib
 import numpy as np
 
-parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%)", default=1.012)
+parser.add_argument("--lumiUncertainty", type=float, help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--halfStat", action='store_true', help="Test half data and MC stat, selecting odd events, just for tests")
 parser.add_argument("--makeMCefficiency", action="store_true", help="Save yields vs eta-pt-ut-passMT-passIso-passTrigger to derive 3D efficiencies for MC isolation and trigger (can run also with --onlyMainHistograms)")

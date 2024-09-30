@@ -174,27 +174,27 @@ def syst_transform_map(base_hist, hist_name):
         },
        "resumNPOmegaUp" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^Omega-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^Omega-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPOmegaDown" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^Omega-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^Omega-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
        "resumNPomega_nuUp" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^omega_nu-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^omega_nu-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPomega_nuDown" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^omega_nu-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^omega_nu-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
        "resumNPc_nuUp" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^c_nu-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^c_nu-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPc_nuDown" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                [x for x in h.axes["vars"] if re.match("^c_nu-*\d+", x)],
+                [x for x in h.axes["vars"] if re.match(r"^c_nu-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
         "resumScaleMax" : {
             "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", range(9,44), no_flow=["ptVgen"], do_min=False)},

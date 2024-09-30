@@ -121,7 +121,7 @@ xlabels = {
     "ewLogDeltaM": "ewLogDeltaM",
     "dxy":r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": r"$I$ (GeV)",
-    "relIso": "$I_\mathrm{rel}$",
+    "relIso": r"$I_\mathrm{rel}$",
 }
 
 legend_labels = {
@@ -280,13 +280,13 @@ text_dict = {
 }
 
 poi_types = {
-    "mu": "$\mu$",
-    "nois": "$\mathrm{NOI}$",
-    "pmaskedexp": "d$\sigma$ [pb]",
-    "sumpois": "d$\sigma$ [pb]",
-    "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
-    "sumpoisnorm": "1/$\sigma$ d$\sigma$",
-    "ratiometapois": "$\sigma(W^{+})/\sigma(W^{-})$",
+    "mu": r"$\mu$",
+    "nois": r"$\mathrm{NOI}$",
+    "pmaskedexp": r"d$\sigma$ [pb]",
+    "sumpois": r"d$\sigma$ [pb]",
+    "pmaskedexpnorm": r"1/$\sigma$ d$\sigma$",
+    "sumpoisnorm": r"1/$\sigma$ d$\sigma$",
+    "ratiometapois": r"$\sigma(W^{+})/\sigma(W^{-})$",
     "helpois": "Ai",
     "helmetapois": "Ai",
 }
@@ -316,35 +316,35 @@ axis_labels = {
 }
 
 systematics_labels = {
-    "massShiftZ100MeV": '$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$',
-    "massShiftW100MeV": '$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$',
-    "widthZ": '$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
-    "widthW": '$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
+    "massShiftZ100MeV": r'$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$',
+    "massShiftW100MeV": r'$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$',
+    "widthZ": r'$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
+    "widthW": r'$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
     # powhegFOEW variations
     'weak_no_ew': "no EW", 
     'weak_no_ho': "no HO", 
     'weak_default': "nominal", 
     'weak_ps': "PS", 
-    'weak_mt_dn': '$m_\mathrm{t}^\mathrm{down}$', 
-    'weak_mt_up': '$m_\mathrm{t}^\mathrm{up}$', 
-    'weak_mz_dn': '$m_\mathrm{Z}^\mathrm{down}$', 
-    'weak_mz_up': '$m_\mathrm{Z}^\mathrm{up}$', 
-    'weak_gmu_dn': '$G_\mu^\mathrm{up}$', 
-    'weak_gmu_up': '$G_\mu^\mathrm{down}$', 
+    'weak_mt_dn': r'$m_\mathrm{t}^\mathrm{down}$',
+    'weak_mt_up': r'$m_\mathrm{t}^\mathrm{up}$',
+    'weak_mz_dn': r'$m_\mathrm{Z}^\mathrm{down}$',
+    'weak_mz_up': r'$m_\mathrm{Z}^\mathrm{up}$',
+    'weak_gmu_dn': r'$G_\mu^\mathrm{up}$',
+    'weak_gmu_up': r'$G_\mu^\mathrm{down}$',
     'weak_aem': r'$\alpha_\mathrm{EM}$',  
     'weak_fs': 'FS',  
-    'weak_mh_dn': '$m_\mathrm{H}^\mathrm{down}$',  
-    'weak_mh_up': '$m_\mathrm{H}^\mathrm{up}$',   
-    'weak_s2eff_0p23125': '$\mathrm{sin}^2_\mathrm{eff}=0.23125$',  
-    'weak_s2eff_0p23105': '$\mathrm{sin}^2_\mathrm{eff}=0.23105$',   
-    'weak_s2eff_0p22155': '$\mathrm{sin}^2_\mathrm{eff}=0.22155$',  
-    'weak_s2eff_0p23185': '$\mathrm{sin}^2_\mathrm{eff}=0.23185$',  
-    'weak_s2eff_0p23205': '$\mathrm{sin}^2_\mathrm{eff}=0.23205$', 
-    'weak_s2eff_0p23255': '$\mathrm{sin}^2_\mathrm{eff}=0.23255$',  
-    'weak_s2eff_0p23355': '$\mathrm{sin}^2_\mathrm{eff}=0.23355$',  
-    'weak_s2eff_0p23455': '$\mathrm{sin}^2_\mathrm{eff}=0.23455$',  
-    'weak_s2eff_0p22955': '$\mathrm{sin}^2_\mathrm{eff}=0.22955$',  
-    'weak_s2eff_0p22655': '$\mathrm{sin}^2_\mathrm{eff}=0.22655$',
+    'weak_mh_dn': r'$m_\mathrm{H}^\mathrm{down}$',
+    'weak_mh_up': r'$m_\mathrm{H}^\mathrm{up}$',
+    'weak_s2eff_0p23125': r'$\mathrm{sin}^2_\mathrm{eff}=0.23125$',
+    'weak_s2eff_0p23105': r'$\mathrm{sin}^2_\mathrm{eff}=0.23105$',
+    'weak_s2eff_0p22155': r'$\mathrm{sin}^2_\mathrm{eff}=0.22155$',
+    'weak_s2eff_0p23185': r'$\mathrm{sin}^2_\mathrm{eff}=0.23185$',
+    'weak_s2eff_0p23205': r'$\mathrm{sin}^2_\mathrm{eff}=0.23205$',
+    'weak_s2eff_0p23255': r'$\mathrm{sin}^2_\mathrm{eff}=0.23255$',
+    'weak_s2eff_0p23355': r'$\mathrm{sin}^2_\mathrm{eff}=0.23355$',
+    'weak_s2eff_0p23455': r'$\mathrm{sin}^2_\mathrm{eff}=0.23455$',
+    'weak_s2eff_0p22955': r'$\mathrm{sin}^2_\mathrm{eff}=0.22955$',
+    'weak_s2eff_0p22655': r'$\mathrm{sin}^2_\mathrm{eff}=0.22655$',
     # EW
     'pythiaew_ISRCorr1': 'Pythia ISR on / off',
     'horacelophotosmecoffew_FSRCorr1': 'Photos MEC off / on',
@@ -386,7 +386,7 @@ def get_systematics_label(key, idx=0):
         else:
             label = str(idx-1)
 
-        return f"$\pm\sigma_\mathrm{{{label}}}$"        
+        return fr"$\pm\sigma_\mathrm{{{label}}}$"
 
     # default return key
     logger.info(f"No label found for {key}")
