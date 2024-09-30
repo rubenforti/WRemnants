@@ -95,7 +95,7 @@ def build_graph(df, dataset):
         )
         axis_absYVgen = hist.axis.Variable(
             unfolding_axes[1].edges,
-            name = "absYVgen", underflow=False, overflow=False,
+            name = "absYVgen", underflow=False,
         )
         axis_ptVgen = hist.axis.Variable(
             unfolding_axes[0].edges,
