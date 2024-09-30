@@ -68,7 +68,6 @@ isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
 isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
 
 if isUnfolding or isTheoryAgnostic:
-    parser = common.set_parser_default(parser, "excludeFlow", True)
     if isTheoryAgnostic:
         if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
             raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
@@ -78,7 +77,7 @@ if isUnfolding or isTheoryAgnostic:
 
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [24.,26.,28.,30.,32.,34.,36.,38.,40., 42., 44., 47., 50., 55., 60., 65.]
-axis_pt_eff = hist.axis.Variable(axis_pt_eff_list, name = "pt", overflow=not args.excludeFlow, underflow=not args.excludeFlow)
+axis_pt_eff = hist.axis.Variable(axis_pt_eff_list, name = "pt", overflow=False, underflow=False)
 if args.makeMCefficiency:
     # override the pt cuts (the binning is irrelevant since a different pt axis is used)
     nbinsPtEff = axis_pt_eff_list[-1] - axis_pt_eff_list[0]

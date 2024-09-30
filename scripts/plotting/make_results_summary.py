@@ -8,25 +8,30 @@ from wremnants import plot_tools
 
 parser = common.plot_parser()
 parser.add_argument("-i", "--fitresult", type=str, required=True, help="fitresults file from combinetf")
+parser.add_argument("--pdg", action='store_true', help="Don't show PDG value")
 args = parser.parse_args()
 
 dfw = pd.DataFrame.from_dict({
-    "Name" : ["LEP Combination", "D0", "CDF", "LHCb", "ATLAS", "PDG Average"],
-    "value" : [80376, 80375, 80433.5, 80354, 80366.5, 80369.2],
-    "err_total" : [33, 23, 9.4, 32, 15.9, 13.3],
-    "err_stat" : [25, 11, 6.4, 23, 9.8, 13.3],
+    "Name" : ["Electroweak fit", "LEP combination", "D0", "CDF", "LHCb", "ATLAS", "PDG Average"],
+    "value" : [80353, 80376, 80375, 80433.5, 80354, 80366.5, 80369.2],
+    "err_total" : [6, 33, 23, 9.4, 32, 15.9, 13.3],
+    "err_stat" : [6, 25, 11, 6.4, 23, 9.8, 13.3],
     "Reference" : [
+        "Phys. Rev. D 110, 030001",
         "Phys. Rep. 532 (2013) 119", 
         # "Phys. Rev. Lett. 108 (2012) 151804",
         "PRL 108 (2012) 151804",
         "Science 376 (2022) 6589", 
         "JHEP 01 (2022) 036", 
-        "arxiv:2403.15085 Subm. to EPJC", 
-        # "Eur.Phys.J.C 84 (2024) 5, 451",
-        "EPJC 84 (2024) 5, 451",
+        "arXiv:2403.15085", 
+        #"EPJC 84 (2024) 5, 451",
+        "Phys. Rev. D 110, 030001",
     ],
-    "color" : ["black"]*5+["navy"],
+    "color" : ["#666666"]+["black"]*5+["navy"],
 })
+
+if not args.pdg:
+    dfw = dfw[dfw["Name"] != "PDG Average"]
 
 cms_res = combinetf_input.read_groupunc_df(args.fitresult, ["stat",], name="CMS")
 cms_res["color"] = "#E42536" 
@@ -37,12 +42,22 @@ eoscp = output_tools.is_eosuser_path(args.outpath)
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
 
 nentries = len(dfw_cms)
+xpos = 80145+args.pdg*10
+top = nentries#+0.5
+# step = (top+0.25)/nentries
+step = top/nentries
+ymax = top+1.2
+legtop=top-0.73
 
-fig = plot_tools.make_summary_plot(80353, 6, "EW fit",
-    dfw_cms.loc[:,("Name", "value", "err_total")],
-    colors=list(dfw_cms["color"]),
+
+text_size = 15 #
+fig = plot_tools.make_summary_plot(80353, 6, "80353 $\pm$ 6",
+    # Don't plot stat error separately
+    dfw_cms[["Name", "value", "err_total"]].iloc[1:,:],
+    center_color="#666666",
+    colors=list(dfw_cms["color"][1:]),
     xlim=[80255, 80465],
-    ylim=[0, nentries+1.3],
+    ylim=[0, ymax],
     xlabel=r"$\mathit{m}_{W}$ (MeV)", 
     capsize=6,
     width_scale=1.25,
@@ -50,28 +65,23 @@ fig = plot_tools.make_summary_plot(80353, 6, "EW fit",
     cms_loc=0,
     padding=4,
     point_size=0.24,
-    #top_offset=offset,
+    top_offset=0,
     #bottom_offset=offset*2,
     label_points=False,
-    legend_loc='lower right',
-    legtext_size="small",
+    legend_loc="lower left",
+    bbox_to_anchor=(xpos+105, legtop),
+    legtext_size=text_size,
     logoPos=args.logoPos,
+    lumi=16.8,
 )
 
-
-top = nentries#+0.5
-# step = (top+0.25)/nentries
-step = top/nentries
-
 ax = plt.gca()
-xpos = 80135
 
-text_size = 15 #
 text_size_large = plot_tools.get_textsize(ax, "small")
-
-ax.annotate("$\mathit{m}_{{W}}\pm$ unc. in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
+ax.annotate("$\mathit{m}_{{W}}$ in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
 for i,row in dfw_cms.iterrows():
     isCMS = row.loc["Name"] == "CMS" 
+    isEW = row.loc["Name"] == "Electroweak fit" 
     pos = top-step*i
     ax.annotate(row["Name"], (xpos, pos), fontsize=text_size_large, ha="left", annotation_clip=False, color=row.loc["color"])#, weight=600)
     if row.loc["Name"] in ["CMS", "CDF", "ATLAS", "PDG Average"]:
@@ -79,12 +89,15 @@ for i,row in dfw_cms.iterrows():
     else:
         label = f"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"
     
-    # label = $\mathit{m}_{{W}}$ = "+label+" MeV"
-
-    ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color="black", annotation_clip=False)
+    if not isEW:
+        ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color=row.loc["color"] if isCMS or isEW else "black", annotation_clip=False)
     ax.annotate(row["Reference"], (xpos, pos-0.42), fontsize=text_size, ha="left", color="dimgrey", annotation_clip=False, style='italic' if isCMS else None)
 
-ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+#ewlabel = "80355 $\pm$ 6"
+#ax.annotate(ewlabel, (80265, 0), fontsize=text_size, ha="left", va="center", color="navy", annotation_clip=False)
+#ax.annotate("Phys. Rev. D 110, 030001", (xpos, legtop-0.3), fontsize=text_size, ha="left", color="gray", annotation_clip=False)
+
+ax.set_yticks(range(nentries))
 ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(25))
 ax.xaxis.grid(False, which='both')
@@ -92,7 +105,7 @@ ax.yaxis.grid(False, which='both')
 
 name = "resultsSummary"
 if args.postfix:
-    name += postfix
+    name += args.postfix
 if args.cmsDecor == "Preliminary":
     name += "_preliminary"
 

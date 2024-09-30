@@ -48,7 +48,6 @@ if args.addIsoMtAxes:
     parser = common.set_parser_default(parser, "muonIsolation", [0, 1])
 
 if isTheoryAgnostic:
-    parser = common.set_parser_default(parser, "excludeFlow", True)
     if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):
         raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
