@@ -104,9 +104,9 @@ if __name__ == "__main__":
     s = hist.tag.Slicer()
 
     gr_vpts = {}
-    
+
     for n in args.baseName:
-        
+
         # names of axes: genVtx_PV_Zdiff, genBosonPt, genMuonPt, genMuonAbsEta, genOtherLepAbsEta
         logger.info(f"Running on process {args.process}")
         histObj = results[args.process]["output"][n]
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         nBins_genMuonPt = h.axes["genMuonPt"].size
         nBins_genBosonPt = h.axes["genBosonPt"].size
         nBins_genOtherLepAbsEta = h.axes["genOtherLepAbsEta"].size
-    
+
         workingPoint = "_".join(n.split("_")[1:])
         yAxisName = "Efficiency: vertex dz(gen,reco) < %g mm"  % (10.*args.dzCut)
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
             ymin = 1.0
             ymin = min(ymin, min(list(gr.GetY())))
             ymin = ymin - 0.1 * (1.0 - ymin)
-            ymin = min(ymin, 0.95)       
+            ymin = min(ymin, 0.95)
             #drawGraphCMS([gr], xAxisName, f"{yAxisName}::{ymin},1.0", gr.GetName(), outdir, leg_roc=[workingPoint],
             #             passCanvas=canvas, skipLumi=True)
             if isBoson:

@@ -53,7 +53,7 @@ selection_dict = {
 def plot_matrix_poi(hist_cov, names, poi_type="mu", gen_axes=None, base_processes=[], selections={}, covariance=False, add_values_text=False,
     xlabel=None, ylabel=None, cms_decor="Preliminary", flow=False, clean_triangle=False, condition_number=False,
     ):
-    if gen_axes is not None: 
+    if gen_axes is not None:
         hist_cov = select_covariance_pois(hist_cov, names, gen_axes=gen_axes, base_processes=base_processes, selections=selections, flow=flow)
 
     if not covariance:
@@ -116,14 +116,14 @@ def plot_matrix_poi(hist_cov, names, poi_type="mu", gen_axes=None, base_processe
     outfile += (f"_{args.postfix}_" if args.postfix else "_") + poi_type.split("_")[-1].replace("channel","")
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         yield_tables={"Values" : hist_cov.values()}, nround=10 if covariance else 2,
         analysis_meta_info={args.infile : meta_info},
         args=args,
     )
 
 for plot_type in args.plots:
-    
+
     covariance = False if plot_type == "correlation" else True
 
     hist_cov, names = load_covariance_pois(fitresult, args.poiType)

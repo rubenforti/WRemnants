@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-o", "--outfolder", type=str, default="./hdf5Files/splines", help="Output folder")
 parser.add_argument("--combineOutFolder", type=str, default="./CombineStudies/msv_all_analyses", help='output folder for combine files')
 parser.add_argument("--defaultPostfix", type=str, default="scetlib_dyturboCorr", help='the postfix string added to the hdf5 file by default by the histmaker')
-parser.add_argument("--infoOnly", action="store_true", help="only print the commands without actually running them") 
+parser.add_argument("--infoOnly", action="store_true", help="only print the commands without actually running them")
 
 args = parser.parse_args()
 
@@ -27,12 +27,12 @@ if not os.path.isdir(args.combineOutFolder):
     os.mkdir(args.combineOutFolder)
 
 def EXE(command):
-    logger.info(command) 
+    logger.info(command)
     if not args.infoOnly:
         os.system(command)  # for testing comment out this line
 
 def make_appendix(name):
-        
+
     parts = []
     for p in [pa.replace("-"," ").replace("_"," ") for pa in name.split("--")]:
         if p=="":
@@ -40,7 +40,7 @@ def make_appendix(name):
         ps = p.split(" ")
         ps = "".join([ps[0],]+[p.capitalize() for p in ps[1:]])
         parts.append(ps)
-    
+
     return "_".join(parts)
 
 for histmaker in histmakers:
@@ -54,7 +54,7 @@ for histmaker in histmakers:
     else:
         logger.info(f"Found file for {file_hdf5}")
 
-    # make combine input        
+    # make combine input
     dir_combine = f"{args.combineOutFolder}/{histmaker}"
     sep = "--sepImpactForNC --sepImpactForReso"
     if histmaker == 'mz_dilepton':

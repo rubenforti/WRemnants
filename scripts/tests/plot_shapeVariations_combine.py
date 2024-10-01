@@ -54,7 +54,7 @@ translate_project = {
     "eta": "xaxis",
     "eta-pt":None
 }
-    
+
 fin = uproot.open(args.inputFile)
 
 for dataset in args.datasets:
@@ -65,7 +65,7 @@ for dataset in args.datasets:
         keys = [k.replace(";1","") for k in fin.keys()]
 
         keys_skimmed = [x for x in filter(lambda x: x.startswith(f"x_{dataset}_") and x.endswith(f"_{channel}"), keys)]
-        
+
         for systematic in args.systematics:
             logger.info(f"Now at {systematic}")
 
@@ -80,11 +80,11 @@ for dataset in args.datasets:
             name_nominal = f"x_{dataset}_{channel};1"
 
             nominal = fin[name_nominal].to_hist()
-            
+
             variations = []
             var_names = []
             for systUp, systDown in zip(filter(lambda x: f"Up_{channel}" in x, systs), filter(lambda x: f"Down_{channel}" in x, systs)):
-                
+
                 variations.append((fin[systUp].to_hist(), fin[systDown].to_hist()))
                 var_names.append(systUp.split(f"{dataset}_")[-1].split("Up")[0])
 
@@ -105,7 +105,7 @@ for dataset in args.datasets:
                     var = [ (np.ravel(v[0].values())/nom, np.ravel(v[1].values())/nom) for v in variations ]
 
                     x = np.arange(len(nom))
-                    
+
                 for v, n in zip(var, var_names):
                     # make the plot for each variation
                     plt.clf()
@@ -114,7 +114,7 @@ for dataset in args.datasets:
                     ax = fig.add_subplot(111)
 
                     ax.plot([min(x),max(x)], [0,0], linestyle="-", color="grey")
-                    ax.fill_between(x, std, -std, color='grey', alpha=0.2, zorder=1, label="MC stat.") 
+                    ax.fill_between(x, std, -std, color='grey', alpha=0.2, zorder=1, label="MC stat.")
 
                     ax.plot(x, 1-v[0], linestyle="-", drawstyle='steps-mid', color="red", label="Up")
                     ax.plot(x, 1-v[1], linestyle="--", drawstyle='steps-mid', color="blue", label="Down")
@@ -126,7 +126,7 @@ for dataset in args.datasets:
                     yMin = min(min(1-v[0]),min(1-v[1]))
                     yMax = max(max(1-v[0]),max(1-v[1]))
 
-                    yRange = yMax - yMin 
+                    yRange = yMax - yMin
                     yMin = yMin-yRange*0.02
                     yMax = yMax+yRange*0.02
                     ax.set_ylim(yMin , yMax)

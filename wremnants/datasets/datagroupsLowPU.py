@@ -14,19 +14,19 @@ def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=No
         members = dg.get_members_from_results(startswith="Ztautau"),
     )
 
-    if dg.flavor == "mu" or dg.flavor == "mumu":  
+    if dg.flavor == "mu" or dg.flavor == "mumu":
         dg.addGroup("Zmumu",
             members = dg.get_members_from_results(startswith="Zmumu"),
-        ) 
+        )
         if dg.mode == "w_lowpu":
             dg.addGroup("Wmunu",
                 members = dg.get_members_from_results(startswith=["Wplusmunu", "Wminusmunu"]),
             )
 
-    if dg.flavor == "e" or dg.flavor == "ee":  
+    if dg.flavor == "e" or dg.flavor == "ee":
         dg.addGroup("Zee",
             members = dg.get_members_from_results(startswith="Zee"),
-        ) 
+        )
         if dg.mode == "w_lowpu":
             dg.addGroup("Wenu",
                 members = dg.get_members_from_results(startswith=["Wplusenu", "Wminusenu"]),

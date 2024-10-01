@@ -57,9 +57,9 @@ def normalizeTH1unrolledSingleChargebyBinWidth(h1, h2, unrollAlongX=True):
 
 
 def dressed2DfromFit(h1d, binning, name, title='', shift=0,
-                     nCharges=2, nMaskedCha=2, 
+                     nCharges=2, nMaskedCha=2,
                      nRecoBins=0, invertXY=True):
-    
+
     if len(binning) == 4:
         n1 = binning[0]; bins1 = array('d', binning[1])
         n2 = binning[2]; bins2 = array('d', binning[3])
@@ -69,7 +69,7 @@ def dressed2DfromFit(h1d, binning, name, title='', shift=0,
         n2 = binning[3]; min2 = binning[4]; max2 = binning[5]
         h2_1 = ROOT.TH2D(name, title, n1, min1, max1, n2, min2, max2)
     h1d_shifted = singleChargeUnrolled(h1d, shift, nCharges,
-                                       nMaskedCha, 
+                                       nMaskedCha,
                                        nRecoBins=nRecoBins)
     h2_backrolled = roll1Dto2D(h1d_shifted, h2_1, invertXY)
     return h2_backrolled
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     setTDRStyle()
 
     charges = ["plus", "minus"] if args.charges == "both" else [args.charges]
-    nCharges = len(charges) 
+    nCharges = len(charges)
     nMaskedChanPerCharge = args.nMaskedChannel # check if we actually have masked channels, we may not, default should be 0
     lep = "Muon"
     xaxisname2D = "{l} #eta".format(l=lep)
@@ -223,8 +223,8 @@ if __name__ == "__main__":
     verticalAxisNameProjX = "Events / bin" if args.normWidth else "Events"  # X is eta
     verticalAxisNameProjY = "Events / bin [GeV^{-1 }]" if args.normWidth else "Events"  # Y is pt
 
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
-    cnarrow = ROOT.TCanvas("cnarrow","",650,700)                      
+    cwide = ROOT.TCanvas("cwide","",2400,600)
+    cnarrow = ROOT.TCanvas("cnarrow","",650,700)
 
     canvasRatio = ROOT.TCanvas("canvasRatio","",2400,600)
 
@@ -237,7 +237,7 @@ if __name__ == "__main__":
     etaBinRanges = []
     for ieta in range(0,recoBins.Neta):
         etaBinRanges.append("[{etamin},{etamax}]".format(etamin=round(recoBins.etaBins[ieta],1), etamax=round(recoBins.etaBins[ieta+1],1)))
-        
+
 
     for charge in charges:
         binshift = shifts[charge]
@@ -316,7 +316,7 @@ if __name__ == "__main__":
                 all_procs[keyplot] = h2_backrolled;
                 all_procs_unrolled[keyplot] = h1_unrolled
                 all_procs_unrolled_y[keyplot] = h1_unrolled_y
-                all_procs[keyplot].SetDirectory(0); 
+                all_procs[keyplot].SetDirectory(0);
                 all_procs_unrolled[keyplot].SetDirectory(0)
                 all_procs_unrolled_y[keyplot].SetDirectory(0)
                 if prepost == 'prefit' and p != 'obs' and args.comparePrefitPostfit:
@@ -401,10 +401,10 @@ if __name__ == "__main__":
                 if not args.no2Dplot:
                     cname = f"{p}_{chfl}{suffix}"
                     h2_backrolled.Write(cname)
-                    drawCorrelationPlot(h2_backrolled, xaxisname2D, yaxisname2D, verticalAxisName, cname, "", 
+                    drawCorrelationPlot(h2_backrolled, xaxisname2D, yaxisname2D, verticalAxisName, cname, "",
                                         outdir, 0,0, False, False, False, 1, palette=57, passCanvas=canvas2D)
 
-            # now draw the 1D projections         
+            # now draw the 1D projections
             sortedKeys = list(sorted(all_procs.keys(), key = lambda k: all_procs[k].Integral()))
 
             # this has the uncertainty propagated with the full covariance matrix
@@ -442,7 +442,7 @@ if __name__ == "__main__":
 
                 hdata.Write()
                 hexpfull.Write()
-                htot = hdata.Clone(f"tot_{charge}") 
+                htot = hdata.Clone(f"tot_{charge}")
                 htot.Reset("ICES");
                 htot.Sumw2()
                 stack = ROOT.THStack(f"stack_{prepost}_{charge}_proj{projection}", "")
@@ -466,7 +466,7 @@ if __name__ == "__main__":
                     proj1d.SetFillColor(process_features[keycolor]["color"])
                     stack.Add(proj1d)
                     proj1d.Write()
-                    htot.Add(proj1d) 
+                    htot.Add(proj1d)
                     listOfProj.append([proj1d, procsAndTitles[keycolor]])
 
                 leg.AddEntry(hdata,args.dataTitle,'PE')
@@ -481,7 +481,7 @@ if __name__ == "__main__":
                                    1, passCanvas=cnarrow, hErrStack=hexpfull, lumi=args.lumi, drawLumiLatex=True,
                                    topMargin=0.06, noLegendRatio=True)
 
-            # hdata_unrolled = singleChargeUnrolled(infile.Get('obs'), binshift, nCharges, nMaskedChanPerCharge, 
+            # hdata_unrolled = singleChargeUnrolled(infile.Get('obs'), binshift, nCharges, nMaskedChanPerCharge,
             #                                       name=f"unrolled_{charge}_data",
             #                                       nRecoBins=nRecoBins).Clone('unrolled_{ch}_data'.format(ch=charge))
             dataName2D = f"data_{charge}"
@@ -527,7 +527,7 @@ if __name__ == "__main__":
                 stack_unrolled_y.Add(proc_unrolled_y)
                 htot_unrolled_y.Add(proc_unrolled_y)
 
-                
+
             leg_unrolled.AddEntry(hdata_unrolled, args.dataTitle, 'PE')
             for pair in reversed(listOfProj):
                 leg_unrolled.AddEntry(pair[0], pair[1], 'F')
@@ -542,7 +542,7 @@ if __name__ == "__main__":
             else:
                 fullTextForUnrolled = f"#bf{{{pp}}}"
             logger.info(fullTextForUnrolled)
-            
+
             cnameUnroll = f"unrolled_{chfl}{suffix}"
             XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
             drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll, outdir,

@@ -37,7 +37,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     adjustSettings_CMS_lumi()
-    canvas = ROOT.TCanvas("canvas", "", 800, 800) 
+    canvas = ROOT.TCanvas("canvas", "", 800, 800)
 
     outfile = safeOpenFile(outputfile, mode="RECREATE")
     outdir_original = plotFolder
@@ -58,11 +58,11 @@ if __name__ == "__main__":
         h1D = ROOT.TH1D(f"weight_vertexZ_inclusivePU{inclusiveRange[0]}to{inclusiveRange[1]}_{era}",
                         f"{era}: inclusive PU in [{inclusiveRange[0]}, {inclusiveRange[1]}]",
                         nVtx, vtxLow, vtxHigh)
-        for ivtx in range(1, 1+h4bins.GetNbinsX()):            
+        for ivtx in range(1, 1+h4bins.GetNbinsX()):
             h1D.SetBinContent(ivtx, h4bins.GetBinContent(ivtx))
         # now build 2D with other histograms
         h2D = ROOT.TH2D(f"weight_vertexZ_pileup_{era}", era, nVtx, vtxLow, vtxHigh, len(pileupBins)-1, array('d', pileupBins))
-        for ipu in range(len(pileupBins)-1):            
+        for ipu in range(len(pileupBins)-1):
             hname = "ratio_%s_%s" % (pileupBins[ipu], pileupBins[ipu+1])
             h  = safeGetObject(infile, hname)
             for ivtx in range(1, 1+h.GetNbinsX()):
@@ -87,9 +87,9 @@ if __name__ == "__main__":
                             passCanvas=canvas, skipLumi=True)
         drawTH1(h1D, "Vertex z (cm)", "Weight", h1D.GetName(), outFolder, passCanvas=canvas,
                 skipTdrStyle=True, drawStatBox=False)
-        
+
         infile.Close()
 
     outfile.Close()
     copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
-    
+

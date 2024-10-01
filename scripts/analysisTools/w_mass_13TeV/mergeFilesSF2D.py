@@ -49,7 +49,7 @@ from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
     makeAntiSFfromSFandEffi
 
 if __name__ == "__main__":
-            
+
     parser = common_plot_parser()
     parser.add_argument('inputfile',  type=str, nargs=1,   help='Input root file with TH2')
     parser.add_argument('outputfile', type=str, nargs=1,   help='Output file absolute path')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser.add_argument('--noOverwriteDuplicate', dest='noOverwriteDuplicate', action='store_true', help='If a histogram from any of the mergefiles is already present in inputfile, keep the version in inputfile')
 
     args = parser.parse_args()
-    
+
     logger = logging.setup_logger(os.path.basename(__file__), 3, True)
 
     ROOT.TH1.SetDefaultSumw2()
@@ -70,9 +70,9 @@ if __name__ == "__main__":
     outdir_original = os.path.dirname(os.path.abspath(args.outputfile[0])) + "/"
     outdir = createPlotDirAndCopyPhp(outdir_original)
 
-    outfilenameLocal = outdir + "/" + os.path.basename(args.outputfile[0]) 
+    outfilenameLocal = outdir + "/" + os.path.basename(args.outputfile[0])
     outfile = safeOpenFile(outfilenameLocal, mode="RECREATE")
-    
+
     infile = safeOpenFile(args.inputfile[0]) # might not work if the input is on eos and one uses the mount
     inputHistnames = []
     for k in infile.GetListOfKeys():
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                     logger.info(f"Copying {h.ClassName()} {name}")
                     h.Write(name)
         infile.Close()
-                    
+
     logger.info(f"Done, closing file {outfile.GetName()}")
     outfile.Close()
     copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

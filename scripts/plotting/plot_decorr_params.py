@@ -163,13 +163,13 @@ if __name__ == '__main__':
             xlim = -0.05*xwidth + xlim[0], 0.05*xwidth + xlim[1]
         else:
             xlim = args.xlim
-        
+
         ylim = (-1*(args.infileInclusive!=None), len(df_p) + (args.infileInclusive!=None))
 
         y = np.arange(0,len(df))+0.5 + (args.infileInclusive!=None)
 
-        fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel=ylabel,#", ".join(ylabels), 
-            grid=True, automatic_scale=False, width_scale=args.widthScale, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)    
+        fig, ax1 = plot_tools.figure(None, xlabel=xlabel, ylabel=ylabel,#", ".join(ylabels),
+            grid=True, automatic_scale=False, width_scale=args.widthScale, height=4+0.24*len(df_p), xlim=xlim, ylim=ylim)
 
         if args.infileInclusive:
             ax1.errorbar([c], [0.], xerr=c_err_stat, color='red', marker="", linestyle="", zorder=3)
@@ -201,9 +201,9 @@ if __name__ == '__main__':
                 raise NotImplementedError("Can only plot chi2 if legend is 'center left'")
 
             plot_tools.wrap_text(
-                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"], 
+                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"],
                 ax1, x_chi2, y_chi2, text_size=args.legSize)
-            
+
             ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.3)
             ax1.fill_between([c-c_err_stat, c+c_err_stat], ylim[0], ylim[1], color='gray', alpha=0.3)
             ax1.fill_between([c-c_err_cal, c+c_err_cal], ylim[0], ylim[1], color='gray', alpha=0.3)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
             central=0
 
         plot_tools.add_cms_decor(ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos)
-        plot_tools.addLegend(ax1, ncols=args.legCols, loc=(0.02, 0.58) if args.legPos is None else args.legPos, 
+        plot_tools.addLegend(ax1, ncols=args.legCols, loc=(0.02, 0.58) if args.legPos is None else args.legPos,
             text_size=args.legSize)
 
         if args.title:
@@ -242,7 +242,7 @@ if __name__ == '__main__':
             outfile += "_preliminary"
 
         plot_tools.save_pdf_and_png(outdir, outfile)
-        plot_tools.write_index_and_log(outdir, outfile, 
+        plot_tools.write_index_and_log(outdir, outfile,
             analysis_meta_info={"AnalysisOutput" : meta_info},
             args=args,
         )

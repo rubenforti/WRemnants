@@ -79,7 +79,7 @@ if __name__ == '__main__':
     ylim = (0.01, 1) if args.logy else (0, 1)
 
     fig, ax1 = plot_tools.figure(None, xlabel="Prompt efficiency", ylabel="Nonprompt efficiency", cms_label=args.cmsDecor,
-                                grid=True, automatic_scale=False, width_scale=1.2, xlim=(0, 1), ylim=ylim, logy=args.logy)    
+                                grid=True, automatic_scale=False, width_scale=1.2, xlim=(0, 1), ylim=ylim, logy=args.logy)
 
     if not args.logy:
         ax1.plot([0,1],[0,1], linestyle="--", marker="none", color="black")
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     )):
         logger.info(f"Now at {label}")
 
-        # all upper cuts, so we go from right to left/ or equivalent: switch fpr and tpr 
+        # all upper cuts, so we go from right to left/ or equivalent: switch fpr and tpr
         ls = label.split("-")
 
         # normalize to unity
@@ -122,10 +122,10 @@ if __name__ == '__main__':
                     pts[n,m,0] = hBkg[slice(0,n+1,hist.sum), slice(0,m+1,hist.sum)]
 
             logger.info("Select best tpr and fpr on 1D line")
-            # select always the point that has the largest perpendicular distance to a line in direction of lower right tpr=100%, fpr=0% i.e. (1,0) 
+            # select always the point that has the largest perpendicular distance to a line in direction of lower right tpr=100%, fpr=0% i.e. (1,0)
             # 1) start with two points (0,0) and (1,1)
-            # 2) follow prescription: make line between points and select third point 
-            # 3) make two more lines from the selected point 
+            # 2) follow prescription: make line between points and select third point
+            # 3) make two more lines from the selected point
             # 4) for each line go to 2)
             # 5) finish once there is no more point in direction of (1,0)
             p1 = np.array([0,0])
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
         roc_auc = np.trapz(tpr, fpr)
 
-        ax1.plot(fpr, tpr, linestyle=linestyle, marker="none", color=colors(i), 
+        ax1.plot(fpr, tpr, linestyle=linestyle, marker="none", color=colors(i),
             label=" & ".join([styles.xlabels.get(l,l).replace("(GeV)","") for l in ls])+f" (auc={round(roc_auc,2)})")
 
     plot_tools.addLegend(ax1, ncols=args.legCols, text_size=args.legSize, loc=args.legPos)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         analysis_meta_info={"AnalysisOutput" : groups.getMetaInfo()},
         args=args,
     )

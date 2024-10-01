@@ -59,11 +59,11 @@ if __name__ == "__main__":
     fname = args.inputfile[0]
     outdir_original = f"{args.outdir[0]}/{outdirTag}/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-    
+
     ROOT.TH1.SetDefaultSumw2()
-    
+
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
+    cwide = ROOT.TCanvas("cwide","",2400,600)
     adjustSettings_CMS_lumi()
     canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
@@ -84,17 +84,17 @@ if __name__ == "__main__":
     eps = 0.0001
     isoBinEdges = args.isoBinEdges
     mtBinEdges = args.mtBinEdges
-    
+
     for jiso, iso in enumerate(isoBinEdges):
         isoLow = round(iso,2)
         isoLowStr = str(isoLow).replace(".","p")
-        maxJiso = len(isoBinEdges) - 1 
+        maxJiso = len(isoBinEdges) - 1
         isoHighStr = str(round(isoBinEdges[jiso+1],2)) if jiso < maxJiso else "Inf"
         isoHighStr = isoHighStr.replace(".","p")
         isoTag = f"iso{isoLowStr}To{isoHighStr}"
         for jmt,mt in enumerate(mtBinEdges):
             mtLowStr = str(round(mt))
-            maxJmt = len(mtBinEdges) - 1 
+            maxJmt = len(mtBinEdges) - 1
             mtHighStr = str(round(mtBinEdges[jmt+1])) if jmt < maxJmt else "Inf"
             mtTag = f"mt{mtLowStr}To{mtHighStr}"
             logger.info(f"Processing bin: {isoLowStr} < relIso < {isoHighStr} && {mtLowStr} < mT < {mtHighStr} GeV")

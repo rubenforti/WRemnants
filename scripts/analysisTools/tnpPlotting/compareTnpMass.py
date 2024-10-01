@@ -9,7 +9,7 @@ import array
 import math
 import os
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 

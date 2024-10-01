@@ -39,14 +39,14 @@ def writeOutput(fig, outfile, extensions=[], postfix=None, args=None, meta_info=
             fig.write_html(output, include_mathjax='cdn')
         else:
             fig.write_image(output)
-        
+
         output = name.rsplit("/", 1)
         output[1] = os.path.splitext(output[1])[0]
         if len(output) == 1:
             output = (None, *output)
     if args is None and meta_info is None:
         return
-    plot_tools.write_index_and_log(*output, 
+    plot_tools.write_index_and_log(*output,
         args=args,
         analysis_meta_info={"AnalysisOutput" : meta_info},
     )
@@ -55,7 +55,7 @@ def get_marker(filled=True, color='#377eb8', opacity=1.0):
     if filled:
         marker={"marker": {
                 "color":color,  # Fill color for the filled bars
-                "opacity":opacity  # Opacity for the filled bars (adjust as needed)        
+                "opacity":opacity  # Opacity for the filled bars (adjust as needed)
             }
         }
     else:
@@ -75,7 +75,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
     ncols = pulls+impacts
     fig = make_subplots(rows=1,cols=ncols,
             horizontal_spacing=0.1, shared_yaxes=True)#ncols > 1)
-   
+
     ndisplay = len(df)
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
@@ -93,12 +93,12 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
         # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
         frmt = "{:0"+str(int(np.log10(max(df[impact_str])) if max(df[f"{impact_str}_ref"])>0 else 0)+2)+".2f}"
         nval = df[impact_str].apply(lambda x,frmt=frmt: frmt.format(x)) #.astype(str)
-        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " "*(n - len(x))) 
+        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " "*(n - len(x)))
         if include_ref:
             frmt_ref = "{:0"+str(int(np.log10(max(df[f"{impact_str}_ref"])) if max(df[f"{impact_str}_ref"])>0 else 0)+2)+".2f}"
             nval_ref = df[f'{impact_str}_ref'].apply(lambda x,frmt=frmt_ref: " ("+frmt.format(x)+")") #.round(2).astype(str)
-            nspace_ref = nval_ref.apply(lambda x, n=nval_ref.apply(len).max(): " "*(n - len(x))) 
-            nval = nval+nspace_ref+nval_ref 
+            nspace_ref = nval_ref.apply(lambda x, n=nval_ref.apply(len).max(): " "*(n - len(x)))
+            nval = nval+nspace_ref+nval_ref
         labels = df["label"].apply(lambda x: x[:-1] if x.endswith("$") else r"$\text{"+x+"}")
         labels = labels+r"\ \ \text{"+nspace+nval+"}$"
         textargs = dict()
@@ -202,7 +202,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
                     x=df['newpull'],
                     y=labels,
                     mode="markers",
-                    marker=dict(color='blue', symbol="x", size=8, 
+                    marker=dict(color='blue', symbol="x", size=8,
                         line=dict(
                             width=1  # Adjust the thickness of the marker lines
                     )),
@@ -262,7 +262,7 @@ def plotImpacts(df, impact_title="", pulls=False, normalize=False, oneSidedImpac
 
     return fig
 
-def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[], stat=0.0, normalize=False, scale=1):    
+def readFitInfoFromFile(rf, filename, poi, group=False, grouping=None, filters=[], stat=0.0, normalize=False, scale=1):
     logger.debug("Read impacts for poi from file")
     impacts, labels, norm = combinetf_input.read_impacts_poi(rf, group, add_total=group, stat=stat, poi=poi, normalize=normalize)
 
@@ -331,13 +331,13 @@ def parseArgs():
     output.add_argument("-n", "--num", type=int, help="Number of nuisances to plot")
     output.add_argument("--noPulls", action='store_true', help="Don't show pulls (not defined for groups)")
     output.add_argument("--eoscp", action='store_true', help="Use of xrdcp for eos output rather than the mount")
-    
+
     return parser.parse_args()
 
 app = dash.Dash(__name__)
 
 @app.callback(
-    Output("scatter-plot", "figure"), 
+    Output("scatter-plot", "figure"),
     [Input("maxShow", "value")],
     [Input("sortBy", "value")],
     [Input("sortDescending", "on")],
@@ -376,7 +376,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
                 raise NotImplementedError(f"Found channels {[k for k in channel_info.keys()]} but only one channel is supported.")
             scale = 1./(lumi*1000)
             poi_name = "_".join(poi.split("_")[:-1])
-            impact_title = "$\\sigma_\\mathrm{fid}("+poi_name+") [\\mathrm{pb}]$" 
+            impact_title = "$\\sigma_\\mathrm{fid}("+poi_name+") [\\mathrm{pb}]$"
         else:
             impact_title = "$1/\\sigma_\\mathrm{fid} \\mathrm{d}\\sigma$"
     elif poi_type in ["ratiometaratio"]:
@@ -394,9 +394,9 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
     if fitresult_ref:
         df_ref = readFitInfoFromFile(fitresult_ref, args.referenceFile, poi, group, stat=args.stat/100., normalize=normalize, scale=scale, grouping=grouping)
         df = df.merge(df_ref, how="outer", on="label", suffixes=("","_ref"))
-    
+
         # Set default values for missing entries in respective columns
-        default_values = {'impact_color': "#377eb8",  'impact_color_ref': "#377eb8"}  
+        default_values = {'impact_color': "#377eb8",  'impact_color_ref': "#377eb8"}
         for col in df.columns:
             df[col] = df[col].fillna(default_values.get(col, 0))
 
@@ -479,7 +479,7 @@ def producePlots(fitresult, args, poi, group=False, normalize=False, fitresult_r
             df = df[-args.num:]
 
         fig = plotImpacts(df, pulls=not args.noPulls and not group, impact_title=impact_title, normalize=not args.absolute, oneSidedImpacts=args.oneSidedImpacts)
-        writeOutput(fig, outfile, extensions[0:], postfix=postfix, args=args, meta_info=meta)      
+        writeOutput(fig, outfile, extensions[0:], postfix=postfix, args=args, meta_info=meta)
         if args.eoscp and output_tools.is_eosuser_path(args.outFolder):
             output_tools.copy_to_eos(outdir, args.outFolder, "")
     else:

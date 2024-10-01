@@ -28,7 +28,7 @@ def load_results_h5py(h5file):
 def read_and_scale_pkllz4(fname, proc, histname, calculate_lumi=False, scale=1):
     with lz4.frame.open(fname) as f:
         results = pickle.load(f)
-        
+
     return load_and_scale(results, proc, histname, calculate_lumi, scale)
 
 def read_hist_names(fname, proc):
@@ -56,7 +56,7 @@ def read_sumw(fname, proc):
 def read_and_scale(fname, proc, histname, calculate_lumi=False, scale=1, apply_xsec=True):
     with h5py.File(fname, "r") as h5file:
         results = load_results_h5py(h5file)
-            
+
         return load_and_scale(results, proc, histname, calculate_lumi, scale, apply_xsec)
 
 def load_and_scale(res_dict, proc, histname, calculate_lumi=False, scale=1., apply_xsec=True):
@@ -103,7 +103,7 @@ def read_scetlib_hist(path, nonsing="none", flip_y_sign=False, charge=None):
         var_axis = hist.axis.Integer(f["bins"][0][0], f["bins"][0][-1], name="vars", flow=False)
         mass_axis = hist.axis.Variable(f["bins"][1], name="Q", flow=False)
         y_axis = hist.axis.Variable(f["bins"][2], name="Y", flow=False)
-        
+
         # Use 0.1 here rather than 0, because the nonsingular behaves much better with a "cut" at > 0.1
         pt_underflow = f["bins"][3][0] > 0.1
         pt_axis = hist.axis.Variable(f["bins"][3], name="qT", flow=False)
@@ -112,7 +112,7 @@ def read_scetlib_hist(path, nonsing="none", flip_y_sign=False, charge=None):
         storage = hist.storage.Double()
         axes = [mass_axis,y_axis,pt_axis,var_axis]
 
-        varax_idx = -1 
+        varax_idx = -1
         vals = np.moveaxis(h, 0, varax_idx)
 
         if "hist_err" in f:
@@ -137,18 +137,18 @@ def read_scetlib_hist(path, nonsing="none", flip_y_sign=False, charge=None):
         logger.warning("Adding NLO nonsingular contribution!")
     elif nonsing != "none":
         logger.warning("Will not include nonsingular contribution!")
-    
+
     if flip_y_sign:
         scetlibh = flip_hist_y_sign(scetlibh)
 
-    return scetlibh 
+    return scetlibh
 
 def flip_hist_y_sign(h, yaxis="Y"):
     centers = h.axes[yaxis].centers
     scale = np.ones_like(centers)
     scale[centers < 0] *= -1
     h.values()[...] = h.values()*scale[(None if ax.name != yaxis else slice(0, ax.size) for ax in h.axes)]
-    return h 
+    return h
 
 def read_dyturbo_vars_hist(base_name, var_axis=None, axes=("Y", "qT"), charge=None):
 
@@ -216,7 +216,7 @@ def read_dyturbo_hist(filenames, path="", axes=("y", "pt"), charge=None, coeff=N
     h = hh.sumHists(hists)
 
     if charge is not None and "charge" not in h.axes.name:
-        charge_args = (2, -2., 2.) if charge != 0 else (1, 0, 1) 
+        charge_args = (2, -2., 2.) if charge != 0 else (1, 0, 1)
         charge_axis = hist.axis.Regular(*charge_args, flow=False, name = "charge")
         hnew = hist.Hist(*h.axes, charge_axis, storage=h._storage_type())
         hnew[...,charge_axis.index(charge)] = h.view(flow=True)
@@ -228,7 +228,7 @@ def expand_dyturbo_filenames(path, basename, varname, pieces=["n3ll_born", "n2ll
     return [os.path.join(path, "_".join(filter(None, [basename, piece, varname, append]))+".txt") for piece in pieces]
 
 def dyturbo_varnames():
-    return ["mur{0}_muf{1}_mures{2}".format(i,j,k).replace("0", "H") for i in range(3) for j in range(3) for k in range(3) 
+    return ["mur{0}_muf{1}_mures{2}".format(i,j,k).replace("0", "H") for i in range(3) for j in range(3) for k in range(3)
         if abs(i-j) < 2 and abs(i-k) < 2 and abs(j-k) < 2 and not (i == 1 and j == 1 and k == 1)]
 
 def read_dyturbo_variations(path, basename, varnames, axes, pieces=["n3ll_born", "n2ll_ct", "n2lo_vj"], append=None, charge=None):
@@ -240,7 +240,7 @@ def read_dyturbo_variations(path, basename, varnames, axes, pieces=["n3ll_born",
     for i,var in enumerate(varnames):
         filenames = expand_dyturbo_filenames(path, basename, var, pieces, append)
         varh[...,i+1] = read_dyturbo_hist(filenames, axes=axes, charge=charge).view(flow=True)
-    return varh 
+    return varh
 
 def distribution_to_hist(data):
     next_bin = data[1:,0]
@@ -254,14 +254,14 @@ def read_matrixRadish_hist(filename, axname="pt"):
     # Multiply through by bin width
     data = distribution_to_hist(data)
     bins = np.unique(data[:,0])
-    
+
     ax = hist.axis.Variable(bins, name=axname, underflow=not (bins[0] == 0 and "pt" in axname))
     var_ax = hist.axis.Integer(0, 3, name="vars", flow=False)
     h = hist.Hist(ax, var_ax, storage=hist.storage.Double())
 
     h[...] = data[:-1, np.array([1,3,5])]
     return h*1/1000
-    
+
 def read_text_data(filename):
     data = []
     for line in open(filename).readlines():
@@ -275,7 +275,7 @@ def read_text_data(filename):
 def read_dyturbo_file(filename, axnames=("Y", "qT"), charge=None, coeff=None):
     if filename.endswith(".root"):
         f = uproot.open(filename)
-        hname = "_".join((["wgt", coeff] if coeff else ["s"])+[axnames[0].lower()]) 
+        hname = "_".join((["wgt", coeff] if coeff else ["s"])+[axnames[0].lower()])
         h = f[hname].to_hist()
         if coeff == "a4":
             h = -1*h
@@ -302,7 +302,7 @@ def read_dyturbo_file(filename, axnames=("Y", "qT"), charge=None, coeff=None):
     return h*1/1000
 
 def add_charge_axis(h, charge):
-    charge_args = (2, -2., 2.) if charge != 0 else (1, 0, 1) 
+    charge_args = (2, -2., 2.) if charge != 0 else (1, 0, 1)
     charge_axis = hist.axis.Regular(*charge_args, flow=False, name = "charge")
 
     has_vars = h.axes.name[-1] == "vars"
@@ -406,7 +406,7 @@ def safeGetRootObject(fileObject, objectName, quitOnFail=True, silent=False, det
         if detach:
             obj.SetDirectory(0)
         return obj
-        
+
 def safeOpenRootFile(fileName, quitOnFail=True, silent=False, mode="READ"):
     fileObject = ROOT.TFile.Open(fileName, mode)
     if not fileObject or fileObject.IsZombie():
@@ -478,7 +478,7 @@ def read_infile(input):
             meta += m
             infiles += h
         return result, meta, infiles
-    
+
     logger.info(f"Load {input}")
     if input.endswith(".pkl.lz4"):
         with lz4.frame.open(input) as f:
@@ -535,7 +535,7 @@ def read_mu_hist_combine_tau(minnlof, mu_sample, hist_name):
     hmu = read_and_scale(minnlof, mu_sample, hist_name, apply_xsec=False)
     sumw = read_sumw(minnlof, mu_sample)
     xsec = read_xsec(minnlof, mu_sample)
-    
+
     tau_sample = mu_sample.replace("mu", "tau")
     htau = read_and_scale(minnlof, tau_sample, hist_name, apply_xsec=False)
     sumw += read_sumw(minnlof, tau_sample)

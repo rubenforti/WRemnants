@@ -36,7 +36,7 @@ def isBadRootFile(fname, checkTree=True, treeName="Events"):
         return True
     return False
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("inputpath", type=str, help="Input path where files are stored")
     parser.add_argument("-m", "--match", type=str, default=None, help="Regular expression to select only specific subpaths")
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         regexp = re.compile(args.match)
 
     badFiles = []
-        
+
     for dirpath, dirnames, filenames in os.walk(args.inputpath):
         if regexp is None or regexp.match(dirpath):
             for f in filenames:

@@ -68,7 +68,7 @@ translate_label = {
 
 def get_purity(matrix, xbins, ybins):
 
-    centers = xbins[:-1] + (xbins[1:] - xbins[:-1])/2    
+    centers = xbins[:-1] + (xbins[1:] - xbins[:-1])/2
     edges = ybins
 
     values = []
@@ -116,7 +116,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
             h2d = histo.project(axis_gen, *axes_reco)
 
         fig = plt.figure(figsize=(10,6))
-        ax = fig.add_subplot() 
+        ax = fig.add_subplot()
         ax.set_xlabel(xlabel)
         if normalize:
             ylabel = "Frequency"
@@ -140,7 +140,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
                     if idx2 == 0:
                         label = r"$\sigma_{\mathrm{UL}}$"
                     else:
-                        label = fr"$\sigma_{label}$"                    
+                        label = fr"$\sigma_{label}$"
             else:
                 edges = h2d.axes[sel2].edges
                 var2 = translate_label[sel2].replace(r'[\mathrm{GeV}]', '')
@@ -152,7 +152,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
             h1d = h2d[{sel2:idx2}]
             if len(axes_reco) > 1:
                 h1d = hh.unrolledHist(h1d, binwnorm=None, obs=axes_reco)
-    
+
             values = h1d.values()
             if len(axes_reco) == 1:
                 values /= np.diff(h1d.axes[0].edges)
@@ -164,7 +164,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
 
             if xedges is None:
                 xedges = h1d.axes[0].edges
-        
+
         ax.set_xlim([min(xedges), max(xedges)])
 
         y_min, y_max = ax.get_ylim()
@@ -173,7 +173,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
         # Use scientific notation
         ax.ticklabel_format(style='sci', axis='y', scilimits=(-2,2))
 
-        # move scientific notation (e.g. 10^5) a bit to the left 
+        # move scientific notation (e.g. 10^5) a bit to the left
         offset_text = ax.get_yaxis().get_offset_text()
         offset_text.set_position((-0.08,1.02))
 
@@ -198,7 +198,7 @@ def plot_resolution(histo, axes_reco, axis_gen, selections_global, selections_sl
             outfile += f"_{suffix}"
         plot_tools.save_pdf_and_png(outdir, outfile)
 
-        plot_tools.write_index_and_log(outdir, outfile, 
+        plot_tools.write_index_and_log(outdir, outfile,
             analysis_meta_info={args.infile : groups.getMetaInfo()},
             args=args,
         )
@@ -282,7 +282,7 @@ for g_name, group in datagroups.items():
             axes = axes_string.split("-")
 
             if (
-                ((groups.mode[0] == "w" or "wlike" in groups.mode) and axes[1] == "ptGen") or 
+                ((groups.mode[0] == "w" or "wlike" in groups.mode) and axes[1] == "ptGen") or
                 ((groups.mode[0] == "z") and axes[1] == "ptVGen")
             ):
                 genFlow=True
@@ -316,14 +316,14 @@ for g_name, group in datagroups.items():
 
             # plot purity
             fig = plt.figure(figsize=(8,4))
-            ax = fig.add_subplot() 
+            ax = fig.add_subplot()
             ax.set_xlabel(translate_label[axes[0]])
             ax.set_ylabel("Purity")
 
             purity = get_purity(values, xbins, ybins)
 
             hep.histplot(purity, xbins, color="blue")
-            
+
             range_y = max(purity) - min(purity)
             min_y = min(purity) - range_y*0.1
             max_y = max(purity) + range_y*0.1
@@ -339,7 +339,7 @@ for g_name, group in datagroups.items():
 
             # plot stability
             fig = plt.figure(figsize=(8,4))
-            ax = fig.add_subplot() 
+            ax = fig.add_subplot()
             ax.set_xlabel(translate_label[axes[1]])
             ax.set_ylabel("Stability")
 
@@ -361,7 +361,7 @@ for g_name, group in datagroups.items():
 
             # plot response matrix
             fig = plt.figure()#figsize=(8*width,8))
-            ax = fig.add_subplot() 
+            ax = fig.add_subplot()
 
             ax.set_xlabel(translate_label[axes[0]])
             ax.set_ylabel(translate_label[axes[1]])
@@ -390,11 +390,11 @@ for g_name, group in datagroups.items():
 
             outfile = "responce_matrix_"+outname
 
-            outfile += (f"_{channel}" if channel != "all" else "") 
+            outfile += (f"_{channel}" if channel != "all" else "")
 
             plot_tools.save_pdf_and_png(outdir, outfile)
 
-            plot_tools.write_index_and_log(outdir, outfile, 
+            plot_tools.write_index_and_log(outdir, outfile,
             #     yield_tables={"Values" : cov_mat}, nround=2 if "correlation" in matrix else 10,
                 analysis_meta_info={args.infile : groups.getMetaInfo()},
                 args=args,

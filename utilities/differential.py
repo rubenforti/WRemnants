@@ -9,7 +9,7 @@ eta_binning = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 
 def get_pt_eta_axes(n_bins_pt, min_pt, max_pt, n_bins_eta=0, flow_pt=True, flow_eta=False, add_out_of_acceptance_axis=False):
 
     # gen axes for differential measurement
-    axis_ptGen = hist.axis.Regular(n_bins_pt, min_pt, max_pt, underflow=flow_pt, overflow=flow_pt, name = "ptGen")    
+    axis_ptGen = hist.axis.Regular(n_bins_pt, min_pt, max_pt, underflow=flow_pt, overflow=flow_pt, name = "ptGen")
     logger.debug(f"Gen bins pT: {axis_ptGen.edges}")
 
     axes = [axis_ptGen]
@@ -48,7 +48,7 @@ def get_dilepton_axes(gen_vars, gen_axes, add_out_of_acceptance_axis=False):
     selections = []
 
     for var in gen_vars:
-        if var == "helicitySig": 
+        if var == "helicitySig":
             continue
         axes.append(gen_axes[var])
         cols.append(var)
@@ -90,4 +90,4 @@ def get_theoryAgnostic_axes(ptV_bins=[], absYV_bins=[], ptV_flow=False, absYV_fl
     cols = ["ptVgen", "absYVgen"] # name of the branch, not of the axis
 
     return axes, cols
-        
+

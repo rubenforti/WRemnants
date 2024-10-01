@@ -25,12 +25,12 @@ def compute_chi2(y, y_pred, w=None, nparams=1):
     logger.debug(f"Max chi2/ndf = {chi2.max()}/{ndf} (p = {stats.chi2.sf(chi2.max(), ndf)})")
     logger.debug(f"Mean chi2 = {chi2.mean()}")
     logger.debug(f"Std chi2 = {chi2.std()}")
-    return chi2, ndf    
+    return chi2, ndf
 
 
 def get_parameter_eigenvectors(params, cov, sign=1, force_positive=False):
     # diagonalize and get eigenvalues and eigenvectors
-    e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i], 
+    e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i],
     # protect against negative eigenvalues
     e = np.maximum(e, 0.)
     vT = np.transpose(v, axes=(*np.arange(v.ndim-2), v.ndim-1, v.ndim-2)) # transpose v to have row eigenvectors[i, :] for easier computations
@@ -50,10 +50,10 @@ def get_parameter_eigenvectors(params, cov, sign=1, force_positive=False):
         factors = np.broadcast_to(factors[...,np.newaxis], mag.shape)
         mag = factors * mag
     if np.sum(mag.sum(axis=-1) == 0):
-        logger.warning(f"Found {np.sum(mag.sum(axis=-1) == 0)} eigenvector shifts where all coefficients are 0") 
+        logger.warning(f"Found {np.sum(mag.sum(axis=-1) == 0)} eigenvector shifts where all coefficients are 0")
     params_var = paramsT + mag
     if np.sum(params_var.sum(axis=-1) == 0):
-        logger.warning(f"Found {np.sum(params_var.sum(axis=-1) == 0)} variations where all coefficients are 0") 
+        logger.warning(f"Found {np.sum(params_var.sum(axis=-1) == 0)} variations where all coefficients are 0")
     return params_var
 
 
@@ -72,7 +72,7 @@ def chebycshev(n, x):
     # chebychev polynomials of first kind (see https://en.wikipedia.org/wiki/Chebyshev_polynomials)
     if n==0:
         return 1
-    if n==1: 
+    if n==1:
         return x
     return 2 * x * chebycshev(n-1, x) - chebycshev(n-2, x)
 
@@ -97,7 +97,7 @@ def poly(pol, order, order2=None):
 def get_parameter_matrices(x, y, w, order, pol="power"):
     if x.shape != y.shape:
         x = np.broadcast_to(x, y.shape)
-    stackX=[] # parameter matrix X 
+    stackX=[] # parameter matrix X
     stackXTY=[] # and X.T @ Y
     f = poly(pol, order)
     for n in range(order+1):
@@ -117,12 +117,12 @@ def get_parameter_matrices_from2D(x, x2, y, w, order, order2=None, pol="power", 
         order2 = [0,]*(order+1)
     elif type(order2) == int:
         order2 = [order2,]*(order+1)
-    elif type(order2) == list: 
+    elif type(order2) == list:
         if len(order2) < order+1:
             order2.append([0,]*(len(order2)-order+1))
     else:
         raise RuntimeError(f"Input 'order2' requires type 'None', 'int' or 'list'")
-    stackX=[]   # parameter matrix X 
+    stackX=[]   # parameter matrix X
     stackXTY=[] # and X.T @ Y
     for n in range(order+1):
         f = poly(pol, order, order2[n])
@@ -159,7 +159,7 @@ def get_regression_function(orders, pol="power"):
             x1, x2 = np.broadcast_arrays(x1[np.newaxis,...], x2[..., np.newaxis])
             if hasattr(ps, "ndim") and ps.ndim > 1:
                 x1 = np.broadcast_to(x1, [*ps.shape[:-1], *x1.shape])
-                x2 = np.broadcast_to(x2, [*ps.shape[:-1], *x2.shape]) 
+                x2 = np.broadcast_to(x2, [*ps.shape[:-1], *x2.shape])
                 for n in range(o1+1):
                     f = poly(pol, o1, o2[n])
                     for m in range(o2[n]+1):
@@ -176,13 +176,13 @@ def get_regression_function(orders, pol="power"):
 
 
 def solve_leastsquare(X, XTY):
-    # compute the transpose of X for the mt and parameter axes 
+    # compute the transpose of X for the mt and parameter axes
     XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
     XTX = XT @ X
-    # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion), 
+    # compute the inverse of the matrix in each bin (reshape to make last two axes contiguous, reshape back after inversion),
     # this term is also the covariance matrix for the parameters
     XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
-    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
+    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:]))
     params = np.einsum('...ij,...j->...i', XTXinv, XTY)
     return params, XTXinv
 
@@ -192,7 +192,7 @@ def solve_nonnegative_leastsquare(X, XTY, exclude_idx=None):
     XT = np.transpose(X, axes=(*np.arange(X.ndim-2), X.ndim-1, X.ndim-2))
     XTX = XT @ X
     XTXinv = np.linalg.inv(XTX.reshape(-1,*XTX.shape[-2:]))
-    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:])) 
+    XTXinv = XTXinv.reshape((*XT.shape[:-2],*XTXinv.shape[-2:]))
     orig_shape = XTY.shape
     nBins = np.prod(orig_shape[:-1])
     XTY_flat = XTY.reshape(nBins, XTY.shape[-1])
@@ -244,9 +244,9 @@ class Regressor(object):
     polynomials=["power", "bernstein", "monotonic", "chebyshev"]
 
     def __init__(
-        self, 
-        polynomial, 
-        order=None, 
+        self,
+        polynomial,
+        order=None,
         order2=None,
         cap_x=False,
         min_x=0,
@@ -296,7 +296,7 @@ class Regressor(object):
         x = self.transform_x(x)
         params = self.params
         if self.external_params is not None:
-            params += self.external_params[..., *[np.newaxis for n in range(self.params.ndim - self.external_params.ndim)],:]            
+            params += self.external_params[..., *[np.newaxis for n in range(self.params.ndim - self.external_params.ndim)],:]
         return self.evaluator(x, params)
 
     def get_eigenvector_predictions(self, x1, x2=None):
@@ -328,7 +328,7 @@ class Regressor(object):
         # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
         Y = self.params
         W = np.linalg.inv(self.cov.reshape(-1,*self.cov.shape[-2:]))
-        W = W.reshape((*self.cov.shape[:-2],*W.shape[-2:])) 
+        W = W.reshape((*self.cov.shape[:-2],*W.shape[-2:]))
         WY = np.einsum('...ij,...j->...i', W, Y)
         # the design matrix X is just a 1xn unity matrix and can thus be ignored
         XTWY = WY
@@ -359,7 +359,7 @@ class Regressor(object):
 
 class Regressor2D(Regressor):
     def __init__(
-        self, 
+        self,
         *args,
         **kwargs
     ):

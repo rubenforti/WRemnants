@@ -1,5 +1,5 @@
-#!/usr/bin/env python                                                       
- 
+#!/usr/bin/env python
+
 #from shutil import copyfile
 #import numpy as np
 #import root_numpy
@@ -20,7 +20,7 @@ import ROOT
 # note that, by default, this function modify the original input file
 
 def cropNegativeContent(h, silent=False, cropError=False, cropValue=0.0001):
-    
+
     hasCroppedBins = False
     if "THn" in h.ClassName():
         nbins = h.GetNbins() + 1
@@ -45,7 +45,7 @@ def cropNegativeContent(h, silent=False, cropError=False, cropValue=0.0001):
             integralNonNeg = h.Integral()
             print("{n}: original integral = {i} changed by {r} (new/old)".format(n=h.GetName(),
                                                                                  i=str(integral),
-                                                                                 r=str(integralNonNeg/integral)))       
+                                                                                 r=str(integralNonNeg/integral)))
     return hasCroppedBins
 
 if __name__ == "__main__":
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--silent",  action="store_true", help="Print info when acting on histograms");
     args = parser.parse_args()
     options = args
-    
+
     if not len(args.infile):
         print("Warning: you must specify an input file name with option --infile")
         quit()
@@ -110,7 +110,7 @@ if __name__ == "__main__":
         if (ikey+1) % 100 == 0:
             sys.stdout.write('Key {0:.2%}     \r'.format(float(ikey+1)/nKeys))
             sys.stdout.flush()
-   
+
     print("Overwrote {n}/{tot} from {fn}".format(n=str(nCopiedKeys),tot=str(nKeys),fn=args.infile))
     print("Updated file saved in {of}".format(of=outfile))
     of.Close()

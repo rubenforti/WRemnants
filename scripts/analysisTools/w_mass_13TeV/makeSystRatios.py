@@ -33,9 +33,9 @@ def plotUnrolledHistogram(h, process, syst, outdir, canvas, hist2DforBins, yAxis
 
     canvas.cd()
     yTitleOffset = 0.65
-    histTitle = f"process: {process},      {syst}" 
+    histTitle = f"process: {process},      {syst}"
     if channelCharge:
-        histTitle = f"Reco charge: {channelCharge} -- " + histTitle 
+        histTitle = f"Reco charge: {channelCharge} -- " + histTitle
     h.SetTitle(histTitle)
     h.GetXaxis().SetTitleSize(0.05)
     h.GetXaxis().SetTitleOffset(1.05)
@@ -90,13 +90,13 @@ def plotUnrolledHistogram(h, process, syst, outdir, canvas, hist2DforBins, yAxis
                                                                            ptmax=int(hist2DforBins.GetYaxis().GetBinLowEdge(ipt+2))))
     offsetText = etarange / 4.0
     for i in range(0,len(ptBinRanges)): # we need nptBins texts
-        bintext.DrawLatex(etarange*i + offsetText, maxy - 0.2*diff, ptBinRanges[i])        
-        
+        bintext.DrawLatex(etarange*i + offsetText, maxy - 0.2*diff, ptBinRanges[i])
+
     line = ROOT.TF1("horiz_line", "1", h.GetXaxis().GetBinLowEdge(1), h.GetXaxis().GetBinLowEdge(h.GetNbinsX()+1))
     line.SetLineWidth(1)
     line.SetLineColor(ROOT.kRed)
     line.Draw("Lsame")
-        
+
     canvas.RedrawAxis("sameaxis")
 
     if canvasNamePrefix:
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
     doUnrolled = (args.plot == "unrolled") or (args.plot == "all")
     do2D       = (args.plot == "2D") or (args.plot == "all")
-    
+
     fname = args.rootfile[0]
     outdir_original = args.outdir[0] + "/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     if not args.charge:
         print("For histograms from WRemnants the charge must be specified using -c [minus|plus].")
         quit()
-    
+
     processes = args.processes.split(',')
     inputsysts = args.systematics.split(',')
     regexp_syst = re.compile(args.systematics.replace(",","|"))
@@ -154,15 +154,15 @@ if __name__ == "__main__":
         if not all(x in processes for x in ["Wmunu", "Fake"]):
             print("--sumFakeAndW requires both Fake and Wmunu histograms")
             quit()
-            
+
     nominals = {p : None for p in processes}
     #print(nominals)
     ratios = {p : [] for p in processes}
 
-    canvas = ROOT.TCanvas("canvas","",900,800) 
-    canvas1D = ROOT.TCanvas("canvas1D","",800,1000) 
+    canvas = ROOT.TCanvas("canvas","",900,800)
+    canvas1D = ROOT.TCanvas("canvas1D","",800,1000)
 
-    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800) 
+    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800)
     leftMargin = 0.06
     rightMargin = 0.01
     bottomMargin = 0.12
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     canvas_unroll.SetBottomMargin(bottomMargin)
 
     setTDRStyle() # this one removes the stat box
-    
+
     rf = safeOpenFile(fname)
     # get nominals
     for p in processes:
@@ -197,7 +197,7 @@ if __name__ == "__main__":
             if doUnrolled:
                 nomi_unrolled = unroll2Dto1D(nominals[p], newname=f"unrolled_{nominals[p].GetName()}", cropNegativeBins=False)
                 plotUnrolledHistogram(nomi_unrolled, p, nominals[p].GetName().replace("x_",""), outdir, canvas_unroll, nominals[p], yAxisTitle="Events", channelCharge=args.charge)
-            
+
         if args.plotStat:
             h_relativeStatUnc = copy.deepcopy(nominals[p].Clone(f"relativeStatUnc_{p}_{args.charge}"))
             for ib in range(1+h_relativeStatUnc.GetNcells()):
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
     if args.plotStat:
         quit()
-                
+
     systList = {p : [] for p in processes}
     systLeg  = {p : [] for p in processes}
     systList_eta = {p : [] for p in processes}
@@ -269,7 +269,7 @@ if __name__ == "__main__":
             sname += f"_{args.charge}"
 
             alternate = f.Get(name)
-            alternate.SetDirectory(0)    
+            alternate.SetDirectory(0)
             systList[pname].append(unroll2Dto1D(alternate, newname=f"unrolled_{alternate.GetName()}", cropNegativeBins=False))
             systList_eta[pname].append(alternate.ProjectionX(f"{alternate.GetName()}_eta", 1, alternate.GetNbinsY(), "e"))
             systList_pt[pname].append( alternate.ProjectionY(f"{alternate.GetName()}_pt",  1, alternate.GetNbinsX(), "e"))
@@ -467,7 +467,7 @@ if __name__ == "__main__":
             systList_WmunuAndFake_eta[-1].Add(systList_eta["Fake"][i])
             systList_WmunuAndFake_pt[-1].Add(systList_pt["Fake"][i])
             systLeg_WmunuAndFake.append(systLeg["Fake"][i] + " (Fake)")
-            
+
         drawNTH1(systList_WmunuAndFake, systLeg_WmunuAndFake, "Unrolled eta-p_{T} bin", "Events",
                  f"nominalAndSyst_{systPostfix}_WmunuAndFake", outdir,
                  topMargin=0.2, leftMargin=0.06, rightMargin=0.01, labelRatioTmp=f"syst/nomi{ratioRange}",

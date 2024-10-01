@@ -23,11 +23,11 @@ data_dir = common.data_dir
 
 def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = False,
                                       era = None):
-    
+
     logger.debug(f"Make efficiency helper veto")
 
     #FIXME:to be updated for when other eras are available
-        
+
     eradict = { "2016PreVFP" : "BtoF",
                 "2016PostVFP" : "GtoH",
                 "2017" : "GtoH", #FIXME: update later when SF for 2018 is available

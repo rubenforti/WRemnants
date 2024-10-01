@@ -53,13 +53,13 @@ def setup_color_logger(name, verbosity, initName="wremnants"):
     set_logging_level(base_logger, verbosity)
     base_logger.propagate = False # to avoid propagating back to root logger, which would print messages twice
     return base_logger.getChild(name)
-    
+
 def setup_base_logger(name, verbosity, initName="wremnants"):
     logging.basicConfig(format='%(levelname)s: %(message)s')
     base_logger = logging.getLogger(initName)
     set_logging_level(base_logger, verbosity)
     return base_logger.getChild(name)
-    
+
 def child_logger(name, initName="wremnants"):
     # count messages of child logger
     logger = logging.getLogger(initName).getChild(name)

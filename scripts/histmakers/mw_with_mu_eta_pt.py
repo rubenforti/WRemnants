@@ -102,7 +102,7 @@ era = args.era
 
 datasets = getDatasets(maxFiles=args.maxFiles,
                        filt=args.filterProcs,
-                       excl=args.excludeProcs, 
+                       excl=args.excludeProcs,
                        nanoVersion="v9", base_path=args.dataPath, oneMCfileEveryN=args.oneMCfileEveryN,
                        extended = "msht20an3lo" not in args.pdfs,
                        era=era)
@@ -179,10 +179,10 @@ if isUnfolding:
     max_pt_unfolding = template_maxpt-template_wpt
     npt_unfolding = args.genBins[0]-2
     unfolding_axes, unfolding_cols = differential.get_pt_eta_axes(
-        npt_unfolding, 
-        min_pt_unfolding, 
-        max_pt_unfolding, 
-        args.genBins[1] if "absEtaGen" in args.genAxes else None, 
+        npt_unfolding,
+        min_pt_unfolding,
+        max_pt_unfolding,
+        args.genBins[1] if "absEtaGen" in args.genAxes else None,
         flow_eta=isPoiAsNoi,
         add_out_of_acceptance_axis=isPoiAsNoi,
     )
@@ -230,7 +230,7 @@ else:
             muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(antiveto=True)
         else:
             muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
-    
+
 logger.info(f"SF file: {args.sfFile}")
 
 muon_efficiency_helper_syst_altBkg = {}
@@ -273,7 +273,7 @@ if len(procsWithTheoryCorr):
     corr_helpers = theory_corrections.load_corr_helpers(procsWithTheoryCorr, theory_corrs)
 else:
     corr_helpers = {}
-    
+
 # For polynominal variations
 if isTheoryAgnosticPolVar:
     theoryAgnostic_helpers_minus = makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
@@ -334,9 +334,9 @@ def build_graph(df, dataset):
     isWorZ = isW or isZ
     isTop = dataset.group == "Top"
     isQCDMC = dataset.group == "QCD"
-    require_prompt = "tau" not in dataset.name # for muon GEN-matching   
+    require_prompt = "tau" not in dataset.name # for muon GEN-matching
     storage_type=hist.storage.Double() # turn off sum weight square for systematic histograms
-    
+
     # disable auxiliary histograms when unfolding to reduce memory consumptions, or when doing the original theory agnostic without --poiAsNoi
     auxiliary_histograms = True
     if args.noAuxiliaryHistograms or isUnfolding or isFloatingPOIsTheoryAgnostic:
@@ -371,9 +371,9 @@ def build_graph(df, dataset):
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         cutsmap = {
-            "pt_min" : template_minpt, 
-            "pt_max" : template_maxpt, 
-            "abseta_max" : template_maxeta, 
+            "pt_min" : template_minpt,
+            "pt_max" : template_maxpt,
+            "abseta_max" : template_maxeta,
             "mtw_min" : None
             }
         if hasattr(dataset, "out_of_acceptance"):
@@ -393,13 +393,13 @@ def build_graph(df, dataset):
 
             unfolding_tools.add_xnorm_histograms(results, df_xnorm, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
-                axes = [*nominal_axes, *unfolding_axes] 
+                axes = [*nominal_axes, *unfolding_axes]
                 cols = [*nominal_cols, *unfolding_cols]
 
     if isWorZ:
         df = theory_tools.define_prefsr_vars(df)
         df = df.Define("qtOverQ", "ptVgen/massVgen") # FIXME: should there be a protection against mass=0 and what value to use?
-    
+
     if isTheoryAgnostic and isWmunu: # should be isW to do also Wtaunu
         usePtOverM = False
         if isTheoryAgnosticPolVar:
@@ -489,7 +489,7 @@ def build_graph(df, dataset):
     df = df.Define("goodMuons_relIso0", f"{isoBranch}[goodMuons][0]")
     df = df.Define("goodMuons_iso0", "goodMuons_relIso0*Muon_pt[goodMuons][0]")
 
-    # Jet collection actually has a pt threshold of 15 GeV in MiniAOD 
+    # Jet collection actually has a pt threshold of 15 GeV in MiniAOD
     df = df.Define("goodCleanJetsNoPt", "Jet_jetId >= 6 && (Jet_pt > 50 || Jet_puId >= 4) && abs(Jet_eta) < 2.4 && wrem::cleanJetsFromLeptons(Jet_eta,Jet_phi,Muon_correctedEta[vetoMuons],Muon_correctedPhi[vetoMuons],Electron_eta[vetoElectrons],Electron_phi[vetoElectrons])")
     df = df.Define("passIso", f"goodMuons_relIso0 < {args.isolationThreshold}")
     df = df.Alias("goodMuons_passIso0", "passIso") # for more flexible handling of efficiency helpers, coherently with Wlike and dilepton histmakers
@@ -512,7 +512,7 @@ def build_graph(df, dataset):
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
-        df = df.DefinePerSample("nominal_weight", "1.0")            
+        df = df.DefinePerSample("nominal_weight", "1.0")
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
         df = df.Define("weight_vtx", vertex_helper, ["GenVtx_z", "Pileup_nTrueInt"])
@@ -538,7 +538,7 @@ def build_graph(df, dataset):
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define("weight_fullMuonSF_withTrackingReco", muon_efficiency_helper, columnsForSF)
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
-            
+
             if isZveto and not args.noGenMatchMC:
                 if args.scaleDYvetoFraction > 0.0:
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
@@ -563,7 +563,7 @@ def build_graph(df, dataset):
         if args.reweightPixelMultiplicity:
             df = df.Define("weight_pixel_multiplicity", pixel_multiplicity_helper, pixel_multiplicity_cols)
             weight_expr += "*weight_pixel_multiplicity"
-            
+
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
@@ -664,7 +664,7 @@ def build_graph(df, dataset):
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
 
-    df = df.Define("passMT", f"transverseMass >= {mtw_min}")    
+    df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
     if auxiliary_histograms:
         # control plots, lepton, met, to plot them later (need eta-pt to make fakes)
@@ -699,7 +699,7 @@ def build_graph(df, dataset):
         if isUnfolding and isWmunu:
             noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
             logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
-            results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))       
+            results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))
 
     ## FIXME: should be isW, to include Wtaunu, but for now we only split Wmunu
     ## Note: this part is only for the original theory agnostic with fully floating POIs
@@ -738,7 +738,7 @@ def build_graph(df, dataset):
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
         results.append(nominal)
-    else:  
+    else:
         nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
         results.append(nominal)
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
@@ -752,21 +752,21 @@ def build_graph(df, dataset):
         if not args.noRecoil and args.recoilUnc:
             df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal", storage_type=storage_type)
         if apply_theory_corr:
-            syst_tools.add_theory_corr_hists(results, df, axes, cols, corr_helpers[dataset.name], theory_corrs, base_name="nominal", 
+            syst_tools.add_theory_corr_hists(results, df, axes, cols, corr_helpers[dataset.name], theory_corrs, base_name="nominal",
                 modify_central_weight=not args.theoryCorrAltOnly, isW = isW, storage_type=storage_type)
         if isWorZ:
             cols_gen, cols_gen_smeared = muon_calibration.make_alt_reco_and_gen_hists(df, results, axes, cols, reco_sel_GF)
-            if args.validationHists: 
+            if args.validationHists:
                 muon_validation.make_reco_over_gen_hists(df, results)
 
     if not dataset.is_data and not args.onlyMainHistograms:
 
         if not args.onlyTheorySyst:
             if not isQCDMC and not args.noScaleFactors:
-                df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, 
+                df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols,
                                                               what_analysis=thisAnalysis, smooth3D=args.smooth3dsf, storage_type=storage_type)
                 for es in common.muonEfficiency_altBkgSyst_effSteps:
-                    df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
+                    df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols,
                                                                          what_analysis=thisAnalysis, step=es, storage_type=storage_type)
                 if isZveto and not args.noGenMatchMC and not args.noVetoSF:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, storage_type=storage_type)
@@ -789,7 +789,7 @@ def build_graph(df, dataset):
                     df = syst_tools.add_muonscale_smeared_hist(results, df, args.muonCorrEtaBins, args.muonCorrMag, isW, axes, cols_gen_smeared, storage_type=storage_type)
 
             ####################################################
-            # nuisances from the muon momemtum scale calibration 
+            # nuisances from the muon momemtum scale calibration
             if (args.muonCorrData in ["massfit", "lbl_massfit"]):
                 input_kinematics = [
                     f"{reco_sel_GF}_recoPt",

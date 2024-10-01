@@ -57,11 +57,11 @@ def METXYCorrectionHelper(fIn):
         logger.warning(f"MET XY corrections disabled")
         return None, None
     js = input_tools.read_json(fIn)
-    helper_data = ROOT.wrem.METXYCorrectionHelper(js['x']['data']['nom'], js['y']['data']['nom'], 
-        js['y']['data']['xMin'] if 'xMin' in js['y']['data'] else 0, 
+    helper_data = ROOT.wrem.METXYCorrectionHelper(js['x']['data']['nom'], js['y']['data']['nom'],
+        js['y']['data']['xMin'] if 'xMin' in js['y']['data'] else 0,
         js['y']['data']['xMax'] if 'xMax' in js['y']['data'] else 1000)
-    helper_mc = ROOT.wrem.METXYCorrectionHelper(js['x']['mc']['nom'], js['y']['mc']['nom'], 
-        js['y']['mc']['xMin'] if 'xMin' in js['y']['mc'] else 0, 
+    helper_mc = ROOT.wrem.METXYCorrectionHelper(js['x']['mc']['nom'], js['y']['mc']['nom'],
+        js['y']['mc']['xMin'] if 'xMin' in js['y']['mc'] else 0,
         js['y']['mc']['xMax'] if 'xMax' in js['y']['mc'] else 1000)
     return helper_data, helper_mc
 
@@ -154,12 +154,12 @@ class Recoil:
         self.results = results
         self.dataset = dataset
         self.datasets_to_apply = datasets_to_apply
-        
+
         self.df = self.df.Define("lep_uncorr_pt", f"wrem::Vec_d{{ {leps_uncorr[0]}, {leps_uncorr[4]} }}")
         self.df = self.df.Define("lep_uncorr_eta", f"wrem::Vec_d{{ {leps_uncorr[1]}, {leps_uncorr[5]} }}")
         self.df = self.df.Define("lep_uncorr_phi", f"wrem::Vec_d{{ {leps_uncorr[2]}, {leps_uncorr[6]} }}")
         self.df = self.df.Define("lep_uncorr_charge", f"wrem::Vec_i{{ {leps_uncorr[3]}, {leps_uncorr[7]} }}")
-        
+
         # for consistency, do not propagate the muon calibration to the MET
         self.df = self.df.Alias("lep_corr_pt", "lep_uncorr_pt")
         self.df = self.df.Alias("lep_corr_eta", "lep_uncorr_eta")
@@ -205,7 +205,7 @@ class Recoil:
         self.df = self.df.Define("lep_uncorr_eta", leps_uncorr[1])
         self.df = self.df.Define("lep_uncorr_phi", leps_uncorr[2])
         self.df = self.df.Define("lep_uncorr_charge", leps_uncorr[3])
-        
+
         # for consistency, do not propagate the muon calibration to the MET
         self.df = self.df.Alias("lep_corr_pt", "lep_uncorr_pt")
         self.df = self.df.Alias("lep_corr_eta", "lep_uncorr_eta")
@@ -276,7 +276,7 @@ class Recoil:
         self.df = self.df.Define("met_corr_xy_x", "met_corr_xy_pt*cos(met_corr_xy_phi)")
         self.df = self.df.Define("met_corr_xy_y", "met_corr_xy_pt*sin(met_corr_xy_phi)")
 
-        if not self.storeHists: 
+        if not self.storeHists:
             return
 
         # histograms as function of npv, to derive/closure the XY correction
@@ -285,19 +285,19 @@ class Recoil:
 
         self.add_histo("met_corr_xy_x_npv", ["npvs", "met_corr_xy_x"], [self.axis_npv, self.axis_MET_xy])
         self.add_histo("met_corr_xy_y_npv", ["npvs", "met_corr_xy_y"], [self.axis_npv, self.axis_MET_xy])
-        
-        
+
+
         self.df = self.df.Define("lep_pt_uncorr_over_corr", "lep_uncorr_pt/lep_corr_pt")
         self.df = self.df.Define("lep_pt_uncorr_minus_corr", "lep_uncorr_pt-lep_corr_pt")
         self.df = self.df.Define("lep_phi_uncorr_minus_corr", "lep_uncorr_phi-lep_corr_phi")
         self.df = self.df.Define("met_pt_uncorr_over_corr_lep", "met_uncorr_pt/met_corr_lep_pt")
         self.df = self.df.Define("met_pt_uncorr_minus_corr_lep", "met_uncorr_pt-met_corr_lep_pt")
         self.df = self.df.Define("met_phi_uncorr_minus_corr_lep", "met_uncorr_phi-met_corr_lep_phi")
-        
+
         self.add_histo("lep_pt_uncorr_over_corr", ["lep_pt_uncorr_over_corr"], [self.axis_res_ratio])
         self.add_histo("lep_pt_uncorr_minus_corr", ["lep_pt_uncorr_minus_corr"], [self.axis_res_diff])
         self.add_histo("lep_phi_uncorr_minus_corr", ["lep_phi_uncorr_minus_corr"], [self.axis_res_diff])
-        
+
         self.add_histo("met_pt_uncorr_over_corr_lep", ["met_pt_uncorr_over_corr_lep"], [self.axis_res_ratio])
         self.add_histo("met_pt_uncorr_minus_corr_lep", ["met_pt_uncorr_minus_corr_lep"], [self.axis_res_diff])
         self.add_histo("met_phi_uncorr_minus_corr_lep", ["met_phi_uncorr_minus_corr_lep"], [self.axis_res_diff])
@@ -314,7 +314,7 @@ class Recoil:
             self.df = self.df.Define(f"dphi_{rec_corr}", f"std::abs(wrem::deltaPhi(v_phi, met_{rec_corr}_phi))")
             self.df = self.df.Define(f"dphi_{rec_corr}_wlike", f"std::abs(wrem::deltaPhi(lep_trg_phi, met_{rec_corr}_phi_wlike))")
 
-        if not self.storeHists: 
+        if not self.storeHists:
             return
 
         suffix = f"_{suffix}" if suffix != "" else suffix
@@ -341,7 +341,7 @@ class Recoil:
             self.df = self.df.Define(f"dphi_{rec_corr}", f"std::abs(wrem::deltaPhi(lep_trg_phi, met_{rec_corr}_phi))")
             #self.df = self.df.Define(f"passMT_{rec_corr}", f"mt_{rec_corr} > {self.mtw_min}")
 
-        if not self.storeHists: 
+        if not self.storeHists:
             return
 
         suffix = f"_{suffix}" if suffix != "" else suffix
@@ -379,7 +379,7 @@ class Recoil:
         self.recoil_vars_plots_Z("corr_xy")
         self.recoil_vars_plots_Z("corr_xy", suffix="qtrw", nominal_weight="nominal_weight_vptrw_mc_data")
 
-        if not self.storeHists: 
+        if not self.storeHists:
             return
 
         # recoil components binned in various parameters
@@ -456,7 +456,7 @@ class Recoil:
         self.df = self.df.Define("v_pt", "vmom4.Pt()")
         self.df = self.df.Define("v_phi", "vmom4.Phi()")
         self.df = self.df.Define("v_y", "vmom4.Rapidity()")
-        
+
         if self.dataset.name in self.datasets_to_apply:
 
             def gen_res_vars(suffix, gen_pt, gen_phi):
@@ -526,7 +526,7 @@ class Recoil:
             self.df = self.df.Alias("v_gen_pt_prefsr", "ptVgen")
             self.df = self.df.Alias("v_gen_phi_prefsr", "phiVgen")
             gen_res_vars("_prefsr", "v_gen_pt_prefsr", "v_gen_phi_prefsr")
-        
+
             # post-FSR
             if "postFSRleps" not in self.df.GetColumnNames():
                 self.df = self.df.Define("postFSRleps", "GenPart_status == 1 && (GenPart_statusFlags&1 || GenPart_statusFlags&(1<<5)) && (GenPart_pdgId >= 11 && GenPart_pdgId <= 14)")
@@ -584,7 +584,7 @@ class Recoil:
         self.df = self.df.Define("recoil_corr_xy_perp_gen", "recoil_corr_xy_gen[1]")
         self.df = self.df.Define("recoil_corr_xy_para_qt_gen", "recoil_corr_xy_para_gen + v_gen_pt")
 
-        if not self.storeHists: 
+        if not self.storeHists:
             return
 
         self.add_histo("recoil_corr_xy_para_gen_v_gen_pt", ["v_gen_pt", "recoil_corr_xy_para_gen"], [self.axis_qt, self.axis_recoil_para])
@@ -667,7 +667,7 @@ class Recoil:
             return
 
 
-    def apply_recoil_W(self): 
+    def apply_recoil_W(self):
 
         if self.dataset.name in self.datasets_to_apply:
 
@@ -678,17 +678,17 @@ class Recoil:
             self.df = self.df.Define("recoil_corr_xy_para_gen_old", "recoil_corr_xy_gen_old[1] + v_gen_pt")
             self.df = self.df.Define("recoil_corr_xy_para_qT_gen_old", "recoil_corr_xy_gen_old[1]")
             self.df = self.df.Define("recoil_corr_xy_perp_gen_old", "recoil_corr_xy_gen_old[2]")
-            
+
             self.df = self.df.Define("recoil_corr_old", self.recoilHelper, ["v_gen_pt", "recoil_corr_xy_para_gen_old", "recoil_corr_xy_perp_gen_old"])
             self.df = self.df.Define("recoil_corr_rec_para_gen_old", "recoil_corr_old.ut_para_corr(0)")
             self.df = self.df.Define("recoil_corr_rec_perp_gen_old", "recoil_corr_old.ut_perp_corr(0)")
             self.df = self.df.Define("recoil_corr_rec_para_qt_gen_old", "recoil_corr_rec_para_gen_old - v_gen_pt")
 
-            self.df = self.df.Define("MET_corr_rec_old", f"wrem::METCorrectionGen(recoil_corr_rec_para_qt_gen_old, recoil_corr_rec_perp_gen_old, lep_corr_pt, lep_corr_phi, v_gen_phi) ") 
+            self.df = self.df.Define("MET_corr_rec_old", f"wrem::METCorrectionGen(recoil_corr_rec_para_qt_gen_old, recoil_corr_rec_perp_gen_old, lep_corr_pt, lep_corr_phi, v_gen_phi) ")
             self.df = self.df.Define("MET_corr_rec_pt_old", "MET_corr_rec_old[0]")
             self.df = self.df.Define("MET_corr_rec_phi_old", "MET_corr_rec_old[1]")
             '''
-            
+
             if self.recoilHelper != None:
                 self.df = self.df.Define("recoil_corr", self.recoilHelper, ["v_gen_pt", "recoil_corr_xy_para_qt_gen", "recoil_corr_xy_perp_gen"])
                 self.df = self.df.Define("recoil_corr_rec_para_qt_gen", "recoil_corr.ut_para_corr(0)")
@@ -701,9 +701,9 @@ class Recoil:
             self.df = self.df.Define("met_corr_rec", "wrem::compute_met_from_recoil(recoil_corr_rec_para_gen, recoil_corr_rec_perp_gen, lep_corr_pt, lep_corr_phi, v_gen_pt, v_gen_phi)")
             self.df = self.df.Define("met_corr_rec_pt", "met_corr_rec[0]")
             self.df = self.df.Define("met_corr_rec_phi", "met_corr_rec[1]")
-            
+
             #self.df = self.df.Define("met_corr_rec_phi", "cout << v_gen_pt << ' ' << recoil_corr_xy_para_qt_gen << ' ' << recoil_corr_rec_para_qt_gen  << ' ' << recoil_corr_xy_perp_gen << ' ' << recoil_corr_rec_perp_gen << ' ' << met_corr_xy_pt << ' ' << met_corr_rec_pt << ' ' << met_corr_xy_phi << ' ' << met_corr_rec_phi_ << endl; return met_corr_rec_phi_;")
-            
+
             self.df = self.df.Define("met_corr_rec_x", "met_corr_rec_pt*cos(met_corr_rec_phi)")
             self.df = self.df.Define("met_corr_rec_y", "met_corr_rec_pt*sin(met_corr_rec_phi)")
 
@@ -767,7 +767,7 @@ class Recoil:
         if not self.dataset.name in self.datasets_to_apply or not self.storeHists:
             return
 
-        hNames, cols, axes = [], [], [] 
+        hNames, cols, axes = [], [], []
         if self.storeHists:
             hNames = ["recoil_corr_rec_para_qt", "recoil_corr_rec_para", "recoil_corr_rec_perp", "recoil_corr_rec_magn", "met_corr_rec_pt", "mt_corr_rec"]
             cols = hNames
@@ -797,7 +797,7 @@ class Recoil:
         self.df = self.df.Define("recoil_pdf_data_perp_w_pert", self.recoil_pdf_data_perp, ["v_gen_pt", "recoil_corr_xy_perp"])
         self.df = self.df.Define("recoil_pdf_data_perp_w_nom", self.recoil_pdf_data_perp, ["v_pt", "recoil_corr_xy_perp"])
         self.df = self.df.Define("recoil_pdf_data_perp_w", "recoil_pdf_data_perp_w_pert/recoil_pdf_data_perp_w_nom")
-        
+
         self.df = self.df.Define("recoil_pdf_mc_para_w_pert", self.recoil_pdf_mc_para, ["v_gen_pt", "recoil_corr_xy_para"])
         self.df = self.df.Define("recoil_pdf_mc_para_w_nom", self.recoil_pdf_mc_para, ["v_pt", "recoil_corr_xy_para"])
         self.df = self.df.Define("recoil_pdf_mc_para_w", "recoil_pdf_mc_para_w_pert/recoil_pdf_mc_para_w_nom")
@@ -824,7 +824,7 @@ class Recoil:
         if not self.dataset.name in self.datasets_to_apply or not self.storeHists:
             return
 
-        hNames, cols, axes = [], [], [] 
+        hNames, cols, axes = [], [], []
         if self.storeHists:
             hNames = ["met_corr_rec_pt", "mt_corr_rec", "recoil_corr_rec_magn"]
             cols = hNames

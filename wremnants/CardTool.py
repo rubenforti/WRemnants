@@ -36,7 +36,7 @@ def checkFiniteBinValues(h, hname, flow=True, throw=True):
 
 class CardTool(object):
     def __init__(self, outpath="./", xnorm=False, simultaneousABCD=False, real_data=False):
-    
+
         self.skipHist = False # don't produce/write histograms, file with them already exists
         self.outfile = None
         self.systematics = {}
@@ -122,7 +122,7 @@ class CardTool(object):
     def setExcludeProcessForChannel(self, channel, POIregexp, canUpdate=False):
         if canUpdate or channel not in self.excludeProcessForChannel.keys():
             self.excludeProcessForChannel[channel] = re.compile(POIregexp)
-            
+
     def setFitAxes(self, axes):
         self.fit_axes = axes[:]
 
@@ -137,7 +137,7 @@ class CardTool(object):
             self.noStatUncProcesses.extend(procs)
         else:
             raise ValueError("In setNoStatUncForProcs(): expecting string or list argument")
-    
+
     def setLumiScale(self, lumiScale, lumiScaleVarianceLinearly=[]):
         self.lumiScale = lumiScale
         self.lumiScaleVarianceLinearly = lumiScaleVarianceLinearly
@@ -147,7 +147,7 @@ class CardTool(object):
 
     def getProcsNoStatUnc(self):
         return self.noStatUncProcesses
-        
+
     ## Functions to customize systs to be added in card, mainly for tests
     def setCustomSystForCard(self, exclude=None, keep=None):
         for regex,name in zip((keep, exclude), ("keepSyst", "excludeSyst")):
@@ -160,9 +160,9 @@ class CardTool(object):
 
     def setCustomSystGroupMapping(self, mapping):
         self.customSystMapping = mapping
-        
+
     def isExcludedNuisance(self, name):
-        # note, re.match search for a match from the beginning, so if x="test" x.match("mytestPDF1") will NOT match 
+        # note, re.match search for a match from the beginning, so if x="test" x.match("mytestPDF1") will NOT match
         # might use re.search instead to be able to match from anywhere inside the name
         if self.excludeSyst != None and self.excludeSyst.match(name):
             if self.keepSyst != None and self.keepSyst.match(name):
@@ -172,7 +172,7 @@ class CardTool(object):
                 return True
         else:
             return False
-    
+
     def setFakeName(self, name):
         self.datagroups.fakeName = name
 
@@ -187,7 +187,7 @@ class CardTool(object):
 
     def setPseudodata(self, pseudodata, pseudodata_axes=[None], idxs = [None], pseudoDataProcsRegexp=".*"):
         self.pseudoData = pseudodata[:]
-        self.pseudoDataAxes = pseudodata_axes[:]        
+        self.pseudoDataAxes = pseudodata_axes[:]
         self.pseudoDataProcsRegexp = re.compile(pseudoDataProcsRegexp)
         if len(pseudodata) != len(pseudodata_axes):
             if len(pseudodata_axes) == 1:
@@ -203,7 +203,7 @@ class CardTool(object):
             elif len(pseudodata) == len(idxs):
                 self.pseudoDataIdxs = [ [idxs[i]] for i in range(len(idxs))]
             else:
-                raise RuntimeError(f"""Found {len(pseudodata)} histograms for pseudodata but {len(idxs)} corresponding indices, 
+                raise RuntimeError(f"""Found {len(pseudodata)} histograms for pseudodata but {len(idxs)} corresponding indices,
                     need either 1 histogram or exactly 1 index or the same number of histograms and indices to be specified.""")
         # name for the pseudodata set to be written into the output file
         self.pseudoDataName = [ f"{n}{f'_{a}' if a is not None else ''}" for n, a in zip(self.pseudoData, self.pseudoDataAxes)]
@@ -216,7 +216,7 @@ class CardTool(object):
     # Needs to be increased from default for long proc names
     def setSpacing(self, spacing):
         self.spacing = spacing
-        
+
     def setProcColumnsSpacing(self, spacing):
         self.procColumnsSpacing = spacing
 
@@ -229,15 +229,15 @@ class CardTool(object):
             self.datagroups.setNominalName(self.nominalName)
         if datagroups.mode == "vgen":
             self.charge_ax = "chargeVgen"
-        
+
     def setPseudodataDatagroups(self, datagroups):
-        self.pseudodata_datagroups = datagroups 
+        self.pseudodata_datagroups = datagroups
         if self.nominalName:
             self.pseudodata_datagroups.setNominalName(self.nominalName)
 
     def setChannels(self, channels):
         self.channels = channels
-        
+
     def setWriteByCharge(self, writeByCharge):
         self.writeByCharge = writeByCharge
 
@@ -279,7 +279,7 @@ class CardTool(object):
 
     def getProcesses(self):
         return list(self.datagroups.groups.keys())
-            
+
     def filteredProcesses(self, filterExpr):
         return list(filter(filterExpr, self.datagroups.groups.keys()))
 
@@ -300,14 +300,14 @@ class CardTool(object):
                                                 "processes" : self.expandProcesses(processes),
                                                 "group" : group,
                                                 "groupFilter" : groupFilter,
-                                                "splitGroup" : self.precompile_splitGroupDict(group, splitGroup) 
+                                                "splitGroup" : self.precompile_splitGroupDict(group, splitGroup)
                                                 }
             })
 
-    # preOp is a function to apply per process, preOpMap can be used with a dict for a speratate function for each process, 
-    #   it is executed before summing the processes. Arguments can be specified with preOpArgs 
+    # preOp is a function to apply per process, preOpMap can be used with a dict for a speratate function for each process,
+    #   it is executed before summing the processes. Arguments can be specified with preOpArgs
     # action will be applied to the sum of all the individual samples contributing, arguments can be specified with actionArgs
-    def addSystematic(self, name, nominalName=None, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None, 
+    def addSystematic(self, name, nominalName=None, systAxes=[], systAxesFlow=[], outNames=None, skipEntries=None, labelsByAxis=None,
                       baseName="", mirror=False, mirrorDownVarEqualToUp=False, mirrorDownVarEqualToNomi=False, symmetrize = "average",
                       scale=1, processes=None, group=None, noi=False, noConstraint=False, noProfile=False,
                       preOp=None, preOpMap=None, preOpArgs={}, action=None, actionArgs={}, actionRequiresNomi=False, selectionArgs={},
@@ -356,7 +356,7 @@ class CardTool(object):
 
         if name == self.nominalName:
             logger.debug(f"Defining syst {rename} from nominal histogram")
-        
+
         self.systematics.update({
             name if not rename else rename : {
                 "outNames" : [] if not outNames else outNames,
@@ -370,7 +370,7 @@ class CardTool(object):
                 "group" : group,
                 "noi": noi,
                 "groupFilter" : groupFilter,
-                "splitGroup" : self.precompile_splitGroupDict(group, splitGroup), 
+                "splitGroup" : self.precompile_splitGroupDict(group, splitGroup),
                 "scale" : scale,
                 "customizeNuisanceAttributes" : customizeNuisanceAttributes,
                 "mirror" : mirror,
@@ -409,13 +409,13 @@ class CardTool(object):
     def getNominalHistForSignal(self):
         signal_samples = self.procGroups['signal_samples']
         return self.getHistsForProcAndSyst(signal_samples[0], self.nominalName)
-        
+
     def setMirrorForSyst(self, syst, mirror=True):
         self.systematics[syst]["mirror"] = mirror
 
     def systIndexForAxis(self, axis, flow=False):
         if type(axis) == hist.axis.StrCategory:
-            bins = [x for x in axis] 
+            bins = [x for x in axis]
         else:
             bins = [a for a in range(axis.size)]
         if flow and axis.traits.underflow:
@@ -465,7 +465,7 @@ class CardTool(object):
     def excludeSystEntry(self, entry, entries_to_skip):
         # Check if the entry in the hist matches one of the entries in entries_to_skip, across all axes
         # Can use -1 to exclude all values of an axis
-        def match_entry(curr_entry, to_skip): 
+        def match_entry(curr_entry, to_skip):
             return to_skip == -1 or curr_entry == to_skip or re.match(str(to_skip), str(curr_entry))
 
         for skipEntry in entries_to_skip:
@@ -502,7 +502,7 @@ class CardTool(object):
 
         if len(skipEntryArr) != nsyst:
             raise ValueError("skipEntry tuple must have the same dimensions as the number of syst axes. " \
-                f"found {nsyst} systematics and len(skipEntry) = {len(skipEntryArr)}.") 
+                f"found {nsyst} systematics and len(skipEntry) = {len(skipEntryArr)}.")
 
         return skipEntryArr
 
@@ -517,7 +517,7 @@ class CardTool(object):
             skip_arr = np.array(skipEntry, dtype=object)
             if to_lookup.any():
                 nsyst = len(self.systematics[syst]["systAxes"])+self.systematics[syst]["mirror"]
-                bin_lookup = np.array([ax.index(x.imag) for x, ax in 
+                bin_lookup = np.array([ax.index(x.imag) for x, ax in
                     zip(skipEntry, h.axes[-nsyst:]) if isinstance(x, complex)])
                 # Need to loop here rather than using skip_arr.real because the dtype is object to allow strings
                 skip_arr = np.array([a.real for a in skip_arr])
@@ -530,7 +530,7 @@ class CardTool(object):
         if syst == self.nominalName:
             return {self.nominalName : hvar}
 
-        systInfo = self.systematics[syst] 
+        systInfo = self.systematics[syst]
         systAxes = systInfo["systAxes"]
         systAxesLabels = systInfo.get("labelsByAxis", systAxes)
 
@@ -587,7 +587,7 @@ class CardTool(object):
                 raise RuntimeError(f"Did not find any valid variations for syst {syst}")
 
         variations = [hvar[{ax : binnum for ax,binnum in zip(axNames, entry)}] for entry in entries]
-        
+
         if hvar.axes[-1].name == "mirror" and len(variations) == 2*len(systInfo["outNames"]):
             systInfo["outNames"] = [n + d for n in systInfo["outNames"] for d in ["Up", "Down"]]
         elif len(variations) != len(systInfo["outNames"]):
@@ -724,7 +724,7 @@ class CardTool(object):
                 # protect against yields very close to nominal, for which it can be sign != 0 but should be treated as 0
                 # was necessary for Fake and effStat
                 vars_sameside = (up_relsign != 0) & (up_relsign == down_relsign) & np.logical_not(np.isclose(up.values(flow=False), hnom.values(flow=False), rtol=1e-07, atol=1e-08))
-                perc_sameside = np.count_nonzero(vars_sameside)/nCellsWithoutOverflows 
+                perc_sameside = np.count_nonzero(vars_sameside)/nCellsWithoutOverflows
                 if perc_sameside > thresh:
                     logger.warning(f"{perc_sameside:.1%} bins are one sided for syst {name} and process {proc}!")
             # check variations are not same as nominal
@@ -748,7 +748,7 @@ class CardTool(object):
             if systInfo["mirror"]:
                 h = hh.extendHistByMirror(h, hnom,
                                           downAsUp=systInfo["mirrorDownVarEqualToUp"],
-                                          downAsNomi=systInfo["mirrorDownVarEqualToNomi"])            
+                                          downAsNomi=systInfo["mirrorDownVarEqualToNomi"])
 
         logger.info(f"   {syst} for process {proc}")
         var_map = self.systHists(h, syst, hnom)
@@ -784,7 +784,7 @@ class CardTool(object):
             lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=False,
-            applySelection=False 
+            applySelection=False
             )
         procDict = datagroups.getDatagroups()
         gTruth = procDict["QCDTruth"]
@@ -882,7 +882,7 @@ class CardTool(object):
                     hist_fake= datagroups.getDatagroups()[self.getFakeName()].hists[pseudoData]
                 elif pseudoData == "mcClosure":
                     hist_fake = datagroups.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
-                    
+
                 fakeselector = self.datagroups.getDatagroups()[self.getFakeName()].histselector
 
                 _0, _1 = fakeselector.calculate_fullABCD_smoothed(hist_fake, signal_region=True)
@@ -899,7 +899,7 @@ class CardTool(object):
                 # load the pseudodata including the nonclosure
                 self.datagroups.loadHistsForDatagroups(
                     baseName=self.nominalName, syst=self.nominalName, label=pseudoData,
-                    procsToRead=[x for x in self.datagroups.groups.keys() if x != self.getDataName()], 
+                    procsToRead=[x for x in self.datagroups.groups.keys() if x != self.getDataName()],
                     scaleToNewLumi=self.lumiScale,
                     lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                     forceNonzero=forceNonzero,
@@ -961,7 +961,7 @@ class CardTool(object):
                     logger.warning(f"These processes are taken from nominal datagroups: {processesFromNomiToLoad}")
                     datagroupsFromNomi.loadHistsForDatagroups(
                         baseName=self.nominalName, syst=self.nominalName,
-                        procsToRead=processesFromNomiToLoad, 
+                        procsToRead=processesFromNomiToLoad,
                         scaleToNewLumi=self.lumiScale,
                         lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                         forceNonzero=forceNonzero,
@@ -992,7 +992,7 @@ class CardTool(object):
         pseudoDataAxis = self.pseudoDataAxes[0]
         pseudoDataIdx = self.pseudoDataIdxs[0] if self.pseudoDataIdxs[0] is not None else 0
         if pseudoDataAxis is not None:
-            hdata = hdata[{pseudoDataAxis : pseudoDataIdx }] 
+            hdata = hdata[{pseudoDataAxis : pseudoDataIdx }]
         self.writeHist(hdata, self.getDataName(), pseudoData+"_sum")
         procDict = self.pseudodata_datagroups.getDatagroups()
         if self.getFakeName() in procDict:
@@ -1030,17 +1030,17 @@ class CardTool(object):
 
         self.cardName = (f"{self.outfolder}/{basename}_{{chan}}{suffix}.txt")
         self.setOutfile(os.path.abspath(f"{self.outfolder}/{basename}CombineInput{suffix}.root"))
-            
+
     def writeOutput(self, args=None, forceNonzero=False, check_systs=True):
         self.datagroups.loadHistsForDatagroups(
             baseName=self.nominalName, syst=self.nominalName,
             procsToRead=self.datagroups.groups.keys(),
-            label=self.nominalName, 
+            label=self.nominalName,
             scaleToNewLumi=self.lumiScale,
             lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
             forceNonzero=forceNonzero,
             sumFakesPartial=not self.simultaneousABCD)
-        
+
         self.writeForProcesses(self.nominalName, processes=self.datagroups.groups.keys(), label=self.nominalName, check_systs=check_systs)
         self.loadNominalCard()
 
@@ -1052,7 +1052,7 @@ class CardTool(object):
 
         self.writeLnNSystematics()
         for syst in self.systematics.keys():
-            if self.isExcludedNuisance(syst): 
+            if self.isExcludedNuisance(syst):
                 continue
             systMap = self.systematics[syst]
             systName = syst if not systMap["name"] else systMap["name"]
@@ -1060,11 +1060,11 @@ class CardTool(object):
             if len(processes) == 0:
                 continue
             # Needed to avoid always reading the variation for the fakes, even for procs not specified
-            forceToNominal=[x for x in self.datagroups.getProcNames() if x not in 
+            forceToNominal=[x for x in self.datagroups.getProcNames() if x not in
                 self.datagroups.getProcNames([p for g in processes for p in self.expandProcesses(g) if p != self.getFakeName()])]
             self.datagroups.loadHistsForDatagroups(
                 systMap["nominalName"], systName, label="syst",
-                procsToRead=processes, 
+                procsToRead=processes,
                 forceNonzero=forceNonzero and systName != "qcdScaleByHelicity",
                 preOpMap=systMap["preOpMap"], preOpArgs=systMap["preOpArgs"], applySelection=systMap["applySelection"],
                 scaleToNewLumi=self.lumiScale,
@@ -1079,7 +1079,7 @@ class CardTool(object):
             logger.info("Histograms will not be written because 'skipHist' flag is set to True")
         logger.info(f"Writing text/root cards to {self.outfile}")
         self.writeCard()
-        
+
     def match_str_axis_entries(self, str_axis, match_re):
         return [x for x in str_axis if any(re.match(r, x) for r in match_re)]
 
@@ -1097,7 +1097,7 @@ class CardTool(object):
             idx = self.cardGroups[chan].index(group_expr)+len(group_expr)
             self.cardGroups[chan] = self.cardGroups[chan][:idx] + " " + members + self.cardGroups[chan][idx:]
         else:
-            self.cardGroups[chan] += f"\n{group_expr} {members}"                                              
+            self.cardGroups[chan] += f"\n{group_expr} {members}"
 
     def addXsecGroups(self):
         noi_names=[]
@@ -1123,7 +1123,7 @@ class CardTool(object):
         # also include combinations of axes in case there are more than 2 axes
         for n in range(2, len(gen_axes_names)):
             axes_combinations += [k for k in itertools.combinations(gen_axes_names, n)]
-        
+
         for axes in axes_combinations:
             logger.debug(f"Add sum group for {axes}{' with ' + genCharge if genCharge else ''}")
 
@@ -1141,12 +1141,12 @@ class CardTool(object):
                 for sum_group in sorted(sum_groups):
                     membersList = [p for p in params if all([g in p.split("_") for g in sum_group.split("_")])]
                     sum_group_name = sum_group
-                    if genCharge is not None:                
+                    if genCharge is not None:
                         membersList = list(filter(lambda x: genCharge in x, membersList))
                         sum_group_name += f"_{genCharge}"
-                    if len(membersList):                            
+                    if len(membersList):
                         self.addSumXsecGroup(sum_group_name, membersList)
-                        
+
     def addSumXsecGroup(self, groupName, members):
         logger.debug(f"Add xsec sum group {groupName}")
         if groupName in self.cardSumXsecGroups:
@@ -1162,7 +1162,7 @@ class CardTool(object):
             logger.debug(f"Write X sec sum group {groupName} with members {members}")
             text += f"\n{groupName} {groupLabel} = {members}"
         return text
-        
+
     def writeLnNSystematics(self):
         nondata = self.predictedProcesses()
         nondata_chan = {chan: nondata.copy() for chan in self.channels}
@@ -1197,21 +1197,21 @@ class CardTool(object):
         nondata_chan = {chan: nondata.copy() for chan in self.channels}
         for chan in self.excludeProcessForChannel.keys():
             nondata_chan[chan] = list(filter(lambda x: not self.excludeProcessForChannel[chan].match(x), nondata))
-            
-        names = [x[:-2] if "Up" in x[-2:] else (x[:-4] if "Down" in x[-4:] else x) 
+
+        names = [x[:-2] if "Up" in x[-2:] else (x[:-4] if "Down" in x[-4:] else x)
                     for x in filter(lambda x: x != "", systInfo["outNamesFinal"])]
         # exit this function when a syst is applied to no process (can happen when some are excluded)
         if all(x not in procs for x in nondata):
             return 0
-        
+
         include_chan = {}
         for chan in nondata_chan.keys():
             include_chan[chan] = [(str(scale) if x in procs else "-").ljust(self.procColumnsSpacing) for x in nondata_chan[chan]]
             # remove unnecessary trailing spaces after the last element
             include_chan[chan][-1] = include_chan[chan][-1].rstrip()
-                
+
         shape = "shapeNoConstraint" if systInfo["noConstraint"] else "shape"
-            
+
         splitGroupDict = systInfo["splitGroup"]
 
         # Deduplicate while keeping order
@@ -1234,7 +1234,7 @@ class CardTool(object):
                             if "shapeType" in keys:
                                 systShape = systInfo["customizeNuisanceAttributes"][regexpCustom]["shapeType"]
                 self.cardContent[chan] += f"{systname.ljust(self.spacing)} {systShape.ljust(self.systTypeSpacing)} {''.join(include_line)}\n"
-            # unlike for LnN systs, here it is simpler to act on the list of these systs to form groups, rather than doing it syst by syst 
+            # unlike for LnN systs, here it is simpler to act on the list of these systs to form groups, rather than doing it syst by syst
             if group:
                 systNamesForGroupPruned = systNamesChan[:]
                 systNamesForGroup = list(systNamesForGroupPruned if not groupFilter else filter(groupFilter, systNamesForGroupPruned))
@@ -1280,7 +1280,7 @@ class CardTool(object):
 
             self.cardContent[chan] = output_tools.readTemplate(self.nominalTemplate, args)
             self.cardGroups[chan] = ""
-            
+
     def writeHistByCharge(self, h, name):
         for charge in self.channels:
             q = self.chargeIdDict[charge]["val"]
@@ -1291,7 +1291,7 @@ class CardTool(object):
             hout = narf.hist_to_root(hin)
             hout.SetName(name.replace("CHANNEL",charge)+f"_{charge}")
             hout.Write()
-        
+
     def writeHistWithCharges(self, h, name):
         hin  = h
         if self.binByBinStatScale != 1. and hin.storage_type == hist.storage.Weight:
@@ -1300,7 +1300,7 @@ class CardTool(object):
         hout = narf.hist_to_root(hin)
         hout.SetName(f"{name}_{self.channels[0]}" if self.channels else name)
         hout.Write()
-    
+
     def writeHist(self, h, proc, syst, setZeroStatUnc=False, hnomi=None):
         if self.skipHist:
             return

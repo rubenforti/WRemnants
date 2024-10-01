@@ -98,7 +98,7 @@ def makehelicityWeightHelper_polvar(genVcharge=-1, fileTag="x0p40_y3p50_V6", fil
     fin.Close()
 
     ## TODO: the weights are actually unity in a region with large rapidity and qt/Q stored in the histogram
-    
+
     # set overflow and underflow qt/Q-y bins equal to adjacent bins
     hnom_hist_full.values(flow=True)[0, ...] = hnom_hist_full.values(flow=True)[1, ...]
     hnom_hist_full.values(flow=True)[axis_qtOverQ.extent-1, ...] = hnom_hist_full.values(flow=True)[axis_qtOverQ.extent-2, ...]
@@ -120,7 +120,7 @@ def makehelicityWeightHelper_polvar(genVcharge=-1, fileTag="x0p40_y3p50_V6", fil
         ## call the helper
         ## copy nominal in case move destroys it
         hnom_hist_full_cp = hnom_hist_full.copy()
-    
+
         hnom_hist_full_pyroot = narf.hist_to_pyroot_boost(hnom_hist_full_cp)
         hsys_hist_full_pyroot = narf.hist_to_pyroot_boost(hsys_hist_full[fld])
         if noUL:
@@ -138,5 +138,5 @@ def makehelicityWeightHelper_polvar(genVcharge=-1, fileTag="x0p40_y3p50_V6", fil
         axis_nsyst = hist.axis.Integer(0, nSysts, name="nPolVarSyst", overflow=False, underflow=False)
         helper.tensor_axes = [axis_nsyst, down_up_axis]
         helpers[fld] = helper
-        
+
     return {k : helpers[k] for k in helpers.keys()}

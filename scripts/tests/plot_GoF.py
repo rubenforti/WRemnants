@@ -1,4 +1,4 @@
-# plot goodness of fit from toys with data and/or pseudodata 
+# plot goodness of fit from toys with data and/or pseudodata
 # use full nll as test statistic
 
 import argparse
@@ -41,7 +41,7 @@ for tdata in args.testData:
         nll = utree['nllvalfull'].array(library="np")[0]
         nll_saturated = utree['satnllvalfull'].array(library="np")[0]
         data.append(2*(nll - nll_saturated))
-    
+
 data = np.array(data)
 
 if args.testLabels ==[]:
@@ -97,7 +97,7 @@ plt.xticks(fontsize = labelsize)
 plt.yticks(fontsize = labelsize)
 
 scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
-hep.cms.label(ax=ax, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale, 
+hep.cms.label(ax=ax, lumi=float(f"{args.lumi:.3g}"), fontsize=20*args.scaleleg*scale,
     label=args.cmsDecor, data=False)
 
 histname = "hist_GoF"

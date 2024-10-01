@@ -86,13 +86,13 @@ def syst_transform_map(base_hist, hist_name):
         "resumLambdaUp" : {
             "action" : lambda h: scetlibIdx(h, 4)},
         "resumTransitionUp" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
+                ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7",
                 "transition_points0.2_0.45_0.7", "transition_points0.4_0.75_1.1", ],
                  no_flow=["ptVgen"], do_min=False)},
         "resumTransitionDown" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
-                ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
+                ["transition_points0.2_0.65_1.1", "transition_points0.4_0.55_0.7",
                 "transition_points0.2_0.45_0.7", "transition_points0.4_0.75_1.1", ],
                  no_flow=["ptVgen"], do_min=True)},
        "resumTNPBeamUp" : {
@@ -143,12 +143,12 @@ def syst_transform_map(base_hist, hist_name):
                     do_min=True)},
        "resumNPUp" : {
                "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
-                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01",
                      "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",]}], syst_axis="vars", scale=0.5)[0]
         },
        "resumNPDown" : {
                "action" : lambda h: h if "vars" not in h.axes.name else hh.rssHists(h[{"vars" :
-                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01", 
+                 ["pdf0", "Lambda2-0.25", "Lambda20.25", "Lambda4.01",
                      "Lambda4.16","Delta_Lambda2-0.02", "Delta_Lambda20.02",]}], syst_axis="vars", scale=0.5)[1]
         },
        "scaleTransUp" : {
@@ -176,27 +176,27 @@ def syst_transform_map(base_hist, hist_name):
                  ["pdf0", "c_nu-0.1-omega_nu0.5", "omega_nu0.5"]}], syst_axis="vars", scale=0.25)[1]
         },
        "resumNPOmegaUp" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^Omega-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPOmegaDown" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^Omega-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
        "resumNPomega_nuUp" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^omega_nu-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPomega_nuDown" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^omega_nu-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
        "resumNPc_nuUp" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^c_nu-*\d+", x)],
                  do_min=False) if "vars" in h.axes.name else h},
         "resumNPc_nuDown" : {
-            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars", 
+            "action" : lambda h: hh.syst_min_or_max_env_hist(h, projAx(hist_name), "vars",
                 [x for x in h.axes["vars"] if re.match(r"^c_nu-*\d+", x)],
                  do_min=True) if "vars" in h.axes.name else h},
         "resumScaleMax" : {
@@ -227,14 +227,14 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", g
     sum_expr = {axis : s[::hist.sum] for axis in sum_axes if axis in axisNames}
     scale_hist = scale_hist[sum_expr]
     axisNames = scale_hist.axes.name
-    
+
     # select nominal QCD scales, but keep the sliced axis at size 1 for broadcasting
     nom_scale_hist = scale_hist[{"muRfact" : s[1.j:1.j+1], "muFfact" : s[1.j:1.j+1]}]
     # select nominal QCD scales and project down to nominal axes
     nom_sel = {"muRfact" : s[1.j], "muFfact" : s[1.j] }
     nom_sel.update({genAxis : s[::hist.sum] for genAxis in gen_axes if genAxis in axisNames})
     nom_hist = nom_scale_hist[nom_sel]
-    
+
     hasHelicityAxis = "helicity" in axisNames
     hasPtAxis = pt_ax in axisNames
 
@@ -270,7 +270,7 @@ def scale_helicity_hist_to_variations(scale_hist, sum_axes=[], pt_ax="ptVgen", g
     expandnom = np.expand_dims(nom_hist.values(flow=True), [-expd+i for i in range(expd)])
     systhist = scale_hist.values(flow=True) - nom_scale_hist.values(flow=True) + expandnom
 
-    scale_variation_hist = hist.Hist(*scale_hist.axes, 
+    scale_variation_hist = hist.Hist(*scale_hist.axes,
                                      name = out_name, data = systhist)
 
     return scale_variation_hist
@@ -532,7 +532,7 @@ def widthWeightNames(matches=None, proc=""):
     if proc[0] == "Z":
         widths=(2.49333, 2.49493, 2.4929, 2.4952, 2.4975)
     elif proc[0] == "W":
-        widths=(2.09053, 2.09173, 2.043, 2.085, 2.127) 
+        widths=(2.09053, 2.09173, 2.043, 2.085, 2.127)
     else:
         raise RuntimeError(f"No width found for process {proc}")
     # 0 and 1 are Up, Down from mass uncertainty EW fit (already accounted for in mass variations)
@@ -715,13 +715,13 @@ def add_luminosity_unc_hists(results, df, args, axes, cols, base_name="nominal",
 
 
 def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_central_weight, isW, base_name="nominal", **kwargs):
-   
+
     for i, generator in enumerate(generators):
         if generator not in helpers:
             continue
 
         logger.debug(f"Now at generator {i}: {generator}")
-        
+
         if i == 0 and modify_central_weight:
             add_syst_hist(results, df, f"{base_name}_uncorr", axes, cols, "nominal_weight_uncorr", **kwargs)
             if base_name == "nominal":
@@ -784,7 +784,7 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
                 df = df.Define(tensor_name, scale_idx_helper, [weight_tensor_name])
 
             axis_PtDepScales = hist.axis.StrCategory([var_axis[idx] for idx in scaleidxs], name = var_axis.name)
-            
+
             axes_PtDepScales = axes[:]
             cols_PtDepScales = cols[:]
             if "ptVgen" not in cols:
@@ -794,7 +794,7 @@ def add_theory_corr_hists(results, df, axes, cols, helpers, generators, modify_c
             add_syst_hist(results, df, name, axes_PtDepScales, cols_PtDepScales, tensor_name, axis_PtDepScales, **kwargs)
 
 
-def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", 
+def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal",
                                   what_analysis=ROOT.wrem.AnalysisType.Wmass, smooth3D=False,
                                   singleMuonCollection="goodMuons", customHistNameTag="", **kwargs
     ):
@@ -819,7 +819,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
             muon_columns_stat = [*muon_columns_stat_trig, "trigMuons_passTrigger0", *muon_columns_stat_nonTrig, "nonTrigMuons_passTrigger0"]
             muon_columns_syst = [*muon_columns_syst_trig, "trigMuons_passTrigger0", *muon_columns_syst_nonTrig, "nonTrigMuons_passTrigger0"]
         else:
-            raise NotImplementedError(f"add_muon_efficiency_unc_hists: analysis {what_analysis} not implemented.")            
+            raise NotImplementedError(f"add_muon_efficiency_unc_hists: analysis {what_analysis} not implemented.")
 
     if not smooth3D:
         # will use different helpers and member functions
@@ -828,7 +828,7 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
 
     # change variables for tracking, to use standalone variables
     muon_columns_stat_tracking = [x.replace("_pt0", "_SApt0").replace("_eta0", "_SAeta0") for x in muon_columns_stat]
-        
+
     for key,helper in helper_stat.items():
         if "tracking" in key:
             muon_columns_stat_step = muon_columns_stat_tracking
@@ -862,19 +862,19 @@ def add_muon_efficiency_unc_hists(results, df, helper_stat, helper_syst, axes, c
     return df
 
 
-def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal", 
+def add_muon_efficiency_unc_hists_altBkg(results, df, helper_syst, axes, cols, base_name="nominal",
                                          what_analysis=ROOT.wrem.AnalysisType.Wmass,
                                          singleMuonCollection="goodMuons", step="tracking", customHistNameTag="", **kwargs
     ):
 
-    SAvarTag = "SA" if step == "tracking" else "" 
+    SAvarTag = "SA" if step == "tracking" else ""
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
         muon_columns_syst = [f"{singleMuonCollection}_{SAvarTag}pt0", f"{singleMuonCollection}_{SAvarTag}eta0", f"{singleMuonCollection}_charge0"]
     else:
         muvars_syst = [f"{SAvarTag}pt0", f"{SAvarTag}eta0", "charge0"]
         muon_columns_syst_trig    = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
-        
+
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
         elif what_analysis == ROOT.wrem.AnalysisType.Dilepton:
@@ -901,7 +901,7 @@ def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, ax
     statNameBase = "effStatTnP"
     if len(customHistNameTag):
         statNameBase += f"_{customHistNameTag}"
-    
+
     df = df.Define(f"{statNameBase}_veto_tensor", helper_stat, [*muon_columns_stat, "nominal_weight"])
     name = Datagroups.histName(base_name, syst=f"{statNameBase}_veto_sf")
     add_syst_hist(results, df, name, axes, cols, f"{statNameBase}_veto_tensor", helper_stat.tensor_axes, **kwargs)
@@ -919,7 +919,7 @@ def add_muon_efficiency_veto_unc_hists(results, df, helper_stat, helper_syst, ax
 
 def add_L1Prefire_unc_hists(results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs):
     df = df.Define("muonL1PrefireStat_tensor", helper_stat, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId", "nominal_weight"])
-    name = Datagroups.histName(base_name, syst="muonL1PrefireStat")    
+    name = Datagroups.histName(base_name, syst="muonL1PrefireStat")
     add_syst_hist(results, df, name, axes, cols, "muonL1PrefireStat_tensor", helper_stat.tensor_axes, **kwargs)
 
     df = df.Define("muonL1PrefireSyst_tensor", helper_syst, ["Muon_correctedEta", "Muon_correctedPt", "Muon_correctedPhi", "Muon_correctedCharge", "Muon_looseId", "nominal_weight"])
@@ -959,33 +959,33 @@ def add_muonscale_smeared_hist(results, df, netabins, mag, isW, axes, cols, base
 def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
     hnew = hist.Hist(*h.axes[:-1], hist.axis.StrCategory(["central"]+scetlib_scale_vars(),
                         name=syst_ax), storage=h._storage_type())
-    
+
     hnew[...,"central"] = h[...,"central"].view(flow=True)
     hnew[...,"resumFOScaleUp"] = h[...,"kappaFO2."].view(flow=True)
     hnew[...,"resumFOScaleDown"] = h[...,"kappaFO0.5"].view(flow=True)
     hnew[...,"resumLambdaUp"] = h[...,"lambda0.8"].view(flow=True)
     hnew[...,"resumLambdaDown"] = h[...,"lambda1.5"].view(flow=True)
-    
-    transition_names = [x for x in h.axes[syst_ax] if "transition" in x]    
-    hnew[...,"resumTransitionUp"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax, 
+
+    transition_names = [x for x in h.axes[syst_ax] if "transition" in x]
+    hnew[...,"resumTransitionUp"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax,
                                     h.axes[syst_ax].index(transition_names), do_min=False).view(flow=True)
-    hnew[...,"resumTransitionDown"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax, 
+    hnew[...,"resumTransitionDown"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax,
                                     h.axes[syst_ax].index(transition_names), do_min=True).view(flow=True)
-    
+
     resum_names = [x for x in h.axes[syst_ax] if not any(i in x for i in ["lambda", "kappa", "transition"])]
-    hnew[...,"resumScaleUp"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax, 
+    hnew[...,"resumScaleUp"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax,
                                     h.axes[syst_ax].index(resum_names), do_min=False).view(flow=True)
-    hnew[...,"resumScaleDown"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax, 
+    hnew[...,"resumScaleDown"] = hh.syst_min_or_max_env_hist(h, obs, syst_ax,
                                     h.axes[syst_ax].index(resum_names), do_min=True).view(flow=True)
     return hnew
 
 
-def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHelicity_helper, axes, cols, 
+def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHelicity_helper, axes, cols,
     base_name="nominal", propagateToHelicity=False, for_wmass=True, addhelicity=False, nhelicity=6, storage_type=hist.storage.Double()
 ):
     logger.debug(f"Make theory histograms for {dataset_name} dataset, histogram {base_name}")
     axis_ptVgen = hist.axis.Variable(
-        common.ptV_binning, 
+        common.ptV_binning,
         name = "ptVgen", underflow=False
     )
     #for hel analysis, ptVgen is part of axes/col
@@ -1017,7 +1017,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
 
     theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
     if theory_corrs and dataset_name in corr_helpers:
-        add_theory_corr_hists(results, df, axes, cols, 
+        add_theory_corr_hists(results, df, axes, cols,
             corr_helpers[dataset_name], theory_corrs, modify_central_weight=not args.theoryCorrAltOnly, isW = not isZ, **info)
 
     if for_wmass or isZ:
@@ -1093,7 +1093,7 @@ def add_helicity_hists(results, df, dataset_name, axes, cols, base_name="nominal
         results.append(helicity_xsecs_scale_postBeamRemnants)
 
         # these are for theory agnostic gen fit
-        
+
         #drop mass
         cols = cols[1:]
         axes = axes[1:]
@@ -1112,5 +1112,5 @@ def add_helicity_hists(results, df, dataset_name, axes, cols, base_name="nominal
 
         results.append(gen_theoryAgnostic)
 
-    
+
     return df

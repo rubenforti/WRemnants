@@ -41,7 +41,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     #TODO: make colors and legEntries a single dictionary
 
     if not canvas: canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    if not canvasWide: canvasWide = ROOT.TCanvas("canvasWide","",2400,600)                      
+    if not canvasWide: canvasWide = ROOT.TCanvas("canvasWide","",2400,600)
     adjustSettings_CMS_lumi()
     if not canvas1D: canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
@@ -49,7 +49,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
         ppfx = f"_{plotPostfix}"
     else:
         ppfx = plotPostfix
-    
+
     if not colors:
         colors = colors_plots_
 
@@ -61,7 +61,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     fShapesName = outdir_dataMC + "plots.root"
     fShapes = safeOpenFile(fShapesName, mode="RECREATE")
 
-    hmc2D = sorted(hmc2D, key= lambda x: x.Integral()) # , reverse=True) 
+    hmc2D = sorted(hmc2D, key= lambda x: x.Integral()) # , reverse=True)
 
     stack_eta = ROOT.THStack("stack_eta", "signal and backgrounds")
     stack_pt = ROOT.THStack("stack_pt", "signal and backgrounds")
@@ -93,8 +93,8 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     ratioRangeStr = ""
     if ratioRange:
         ratioRangeStr = f"::{ratioRange[0]},{ratioRange[1]}"
-    
-        
+
+
     hdata_eta = hdata2D.ProjectionX("data_eta",lowPtbin,highPtbin,"e")
     hdata_pt  = hdata2D.ProjectionY("data_pt",1,hdata2D.GetNbinsX(),"e")
 
@@ -175,7 +175,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
             drawCorrelationPlot(hProcOverTot, xAxisName, yAxisName, "Ratio of event yields",
                                 f"{hProcOverTot.GetName()}_{chargeLabel}{ppfx}", plotLabel="ForceTitle", outdir=outdir_dataMC,
                                 palette=57, passCanvas=canvas, drawOption="COLZ0", skipLumi=True, zTitleOffSet=1.3)
-    
+
     ratio2D.Divide(den2D)
     ratio2D.Write()
 
@@ -204,7 +204,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     recoBins = templateBinning(etabins, ptbins)
     nRecoBins = recoBins.NTotBins
     #following array is used to call function dressed2DfromFit()
-    binning = [recoBins.Neta, recoBins.etaBins, recoBins.Npt, recoBins.ptBins]        
+    binning = [recoBins.Neta, recoBins.etaBins, recoBins.Npt, recoBins.ptBins]
     cnameUnroll = f"muon_etaPtUnrolled{ppfx}"
     XlabelUnroll = "unrolled template along #eta:  #eta #in [%.1f, %.1f]" % (recoBins.etaBins[0], recoBins.etaBins[-1])
     YlabelUnroll = "Events::%.2f,%.2f" % (0, 2.*hdata_unrolled.GetBinContent(hdata_unrolled.GetMaximumBin()))
@@ -218,10 +218,10 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     ratio_unrolled = unroll2Dto1D(ratio2D, newname=f"{ratio2D.GetName()}_unrolled")
     ROOT.wrem.setRootHistogramError(ratio_unrolled, 0.0)
     drawSingleTH1(ratio_unrolled, XlabelUnroll, f"{dataTitle}/pred. ratio", f"muon_etaPtUnrolledRatio{ppfx}",
-                  outdir_dataMC, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="", 
+                  outdir_dataMC, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="",
                   passCanvas=canvasWide,
                   legendCoords="0.15,0.85,0.82,0.9;2",
-                  leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
+                  leftMargin=0.05,rightMargin=0.01,lumi=lumi,
                   drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
                   textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, drawLineTopPanel=1.0)
 
@@ -237,7 +237,7 @@ def plotPrefitHistograms(hdata2D, hmc2D, outdir_dataMC, xAxisName, yAxisName,
     drawTH1dataMCstack(hdata_unrolled, stack_unrolled, XlabelUnroll, YlabelUnroll, cnameUnroll,
                        outdir_dataMC, leg_unrolled, ratioPadYaxisNameTmp=f"{dataTitle}/pred{ratioRangeStr}",
                        passCanvas=canvasWide,
-                       wideCanvas=True, leftMargin=0.05,rightMargin=0.01,lumi=lumi, 
+                       wideCanvas=True, leftMargin=0.05,rightMargin=0.01,lumi=lumi,
                        drawVertLines="{a},{b}".format(a=recoBins.Npt,b=recoBins.Neta),
                        textForLines=ptBinRanges, etaptbinning=binning, noLegendRatio=True, textSize=0.04, topMargin=0.06,
                        textYheightOffset=0.6
@@ -283,8 +283,8 @@ if __name__ == "__main__":
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
-    adjustSettings_CMS_lumi()    
+    cwide = ROOT.TCanvas("cwide","",2400,600)
+    adjustSettings_CMS_lumi()
     canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
     processes = [x for x in args.predictedProcesses if x not in args.excludePredictedProcesses]

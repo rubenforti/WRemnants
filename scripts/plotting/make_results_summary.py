@@ -20,12 +20,12 @@ dfw = pd.DataFrame.from_dict({
     "err_stat" : [6, 25, 11, 6.4, 23, 9.8, 13.3],
     "Reference" : [
         "Phys. Rev. D 110, 030001",
-        "Phys. Rep. 532 (2013) 119", 
+        "Phys. Rep. 532 (2013) 119",
         # "Phys. Rev. Lett. 108 (2012) 151804",
         "PRL 108 (2012) 151804",
-        "Science 376 (2022) 6589", 
-        "JHEP 01 (2022) 036", 
-        "arXiv:2403.15085", 
+        "Science 376 (2022) 6589",
+        "JHEP 01 (2022) 036",
+        "arXiv:2403.15085",
         #"EPJC 84 (2024) 5, 451",
         "Phys. Rev. D 110, 030001",
     ],
@@ -36,8 +36,8 @@ if not args.pdg:
     dfw = dfw[dfw["Name"] != "PDG Average"]
 
 cms_res = combinetf_input.read_groupunc_df(args.fitresult, ["stat",], name="CMS")
-cms_res["color"] = "#E42536" 
-cms_res["Reference"] = "This Work" 
+cms_res["color"] = "#E42536"
+cms_res["Reference"] = "This Work"
 dfw_cms = pd.concat((dfw, cms_res), ignore_index=True)
 
 eoscp = output_tools.is_eosuser_path(args.outpath)
@@ -60,7 +60,7 @@ fig = plot_tools.make_summary_plot(80353, 6, "80353 $\pm$ 6",
     colors=list(dfw_cms["color"][1:]),
     xlim=[80255, 80465],
     ylim=[0, ymax],
-    xlabel=r"$\mathit{m}_{W}$ (MeV)", 
+    xlabel=r"$\mathit{m}_{W}$ (MeV)",
     capsize=6,
     width_scale=1.25,
     cms_label=args.cmsDecor,
@@ -82,15 +82,15 @@ ax = plt.gca()
 text_size_large = plot_tools.get_textsize(ax, "small")
 ax.annotate("$\mathit{m}_{{W}}$ in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
 for i,row in dfw_cms.iterrows():
-    isCMS = row.loc["Name"] == "CMS" 
-    isEW = row.loc["Name"] == "Electroweak fit" 
+    isCMS = row.loc["Name"] == "CMS"
+    isEW = row.loc["Name"] == "Electroweak fit"
     pos = top-step*i
     ax.annotate(row["Name"], (xpos, pos), fontsize=text_size_large, ha="left", annotation_clip=False, color=row.loc["color"])#, weight=600)
     if row.loc["Name"] in ["CMS", "CDF", "ATLAS", "PDG Average"]:
         label = f"{row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f}"
     else:
         label = f"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"
-    
+
     if not isEW:
         ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color=row.loc["color"] if isCMS or isEW else "black", annotation_clip=False)
     ax.annotate(row["Reference"], (xpos, pos-0.42), fontsize=text_size, ha="left", color="dimgrey", annotation_clip=False, style='italic' if isCMS else None)

@@ -2,7 +2,7 @@ from utilities import boostHistHelpers as hh
 from utilities import logging
 
 logger = logging.child_logger(__name__)
-    
+
 def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGroups=None, filterGroups=None):
     # reset datagroups
     dg.groups = {}
@@ -12,7 +12,7 @@ def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGro
     )
     dg.addGroup("Zmumu",
         members = dg.get_members_from_results(startswith=["Zmumu"]),
-    ) 
+    )
     dg.addGroup("Ztautau",
         members = dg.get_members_from_results(startswith=["Ztautau"]),
     )
@@ -43,7 +43,7 @@ def make_datagroups_2016(dg, combine=False, pseudodata_pdfset = None, excludeGro
         )
         dg.addGroup("QCD",
             members = dg.get_members_from_results(startswith=["QCD"]),
-        )   
+        )
     else:
         dg.addGroup("Other",
             members = dg.get_members_from_results(not_startswith=["Zmumu", "Ztautau", "QCD", "GG", "QG"]),

@@ -1,6 +1,6 @@
 # On results of fiducial inclusive cross sections and their ratios
 # make a summary plot with different theory predictions
-# make a latex summary table with the breakdown of uncertainties 
+# make a latex summary table with the breakdown of uncertainties
 
 import json
 import math
@@ -50,10 +50,10 @@ poi_names = ["$\mathrm{W}^{-}$", "$\mathrm{W}^{+}$", "$\mathrm{W}$", "$\mathrm{W
 combine = {
     "binByBinStat": "binByBinStat",
     "statMC": "binByBinStat",
-    "ZmassAndWidth": "massAndWidth", 
+    "ZmassAndWidth": "massAndWidth",
     "massShift": "massAndWidth",
-    "QCDscale": "QCDscale", 
-    "bcQuarkMass": "QCDscale", 
+    "QCDscale": "QCDscale",
+    "bcQuarkMass": "QCDscale",
 }
 combine = {}
 
@@ -83,7 +83,7 @@ for poi, poi_name in zip(pois, poi_names):
                 idx = filtlabels.index(label)
                 filtimpacts[idx] = (filtimpacts[idx]**2 + impact**2)**0.5
                 continue
-                    
+
         filtimpacts.append(impact)
         filtlabels.append(label)
 
@@ -110,7 +110,7 @@ percentage = True # numbers in percentage
 df_t = df.copy()
 if relative:
     df_t["impact"] /= df_t["norm"]
-if percentage: 
+if percentage:
     df_t["impact"] *= 100
 
 # sorting
@@ -121,9 +121,9 @@ df_t['poi_name'] = df_t['poi_name'].astype(cat_dtype)
 outname = "summary_table"
 if args.postfix:
     outname += f"_{args.postfix}"
-tex_tools.make_latex_table(df_t, output_dir=outdir, output_name=outname, 
-    column_title=None, 
-    caption="Uncertainties in percentage.", 
+tex_tools.make_latex_table(df_t, output_dir=outdir, output_name=outname,
+    column_title=None,
+    caption="Uncertainties in percentage.",
     label="", sublabel="",
     column_name="poi_name", row_name="systematic",
     cell_columns=["impact"], cell_format=lambda x: f"${round(x,2)}$", sort="impact")
@@ -145,7 +145,7 @@ lo, hi = 0.94, 1.09
 norms = []
 for i, poi_name in enumerate(poi_names[::-1]):
     df_g = df.loc[df["poi_name"] == poi_name]
-    
+
     norm = df_g["norm"].values[0]
     total = df_g.loc[df_g["label"] == "Total"]["impact"].values[0]
     stat = df_g.loc[df_g["label"] == "stat"]["impact"].values[0]
@@ -158,7 +158,7 @@ for i, poi_name in enumerate(poi_names[::-1]):
 
     x1 = ax.bar(1.0, height=1, bottom=i, width=2*total_rel, color="silver", label="Total")
     x2 = ax.bar(1.0, height=1, bottom=i, width=2*stat_rel, color="gold", label="Stat")
-    
+
     # round to two significant digits in total uncertainty
     sig_digi = 2 - int(math.floor(math.log10(abs(total)))) - 1
 
@@ -212,7 +212,7 @@ if args.postfix:
     outname += f"_{args.postfix}"
 plot_tools.save_pdf_and_png(outdir, outname)
 
-plot_tools.write_index_and_log(outdir, outname, 
+plot_tools.write_index_and_log(outdir, outname,
     analysis_meta_info={"CombinetfOutput" : meta["meta_info"]},
     args=args,
 )

@@ -22,7 +22,7 @@ narf.clingutils.Declare('#include "muon_efficiencies_newVeto.h"')
 data_dir = common.data_dir
 
 def make_muon_efficiency_helpers_newVeto(antiveto = False):
-    
+
     logger.debug(f"Make efficiency helper for veto (with newer approach)")
 
     axis_eta_eff = None
@@ -31,7 +31,7 @@ def make_muon_efficiency_helpers_newVeto(antiveto = False):
     # axis for the charge
     axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "SF charge")
 
-    veto_tag = "antiVeto" if antiveto else "veto"    
+    veto_tag = "antiVeto" if antiveto else "veto"
     charges = { -1. : "minus", 1. : "plus" }
     steps = ["vetoreco", "vetotracking", "vetoidip"]
     eff_types_2D = [x for x in steps]
@@ -52,7 +52,7 @@ def make_muon_efficiency_helpers_newVeto(antiveto = False):
     ### first the syst part
     sf_syst_2D = None
     for charge, charge_tag in charges.items():
-        fileSF = fileVetoSF[charge_tag] 
+        fileSF = fileVetoSF[charge_tag]
         if not os.path.isfile(fileSF):
             raise IOError(f"Couldn't read veto/antiveto SF file {fileSF}, make sure you have it.")
         logger.info(f"Veto/antiveto SF read from {fileSF} for charge {charge_tag}")
@@ -90,7 +90,7 @@ def make_muon_efficiency_helpers_newVeto(antiveto = False):
                 # effSyst_decorrEtaEdges[isyst+1]] the range selection in boost later on will stop at the left
                 #edge of the chosen bin number, e.g. h[b:b+1] will pick the range containing the single bin b, unlike in ROOT
                 indexEtaLow = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge
-                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001) 
+                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001)
                 sf_syst_2D.view(flow=False)[indexEtaLow:indexEtaHigh, :, axis_charge.index(charge), axis_eff_type_2D.index(step), 2+isyst] = hist_hist.view(flow=False)[indexEtaLow:indexEtaHigh, :,inputHist_systBin]
             # now the stat part
             for istat in range(Nstat):
@@ -121,9 +121,9 @@ def make_muon_efficiency_helpers_newVeto(antiveto = False):
         axis_eta_eff_tensor = hist.axis.Regular(axis_eta_eff.size, axis_eta_eff.edges[0], axis_eta_eff.edges[-1], name = axis_eta_eff.name, overflow = False, underflow = False)
     elif isinstance(axis_eta_eff, bh.axis.Variable):
         axis_eta_eff_tensor = hist.axis.Variable(axis_eta_eff.edges, name = axis_eta_eff.name, overflow = False, underflow = False)
-    axis_ptEigen_eff_tensor = hist.axis.Integer(0, Nstat, underflow = False, overflow =False, name = "nPtEigenBins")    
+    axis_ptEigen_eff_tensor = hist.axis.Integer(0, Nstat, underflow = False, overflow =False, name = "nPtEigenBins")
     helper_stat.tensor_axes = [axis_all, axis_eta_eff_tensor, axis_ptEigen_eff_tensor, axis_charge]
-    
+
     logger.debug(f"Return veto efficiency helpers!")
 
     return helper, helper_syst, helper_stat

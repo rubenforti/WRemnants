@@ -347,7 +347,7 @@ def stacked_2d(groups, hName, proc, outDir, suffix="", xMin=0, xMax=100, yMin=0,
     #h_data.Draw("SAME COLZ TEXTE")
     dummy.Draw("HIST")
     hist.Draw("SAME COLZ")
-    
+
 
 
     canvas.SaveAs(f"{outDir}/{hName}{suffix}.png")

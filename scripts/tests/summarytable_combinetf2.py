@@ -26,14 +26,14 @@ def read_fitresult(filename):
     try:
         fitresult = get_fitresult(filename)
         ndf = fitresult[f"ndf"]
-        chi2_prefit = fitresult[f"chi2_prefit"] 
+        chi2_prefit = fitresult[f"chi2_prefit"]
         chi2_postfit = fitresult[f"chi2_postfit"]
         p_prefit = (1-chi2.cdf(chi2_prefit, ndf))*100
         p_postft = (1-chi2.cdf(chi2_postfit, ndf))*100
 
     except IOError as e:
         return 0, 0, 0, 0, 0
-        
+
     return chi2_postfit, chi2_postfit, p_prefit, p_postft, ndf
 
 parser = common.plot_parser()
@@ -57,20 +57,20 @@ df["axes"] = df["name_parts"].apply(lambda x: [y for y in x if y in ["ptll", "yl
 df["dataset"] = df["name_parts"].apply(lambda x: "_".join([y for y in x if y not in ["ptll", "yll", "pt", "eta", "charge"]]))
 df["dataset"] = df["dataset"].apply(lambda x: translate.get(x.replace("Corr",""), x.replace("Corr","")))
 
-df["column_name"] = df["axes"].apply(lambda x: "-".join(x)) 
+df["column_name"] = df["axes"].apply(lambda x: "-".join(x))
 df["column_name_ndf"] = df["column_name"] + df["ndf"].apply(lambda x: f" ({x})")
 
 
 for channel, df_c in df.groupby("channel"):
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_combinetf2_prefit_{channel}", 
-        column_title="Axes (bins)", caption="Resulting prefit $\chi^2$ values (and p-values) from WLike fits on different data, and pseudodata sets.", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_combinetf2_prefit_{channel}",
+        column_title="Axes (bins)", caption="Resulting prefit $\chi^2$ values (and p-values) from WLike fits on different data, and pseudodata sets.",
         label="Pseudodata", sublabel="",
-        column_name="column_name_ndf", row_name="dataset", 
+        column_name="column_name_ndf", row_name="dataset",
         cell_columns=["chi2_prefit", "p_prefit"], color_condition=lambda x, y: y < 5, cell_format=lambda x, y: f"${round(x,1)} ({round(y,1)}\%)$")
 
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_combinetf2_postfit_{channel}", 
-        column_title="Axes (bins)", caption="Resulting postfit $\chi^2$ values (and p-values) from WLike fits on different data, and pseudodata sets.", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_combinetf2_postfit_{channel}",
+        column_title="Axes (bins)", caption="Resulting postfit $\chi^2$ values (and p-values) from WLike fits on different data, and pseudodata sets.",
         label="Pseudodata", sublabel="",
-        column_name="column_name_ndf", row_name="dataset", 
+        column_name="column_name_ndf", row_name="dataset",
         cell_columns=["chi2_postfit", "p_postfit"], color_condition=lambda x, y: y < 5, cell_format=lambda x, y: f"${round(x,1)} ({round(y,1)}\%)$")
 

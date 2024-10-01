@@ -62,7 +62,7 @@ if __name__ == "__main__":
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
+    cwide = ROOT.TCanvas("cwide","",2400,600)
     adjustSettings_CMS_lumi()
     canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         else:
             selectOp = sel.histWmass_passMT_passIso
             # customized for fakes later on
-            
+
         groups = Datagroups(fname)
         datasets = groups.getNames()
         logger.warning(datasets)
@@ -187,7 +187,7 @@ if __name__ == "__main__":
                               labelRatioTmp="Rel. stat. unc.::0.5,1.5", topMargin=0.06,
                               passCanvas=cwide,
                               legendCoords="0.15,0.85,0.86,0.94;2",
-                              leftMargin=0.05,rightMargin=0.01,lumi=16.8, 
+                              leftMargin=0.05,rightMargin=0.01,lumi=16.8,
                               drawVertLines="{a},{b}".format(a=hFRF.GetNbinsY(),b=hFRF.GetNbinsX()),
                               textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=0)
             for isoMtID in [2, 3]:
@@ -201,7 +201,7 @@ if __name__ == "__main__":
                                   labelRatioTmp="Rel. stat. unc.::0.5,1.5", topMargin=0.06,
                                   passCanvas=cwide,
                                   legendCoords="0.15,0.85,0.86,0.94;2",
-                                  leftMargin=0.05,rightMargin=0.01,lumi=16.8, 
+                                  leftMargin=0.05,rightMargin=0.01,lumi=16.8,
                                   drawVertLines="{a},{b}".format(a=hFakeYields.GetNbinsY(),b=hFakeYields.GetNbinsX()),
                                   textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=0)
 

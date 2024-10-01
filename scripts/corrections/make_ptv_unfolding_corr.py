@@ -26,8 +26,8 @@ genh = input_tools.read_and_scale(args.genFile, "ZmumuPostVFP", "nominal_gen")
 unfolded_res = pickle.load(open(args.unfoldingFile, "rb"))
 unfolded_datah = unfolded_res["results"]["xsec"]["chan_13TeV"]["Z"]["_".join(["hist", *[x.replace("gen", "Gen") for x in args.axes]])]
 
-axes = {"massVgen" : hist.axis.Regular(1, 0, 13000, name="massVgen", flow=False), 
-        "absYVgen" : hist.axis.Regular(1, 0, 10, name="absYVgen", underflow=False, overflow=True), 
+axes = {"massVgen" : hist.axis.Regular(1, 0, 13000, name="massVgen", flow=False),
+        "absYVgen" : hist.axis.Regular(1, 0, 10, name="absYVgen", underflow=False, overflow=True),
         "ptVgen" : None,
         "chargeVgen" : hist.axis.Regular(*(1, -1, 1) if args.proc == 'z' else (2, -2, 2), name="chargeVgen", flow=False),
         "vars" : hist.axis.Regular(1, 0, 1, name="vars")

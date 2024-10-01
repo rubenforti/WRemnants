@@ -6,7 +6,7 @@ import math
 import os
 import pickle
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -46,9 +46,9 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--x-axis-name", dest="xAxisName", default="RawPF m_{T} (GeV)", help="x axis name")
     parser.add_argument("-y", "--y-axis-name", dest="yAxisName", default="PFrelIso04", help="y axis name")
     args = parser.parse_args()
-    
+
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
-    
+
     ROOT.TH1.SetDefaultSumw2()
 
     if args.charge == "both":
@@ -73,8 +73,8 @@ if __name__ == "__main__":
     groups.loadHistsForDatagroups(inputHistName, syst="", procsToRead=datasetsAll, applySelection=False)
     histInfo = groups.getDatagroups()
     rootHists = {d: None for d in datasetsAll}
-    
-    adjustSettings_CMS_lumi()    
+
+    adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas","",800,800)
     canvas1D = ROOT.TCanvas("canvas1D","",800,800)
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
         hIso1D = {"jetInclusive" : {d : None for d in datasetsAll},
                   "1orMoreJet"   : {d : None for d in datasetsAll}}
-        
+
         for d in datasetsAll:
             logger.info(f"     Process {d}")
             hnarf = histInfo[d].hists[inputHistName]
@@ -125,7 +125,7 @@ if __name__ == "__main__":
 
                 if d != "Fake":
                     hIso1D[jetLabel][d] = h2mtIso.ProjectionY(f"iso_{jetLabel}_{d}", 1, 1+h2mtIso.GetNbinsX(), "e")
-                
+
                 drawCorrelationPlot(h2mtIso,
                                     xAxisName,
                                     yAxisName,

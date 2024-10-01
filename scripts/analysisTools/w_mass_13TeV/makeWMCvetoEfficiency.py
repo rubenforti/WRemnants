@@ -5,7 +5,7 @@
 ## scripts/histmakers/mw_with_mu_eta_pt_VETOEFFI.py
 
 # example
-# python scripts/analysisTools/w_mass_13TeV/makeWMCvetoEfficiency.py /scratch/mciprian/CombineStudies/testZmumuVeto/WMCtruthVetoEffi/mw_with_mu_eta_pt_VETOEFFI_scetlib_dyturboCorr_maxFiles_m1_genPt0_noRecoPtEta.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/WMCtruthVetoEffi_genPt0_noRecoPtEta/ -v 4 --rebinPt 2 
+# python scripts/analysisTools/w_mass_13TeV/makeWMCvetoEfficiency.py /scratch/mciprian/CombineStudies/testZmumuVeto/WMCtruthVetoEffi/mw_with_mu_eta_pt_VETOEFFI_scetlib_dyturboCorr_maxFiles_m1_genPt0_noRecoPtEta.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/WMCtruthVetoEffi_genPt0_noRecoPtEta/ -v 4 --rebinPt 2
 
 import argparse
 import os
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     fname = args.inputfile[0]
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-        
+
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     yAxisName = "PostFSR muon p_{T} (GeV)"
 
     ratioRangeStr = f"::{args.ratioRange[0]},{args.ratioRange[1]}"
-    
+
     groups = Datagroups(fname, mode="w_mass")
     datasets = groups.getNames()
     if args.processes is not None and len(args.processes):
@@ -124,7 +124,7 @@ if __name__ == "__main__":
             h = h[{"pt" : s[complex(0,args.ptRange[0]):complex(0,args.ptRange[1])]}]
         if args.rebinPt > 0:
             h = h[{"pt" : s[::hist.rebin(args.rebinPt)]}]
-            
+
         n_veto_pass = h[{"passVeto" : True,
                          "charge" : s[::hist.sum]}]
         n_veto_fail = h[{"passVeto" : False,
@@ -170,7 +170,7 @@ if __name__ == "__main__":
                             smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-        
+
         # NOTE: to simplify our lives, when computing efficiencies as ratio of yields n/N and root is used
         # then the uncertainty is obtained using option B for TH1::Divide, which uses binomial uncertainties.
         # However, this implies 0 uncertainty when the efficiency is close to 0 or 1, but we won't really use
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         # otherwise can use eff = npass/(npass+nfail) and use the formula for standard propagation
         # eff_err = 1./(nTot*nTot) * std::sqrt( nP*nP* e_nF*e_nF + nF*nF * e_nP*e_nP ) with nTot = nP + nF
         # For now we use boost directly, using n/N but assuming uncorrelated n and N, so the uncertainties are maximally wrong (but we might not use them)
-        
+
         eff_veto_boost2D,eff_veto = getEtaPtEff(n_veto_pass, n_veto_tot, getRoot=True, rootName=f"{d}_MC_eff_veto", rootTitle="P(veto | gen)")
         drawCorrelationPlot(eff_veto, xAxisName, yAxisName, f"MC veto efficiency",
                             f"{eff_veto.GetName()}", plotLabel="ForceTitle", outdir=outdir,
@@ -240,7 +240,7 @@ if __name__ == "__main__":
                  passCanvas=canvas1D, skipLumi=True, transparentLegend=True, onlyLineColor=True, useLineFirstHistogram=True, drawErrorAll=True,
                  yAxisExtendConstant=1.4)
 
-        
+
         resultDict[f"{d}_MC_eff_veto_etapt"] = eff_veto_boost2D
         resultDict[f"{d}_MC_eff_vetoplus_etapt"] = eff_vetoplus_boost2D
         resultDict[f"{d}_MC_eff_vetominus_etapt"] = eff_vetominus_boost2D
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     if len(postfix):
         postfix = "_" + postfix
 
-    resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})    
+    resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})
 
     outfile = outdir + f"vetoEfficienciesEtaPt{postfix}.pkl.lz4"
     logger.info(f"Going to store 2D histograms {resultDict.keys()} in file {outfile}")

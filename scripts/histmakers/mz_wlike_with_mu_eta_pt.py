@@ -59,7 +59,7 @@ if isTheoryAgnostic:
         raise ValueError("Option --genAbsYVbinEdges requires all positive values. Please check")
 
 args = parser.parse_args() # parse again or new defaults won't be propagated
-    
+
 if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 if args.validateVetoSF:
@@ -74,7 +74,7 @@ era = args.era
 
 datasets = getDatasets(maxFiles=args.maxFiles,
                        filt=args.filterProcs,
-                       excl=args.excludeProcs, 
+                       excl=args.excludeProcs,
                        nanoVersion="v9", base_path=args.dataPath,
                        extended = "msht20an3lo" not in args.pdfs,
                        era=era)
@@ -83,7 +83,7 @@ datasets = getDatasets(maxFiles=args.maxFiles,
 mass_min, mass_max = common.get_default_mz_window()
 
 # transverse boson mass cut
-mtw_min=args.mtCut 
+mtw_min=args.mtCut
 
 # custom template binning
 template_neta = int(args.eta[0])
@@ -127,11 +127,11 @@ if isUnfolding:
     max_pt_unfolding = template_maxpt-template_wpt
     npt_unfolding = args.genBins[0]-2
     unfolding_axes, unfolding_cols = differential.get_pt_eta_charge_axes(
-        npt_unfolding, 
-        min_pt_unfolding, 
-        max_pt_unfolding, 
-        args.genBins[1], 
-        flow_pt=True, 
+        npt_unfolding,
+        min_pt_unfolding,
+        max_pt_unfolding,
+        args.genBins[1],
+        flow_pt=True,
         flow_eta=isPoiAsNoi,
         add_out_of_acceptance_axis=isPoiAsNoi,
     )
@@ -164,7 +164,7 @@ qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_he
 if args.binnedScaleFactors:
     logger.info("Using binned scale factors and uncertainties")
     # add usePseudoSmoothing=True for tests with Asimov
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_binned.make_muon_efficiency_helpers_binned(filename = args.sfFile, era = era, max_pt = axis_pt.edges[-1], is_w_like = True) 
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_binned.make_muon_efficiency_helpers_binned(filename = args.sfFile, era = era, max_pt = axis_pt.edges[-1], is_w_like = True)
 else:
     logger.info("Using smoothed scale factors and uncertainties")
     # if validating veto SF will use the main SF only on triggering muon, so it needs the helper of the single lepton analysis, otherwise it will normally use the one for the Wlike Z
@@ -190,7 +190,7 @@ if args.validateVetoSF:
         pass
     # we don't store the veto SF for this version at the moment, I think, so I can't run this validation yet
     #    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
-        
+
 pileup_helper = pileup.make_pileup_helper(era = era)
 vertex_helper = vertex.make_vertex_helper(era = era)
 
@@ -250,7 +250,7 @@ def build_graph(df, dataset):
 
     if isUnfolding and isZ:
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
-        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta, 
+        cutsmap = {"pt_min" : template_minpt, "pt_max" : template_maxpt, "mtw_min" : args.mtCut, "abseta_max" : template_maxeta,
                    "mass_min" : mass_min, "mass_max" : mass_max}
 
         if hasattr(dataset, "out_of_acceptance"):
@@ -270,7 +270,7 @@ def build_graph(df, dataset):
 
             unfolding_tools.add_xnorm_histograms(results, df_xnorm, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
             if not isPoiAsNoi:
-                axes = [*nominal_axes, *unfolding_axes] 
+                axes = [*nominal_axes, *unfolding_axes]
                 cols = [*nominal_cols, *unfolding_cols]
 
     if isZ:
@@ -305,7 +305,7 @@ def build_graph(df, dataset):
 
         passIsoBoth = (args.muonIsolation[0] + args.muonIsolation[1] == 2)
         df = muon_selections.select_good_muons(df, template_minpt, template_maxpt, dataset.group, nMuons=2, use_trackerMuons=args.trackerMuons, use_isolation=passIsoBoth, isoBranch=isoBranch, isoThreshold=isoThreshold, requirePixelHits=args.requirePixelHits)
-        
+
         df = muon_selections.define_trigger_muons(df)
 
         # iso cut applied here, if requested, because it needs the definition of trigMuons and nonTrigMuons from muon_selections.define_trigger_muons
@@ -337,7 +337,7 @@ def build_graph(df, dataset):
             weight_expr = "weight_pu*L1PreFiringWeight_Muon_Nom*L1PreFiringWeight_ECAL_Nom"
 
         if not args.noVertexWeight:
-            weight_expr += "*weight_vtx"            
+            weight_expr += "*weight_vtx"
 
         muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
         columnsForSF = [f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF]
@@ -347,7 +347,7 @@ def build_graph(df, dataset):
         if not args.smooth3dsf:
             columnsForSF.remove("trigMuons_uT0")
             columnsForSF.remove("nonTrigMuons_uT0")
-            
+
         if not args.noScaleFactors:
             if args.validateVetoSF:
                 columnsForSF[:] = [x for x in columnsForSF if "nonTrigMuons" not in x]
@@ -382,10 +382,10 @@ def build_graph(df, dataset):
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
 
     results.append(df.HistoBoost("weight", [hist.axis.Regular(100, -2, 2)], ["nominal_weight"], storage=hist.storage.Double()))
-    
+
     if isZ and isTheoryAgnostic:
             df = theoryAgnostic_tools.define_helicity_weights(df,is_w_like=True)
-    
+
     if not args.noRecoil:
         leps_uncorr = ["Muon_pt[goodMuons][0]", "Muon_eta[goodMuons][0]", "Muon_phi[goodMuons][0]", "Muon_charge[goodMuons][0]", "Muon_pt[goodMuons][1]", "Muon_eta[goodMuons][1]", "Muon_phi[goodMuons][1]", "Muon_charge[goodMuons][1]"]
         leps_corr = ["trigMuons_pt0", "trigMuons_eta0", "trigMuons_phi0", "trigMuons_charge0", "nonTrigMuons_pt0", "nonTrigMuons_eta0", "nonTrigMuons_phi0", "nonTrigMuons_charge0"]
@@ -470,7 +470,7 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("trigMuons_vertexZ0_uncorr", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noPUandVtx"]))
         results.append(df.HistoBoost("trigMuons_vertexZ0_noVtx", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight_noVtx"]))
         results.append(df.HistoBoost("trigMuons_vertexZ0", [axis_vertexZ0, common.axis_charge], ["trigMuons_vertexZ0", "trigMuons_charge0", "nominal_weight"]))
-        
+
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
@@ -494,7 +494,7 @@ def build_graph(df, dataset):
         if isUnfolding and dataset.name == "ZmumuPostVFP":
             noiAsPoiHistName = Datagroups.histName("nominal", syst="yieldsUnfolding")
             logger.debug(f"Creating special histogram '{noiAsPoiHistName}' for unfolding to treat POIs as NOIs")
-            results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))     
+            results.append(df.HistoBoost(noiAsPoiHistName, [*nominal_axes, *unfolding_axes], [*nominal_cols, *unfolding_cols, "nominal_weight"]))
 
     if not args.noRecoil and args.recoilUnc:
         df = recoilHelper.add_recoil_unc_Z(df, results, dataset, cols, axes, "nominal")
@@ -503,7 +503,7 @@ def build_graph(df, dataset):
 
         df = syst_tools.add_muon_efficiency_unc_hists(results, df, muon_efficiency_helper_stat, muon_efficiency_helper_syst, axes, cols, what_analysis=thisAnalysis, singleMuonCollection="trigMuons", smooth3D=args.smooth3dsf)
         for es in common.muonEfficiency_altBkgSyst_effSteps:
-            df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols, 
+            df = syst_tools.add_muon_efficiency_unc_hists_altBkg(results, df, muon_efficiency_helper_syst_altBkg[es], axes, cols,
                                                                  singleMuonCollection="trigMuons", what_analysis=thisAnalysis, step=es)
         if args.validateVetoSF:
             df = syst_tools.add_muon_efficiency_veto_unc_hists(results, df, muon_efficiency_veto_helper_stat, muon_efficiency_veto_helper_syst, axes, cols, muons="nonTrigMuons")

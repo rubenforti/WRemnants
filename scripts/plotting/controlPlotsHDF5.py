@@ -23,11 +23,11 @@ parser.add_argument("--noRatio", action='store_true', help="Don't plot the ratio
 parser.add_argument("--noStack", action='store_true', help="Don't plot the individual processes")
 parser.add_argument("--processes", type=str, nargs='*', default=[], help="Select processes")
 parser.add_argument("--splitByProcess", action='store_true', help="Make a separate plot for each of the selected processes")
-parser.add_argument("--selectionAxes", type=str, nargs="*", default=["charge", "passIso", "passMT"], 
+parser.add_argument("--selectionAxes", type=str, nargs="*", default=["charge", "passIso", "passMT"],
     help="List of axes where for each bin a seperate plot is created")
-parser.add_argument("--select", type=int, nargs="*", default=[], 
+parser.add_argument("--select", type=int, nargs="*", default=[],
     help="Select specific bins of the selectionAxis e.g. '0 1' to select the first bin of the first axis and second bin of the second axis")
-parser.add_argument("--hists", type=str, nargs='*', default=None, 
+parser.add_argument("--hists", type=str, nargs='*', default=None,
     help="List of hists to plot; dash separated for unrolled hists")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--dataName", type=str, default="Data", help="Data name for plot labeling")
@@ -71,7 +71,7 @@ def make_plots(hists_proc, hist_data, *opts, **info):
         all_axes_names = all_axes_names[::-1]
 
     axes_combinations = all_axes_names[:]
-    # make lower dimensional combinations of axes 
+    # make lower dimensional combinations of axes
     for n in range(2, len(all_axes_names)+1):
         axes_combinations += [k for k in itertools.combinations(axes_combinations, n)]
 
@@ -82,14 +82,14 @@ def make_plots(hists_proc, hist_data, *opts, **info):
         if args.hists:
             if not any(set(axes_names) == set(h.split("-")) for h in args.hists):
                 continue
-        
+
         logger.info(f"Make plot(s) with axes {axes_names}")
 
         make_plot(hists_proc, hist_data, axes_names=axes_names, *opts, **info)
 
 
-def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names, 
-    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False, 
+def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
+    selections=None, selection_edges=None, channel="", colors=[], labels=[], procs=[], rlabel="1/Pred.", density=False,
 ):
     if args.processGrouping is not None:
         hists_proc, labels, colors, procs = styles.process_grouping(args.processGrouping, hists_proc, procs)
@@ -119,7 +119,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
         xlabel=styles.xlabels.get(axes_names[0], axes_names[0])
 
     if args.splitByProcess:
-        hists_pred = h_stack    
+        hists_pred = h_stack
     else:
         hists_pred = [hh.sumHists(h_stack)]
 
@@ -269,7 +269,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
                         label = f"{label} < {hi}"
 
                 ax1.text(0.05, 0.96-i*0.08, label, horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
-                    fontsize=20*args.scaleleg*scale)  
+                    fontsize=20*args.scaleleg*scale)
 
         if add_ratio:
             plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
@@ -278,7 +278,7 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
 
         if args.cmsDecor:
             lumi = float(f"{channel_info['lumi']:.3g}") if not density and args.dataName=="Data" else None
-            
+
         plot_tools.add_cms_decor(ax1, args.cmsDecor, data=hist_data is not None, lumi=lumi, loc=args.logoPos)
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
@@ -295,9 +295,9 @@ def make_plot(hists_proc, hist_data, hists_syst_up, hists_syst_dn, axes_names,
             outfile += f"_{args.postfix}"
         plot_tools.save_pdf_and_png(outdir, outfile)
 
-        # stack_yields = 
-        # unstacked_yields = 
-        plot_tools.write_index_and_log(outdir, outfile, 
+        # stack_yields =
+        # unstacked_yields =
+        plot_tools.write_index_and_log(outdir, outfile,
             # yield_tables={"Stacked processes" : stack_yields, "Unstacked processes" : unstacked_yields},
             analysis_meta_info={"setupCombine" : indata.metadata["meta_info"]},
             args=args,
@@ -336,7 +336,7 @@ for channel, channel_info in indata.channel_info.items():
         hist_data = None
     else:
         hist_data_tmp = debug.data_obs_hists[channel]
-        
+
         # poisson errors on data hist for correct errors in ratio plot
         hist_data = hist.Hist(*hist_data_tmp.axes, storage=hist.storage.Weight())
         hist_data.values(flow=True)[...] = hist_data_tmp.values(flow=True)

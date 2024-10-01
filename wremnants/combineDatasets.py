@@ -112,7 +112,7 @@ def processDictLowPileup(signalPtSplit=[0, 9, 20, 37, 60, 89, r"$\infty$"], remo
     return processes
 
 # TODO: Refactor these functions to not duplicate code
-def fillLowPileupProcDictFromRoot(procDict, rtfile, syst, label="", obs="mt_reco_pf", 
+def fillLowPileupProcDictFromRoot(procDict, rtfile, syst, label="", obs="mt_reco_pf",
         axis_names=["qTreco", "iso", "charge", "mt"], makeVariable={}, processes=[]):
     if label == "":
         label = syst

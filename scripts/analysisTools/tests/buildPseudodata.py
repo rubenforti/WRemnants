@@ -7,7 +7,7 @@ import math
 import os
 import pickle
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -99,8 +99,8 @@ if __name__ == "__main__":
                 corr.Add(offsetHist)
             fakeCorrHist["minus"] = ROOT.wrem.projectTH2FromTH3(corr, "fakeCorrHist_minus", 1, 1)
             fakeCorrHist["plus"]  = ROOT.wrem.projectTH2FromTH3(corr, "fakeCorrHist_plus",  2, 2)
-        f.Close()                                                                        
-        
+        f.Close()
+
     charges = ["plus", "minus"]
     pseudodataHist = {x: None for x in charges}
     for k in pseudodataMaker.keys():
@@ -148,7 +148,7 @@ if __name__ == "__main__":
             else:
                 print("Error: operation {finalhistCorr['ops']} not implemented. Please check")
                 quit()
-        
+
     for c in charges:
         pseudodataHist[c].SetTitle(f"Pseudodata for charge {c}")
 

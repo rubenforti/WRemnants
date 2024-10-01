@@ -33,7 +33,7 @@ def parseBoostHist(groups, histCfg, procName, rebin=1):
 
     axis = histCfg['axis']
     hName = histCfg['name']
-    
+
     label = "%s_%s" % (hName, procName)
     groups.setHists(hName, "", label=label, procsToRead=[procName], selectSignal=False)
     bhist = groups.groups[procName][label]
@@ -44,7 +44,7 @@ def parseBoostHist(groups, histCfg, procName, rebin=1):
 
     print("Get histogram %s, yield=%.2f" % (label, rhist.Integral()))
     return rhist
- 
+
 
 def prepareDir(outDir, remove=True):
     if os.path.exists(outDir) and os.path.isdir(outDir) and remove: shutil.rmtree(outDir)
@@ -67,15 +67,15 @@ def parseProc(groups, histCfg, procName, syst="", rebin=1):
     axis = histCfg['axis']
     hNames = histCfg['name'].split(",")
 
-    
+
     bhist = None
     for hName in hNames:
-        
+
         bhist = groups.readProc(hName, procName, axis=axis)
         if bhist == None: continue
         label = "%s_%s" % (hName, procName)
         break
-        
+
     print(bhist)
     rhist = narf.hist_to_root(bhist)
     rhist.Rebin(rebin)
@@ -117,7 +117,7 @@ def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrat
     axes = [ax.name for ax in bhist.axes]
     if "eta" in axes and "pt" in axes:
         bhist = bhist[{"eta" : s[::hist.sum], "pt" : s[::hist.sum]}]
-    
+
     for iAx in integrateAxes:
         bhist = bhist[{iAx : s[::hist.sum]}]
 

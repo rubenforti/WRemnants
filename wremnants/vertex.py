@@ -43,7 +43,7 @@ def make_vertex_helper(era = None, filename = None):
         for ix in range(1, mchist.GetNbinsX() +1):
             mchist.SetBinContent(ix, lastPUbin, mchist.GetBinContent(ix, lastPUbin-1))
             mchist.SetBinError(  ix, lastPUbin, mchist.GetBinError(  ix, lastPUbin-1))
-            
+
     helper = ROOT.wrem.vertex_helper(mchist)
 
     return helper

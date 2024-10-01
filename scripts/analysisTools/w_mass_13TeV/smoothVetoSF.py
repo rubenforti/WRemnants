@@ -60,8 +60,8 @@ def getHistWithStatUncBand(hsf):
     # get half of the bins, for Up var (the others are the down var, but they are symmetric)
     hstatVar = hstatVar[{"nomi-statUpDown-syst": s[0:int(nBins/2)]}]
     nBins = hstatVar.axes["nomi-statUpDown-syst"].size
-    logger.debug(f"hstatVar now has {nBins} stat vars on the nomi-statUpDown-syst axis")        
-    henvStatSquare = hh.rssHists(hstatVar, "nomi-statUpDown-syst", hnom=hnomi, returnDiffSquare=True) 
+    logger.debug(f"hstatVar now has {nBins} stat vars on the nomi-statUpDown-syst axis")
+    henvStatSquare = hh.rssHists(hstatVar, "nomi-statUpDown-syst", hnom=hnomi, returnDiffSquare=True)
 
     hnomiWithBand = hnomi.copy()
     hnomiWithBand.variances(flow=False)[...] = henvStatSquare.values(flow=False)[...]
@@ -80,7 +80,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
     canvas1D.SetLeftMargin(leftMargin)
     canvas1D.SetBottomMargin(bottomMargin)
     canvas1D.SetRightMargin(rightMargin)
-    canvas1D.cd()                           
+    canvas1D.cd()
 
     setTDRStyle()
 
@@ -89,7 +89,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
     hptSyst = {}
     createPlotDirAndCopyPhp(outputfolder, eoscp=args.eoscp)
     logger.debug(hnomi.axes[0].edges)
-    
+
     for ieta in range(netaBins):
         histo = narf.hist_to_root(hnomi[{0: s[ieta]}])
         histo.SetName(f"hpt_ieta{ieta}_{charge}")
@@ -114,7 +114,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
             hptSyst[step].SetLineColor(stepColorsSyst[i])
             hptSyst[step].SetLineWidth(2)
             hptSyst[step].SetStats(0)
-            
+
         histlist = [hpt[st] for st in steps]
         miny,maxy = getMinMaxMultiHisto([histo, *histlist], sumError=True)
         maxy = miny + 1.3 * (maxy - miny)
@@ -137,7 +137,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
         leg.AddEntry(histo, "Nominal veto", "L")
         for i, step in enumerate(steps):
             hpt[step].Draw("E4SAME")
-            leg.AddEntry(hpt[step], f"Stat. unc. {step}", "F")        
+            leg.AddEntry(hpt[step], f"Stat. unc. {step}", "F")
         histo.Draw("HIST L SAME")
         leg.Draw("SAME")
         canvas1D.RedrawAxis("sameaxis")
@@ -151,7 +151,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
         histo.GetYaxis().SetRangeUser(miny, maxy)
         for i, step in enumerate(steps):
             hptSyst[step].Draw("HIST LSAME")
-            leg2.AddEntry(hptSyst[step], f"Syst. unc. {step}", "L")        
+            leg2.AddEntry(hptSyst[step], f"Syst. unc. {step}", "L")
         histo.Draw("HIST L SAME")
         leg2.Draw("SAME")
         canvas1D.RedrawAxis("sameaxis")
@@ -160,7 +160,7 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
 
 
 if __name__ == "__main__":
-            
+
     parser = common_plot_parser()
     #parser.add_argument('inputfile',  type=str, nargs=1, help='input root file with TH2')
     parser.add_argument('outdir', type=str, nargs=1, help='output directory to save things')
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     ROOT.TH1.SetDefaultSumw2()
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
     adjustSettings_CMS_lumi()
-    
+
     charge = args.charge
     vetoType = args.vetoType
     outdir_original = f"{args.outdir[0]}/{vetoType}_{charge}/"
@@ -241,8 +241,8 @@ if __name__ == "__main__":
         nomiprodWithStatUnc[step] = getHistWithStatUncBand(vetoprodSF[step])
 
     # red, blue, orange
-    stepColors = [ROOT.TColor.GetColor("#e42536"), ROOT.TColor.GetColor("#5790fc"), ROOT.TColor.GetColor("#f89c20")] 
-    stepColorsSyst = [ROOT.kAzure+2, ROOT.kGreen+2, ROOT.kGray+3] 
+    stepColors = [ROOT.TColor.GetColor("#e42536"), ROOT.TColor.GetColor("#5790fc"), ROOT.TColor.GetColor("#f89c20")]
+    stepColorsSyst = [ROOT.kAzure+2, ROOT.kGreen+2, ROOT.kGray+3]
 
     outdir1D = outdir + "/pt1D/"
     makePlots1D(nomiprod, nomiprodWithStatUnc, hsyst, outdir1D, args, tag="veto")
@@ -326,7 +326,7 @@ if __name__ == "__main__":
         resultDict[f"antiVetoSF_{vetoType}_{step}_{charge}"] = antivetoprodSF[step]
     resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})
 
-    outfile = f"{outdir}/allVetoSF_{vetoType}_{charge}.pkl.lz4" 
+    outfile = f"{outdir}/allVetoSF_{vetoType}_{charge}.pkl.lz4"
     logger.info(f"Going to store histograms in file {outfile}")
     logger.info(f"All keys: {resultDict.keys()}")
     time0 = time.time()

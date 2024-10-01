@@ -117,7 +117,7 @@ class Datagroups(object):
     def addGroup(self, name, **kwargs):
         group = Datagroup(name, **kwargs)
         self.groups[name] = group
-        
+
     def deleteGroups(self, names):
         for n in names:
             self.deleteGroup(n)
@@ -153,7 +153,7 @@ class Datagroups(object):
             self.copyGroup(groups_to_merge[0], new_name)
         self.groups[new_name].label = styles.process_labels.get(new_name, new_name)
         self.groups[new_name].color = styles.process_colors.get(new_name, "grey")
-        for group in groups_to_merge[1:]:            
+        for group in groups_to_merge[1:]:
             self.groups[new_name].addMembers(self.groups[group].members, member_operations=self.groups[group].memberOp)
         self.deleteGroups([g for g in groups_to_merge if g != new_name])
 
@@ -195,7 +195,7 @@ class Datagroups(object):
             logger.info(f"Datagroups.excludeGroups: filtered out following groups: {diff}")
 
         self.groups = {key: self.groups[key] for key in new_groupnames}
-        
+
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
@@ -311,7 +311,7 @@ class Datagroups(object):
             meta_info = self.getMetaInfo()
             return meta_info["command"]
 
-    # remove a histogram that is loaded into memory from a proxy object 
+    # remove a histogram that is loaded into memory from a proxy object
     def release_results(self, histname):
         for result in self.results.values():
             if "output" not in result:
@@ -325,9 +325,9 @@ class Datagroups(object):
     # pickle[procName]["output"][baseName] where
     ## procName are grouped into datagroups
     ## baseName takes values such as "nominal"
-    def loadHistsForDatagroups(self, 
-        baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
-        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
+    def loadHistsForDatagroups(self,
+        baseName, syst, procsToRead=None, label=None, nominalIfMissing=True,
+        applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={},
         scaleToNewLumi=1, lumiScaleVarianceLinearly=[], excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
@@ -510,7 +510,7 @@ class Datagroups(object):
                 return [x for x in listOfNames if x in matches]
             else:
                 return list(filter(lambda x: any([re.search(expr, x) for expr in matches]), listOfNames))
-              
+
     def getProcNames(self, to_expand=[], exclude_group=[]):
         procs = []
         if not to_expand:
@@ -545,7 +545,7 @@ class Datagroups(object):
     def resultsDict(self):
         return self.results
 
-    def addSummedProc(self, refname, name, label=None, color=None, exclude=["Data"], relabel=None, 
+    def addSummedProc(self, refname, name, label=None, color=None, exclude=["Data"], relabel=None,
             procsToRead=None, reload=False, rename=None, action=None, actionArgs={}, actionRequiresRef=False, **kwargs):
         if reload:
             self.loadHistsForDatagroups(refname, syst=name, excludeProcs=exclude,
@@ -574,7 +574,7 @@ class Datagroups(object):
         histname = refname if not relabel else relabel
         self.groups[rename].hists[histname] = hh.sumHists(tosum)
 
-    def setSelectOp(self, op, processes=None): 
+    def setSelectOp(self, op, processes=None):
         if processes == None:
             procs = self.groups
         else:
@@ -619,8 +619,8 @@ class Datagroups(object):
                 for idx, sign in enumerate(["minus", "plus"]):
                     # gen level bins, split by charge
                     unfolding_hist = self.getHistForUnfolding(
-                        group_name, 
-                        member_filter=lambda x: x.name.startswith(f"W{sign}") and not x.name.endswith("OOA"), 
+                        group_name,
+                        member_filter=lambda x: x.name.startswith(f"W{sign}") and not x.name.endswith("OOA"),
                         histToReadAxes=histToReadAxes,
                     )
                     if unfolding_hist is None:
@@ -651,7 +651,7 @@ class Datagroups(object):
             raise RuntimeError(f"Base group {group_name} not found in groups {self.groups.keys()}!")
         base_members = self.groups[group_name].members[:]
         if member_filter is not None:
-            base_members = [m for m in filter(lambda x, f=member_filter: f(x), base_members)]            
+            base_members = [m for m in filter(lambda x, f=member_filter: f(x), base_members)]
 
         if histToReadAxes not in self.results[base_members[0].name]["output"]:
             logger.warning(f"Results for member {base_members[0].name} does not include histogram {histToReadAxes}. Found {self.results[base_members[0].name]['output'].keys()}")
@@ -675,7 +675,7 @@ class Datagroups(object):
                 poi_name += f"_{var}{idx_str}"
             else:
                 poi_names.append(poi_name)
-        
+
         return poi_names
 
     def defineSignalBinsUnfolding(self, group_name, new_name=None, member_filter=None, histToReadAxes="xnorm", axesNamesToRead=None):
@@ -691,7 +691,7 @@ class Datagroups(object):
         gen_bin_indices = self.getGenBinIndices(axesToRead)
 
         for indices, proc_name in zip(
-            itertools.product(*gen_bin_indices), 
+            itertools.product(*gen_bin_indices),
             self.getPOINames(gen_bin_indices, axesNamesToRead, base_name=group_name if new_name is None else new_name)
         ):
             logger.debug(f"Now at {proc_name} with indices {indices}")
@@ -733,14 +733,14 @@ class Datagroups(object):
             else:
                 return (h.sum().value, math.sqrt(h.sum().variance))
 
-        df = pd.DataFrame([(k, *sum_and_unc(action(v.hists[histName]))) for k,v in self.groups.items() if k in procs], 
+        df = pd.DataFrame([(k, *sum_and_unc(action(v.hists[histName]))) for k,v in self.groups.items() if k in procs],
                 columns=["Process", "Yield", "Uncertainty"])
 
         if norm_proc and norm_proc in self.groups:
             hist = action(self.groups[norm_proc].hists[histName])
             denom = hist.sum() if not hasattr(hist.sum(), "value") else hist.sum().value
             df[f"Ratio to {norm_proc} (%)"] = df["Yield"]/denom*100
-            
+
         return df
 
     def set_rebin_action(self, axes, ax_lim=[], ax_rebin=[], ax_absval=[], rebin_before_selection=False, rename=True):
@@ -774,7 +774,7 @@ class Datagroups(object):
         if syst[:len(baseName)] == baseName:
             return syst
         return "_".join([baseName,syst])
-    
+
     @staticmethod
     def analysisLabel(filename):
         if filename not in Datagroups.mode_map:

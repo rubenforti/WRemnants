@@ -26,7 +26,7 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
     # This is not a physically meaningful configuration for a real analysis,
     # and it should be used only for dedicated studies with Asimov when the original version makes the fit unstable.
     # This can happen because of the fakes and antiisolation SF in the W analysis (no issue is expected for Wlike)
-    
+
     eradict = { "2016PreVFP" : "BtoF",
                 "2016PostVFP" : "GtoH" }
     eratag = eradict[era]
@@ -41,17 +41,17 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
     allEff_types = ["reco", "tracking", "idip", "trigger"] + isoEff_types
     axis_allEff_type = hist.axis.StrCategory(allEff_types, name = "allEff_type")
     axis_nom_syst = hist.axis.Integer(0, 2, underflow = False, overflow =False, name = "nom-syst") # only one syst for now (and the nominal in the first bin)
-    
+
     charges = { -1. : "minus", 1. : "plus" }
     chargeDependentSteps = common.muonEfficiency_chargeDependentSteps
-    
+
     fin = ROOT.TFile.Open(filename)
     if fin is None or fin.IsZombie():
         print(f"Error: file {filename} was not opened correctly")
         quit()
 
     histNameTag = "smoothWithOriginalPtBins" if usePseudoSmoothing else "original"
-    histAltNameTag = "originalDataAltSig" 
+    histAltNameTag = "originalDataAltSig"
 
     nomiAltTypes = {0: histNameTag,
                     1: histAltNameTag}
@@ -97,11 +97,11 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
         effSyst_manager[effSystKey]["boostHist"].view(flow=True)[axis_eta_eff.extent-1, ...] = effSyst_manager[effSystKey]["boostHist"].view(flow=True)[axis_eta_eff.extent-2, ...]
         effSyst_manager[effSystKey]["boostHist"].view(flow=True)[:, 0, ...] = effSyst_manager[effSystKey]["boostHist"].view(flow=True)[:, 1, ...]
         effSyst_manager[effSystKey]["boostHist"].view(flow=True)[:, axis_pt_eff.extent-1, ...] = effSyst_manager[effSystKey]["boostHist"].view(flow=True)[:, axis_pt_eff.extent-2, ...]
-    
+
     sf_reco_pyroot = narf.hist_to_pyroot_boost(effSyst_manager["sf_reco"]["boostHist"])
     sf_tracking_pyroot = narf.hist_to_pyroot_boost(effSyst_manager["sf_tracking"]["boostHist"])
     sf_other_pyroot = narf.hist_to_pyroot_boost(effSyst_manager["sf_other"]["boostHist"])
-    
+
     filenames = ROOT.std.vector('string')() #order is isolation, triggerminus, triggerplus
     histonames = ROOT.std.vector('string')()
     isolation3dfilename = f"{data_dir}/muonSF/isolation3DSFUT.root"
@@ -116,7 +116,7 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
     histonames.push_back(triggerminus3dhistoname)
     filenames.push_back(triggerplus3dfilename)
     histonames.push_back(triggerplus3dhistoname)
-    
+
     helper = ROOT.wrem_vqt_real.muon_efficiency_binned_helper[str(is_w_like).lower(),
                                                               type(sf_other_pyroot),
                                                               type(sf_tracking_pyroot),
@@ -150,7 +150,7 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
 
 
     ##############
-    ## now the EFFSTAT    
+    ## now the EFFSTAT
     effStat_manager = {"sf_reco": {"nPtBins" : None,
                                    "nCharges" : None,
                                    "axisLabels" : ["reco"],
@@ -197,7 +197,7 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
                     chargeTag = charge_tag
                 else:
                     axis_charge_def = axis_charge_inclusive
-                    chargeTag = "both"                    
+                    chargeTag = "both"
                     if ic: continue # must continue after having set the charge axis
                 hist_name = f"{histPrefix}_{histNameTag}_{eratag}_{eff_type}_{chargeTag}"
                 hist_root = fin.Get(hist_name)
@@ -220,9 +220,9 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
                                                                          axis_eff_type,
                                                                          name = effStatKey,
                                                                          storage = hist.storage.Weight())
-                    
+
                 effStat_manager[effStatKey]["boostHist"].view(flow=True)[:, :, axis_charge_def.index(charge), axis_eff_type.index(eff_type)] = hist_hist.view(flow=True)[:,:]
-                
+
         # set overflow and underflow equal to adjacent bins
         effStat_manager[effStatKey]["boostHist"].view(flow=True)[0, ...] = effStat_manager[effStatKey]["boostHist"].view(flow=True)[1, ...]
         effStat_manager[effStatKey]["boostHist"].view(flow=True)[axis_eta_eff.extent-1, ...] = effStat_manager[effStatKey]["boostHist"].view(flow=True)[axis_eta_eff.extent-2, ...]
@@ -231,7 +231,7 @@ def make_muon_efficiency_helpers_binned_vqt_real(filename = data_dir + "/muonSF/
 
         netabins = axis_eta_eff.size
         #originalTnpPtBins = [24., 26., 28., 30., 32., 34., 36., 38., 40., 42., 44., 47., 50., 55.0, 60., 65.]
-        # this works because we are using the histogram after smoothing but with the original TnP pt binning 
+        # this works because we are using the histogram after smoothing but with the original TnP pt binning
         nptbins = np.count_nonzero(axis_pt_eff.edges < max_pt) if "tracking" not in effStatKey else axis_pt_eff.size
         logging.info(f"Using {nptbins} pt bins for {effStatKey}")
         ncharges = effStat_manager[effStatKey]["nCharges"]

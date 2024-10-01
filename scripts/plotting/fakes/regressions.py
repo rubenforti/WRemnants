@@ -39,13 +39,13 @@ def plot_chi2(chi2, ndf, suffix=""):
     colors = mpl.colormaps["tab10"]
 
     fig, ax1, ax2 = plot_tools.figureWithRatio(
-        h, ylabel="Entries", xlabel="$\chi^2$", 
-        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False, 
+        h, ylabel="Entries", xlabel="$\chi^2$",
+        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False,
         rrange=[0.5, 1.5], automatic_scale=False,
         rlabel="1/chi2")
 
     fontsize = ax1.xaxis.label.get_size()
-    
+
     n, bins, _ = ax1.hist(chi2_flat, bins=50, range=xlim, color=colors(0), label="Entries", histtype="step")
 
     ax1.plot(x_chi2, y_chi2, color='red', label=f"$\chi^2({ndf})$")
@@ -74,7 +74,7 @@ def plot_chi2(chi2, ndf, suffix=""):
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)      
+    plot_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 def plot_pvalues(chi2, ndf, order=1, suffix=""):
@@ -100,19 +100,19 @@ def plot_pvalues(chi2, ndf, order=1, suffix=""):
     colors = mpl.colormaps["tab10"]
 
     fig, ax1, = plot_tools.figure(
-        h, ylabel="Frequency", xlabel="Probablility", 
-        cms_label=args.cmsDecor, xlim=xlim, ylim=[0.0,2.5], logy=False, 
+        h, ylabel="Frequency", xlabel="Probablility",
+        cms_label=args.cmsDecor, xlim=xlim, ylim=[0.0,2.5], logy=False,
         automatic_scale=False,
         )
 
     fontsize = ax1.xaxis.label.get_size()
-    
+
     nEntries, bins, = np.histogram(pvalues, bins=20, density=False, range=xlim)
 
     bincenters = bins[:-1] + (bins[1:]-bins[:-1])/2.
     y = nEntries/sum(nEntries)*20
     y_err = np.sqrt(nEntries)/sum(nEntries)*20
-    
+
     ax1.errorbar(bincenters, y, yerr=y_err, color="black", linestyle="", marker="o",label="Entries")
 
     ax1.plot(xlim, [1,1], color='red', label=f"Expected")
@@ -135,7 +135,7 @@ def plot_pvalues(chi2, ndf, order=1, suffix=""):
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)      
+    plot_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 
@@ -152,13 +152,13 @@ def plot_params(params, suffix=""):
     colors = mpl.colormaps["tab10"]
 
     fig, ax1, ax2 = plot_tools.figureWithRatio(
-        h, ylabel="Entries", xlabel="Parameter value", 
-        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False, 
+        h, ylabel="Entries", xlabel="Parameter value",
+        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False,
         rrange=[0.5, 1.5], automatic_scale=False,
         rlabel="1")
 
     fontsize = ax1.xaxis.label.get_size()
-    
+
     n, bins, _ = ax1.hist(params, bins=50, range=xlim, color=colors(0), label="Entries", histtype="step")
 
     ax2.plot(xlim, [1,1], marker="", linestyle='-', color="k")
@@ -178,7 +178,7 @@ def plot_params(params, suffix=""):
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)      
+    plot_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 def plot_diagnostics_extendedABCD(
@@ -193,11 +193,11 @@ def plot_diagnostics_extendedABCD(
     flow=True
 
     logger.info("Make full fake prediction w/o rebinning")
-    selector = sel.FakeSelector1DExtendedABCD(h, 
-        fakerate_axes=fakerate_axes, 
-        smoothing_order_spectrum=smoothing_order_spectrum, 
-        smoothing_order_fakerate=smoothing_order_fakerate, 
-        smoothing_mode=smoothing_mode, 
+    selector = sel.FakeSelector1DExtendedABCD(h,
+        fakerate_axes=fakerate_axes,
+        smoothing_order_spectrum=smoothing_order_spectrum,
+        smoothing_order_fakerate=smoothing_order_fakerate,
+        smoothing_mode=smoothing_mode,
         # throw_toys="normal",
         )
 
@@ -244,7 +244,7 @@ def plot_diagnostics_extendedABCD(
         slices[smoothidx] = smoothslice
 
         sval = sval[*slices]
-        svar = svar[*slices]       
+        svar = svar[*slices]
 
         xwidth = h.axes[selector.smoothing_axis_name].widths
 
@@ -254,7 +254,7 @@ def plot_diagnostics_extendedABCD(
         sval *= 1./xwidth
         svar *= 1./xwidth**2
 
-        goodbin = (sval > 0.) & (svar > 0.) 
+        goodbin = (sval > 0.) & (svar > 0.)
         goodbin = goodbin & ~((sval < 1.) & (svar/sval**2 <= 1.)) # exclude bins with 0 data entries but negative prompt MC subtraction
         if goodbin.size-np.sum(goodbin) > 0:
             logger.warning(f"Found {goodbin.size-np.sum(goodbin)} of {goodbin.size} bins with 0 or negative bin content, those will be set to 0 and a large error")
@@ -286,7 +286,7 @@ def plot_diagnostics_extendedABCD(
         plot_pvalues(chi2, ndf, order=smoothing_order_spectrum)
 
         for idx_region, region in enumerate(['Ax', 'Bx', 'A', 'B', 'C']):
-            plot_pvalues(chi2[..., idx_region], ndf, order=smoothing_order_spectrum, suffix=f"region{region}") 
+            plot_pvalues(chi2[..., idx_region], ndf, order=smoothing_order_spectrum, suffix=f"region{region}")
 
         chi2_cmax = chi2[..., -2].flatten()
 
@@ -318,7 +318,7 @@ def plot_diagnostics_extendedABCD(
             # performing a nnls to enforce monotonicity for the signal region (using generalized least squares)
             Y = regressor.params
             W = np.linalg.inv(regressor.cov.reshape(-1,*regressor.cov.shape[-2:]))
-            W = W.reshape((*regressor.cov.shape[:-2],*W.shape[-2:])) 
+            W = W.reshape((*regressor.cov.shape[:-2],*W.shape[-2:]))
             WY = np.einsum('...ij,...j->...i', W, Y)
             # the design matrix X is just a 1xn unity matrix and can thus be ignored
             XTWY = WY
@@ -374,8 +374,8 @@ def plot_diagnostics_extendedABCD(
 
         # smoothing axis must be last
         chi2, ndf = reg.compute_chi2(
-            np.moveaxis(y, 1,-1), 
-            yRebin_pred, 
+            np.moveaxis(y, 1,-1),
+            yRebin_pred,
             np.moveaxis(w, 1,-1),
             nparams=regressor.params.shape[-1])
 
@@ -393,7 +393,7 @@ def plot_diagnostics_extendedABCD(
     x_centers = x_edges[:-1]+x_widths
 
     for idx_charge, charge_bins in enumerate(h.axes["charge"]):
-        logger.info(f"Now at charge bin {idx_charge}")            
+        logger.info(f"Now at charge bin {idx_charge}")
         for idx_eta, eta_bins in enumerate(h.axes["eta"]):
             logger.info(f"Now at eta bin {idx_eta}")
             for idx_region, region in enumerate(regions):
@@ -443,10 +443,10 @@ def plot_diagnostics_extendedABCD(
                 yy_err[yy_err==np.inf] = yrange*2
 
                 fig, ax1, ax2 = plot_tools.figureWithRatio(
-                    h, ylabel="log(Events)" if region !="FR" else "Events", 
-                    xlabel=styles.xlabels.get(smoothing_axis_name,smoothing_axis_name), 
-                    cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy, 
-                    rrange=args.rrange if region != "D" else [0.94, 1.06], 
+                    h, ylabel="log(Events)" if region !="FR" else "Events",
+                    xlabel=styles.xlabels.get(smoothing_axis_name,smoothing_axis_name),
+                    cms_label=args.cmsDecor, xlim=xlim, ylim=ylim, logy=logy,
+                    rrange=args.rrange if region != "D" else [0.94, 1.06],
                     rlabel="pulls" if region not in ["D","FR"] else "var/nominal" if region =="D" else "1/binned",
                     # rlabel="1/nominal",
                     )

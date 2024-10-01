@@ -6,7 +6,7 @@ import math
 import os
 import pickle
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -50,9 +50,9 @@ if __name__ == "__main__":
     parser.add_argument(     '--invertPalette', dest='invertePalette' , default=False , action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
     args = parser.parse_args()
-    
+
     logger = common.setup_color_logger(os.path.basename(__file__), args.verbose)
-    
+
     ROOT.TH1.SetDefaultSumw2()
 
     if args.charge == "both":
@@ -76,8 +76,8 @@ if __name__ == "__main__":
     groups.loadHistsForDatagroups(inputHistName, syst="", procsToRead=datasetsAll, applySelection=False)
     histInfo = groups.getDatagroups()
     rootHists = {d: None for d in datasetsAll}
-    
-    adjustSettings_CMS_lumi()    
+
+    adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas","",800,800)
     canvas1D = ROOT.TCanvas("canvas1D","",800,800)
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         fakeRateVsMt = {d : None for d in datasetsAll}
         hAbsDxybs1D = {d : None for d in datasetsAll}
-        
+
         for d in datasetsAll:
             logger.info(f"     Process {d}")
             hnarf = histInfo[d].hists[inputHistName]
@@ -102,7 +102,7 @@ if __name__ == "__main__":
             histo_fakes.GetAxis(3).SetRange(chargeBin, chargeBin)
             # integrate all iso axis
             histo_fakes.GetAxis(1).SetRange(1, histo_fakes.GetAxis(1).FindFixBin(0.15-0.0001)) # pass isolation
-            
+
             # now get a TH2
             h2mtAbsDxybs = histo_fakes.Projection(2, 0, "E")
             h2mtAbsDxybs.SetName(f"mtAbsDxybs_{d}")
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
             if d != "Fake":
                 hAbsDxybs1D[d] = h2mtAbsDxybs.ProjectionY(f"absDxybs_{d}", 1, 1+h2mtAbsDxybs.GetNbinsX(), "e")
-                
+
             drawCorrelationPlot(h2mtAbsDxybs,
                                 xAxisName,
                                 yAxisName,

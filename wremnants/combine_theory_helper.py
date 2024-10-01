@@ -20,7 +20,7 @@ class TheoryHelper(object):
         for group in toCheck:
             if group not in card_tool.procGroups:
                 raise ValueError(f"Must define '{group}' procGroup in CardTool for theory uncertainties")
-        
+
         self.card_tool = card_tool
         corr_hists = input_tools.args_from_metadata(self.card_tool, "theoryCorr")
         self.corr_hist_name = (corr_hists[0]+"Corr") if corr_hists else None
@@ -42,11 +42,11 @@ class TheoryHelper(object):
         if not self.card_tool.procGroups[sample_group]:
             logger.warning(f"Sample group {sample_group} is empty")
 
-        return self.card_tool.procGroups[sample_group][0][0] 
+        return self.card_tool.procGroups[sample_group][0][0]
 
     def configure(self, resumUnc, np_model,
             transitionUnc = True,
-            propagate_to_fakes=True, 
+            propagate_to_fakes=True,
             tnp_scale=1.,
             mirror_tnp=True,
             as_from_corr=True,
@@ -116,12 +116,12 @@ class TheoryHelper(object):
             ]
 
             self.tnp_nuisances = self.card_tool.match_str_axis_entries(self.corr_hist.axes[self.syst_ax], self.tnp_nuisance_names)
-                                    
+
             if not self.tnp_nuisances:
                 raise ValueError(f"Did not find TNP uncertainties in hist {self.corr_hist_name}")
 
         self.resumUnc = resumUnc
-        
+
     def add_resum_unc(self, scale=1):
         if not self.resumUnc:
             logger.warning("No resummation uncertainty will be applied!")
@@ -173,7 +173,7 @@ class TheoryHelper(object):
         if not sample_group or sample_group not in self.card_tool.procGroups:
             logger.warning(f"Skipping QCD scale syst '{self.minnlo_unc}' for group '{sample_group}.' No process to apply it to")
             return
-            
+
         helicity = "Helicity" in self.minnlo_unc
         pt_binned = "Pt" in self.minnlo_unc
         scale_hist = "qcdScale" if not (helicity or use_hel_hist) else "qcdScaleByHelicity"
@@ -246,7 +246,7 @@ class TheoryHelper(object):
             if pt_ax == "ptVgenAlt":
                 preop_args["gen_obs"] = ["ptVgen"]
 
-        # Skip MiNNLO unc. 
+        # Skip MiNNLO unc.
         if self.resumUnc and not (pt_binned or helicity):
             logger.warning("Without pT or helicity splitting, only the SCETlib uncertainty will be applied!")
         else:
@@ -366,7 +366,7 @@ class TheoryHelper(object):
             self.mirror_tnp = True
 
         central_var = syst_ax[0]
-        
+
         tnp_magnitudes = ["2.5", "0.5", "1."]
         name_replace = [(f"-{x}", "Down") for x in tnp_magnitudes]+[(x, "Up") for x in tnp_magnitudes]
 
@@ -374,7 +374,7 @@ class TheoryHelper(object):
         processesZ = [] if self.skipFromSignal else ['single_v_samples']
         processesW = ['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples']
         processes = processesW if self.label=="W" else processesZ
-        
+
         self.card_tool.addSystematic(name=self.corr_hist_name,
             processes=processes,
             group="resumTNP",
@@ -411,7 +411,7 @@ class TheoryHelper(object):
 
         if model not in TheoryHelper.valid_np_models:
             raise ValueError(f"Model choice {model} is not a supported model. Valid choices are {TheoryHelper.valid_np_models}")
-    
+
         signal_samples = self.card_tool.procGroups['signal_samples']
         self.np_hist_name = self.corr_hist_name.replace("Corr", "FlavDepNP")
         self.np_hist = self.card_tool.getHistsForProcAndSyst(signal_samples[0], self.np_hist_name)
@@ -429,7 +429,7 @@ class TheoryHelper(object):
 
     def add_gamma_np_uncertainties(self):
         # Since "c_nu = 0.1 is the central value, it doesn't show up in the name"
-        gamma_vals = list(filter(lambda x: x in self.corr_hist.axes[self.syst_ax], 
+        gamma_vals = list(filter(lambda x: x in self.corr_hist.axes[self.syst_ax],
             ["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "c_nu-0.25", "c_nu-0.25"]))
 
         if len(gamma_vals) != 2:
@@ -589,7 +589,7 @@ class TheoryHelper(object):
         pdfName = pdfInfo["name"]
         scale = scale if scale != -1. else pdfInfo["inflationFactor"]
         pdf_hist = pdfName
-        pdf_corr_hist = f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr" 
+        pdf_corr_hist = f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
         symmetrize = "quadratic"
 
         if self.pdf_from_corr:
@@ -619,12 +619,12 @@ class TheoryHelper(object):
             systAxes=[pdf_ax],
         )
         if self.pdf_from_corr:
-            self.card_tool.addSystematic(pdf_hist, 
+            self.card_tool.addSystematic(pdf_hist,
                 outNames=[""]+theory_tools.pdfNamesAsymHessian(pdfInfo['entries'], pdfset=pdfName)[1:],
                 **pdf_args
             )
         else:
-            self.card_tool.addSystematic(pdf_hist, 
+            self.card_tool.addSystematic(pdf_hist,
                 skipEntries=[{pdf_ax : "^pdf0[a-z]*"}],
                 **pdf_args
             )
@@ -711,7 +711,7 @@ class TheoryHelper(object):
                 raise ValueError("Must include the msht20mb(c)range pdf sets to take the mass variation from MiNNLO")
         elif not ("msht20" in pdfs[0] and "scetlib_dyturboMSHT20mbrange" in theory_corrs and "scetlib_dyturboMSHT20mcrange" in theory_corrs):
             raise ValueError("In order to take the mb(c) mass unc. from SCETlib+DYTurbo, you need to include those corr files and use MSHT20 as central PDF")
-            
+
         bhist = "pdfMSHT20mbrange" if from_minnlo else "scetlib_dyturboMSHT20mbrangeCorr"
         syst_ax = "pdfVar" if from_minnlo else "vars"
 
@@ -724,7 +724,7 @@ class TheoryHelper(object):
             passToFakes=self.propagate_to_fakes,
             outNames=["", "pdfMSHT20mbrangeDown",]+[""]*4+["pdfMSHT20mbrangeUp"],
         )
-        
+
         self.card_tool.addSystematic(name=bhist.replace("brange", "crange"),
             processes=self.samples,
             systAxes=[syst_ax],

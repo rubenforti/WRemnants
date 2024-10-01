@@ -227,7 +227,7 @@ def define_dressed_vars(df, mode, flavor="mu"):
     if mode[0] == 'z':
         df = df.Define("dressedLep", f"GenDressedLepton_pdgId=={lep_pdgId}")
         df = df.Define("dressedAntiLep", f"GenDressedLepton_pdgId==-{lep_pdgId}")
-        
+
         df = df.Define("hasDressedLep", "ROOT::VecOps::Any(dressedLep)")
         df = df.Define("hasDressedAntiLep", "ROOT::VecOps::Any(dressedAntiLep)")
 
@@ -330,7 +330,7 @@ def define_prefsr_vars(df):
     df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")
     df = df.Define("csPhigen", "csSineCosThetaPhigen.phi()")
 
-    # define w and w-like variables 
+    # define w and w-like variables
     df = df.Define("qgen", "isEvenEvent ? -1 : 1")
     df = df.Define("ptgen", "isEvenEvent ? genl.pt() : genlanti.pt()")
     df = df.Define("etagen", "isEvenEvent ? genl.eta() : genlanti.eta()")
@@ -338,7 +338,7 @@ def define_prefsr_vars(df):
     df = df.Define("ptOthergen", "isEvenEvent ? genlanti.pt() : genl.pt()")
     df = df.Define("etaOthergen", "isEvenEvent ? genlanti.eta() : genl.eta()")
     df = df.Define("absetaOthergen", "std::fabs(etaOthergen)")
-    df = df.Define("mTVgen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")   
+    df = df.Define("mTVgen", "wrem::mt_2(genl.pt(), genl.phi(), genlanti.pt(), genlanti.phi())")
 
     return df
 
@@ -375,13 +375,13 @@ def define_postfsr_vars(df, mode=None):
             GenPart_pt[postfsrNeutrinos], GenPart_eta[postfsrNeutrinos], GenPart_phi[postfsrNeutrinos])""")
 
     if mode is not None:
-        # defition of more complex postfsr object 
+        # defition of more complex postfsr object
         # use fiducial gen met, see: https://twiki.cern.ch/twiki/bin/viewauth/CMS/ParticleLevelProducer
         if mode[0] == "z":
             # find the leading charged lepton and antilepton idx
             df = df.Define("postfsrLep", "postfsrLeptons && (GenPart_pdgId==11 || GenPart_pdgId==13)")
             df = df.Define("postfsrAntiLep", "postfsrLeptons && (GenPart_pdgId==-11 || GenPart_pdgId==-13)")
-            
+
             df = df.Define("postfsrLep_idx",     "ROOT::VecOps::ArgMax(GenPart_pt[postfsrLep])")
             df = df.Define("postfsrAntiLep_idx", "ROOT::VecOps::ArgMax(GenPart_pt[postfsrAntiLep])")
 
@@ -395,7 +395,7 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrOtherLep_eta",  "isEvenEvent ? GenPart_eta[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_eta[postfsrLep][postfsrLep_idx]")
             df = df.Define("postfsrOtherLep_phi",  "isEvenEvent ? GenPart_phi[postfsrAntiLep][postfsrAntiLep_idx] : GenPart_phi[postfsrLep][postfsrLep_idx]")
             df = df.Define("postfsrOtherLep_mass", "isEvenEvent ? wrem::get_pdgid_mass(GenPart_pdgId[postfsrLep][postfsrLep_idx]) : wrem::get_pdgid_mass(GenPart_pdgId[postfsrAntiLep][postfsrAntiLep_idx])")
-        
+
             df = df.Define("postfsrOtherLep_absEta", "static_cast<double>(std::fabs(postfsrOtherLep_eta))")
         else:
             # find the leading charged lepton or antilepton idx
@@ -409,7 +409,7 @@ def define_postfsr_vars(df, mode=None):
             df = df.Define("postfsrLep_charge", "GenPart_pdgId[postfsrLep][postfsrLep_idx] > 0 ? -1 : 1")
 
         df = df.Define("postfsrLep_absEta", "static_cast<double>(std::fabs(postfsrLep_eta))")
-        
+
         if mode[0] == "w" or "wlike" in mode:
             if "wlike" in mode:
                 # for wlike selection
@@ -482,7 +482,7 @@ def make_ew_binning(mass = 91.1535, width = 2.4932, initialStep = 0.1, bin_edges
     return bins
 
 def pdf_info_map(dataset, pdfset):
-    infoMap = pdfMap 
+    infoMap = pdfMap
 
     # Just ignore PDF variations for non W/Z samples
     if pdfset is None \
@@ -567,7 +567,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
     df = define_central_pdf_weight(df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None)
-    df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr, 
+    df = define_theory_corr(df, dataset_name, helpers, generators=args.theoryCorr,
         modify_central_weight=not args.theoryCorrAltOnly)
     df = define_ew_theory_corr(df, dataset_name, helpers, generators=args.ewTheoryCorr, modify_central_weight=False)
 
@@ -575,8 +575,8 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
     df = define_nominal_weight(df)
     df = define_pdf_columns(df, dataset_name, args.pdfs, args.altPdfOnlyCentral)
-        
-    return df 
+
+    return df
 
 def build_weight_expr(df, exclude_weights=[]):
     valid_cols = df.GetColumnNames()
@@ -647,7 +647,7 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
     df = df.Define(f"nominal_weight_uncorr", build_weight_expr(df, exclude_weights=["theory_corr_weight"]))
 
     dataset_helpers = helpers.get(dataset_name, [])
-    
+
     if not modify_central_weight or not generators or generators[0] not in dataset_helpers:
         df = df.DefinePerSample("theory_corr_weight", "1.0")
 
@@ -698,7 +698,7 @@ def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
     hel_idx = hist_helicity_xsec_scales.axes.name.index("helicity")
     vals = np.moveaxis(hist_helicity_xsec_scales.view(flow=True), hel_idx, -1)
     values = vals.value if hasattr(vals,"value") else vals
-    
+
     # select constant term, leaving dummy axis for broadcasting
     unpol_idx = hel_ax.index(-1)
     norm_vals = values[...,unpol_idx:unpol_idx+1]
@@ -709,9 +709,9 @@ def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
     coeffs = np.moveaxis(coeffs, -1, hel_idx)
 
     hist_coeffs_scales = hist.Hist(
-        *hist_helicity_xsec_scales.axes, 
+        *hist_helicity_xsec_scales.axes,
         storage = hist_helicity_xsec_scales._storage_type(),
-        name = "hist_coeffs_scales", 
+        name = "hist_coeffs_scales",
         data = coeffs,
     )
 
@@ -743,7 +743,7 @@ def pdfNames(cardTool, pdf, skipFirst=True):
     return names
 
 def pdfNamesAsymHessian(entries, pdfset=""):
-    pdfNames = ["pdf0"+pdfset.replace("pdf", "")] 
+    pdfNames = ["pdf0"+pdfset.replace("pdf", "")]
     pdfNames.extend([f"pdf{int((j+2)/2)}{pdfset.replace('pdf', '')}{'Up' if j % 2 else 'Down'}" for j in range(entries-1)])
     return pdfNames
 
@@ -765,7 +765,7 @@ def pdfAsymmetricShifts(hdiff, axis_name):
         hnew[...] = np.sum(vals, axis=-1)
         return hh.sqrtHist(hnew)
 
-    ax = hdiff.axes[axis_name] 
+    ax = hdiff.axes[axis_name]
     underflow = hdiff.axes[axis_name].traits.underflow
     overflow = hdiff.axes[axis_name].traits.overflow
     if type(ax) == hist.axis.StrCategory and all(["Up" in x or "Down" in x for x in ax][1:]):
@@ -783,7 +783,7 @@ def pdfAsymmetricShifts(hdiff, axis_name):
     # The error sets are ordered up,down,up,down...
     upshift = shiftHist(upvals, hdiff, axis_name)
     downshift = shiftHist(downvals, hdiff, axis_name)
-    return upshift, downshift 
+    return upshift, downshift
 
 def hessianPdfUnc(h, axis_name="pdfVar", uncType="symHessian", scale=1.):
     underflow = h.axes[axis_name].traits.underflow
@@ -801,7 +801,7 @@ def pdfBugfixMSHT20(df , tensorPDFName):
     # There is a known bug in MSHT20 where member 15 and 16 are identical
     #   to fix this, one has to be mirrored:
     #   pdf(15) = pdf(0) - (pdf(15) - pdf(0))
-    return df.Redefine(tensorPDFName, 
+    return df.Redefine(tensorPDFName,
         f"auto& res = {tensorPDFName};"
         f"res(15) = {tensorPDFName}(0) - ({tensorPDFName}(15) - {tensorPDFName}(0));"
         "return res")

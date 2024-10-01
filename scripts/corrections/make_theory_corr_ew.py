@@ -90,10 +90,10 @@ for proc in procs:
 
                 logger.info(f"Rebin axis ewMll by {rebinN}")
                 histo = hh.rebinHist(histo, "ewMll", rebin_edges)
-        
-        base_dev = args.baseName.split("_")[0]            
+
+        base_dev = args.baseName.split("_")[0]
         return histo
-    
+
     nums = []
     hnums = []
     for num in args.nums:
@@ -176,22 +176,22 @@ for name, corr_dict in corrh.items():
     outfile = f"{args.outpath}/{outname}"
 
     if 'Zmumu' in corr_dict:
-        output_tools.write_theory_corr_hist(outfile, 'Z', 
+        output_tools.write_theory_corr_hist(outfile, 'Z',
             {
                 f"{outname}_minnlo_ratio" : corr_dict['Zmumu']["ratio"],
                 f"{outname}_num" : corr_dict['Zmumu']["num"],
                 f"{outname}_den" : corr_dict['Zmumu']["den"]
-            }, 
+            },
             args)
 
     if 'Wplusmunu' in corr_dict and "Wminusmunu" in corr_dict:
         corr_dict['W']={}
         for key in ["ratio", "num", "den"]:
             corr_dict['W'][key] = corr_dict['Wplusmunu'][key]+corr_dict['Wminusmunu'][key]
-        output_tools.write_theory_corr_hist(outfile, 'W', 
+        output_tools.write_theory_corr_hist(outfile, 'W',
             {
                 f"{outname}_minnlo_ratio" : corr_dict['W']["ratio"],
                 f"{outname}_num" : corr_dict['W']["num"],
                 f"{outname}_den" : corr_dict['W']["den"]
-            }, 
+            },
             args)

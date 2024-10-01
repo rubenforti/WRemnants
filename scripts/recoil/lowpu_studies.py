@@ -17,7 +17,7 @@ from wremnants.datasets import datagroups
 if __name__ == "__main__":
 
     outDir = f"/home/submit/jaeyserm/public_html/studies_lowpu/plots"
-    
+
     group = datagroups.Datagroups("mz_lowPU_mumu_nnpdf31.hdf5")
     lumi_label = functions.getLumiLabel(group)
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     plotutils.plot_ratio([group], hists, procs, labels, "transverseMass", outDir, xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xLabel="MT", yRatio=1.08, norm=False)
     plotutils.plot_mass_widh(group, "transverseMass", "Zmumu", outDir, var="mass", xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xLabel="MT", yRatio=1.05)
     plotutils.plot_mass_widh(group, "transverseMass", "Zmumu", outDir, var="width", xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xLabel="MT", yRatio=1.05)
-    
+
     quit()
 
     xMin, xMax, yMin, yMax = 0.98, 1.02, 0, -1
@@ -101,9 +101,9 @@ if __name__ == "__main__":
 
     quit()
 
-    
+
     outDir = f"/home/submit/jaeyserm/public_html/test/"
-    
+
     group_new = datagroups.Datagroups("mw_with_mu_eta_pt.hdf5")
     group_old = datagroups.Datagroups("../old/WRemnants/mw_with_mu_eta_pt.hdf5")
     #group_old = datagroups.Datagroups("mw_with_mu_eta_pt.hdf5")
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     quit()
 
     outDir = f"/home/submit/jaeyserm/public_html/recoil/highPU_DeepMETReso/gen_reco/"
-    
+
     group_def = datagroups.Datagroups("mz_wlike_with_mu_eta_pt_DeepMETReso.hdf5")
     group = datagroups.Datagroups("mz_wlike_with_mu_eta_pt_postfsr.hdf5")
     lumi_label = functions.getLumiLabel(group)
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     labels = ["Reco", "Gen (proxy postFSR)"]
     procs = ["Zmumu", "Zmumu"]
     plotutils.plot_ratio([group_def, group], hists, procs, labels, "mt_corr_rec", outDir, xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xLabel="MT", lumi_label=lumi_label, yRatio=1.08)
-    
+
     xMin, xMax, yMin, yMax = -80, 80, 0, 0.5e6
     hists = ["recoil_corr_rec_perp", "recoil_corr_rec_perp"]
     labels = ["Reco", "Gen (proxy postFSR)"]

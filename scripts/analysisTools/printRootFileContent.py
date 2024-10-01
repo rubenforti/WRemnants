@@ -18,7 +18,7 @@ parser.add_argument('-c', '--class',          dest='className',      default='',
 parser.add_argument('-x', '--exclude-regexp', dest='excludeRegexp', default='', type=str, help='Like option -r, but will reject object if name matches')
 parser.add_argument('-f', '--output-format',  dest='outputFormat',  default='all', type=str, help='Print type, name and (for histograms only) integral (all, default); just name (name)')
 parser.add_argument('-s', '--silent',  action='store_true', help='Silent mode: just print summary, not all entries')
-parser.add_argument('-i', '--inherit',   default='', type=str, help='Filter output based on whether the object class inheriths from this (e.g. -i TH1 will match all root histogram objects)')  
+parser.add_argument('-i', '--inherit',   default='', type=str, help='Filter output based on whether the object class inheriths from this (e.g. -i TH1 will match all root histogram objects)')
 parser.add_argument('-r', '--regexp',  default='', type=str, help='Filter output passing a regular expression to be matched in the object name')
 parser.add_argument(      '--print-min', dest='printMin', action='store_true', help='If true, print also minimum bin content (only for histograms)')
 parser.add_argument(      '--min-up-threshold', dest='minUpThreshold', default=None, type=float, help='If given, and --print-min is used, filter histograms where the minimum conent is below this value.')
@@ -40,14 +40,14 @@ minUpThreshold = args.minUpThreshold
 
 if not args.silent:
     print('-'*50)
-    if args.outputFormat == "all":    
+    if args.outputFormat == "all":
         print("{: <10} {: <20}    {y}    {txt} ".format("Class","name",
                                                         y="integral(TH only)",
                                                         txt="integral(nonNeg)/integral" if args.printIntegralCapNegative else ""))
     elif args.outputFormat == "name":
         print("name")
     print('-'*50)
-        
+
 for k in tf.GetListOfKeys():
     name=k.GetName()
     if args.printAxisLabelHisto != "" and name != args.printAxisLabelHisto:
@@ -74,7 +74,7 @@ for k in tf.GetListOfKeys():
                 print("{: <10} {l}".format(ib,l=obj.GetXaxis().GetBinLabel(ib)))
             print('-'*30)
 
-        integral = obj.Integral() 
+        integral = obj.Integral()
         minBinContent = obj.GetBinContent(obj.GetMinimumBin())
         if args.printIntegralCapNegative:
             for ibin in range(1,obj.GetNbinsX()+1):
@@ -87,11 +87,11 @@ for k in tf.GetListOfKeys():
     if minBinContent <= 0: nNonPositiveBin += 1
     if minUpThreshold and minBinContent > minUpThreshold:
         continue
-    
+
     if not args.silent:
         if args.outputFormat == "all":
             #print("%s   %s   %s" % (obj.ClassName(), name, str(integral) if integral >= 0 else "")
-            print("{: <10} {: <20}    {y}    {r}    {m} ".format(obj.ClassName(), name, 
+            print("{: <10} {: <20}    {y}    {r}    {m} ".format(obj.ClassName(), name,
                                                                  y=str(integral) if integral >= 0 else "",
                                                                  r=str(integralOnlyNonNegativeBin/integral) if args.printIntegralCapNegative else "",
                                                                  m=str(minBinContent) if (args.printMin or (args.printMinNegative and minBinContent < 0)) else ""))
@@ -124,6 +124,6 @@ print()
 print("List of histograms with negative bin content")
 for i,name in enumerate(histWithNegBins):
     print(f"{i}) {name}")
-    
+
 
 

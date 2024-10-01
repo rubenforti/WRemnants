@@ -9,12 +9,12 @@ from utilities.io_tools import input_tools, output_tools
 from wremnants import plot_tools, theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-m", "--minnlo_file", type=str, required=True, help="MiNNLO gen file, denominator in ratio") 
-parser.add_argument("-ul", "--corr-ul", type=str, nargs='+', required=False, help="Reference file of the corrected sigma_UL") 
-parser.add_argument("-a4", "--corr-a4", type=str, nargs='+', required=False, help="Reference file of the corrected sigma_4") 
-parser.add_argument("-f", "--other-coeff-files", type=str, nargs='+', required=False, help="Files with other Ai coefficients") 
-parser.add_argument("-c", "--other-coeffs", type=int, nargs='+', default=[0,1,2,3], help="Files with other Ai coefficients") 
-parser.add_argument("-g", "--generator", type=str, choices=["dyturbo", "scetlib", "minnlo_dyturbo", "scetlib_dyturbo", "matrix_radish"], 
+parser.add_argument("-m", "--minnlo_file", type=str, required=True, help="MiNNLO gen file, denominator in ratio")
+parser.add_argument("-ul", "--corr-ul", type=str, nargs='+', required=False, help="Reference file of the corrected sigma_UL")
+parser.add_argument("-a4", "--corr-a4", type=str, nargs='+', required=False, help="Reference file of the corrected sigma_4")
+parser.add_argument("-f", "--other-coeff-files", type=str, nargs='+', required=False, help="Files with other Ai coefficients")
+parser.add_argument("-c", "--other-coeffs", type=int, nargs='+', default=[0,1,2,3], help="Files with other Ai coefficients")
+parser.add_argument("-g", "--generator", type=str, choices=["dyturbo", "scetlib", "minnlo_dyturbo", "scetlib_dyturbo", "matrix_radish"],
     required=True, help="Generator used to produce sigma_ul (and possibly A4) correction hist")
 parser.add_argument("--outpath", type=str, default=f"{common.data_dir}/TheoryCorrections", help="Output path")
 parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
@@ -47,7 +47,7 @@ if sigma4h:
 
 dyturbo_coeffs = None
 if args.other_coeff_files and args.other_coeffs:
-    dyturbo_coeffs = hh.sumHists([input_tools.read_dyturbo_angular_coeffs(f, rebin=binning, 
+    dyturbo_coeffs = hh.sumHists([input_tools.read_dyturbo_angular_coeffs(f, rebin=binning,
                                         absy=True, add_axes=[minnloh.axes["massVgen"]]) for f in args.other_coeff_files])
 
 # Workaround for the different axis names

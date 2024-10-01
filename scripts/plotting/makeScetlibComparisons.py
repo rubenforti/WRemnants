@@ -70,7 +70,7 @@ lookup = {
             "axis" : "absy",
             "action" : lambda x: hh.makeAbsHist(x[{"pt" : s[0:40.j:hist.sum]}], "y"),
         },
-        "mV" : { 
+        "mV" : {
             #"hist" : "inclusive_pT_y_m_scetlib",
             "axis" : "mass",
         },
@@ -126,7 +126,7 @@ lookup["matrix_radish"]["colors"] = ["green"]+[cmap(i+len(args.minnlo_files)) fo
 lookup["dyturbo"]["colors"] = ["blue"]+[cmap(i) for i in range(len(args.dyturbo_files))]
 
 xlabels = {
-    "ptV" : r"p$_{T}^{%s}$ (GeV)" % ("W" if "w" in args.proc else "Z"), 
+    "ptV" : r"p$_{T}^{%s}$ (GeV)" % ("W" if "w" in args.proc else "Z"),
     "absYV" : r"$|\mathrm{y}^{%s}|$"  % ("W" if "w" in args.proc else "Z"),
     "mV" : r"$m_{%s}$ (GeV)"  % ("W" if "w" in args.proc else "Z"),
 }
@@ -199,7 +199,7 @@ def read_matrix_radish_hist(proc, filename, lookup, hist_name):
 def read_dyturbo_hist(proc, filename, lookup, hist_name):
     info = lookup[hist_name]
     axes = ("y", "pt") if "2d" in filename else [info["axis"]]
-    h = input_tools.read_dyturbo_hist(filename.split(":"), axes=axes) 
+    h = input_tools.read_dyturbo_hist(filename.split(":"), axes=axes)
     return transform_and_project(h, 1., info["axis"], info["action"])
 
 def read_hists(proc, files, lookup, hist_name):
@@ -232,10 +232,10 @@ all_labels = []
 all_colors = []
 
 generators_info = [
-	("minnlo", "MiNNLO (NNLO+PS)"), 
-	("scetlib", "SCETlib (N$^{3}$LL)"),
-	("matrix_radish", "MATRIX+RadISH (NNLO+N$^{3}$LL)" if not args.no_radish else "MATRIX (NNLO)"),
-	("dyturbo", "DYTurbo (NNLO+N$^{3}$LL)"),
+    ("minnlo", "MiNNLO (NNLO+PS)"),
+    ("scetlib", "SCETlib (N$^{3}$LL)"),
+    ("matrix_radish", "MATRIX+RadISH (NNLO+N$^{3}$LL)" if not args.no_radish else "MATRIX (NNLO)"),
+    ("dyturbo", "DYTurbo (NNLO+N$^{3}$LL)"),
 ]
 
 short_name = {
@@ -279,7 +279,7 @@ if len(all_hists) > 1:
 
 ylabel = "$\sigma$/bin" if args.hist_name not in ylabels else ylabels[args.hist_name]
 fig = plot_tools.makePlotWithRatioToRef(all_hists, colors=all_colors, labels=all_labels, alpha=0.7, ylim=args.ylim,
-        rrange=args.rrange, ylabel=ylabel, xlabel=xlabels[args.hist_name], rlabel=f"x/{short_name[args.ratio_ref]}", 
+        rrange=args.rrange, ylabel=ylabel, xlabel=xlabels[args.hist_name], rlabel=f"x/{short_name[args.ratio_ref]}",
         binwnorm=1.0, nlegcols=1, logy=args.logy, logx=args.logx,
         xlim=args.xlim,
 )

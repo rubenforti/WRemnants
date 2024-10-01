@@ -4,16 +4,16 @@ INPUT -------------------------------------------------------------------------
 |* (list(str)) cols_to_sort: the RDF columns to be sorted by sort_key
 |* (str) order: ascending or descending sort
 |* (str) sorted_cols_suffix: output cols have names cols_to_sort + suffix
-|  
+|
 ROUTINE -----------------------------------------------------------------------
 |* sort a list of RDF columns by one RDF column as the key, in the order specified
-| 
+|
 OUTPUT ------------------------------------------------------------------------
 |* sorted columns appended to the RDF, with namee cols_to_sort + suffix
-+------------------------------------------------------------------------------ 
-''' 
++------------------------------------------------------------------------------
+'''
 def sort_rdf_cols(
-    df, sort_key = None, cols_to_sort = None, 
+    df, sort_key = None, cols_to_sort = None,
     order = "descending", sorted_cols_suffix = "_sorted"
 ):
     if not (sort_key and cols_to_sort):

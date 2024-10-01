@@ -105,7 +105,7 @@ def readNuisances(args, infile=None, logger=None):
         logger.info("Total m%s uncertainty: %2.2f MeV" % (boson, totalUncertainty))
     else:
         logger.info("Total m%s uncertainty: %2.3f (\% of prefit)" % (boson, totalUncertainty))
-        
+
     group = 'group_' if len(args.nuisgroups) else ''
     th2name = 'nuisance_{group}impact_nois'.format(group=group)
     hessfile = ROOT.TFile(infile,'read')
@@ -118,7 +118,7 @@ def readNuisances(args, infile=None, logger=None):
         matchKeep = re.compile(args.keepNuisgroups)
     if args.excludeNuisgroups:
         matchExclude = re.compile(args.excludeNuisgroups)
-    
+
     logger.info("Histograms loaded successfully ...")
     nuisGroup_nameVal = {}
     for iy in range(1,impMat.GetNbinsY()+1):
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     if "ZMassWLike" in args.rootfile[0] and not args.isWlike:
         logger.warning(f"ZMassWLike found in input path {args.rootfile[0]}, but option --wlike not specified, please check")
         quit()
-    
+
     ROOT.TColor.CreateGradientColorTable(3,
                                          array ("d", [0.00, 0.50, 1.00]),
                                          ##array ("d", [1.00, 1.00, 0.00]),
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     absValue = False
     if len(args.nuisgroups): absValue = True
 
-    if absValue:    
+    if absValue:
         ROOT.TColor.CreateGradientColorTable(2,
                                              array ("d", [0.00, 1.00]),
                                              ##array ("d", [1.00, 1.00, 0.00]),
@@ -206,12 +206,12 @@ if __name__ == "__main__":
                                              255,  0.95)
 
     boson = "Z" if args.isWlike else "W"
-    
+
     compare = True if len(args.compareFile) else False
     if not compare and args.printAltVal:
         error_msg = "--printAltVal only works with --compareFile. Please try again"
         raise IOError(error_msg)
-    
+
     totalUncertainty_mW, nuisGroup_nameVal = readNuisances(args, args.rootfile[0], logger=logger)
     if args.setStat > 0.0:
         nuisGroup_nameVal["stat"] = args.setStat
@@ -258,13 +258,13 @@ if __name__ == "__main__":
 
     if args.justPrint:
         quit()
-            
+
     if args.showTotal:
         h1.GetXaxis().SetBinLabel(nbins,"Total")
         h1.SetBinContent(nbins,totalUncertainty_mW)
         if compare:
             h2.SetBinContent(nbins,totalUncertainty_mW_alt)
-            
+
     h1.GetXaxis().SetTitleOffset(1.2)
     h1.GetXaxis().SetTitleSize(0.05)
     h1.GetXaxis().SetLabelSize(0.05)
@@ -283,14 +283,14 @@ if __name__ == "__main__":
         #h2.SetFillStyle(3001)
         h2.SetFillColorAlpha(ROOT.TColor.GetColor("#f89c20"), 0.9)
         h1.GetYaxis().SetRangeUser(0.0, 1.1* max(totalUncertainty_mW_alt, totalUncertainty_mW))
-        
+
     cw,ch = args.canvasSize.split(',')
     c1 = ROOT.TCanvas("c1", "", int(cw), int(ch))
     #c1.SetFillColor(42)
     c1.SetGridx()
     c1.SetGridy()
     #ROOT.gPad.SetFrameFillColor(33)
-    
+
     clm = 0.4
     crm = 0.16 if args.printAltVal else 0.12
     cbm = 0.1
@@ -318,7 +318,7 @@ if __name__ == "__main__":
         leg.AddEntry(h1, args.legendEntries[0], "LF")
         leg.AddEntry(h2, args.legendEntries[1], "LF")
         leg.Draw("SAME")
-        
+
     #hval = copy.deepcopy(h1.Clone("hval"))
     hval = h1.Clone("hval")
     hval.Reset("ICESM")
@@ -327,10 +327,10 @@ if __name__ == "__main__":
     hval.GetXaxis().SetLabelSize(0.05)
     lat = ROOT.TLatex()
     #lat.SetNDC();
-    lat.SetTextFont(42)        
+    lat.SetTextFont(42)
     lat.SetTextSize(0.035)
     latAlt = ROOT.TLatex()
-    latAlt.SetTextFont(42)        
+    latAlt.SetTextFont(42)
     latAlt.SetTextSize(0.025)
     latAlt.SetTextColor(ROOT.kPink-6)
     c1.Update()
@@ -347,7 +347,7 @@ if __name__ == "__main__":
             altVal = str(round(h2.GetBinContent(i), args.roundImpacts if args.scaleToMeV else 3))
             latAlt.DrawLatex(xtexAlt, ytexAlt + step * (i-1), altVal)
     hval.Draw("AXIS X+ SAME")
-        
+
     postfix = args.postfix
     if len(postfix) and  not postfix.startswith("_"):
         postfix = "_" + postfix

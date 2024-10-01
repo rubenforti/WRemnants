@@ -37,13 +37,13 @@ args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 args = parser.parse_args()
-    
+
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 
 era = args.era
 datasets = getDatasets(maxFiles=args.maxFiles,
                        filt=args.filterProcs,
-                       excl=args.excludeProcs, 
+                       excl=args.excludeProcs,
                        nanoVersion="v9", base_path=args.dataPath, oneMCfileEveryN=args.oneMCfileEveryN,
                        extended = "msht20an3lo" not in args.pdfs,
                        era=era)

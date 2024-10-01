@@ -93,7 +93,7 @@ def make_pileup_helper(era = None, cropHighWeight = 5.,
     logger.debug([puweights.GetBinContent(i) for i in range(1,puweights.GetNbinsX()+1)])
     logger.debug("")
     logger.debug("")
-    
+
     helper = ROOT.wrem.pileup_helper(puweights)
 
     return helper

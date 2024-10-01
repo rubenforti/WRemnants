@@ -31,7 +31,7 @@ axis_helicity_multidim = hist.axis.Integer(-1, 8, name="helicitySig", overflow=F
 def makehelicityWeightHelper(is_w_like = False, filename=None):
     if filename is None:
         filename = f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_theoryAgnosticBinning_scetlib_dyturboCorr_maxFiles_m1.hdf5"
-        
+
     with h5py.File(filename, "r") as ff:
         out = input_tools.load_results_h5py(ff)
 
@@ -43,7 +43,7 @@ def makehelicityWeightHelper(is_w_like = False, filename=None):
         corrh = corrh[{'muRfact' : 1.j,}]
     if 'muFfact' in corrh.axes.name:
         corrh = corrh[{'muFfact' : 1.j,}]
-    
+
     axes_names = ['massVgen','absYVgen','ptVgen','chargeVgen', 'helicity']
     if not list(corrh.axes.name) == axes_names:
         raise ValueError (f"Axes [{corrh.axes.name}] are not the ones this functions expects ({axes_names})")

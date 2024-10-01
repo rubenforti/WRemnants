@@ -42,12 +42,12 @@ from scripts.analysisTools.tests.cropNegativeTemplateBins import \
 def plotDistribution2D(args, groups, datasets, histname, outdir, canvas2Dshapes=None,
                        xAxisName="x axis", yAxisName="y axis", zAxisName="Events",
                        scaleToUnitArea=False):
-    
+
     groups.setNominalName(histname)
     groups.loadHistsForDatagroups(histname, syst="", procsToRead=datasets)
     histInfo = groups.getDatagroups()
     rootHists = {}
-    
+
     for d in datasets:
         hnarf = histInfo[d].hists[histname]
         rootHists[d] = narf.hist_to_root(hnarf)
@@ -63,7 +63,7 @@ def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=No
                        xAxisName="variable", plotName="variable_failIso_jetInclusive",
                        draw_both0_noLog1_onlyLog2=1, ratioPadYaxisTitle="Data/pred::0.9,1.1",
                        scaleToUnitArea=False, noRatioPanel=False):
-    
+
     createPlotDirAndCopyPhp(outfolder_dataMC)
     if not canvas1Dshapes:
         canvas1Dshapes = ROOT.TCanvas("canvas1Dshapes","",700,800)
@@ -125,13 +125,13 @@ if __name__ == "__main__":
     parser.add_argument("--project1D", type=str, default=None, help="Project n-dimensional distribution into this 1D variable")
     parser.add_argument("--selectAxis", nargs='*', default=[], type=str, help="Select axes by slicing, as axName=min,max, or just axName to integrate all range")
     args = parser.parse_args()
-    
+
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
-    
+
     fname = args.inputfile[0]
     outdir_original = args.outputfolder[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-        
+
     ROOT.TH1.SetDefaultSumw2()
 
     adjustSettings_CMS_lumi()
@@ -180,10 +180,10 @@ if __name__ == "__main__":
                     presel[ps] = s[::hist.sum]
                     groups.setGlobalAction(lambda h: h[presel])
 
-        groups.loadHistsForDatagroups(p, syst="", procsToRead=datasets)        
+        groups.loadHistsForDatagroups(p, syst="", procsToRead=datasets)
         histInfo = groups.getDatagroups()
         rootHists = {}
-        
+
         for d in datasets:
             hnarf = histInfo[d].hists[p]
             if args.project1D:

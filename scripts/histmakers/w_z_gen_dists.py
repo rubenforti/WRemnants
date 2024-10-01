@@ -52,7 +52,7 @@ axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
 col_rapidity =  "yVgen" if args.signedY else "absYVgen"
 
 axis_ptqVgen = hist.axis.Variable(
-    [round(x, 4) for x in list(np.arange(0, 0.1 + 0.0125, 0.0125))]+[round(x, 4) for x in list(np.arange(0.1+0.025, 0.5 + 0.025, 0.025))], 
+    [round(x, 4) for x in list(np.arange(0, 0.1 + 0.0125, 0.0125))]+[round(x, 4) for x in list(np.arange(0.1+0.025, 0.5 + 0.025, 0.025))],
     name = "ptqVgen", underflow=False
 )
 
@@ -74,7 +74,7 @@ def build_graph(df, dataset):
     logger.info("build graph")
     logger.info(dataset.name)
     results = []
-    
+
     if dataset.is_data:
         raise RuntimeError("Running GEN analysis over data is not supported")
 
@@ -90,8 +90,8 @@ def build_graph(df, dataset):
 
     if args.useUnfoldingBinning:
         unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
-            ["ptVGen", "absYVGen"], 
-            common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
+            ["ptVGen", "absYVGen"],
+            common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True),
             add_out_of_acceptance_axis=False,
         )
         axis_absYVgen = hist.axis.Variable(
@@ -104,14 +104,14 @@ def build_graph(df, dataset):
         )
 
         axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
-    
+
     elif args.useTheoryAgnosticBinning:
         axis_absYVgen = hist.axis.Variable(
             axis_yV_thag.edges, #same axis as theory agnostic norms
             name = "absYVgen", underflow=False
         )
         axis_ptVgen = hist.axis.Variable(
-            axis_ptV_thag.edges, #same axis as theory agnostic norms, 
+            axis_ptV_thag.edges, #same axis as theory agnostic norms,
             #common.ptV_binning,
             name = "ptVgen", underflow=False,
         )
@@ -124,7 +124,7 @@ def build_graph(df, dataset):
             (*common.get_dilepton_ptV_binning(fine=False), 13000.),
             name = "ptVgen", underflow=False,
         )
-        
+
     axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
 
     weight_expr = "std::copysign(1.0, genWeight)"
@@ -148,7 +148,7 @@ def build_graph(df, dataset):
     else:
         nominal_axes = [axis_massWgen, axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen, axis_chargeWgen]
         lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargeWgen]
-    
+
     nominal_cols = ["massVgen", col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen", "chargeVgen"]
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 
@@ -168,11 +168,11 @@ def build_graph(df, dataset):
             massBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.10, bin_edges_low=[0,46,50,60,70,80], bin_edges_high=[100,110,120,140,160,200])
         else:
             massBins = theory_tools.make_ew_binning(mass = 80.3815, width = 2.0904, initialStep=0.010)
-        
+
         # LHE level
         df = syst_tools.define_weak_weights(df, dataset.name)
         axis_lheMV = hist.axis.Variable(massBins, name = "massVlhe", underflow=False)
-        axis_lhePtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVlhe") 
+        axis_lhePtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVlhe")
         axis_lheAbsYV = hist.axis.Regular(50, 0, 5, underflow=False, name = "absYVlhe")
         axis_lheYV = hist.axis.Regular(100, -5., 5., name = "YVlhe")
         axis_lhechargeZ = hist.axis.Integer(0, 1, underflow=False, overflow=False, name = "chargeVlhe")
@@ -206,10 +206,10 @@ def build_graph(df, dataset):
             massBins = theory_tools.make_ew_binning(mass = 91.1535, width = 2.4932, initialStep=0.010, bin_edges_low=[0,50,60], bin_edges_high=[120])
         else:
             massBins = theory_tools.make_ew_binning(mass = 80.3815, width = 2.0904, initialStep=0.010)
-        
+
         # pre FSR
         axis_genMV = hist.axis.Variable(massBins, name = "massVgen", underflow=False)
-        axis_genPtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVgen") 
+        axis_genPtV = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ptVgen")
         axis_genAbsYV = hist.axis.Regular(50, 0, 5, name = "absYVgen")
         results.append(df.HistoBoost("preFSR_massVptV", [axis_genMV, axis_genPtV], ["massVgen", "ptVgen", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("preFSR_absYVptV", [axis_genAbsYV, axis_genPtV], ["absYVgen", "ptVgen", "nominal_weight"], storage=hist.storage.Weight()))
@@ -217,7 +217,7 @@ def build_graph(df, dataset):
 
         # post FSR, pre tau decay
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
-        axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
+        axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll")
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
         results.append(df.HistoBoost("ew_MllPTll", [axis_ewMll, axis_ewPtll], ["ewMll", "ewPTll", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("ew_YllPTll", [axis_ewAbsYll, axis_ewPtll], ["ewAbsYll", "ewPTll", "nominal_weight"], storage=hist.storage.Weight()))
@@ -225,7 +225,7 @@ def build_graph(df, dataset):
 
         # dressed
         axis_ewMll = hist.axis.Variable(massBins, name = "ewMll", underflow=False)
-        axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll") 
+        axis_ewPtll = hist.axis.Variable(common.ptV_binning, underflow=False, name = "ewPTll")
         axis_ewAbsYll = hist.axis.Regular(50, 0, 5, name = "ewAbsYll")
         df = theory_tools.define_dressed_vars(df, mode=mode)
         results.append(df.HistoBoost("dressed_MllPTll", [axis_ewMll, axis_ewPtll], ["dressed_MV", "dressed_PTV", "nominal_weight"], storage=hist.storage.Weight()))
@@ -264,7 +264,7 @@ def build_graph(df, dataset):
                     df = df.Define('ewLepPt2', 'ewLeptons[0].mass() == 0 ? ewLeptons[0].pt() : ewLeptons[1].pt()')
                     df = df.Define('ewLepEta1', 'ewLeptons[0].mass() == 0 ? ewLeptons[1].eta() : ewLeptons[0].eta()')
                     df = df.Define('ewLepEta2', 'ewLeptons[0].mass() == 0 ? ewLeptons[0].eta() : ewLeptons[1].eta()')
-                
+
                 axis_ewLepPt = hist.axis.Regular(100, 0, 100, name = "pt")
                 results.append(df.HistoBoost("nominal_ewLepPt1", [axis_ewLepPt], ["ewLepPt1", "nominal_weight"], storage=hist.storage.Weight()))
                 results.append(df.HistoBoost("nominal_ewLepPt2", [axis_ewLepPt], ["ewLepPt2", "nominal_weight"], storage=hist.storage.Weight()))
@@ -306,11 +306,11 @@ def build_graph(df, dataset):
 
         df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen",propagateToHelicity= args.propagatePDFstoHelicity)
         df = syst_tools.add_helicity_hists(results, df, dataset.name, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
-    
+
     nominal_cols = [col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen"]
     nominal_axes = [axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen]
     nominal_gen = df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Weight())
-    
+
     results.append(nominal_gen)
 
     return results, weightsum

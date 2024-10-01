@@ -64,11 +64,11 @@ if __name__ == "__main__":
     fname = args.inputfile[0]
     outdir_original = f"{args.outdir[0]}/{outdirTag}/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-    
+
     ROOT.TH1.SetDefaultSumw2()
-    
+
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
+    cwide = ROOT.TCanvas("cwide","",2400,600)
     adjustSettings_CMS_lumi()
     canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 

@@ -40,7 +40,7 @@ hnom = "nominal_gen"
 
 unfolded_data = pickle.load(open(args.unfolded, "rb")) if args.unfolded else None
 
-procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"] if args.w else ["ZmumuPostVFP"] 
+procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"] if args.w else ["ZmumuPostVFP"]
 
 etapt_fit = combinetf2_input.get_fitresult(args.etapt_fit)
 
@@ -57,8 +57,8 @@ if args.gen:
     transforms = syst_tools.syst_transform_map(hnom, f"{hnom}_scetlib_dyturboCorr")
 
     theory_up = quadrature_sum_hist([
-            transforms["resumTNPXp0Up"]["action"](scetlib_dyturbo), 
-            transforms["resumNPUp"]["action"](scetlib_dyturbo), 
+            transforms["resumTNPXp0Up"]["action"](scetlib_dyturbo),
+            transforms["resumNPUp"]["action"](scetlib_dyturbo),
             scetlib_dyturbo[{"vars" : "renorm_scale_pt20_envelope_Up"}],
             scetlib_dyturbo[{"vars" : "transition_points0.2_0.35_1.0"}],
             transforms["pdfCT18ZUp"]["action"](ct18z),
@@ -67,8 +67,8 @@ if args.gen:
     )
 
     theory_down = quadrature_sum_hist([
-            transforms["resumTNPXp0Down"]["action"](scetlib_dyturbo), 
-            transforms["resumNPDown"]["action"](scetlib_dyturbo), 
+            transforms["resumTNPXp0Down"]["action"](scetlib_dyturbo),
+            transforms["resumNPDown"]["action"](scetlib_dyturbo),
             scetlib_dyturbo[{"vars" : "renorm_scale_pt20_envelope_Down"}],
             scetlib_dyturbo[{"vars" : "transition_points0.2_0.75_1.0"}],
             transforms["pdfCT18ZDown"]["action"](ct18z),
@@ -92,7 +92,7 @@ if not args.noetapt_postfit:
     hists_err.extend(hist_to_up_down_unc(etapth))
     if args.w:
         label = "$\mathit{m}_{W}$ "
-    else: 
+    else:
         label = "$\mathit{m}_{Z}$ "
     label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ "
     labels.append(label)
@@ -119,7 +119,7 @@ if args.ptll_fit:
     hists_err.extend(hist_to_up_down_unc(ptllh))
     if args.w:
         labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+\mathit{p}_{T}^{\mu\mu}$ ")
-    else: 
+    else:
         labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ ")
     colors.append("#f89c20")
 
@@ -129,8 +129,8 @@ if args.ptll_yll_fit:
     hists_nom.append(ptllyllh)
     hists_err.extend(hist_to_up_down_unc(ptllyllh))
     if args.w:
-        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ") 
-    else: 
+        labels.append(r"$\mathit{m}_{W}$ $(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})+(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ")
+    else:
         labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ")
     colors.append("#5790FC")
 

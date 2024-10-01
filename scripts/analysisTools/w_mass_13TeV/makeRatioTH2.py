@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # script to make ratio of two TH2 histograms
-# the two objects can have different bin ranges, but in order for the ratio to make sense, 
+# the two objects can have different bin ranges, but in order for the ratio to make sense,
 # the binning of the smaller TH2 should be a subset of the other histogram's binning
 # In any case, the ratio is made looping on the first histogram passed (which is cloned to get a new one with the same binning) and getting the bin center
 # for each bin, then that value is used to look for the bin of the other histogram
@@ -55,7 +55,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from scripts.analysisTools.plotUtils.utility import *
 
 if __name__ == "__main__":
-            
+
     parser = common_plot_parser()
     parser.add_argument("file1", type=str, nargs=1, help="First file")
     parser.add_argument("hist1", type=str, nargs=1, help="Histogram name from first file")
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument(      '--ratioRange1D',  default=(0, -1),type=float, nargs=2, help="Min and max for the ratio in the 1D projection plot")
     parser.add_argument(      '--drawOriginal', action="store_true",  help="Draw original TH2, for debugging")
     args = parser.parse_args()
-    
+
     f1 = args.file1[0]
     h1 = args.hist1[0]
     f2 = f1 if args.file2[0]  == "SAME" else args.file2[0]
@@ -169,11 +169,11 @@ if __name__ == "__main__":
         hinput2 = hFR2
 
     if args.roll1Dto2D:
-      # TO DO   
+      # TO DO
         if args.binFileToRoll:
             etaPtBinningVec = getDiffXsecBinning(args.binFileToRoll, "reco")
             recoBins = templateBinning(etaPtBinningVec[0],etaPtBinningVec[1])
-            #following array is used to call function dressed2D()         
+            #following array is used to call function dressed2D()
             binning = [recoBins.Neta, recoBins.etaBins, recoBins.Npt, recoBins.ptBins]
             hinput1 = dressed2D(hist1,binning,hist1.GetName()+"_rolled2D",hist1.GetName()+"_rolled2D")
             hinput2 = dressed2D(hist2,binning,hist2.GetName()+"_rolled2D",hist2.GetName()+"_rolled2D")
@@ -188,17 +188,17 @@ if __name__ == "__main__":
 
     h1for1Dproj = copy.deepcopy(hinput1.Clone("h1for1Dproj"))
     h2for1Dproj = copy.deepcopy(hinput2.Clone("h2for1Dproj"))
-    
+
     hratio = copy.deepcopy(hinput1.Clone(args.outhistname))
-    hratio.SetTitle(args.histTitle)                
-                
+    hratio.SetTitle(args.histTitle)
+
     hsum = None
     if args.makeAsymmetry:
         hsum = copy.deepcopy(hinput1.Clone("diff"))
         hsum.Add(hinput2)
         hratio.Add(hinput2, -1.)
         #hratio.Divide(hsum) # do this below
-        
+
 
     nbins,minx,maxx = args.h1Dbinning.split(',')
     hratioDistr = ROOT.TH1D(args.outhistname+"_1D","Distribution of ratio values",int(nbins),float(minx),float(maxx))
@@ -207,8 +207,8 @@ if __name__ == "__main__":
 
     for ix in range(1,1+hratio.GetNbinsX()):
         for iy in range(1,1+hratio.GetNbinsY()):
-            xval = hratio.GetXaxis().GetBinCenter(ix) 
-            yval = hratio.GetYaxis().GetBinCenter(iy) 
+            xval = hratio.GetXaxis().GetBinCenter(ix)
+            yval = hratio.GetYaxis().GetBinCenter(iy)
             hist2xbin = hinput2.GetXaxis().FindFixBin(xval)
             hist2ybin = hinput2.GetYaxis().FindFixBin(yval)
             if xMin < xMax:
@@ -225,7 +225,7 @@ if __name__ == "__main__":
                     denval = hinput2.GetBinError(hist2xbin, hist2ybin) / hinput2.GetBinContent(hist2xbin, hist2ybin)
                 else:
                     denval = 0
-            if denval != 0:                
+            if denval != 0:
                 numval = hratio.GetBinError(ix,iy) if args.divideError else hratio.GetBinContent(ix,iy)
                 if args.divideRelativeError:
                     if hratio.GetBinContent(ix,iy) != 0:
@@ -249,23 +249,23 @@ if __name__ == "__main__":
                 #print(f"{ix} {iy} {ratio}")
                 if ratio < float(minx) or ratio > float(maxx): nout += 1
                 #profX.Fill()
-            else: 
+            else:
                 print("Warning: found division by 0 in one bin: setting ratio to " + str(args.valBadRatio))
                 hratio.SetBinContent(ix,iy,args.valBadRatio)
                 hratio.SetBinError(ix,iy, 0.0)
 
     print("nout = " + str(nout) + f" outside [{minx}, {maxx}]")
 
-    if args.xAxisTitle: hratio.GetXaxis().SetTitle(args.xAxisTitle)    
-    if args.yAxisTitle: hratio.GetYaxis().SetTitle(args.yAxisTitle)    
-    if args.zAxisTitle: hratio.GetZaxis().SetTitle(args.zAxisTitle)    
+    if args.xAxisTitle: hratio.GetXaxis().SetTitle(args.xAxisTitle)
+    if args.yAxisTitle: hratio.GetYaxis().SetTitle(args.yAxisTitle)
+    if args.zAxisTitle: hratio.GetZaxis().SetTitle(args.zAxisTitle)
     xAxisTitle = hratio.GetXaxis().GetTitle()
     yAxisTitle = hratio.GetYaxis().GetTitle()
     zAxisTitle = hratio.GetZaxis().GetTitle()
 
-    if xMax > xMin and not "::" in xAxisTitle: 
+    if xMax > xMin and not "::" in xAxisTitle:
         xAxisTitle = xAxisTitle + "::" + str(args.xRange[0]) + "," + str(args.xRange[1])
-    if yMax > yMin and not "::" in yAxisTitle: 
+    if yMax > yMin and not "::" in yAxisTitle:
         yAxisTitle = yAxisTitle + "::" + str(args.yRange[0]) + "," + str(args.yRange[1])
 
     # print("xAxisTitle = " + xAxisTitle
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     adjustSettings_CMS_lumi()
 
     canvas2D = ROOT.TCanvas("canvas2D","",700,700)
-    
+
     # the axis name can be used to set the range if it is in the format "name::min,maz"
     # if this is not already the case, use the selected range from the input option
     if not "::" in zAxisTitle:
@@ -294,10 +294,10 @@ if __name__ == "__main__":
                             f"den_{args.outhistname}","ForceTitle",outdir,0,0,False,False,False,1,
                             palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
 
-    
+
     canvas = ROOT.TCanvas("canvas","",800,700)
     if not args.skip1DPlot:
-        drawTH1(hratioDistr, 
+        drawTH1(hratioDistr,
                 hratio.GetZaxis().GetTitle() if args.zAxisTitle else "ratio",
                 "number of events",
                 f"ratioDistribution_{args.outhistname}",
@@ -312,7 +312,7 @@ if __name__ == "__main__":
         canvas_unroll.SetTickx(1)
         canvas_unroll.SetTicky(1)
         canvas_unroll.cd()
-        canvas_unroll.SetBottomMargin(bottomMargin)                                            
+        canvas_unroll.SetBottomMargin(bottomMargin)
 
         unrollNameID = "unrolled"
         xAxisTitle_unroll = f"Unrolled bin: '{yAxisTitle.split('::')[0]}' vs '{xAxisTitle.split('::')[0]}'"
@@ -340,7 +340,7 @@ if __name__ == "__main__":
                 unrollBinRanges.append("#splitline{{{v} in}}{{[{vmin},{vmax}]}}".format(v="x" if args.unrolly else "y",
                                                                                         vmin=int(unrollAxis.GetBinLowEdge(ibin+1)),
                                                                                         vmax=int(unrollAxis.GetBinLowEdge(ibin+2))))
-         
+
         ratio_unrolled = unroll2Dto1D(hratio, newname=f"{unrollNameID}_{hratio.GetName()}", cropNegativeBins=False, invertUnroll=args.unrolly)
         unitLine = copy.deepcopy(ratio_unrolled.Clone("tmp_horizontalLineAt1"))
         unitLine.Reset("ICESM")
@@ -441,7 +441,7 @@ if __name__ == "__main__":
         print(f"{args.outhistname}:")
         print(f"Histogram mean = {hpull.GetMean()}")
         print(f"Histogram RMS  = {hpull.GetStdDev()}")
-        drawTH1(hpull, 
+        drawTH1(hpull,
                 "pulls",
                 "number of events",
                 f"pullDistribution_{args.outhistname}",
@@ -453,7 +453,7 @@ if __name__ == "__main__":
         drawCorrelationPlot(hpull2D,xAxisTitle,yAxisTitle,"Pulls::-5,5",
                             f"pullDistribution2D_{args.outhistname}","ForceTitle",outdir,0,0,
                             False,False,False,1,palette=args.palette,passCanvas=canvas2D,drawOption=args.drawOption)
- 
+
     ###########################
     # Now save things
     ###########################
@@ -468,4 +468,4 @@ if __name__ == "__main__":
         print("")
 
     copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
-         
+

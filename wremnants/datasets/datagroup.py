@@ -53,15 +53,15 @@ class Datagroup(object):
             for m, o in zip(members, member_operations):
                 self.addMember(m, o)
         else:
-            raise RuntimeError("'member_operations' has to be a string or a list with the same length as 'members'!")            
+            raise RuntimeError("'member_operations' has to be a string or a list with the same length as 'members'!")
 
     def addMember(self, member, member_operation=None):
         # adds a member to the existing members of a given group
-        
+
         # add member operation
         if self.memberOp is None:
             self.memberOp = [None]*len(self.members)
-        
+
         self.memberOp.append(deepcopy(member_operation))
         self.members.append(member)
 

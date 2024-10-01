@@ -36,7 +36,7 @@ from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
 
-# should really avoid having numbers by hand, but this started with less then 10 in all graphs together :) 
+# should really avoid having numbers by hand, but this started with less then 10 in all graphs together :)
 
 # true data uncertainty with no BBB
 def getTrueDataUncertainty(yvals_data_N, yvals_data_NoverAlpha, alpha=2):
@@ -67,7 +67,7 @@ def getTrueTotalUncertainty(yvals_data_N, yvals_data_NoverAlpha, alpha=2, rho=1)
     return yvals_true
 
 def runWithBkg():
-    
+
     outdir = "/eos/user/m/mciprian/www/WMassAnalysis/fromMyWremnants/fitResults/theoryAgnostic/v2/WMass_pt_eta_statOnly/impactScalingWithRecoPtBinning/"
     createPlotDirAndCopyPhp(outdir)
 
@@ -84,7 +84,7 @@ def runWithBkg():
     gtot  = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_gtot))
     glist = [gtot, gdata, gmc]
     leg = ["Total", "Data stat", "MC stat"]
-    
+
     drawGraphCMS(glist, "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50", "impacts_mw_ptRecoBinWidth",
                  outdir, leg,
                  legendCoords="0.2,0.7,0.6,0.88;1", vecMCcolors=[ROOT.kBlack, ROOT.kRed, ROOT.kBlue],
@@ -95,14 +95,14 @@ def runWithBkg():
     yvals_halfMC_gdata = [ 2.11, 9.14, 12.5, 17.4, 21.4, 25.9]
     yvals_halfMC_gmc   = [ 9.17, 13.1, 17.8, 24.7, 30.4, 36.6]
     yvals_halfMC_gtot  = [ 9.41, 15.9, 21.7, 30.3, 37.1, 44.8]
-    
+
     gdata_halfMC = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gdata))
     gmc_halfMC   = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gmc))
     gtot_halfMC  = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gtot))
     glist_halfMC = [gtot_halfMC, gdata_halfMC, gmc_halfMC]
     tag = "(1/2 MC stat)"
     leg_halfMC = [f"{l} {tag}" for l in leg]
-    
+
     drawGraphCMS(glist_halfMC, "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50", "impacts_mw_ptRecoBinWidth_halfMCstat",
                  outdir, leg_halfMC,
                  legendCoords="0.2,0.7,0.6,0.88;1", vecMCcolors=[ROOT.kBlack, ROOT.kRed, ROOT.kBlue],
@@ -124,14 +124,14 @@ def runWithBkg():
     yvals_traditional_gdata = [ 2.27, 2.37, 2.39, 2.40, 2.41, 2.42]
     yvals_traditional_gmc   = [ 2.50, 2.49, 2.51, 2.52, 2.52, 2.53]
     yvals_traditional_gtot  = [ 7.69, 9.01, 9.88, 10.9, 12.2, 9.18]
-    
+
     gdata_traditional = ROOT.TGraph(len(xvals_traditional), array('d', xvals_traditional), array('d', yvals_traditional_gdata))
     gmc_traditional   = ROOT.TGraph(len(xvals_traditional), array('d', xvals_traditional), array('d', yvals_traditional_gmc))
     gtot_traditional  = ROOT.TGraph(len(xvals_traditional), array('d', xvals_traditional), array('d', yvals_traditional_gtot))
     glist_traditional = [gtot_traditional, gdata_traditional, gmc_traditional]
     tag = ""
     leg_traditional = [f"{l} {tag}" for l in leg]
-    
+
     drawGraphCMS(glist_traditional, "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,15", "impacts_mw_ptRecoBinWidth_traditional",
                  outdir, leg_traditional,
                  legendCoords="0.2,0.7,0.6,0.88;1", vecMCcolors=[ROOT.kBlack, ROOT.kRed, ROOT.kBlue],
@@ -155,7 +155,7 @@ def runSignalOnly():
     gtot  = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_gtot))
     glist = [gtot, gdata, gmc]
     leg = ["Total", "Data stat", "MC stat"]
-    
+
     drawGraphCMS(glist, "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50", "impacts_mw_ptRecoBinWidth_signalOnly",
                  outdir, leg,
                  legendCoords="0.2,0.7,0.6,0.88;1", vecMCcolors=[ROOT.kBlack, ROOT.kRed, ROOT.kBlue],
@@ -166,7 +166,7 @@ def runSignalOnly():
     yvals_halfMC_gdata = [ 5.72,  7.94, 10.85, 12.94, 16.50, 18.22, 20.30, 24.78]
     yvals_halfMC_gmc   = [ 7.76, 10.79, 14.75, 17.63, 22.52, 24.89, 27.73, 33.90]
     yvals_halfMC_gtot  = [ 9.64, 13.4,  18.3,  21.9,  27.9,  30.8,  34.3,  42.0]
-    
+
     gdata_halfMC = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gdata))
     gmc_halfMC   = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gmc))
     gtot_halfMC  = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMC_gtot))
@@ -180,7 +180,7 @@ def runSignalOnly():
     gtot_halfMCother  = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_halfMCother_gtot))
     tag_halfMCother = "(1/2 MC stat other)"
     leg_halfMCother = [f"{l} {tag_halfMCother}" for l in leg]
-    
+
     drawGraphCMS(glist_halfMC, "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50", "impacts_mw_ptRecoBinWidth_halfMCstat",
                  outdir, leg_halfMC,
                  legendCoords="0.2,0.7,0.6,0.88;1",
@@ -239,7 +239,7 @@ def runSignalOnly():
     yvals_true_gdata_otherFourthToFull = getTrueDataUncertainty(yvals_gdata, yvals_other1over4MC_gdata, alpha=4)
     gdata_true_otherFourthToFull = ROOT.TGraph(len(xvals), array('d', xvals), array('d', yvals_true_gdata_otherFourthToFull))
     ###
-    
+
     drawGraphCMS([gdata_true, gdata, gdata_halfMC],
                  "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50",
                  "impacts_mw_ptRecoBinWidth_trueSensitivityData",
@@ -275,7 +275,7 @@ def runSignalOnly():
                  vecMarkerStyle=[20,20,25,20,25],
                  passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL",
                  skipLumi=True)
-    
+
     drawGraphCMS([gtot, gtot_halfMC, gtot_halfMCother, gtot_1over4MC, gtot_other1over4MC],
                  "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50",
                  "impacts_mw_ptRecoBinWidth_totalCompareFractionMC",
@@ -287,7 +287,7 @@ def runSignalOnly():
                  vecMarkerStyle=[20,20,25,20,25],
                  passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL",
                  skipLumi=True)
-    
+
     drawGraphCMS([gdata_true, gdata_true_fromHalf, gdata, gdata_halfMC, gdata_1over4MC],
                  "p_{T} bin width (GeV)", "Impact on m_{W} (MeV)::0,50",
                  "impacts_mw_ptRecoBinWidth_trueSensitivityData_add1over4",
@@ -367,19 +367,19 @@ def runSignalOnly():
                  vecMarkerStyle=[20,20,25,20,25],
                  passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL",
                  skipLumi=True)
-    
+
     rf = safeOpenFile(outdir+"impactMW_signalOnly_statOnly.root", mode="RECREATE")
     rf.cd()
-    gdata.Write("gdata_fullMCstat")  
-    gmc.Write("gmc_fullMCstat")    
-    gtot.Write("gtot_fullMCstat")    
-    gdata_halfMC.Write("gdata_halfMCstat")    
-    gmc_halfMC.Write("gmc_halfMCstat")    
-    gtot_halfMC.Write("gtot_halfMCstat")    
+    gdata.Write("gdata_fullMCstat")
+    gmc.Write("gmc_fullMCstat")
+    gtot.Write("gtot_fullMCstat")
+    gdata_halfMC.Write("gdata_halfMCstat")
+    gmc_halfMC.Write("gmc_halfMCstat")
+    gtot_halfMC.Write("gtot_halfMCstat")
     rf.Close()
-    
+
 if __name__ == "__main__":
-        
+
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 

@@ -45,7 +45,7 @@ def read_fitresult(filename):
 
     except IOError as e:
         return 0, 1, 0, 0, 0, 0, 0, 0
-        
+
     return val, ndf, p, status, errstatus, edmval, m, merr
 
 parser = common.plot_parser()
@@ -62,31 +62,31 @@ df[["chi2" ,"ndf", "pvalue", "status", "errstatus", "edmval", "mass_obs", "mass_
 df["name_parts"] = df["path"].apply(lambda x: [y for y in filter(lambda z: z, x.split("/"))])
 df["axes"] = df["name_parts"].apply(lambda x: x[-2].split("_")[1:])
 df["channel"] = df["name_parts"].apply(lambda x: x[-2].split("_")[0])
-df["column_name"] = df["axes"].apply(lambda x: "-".join(x)) 
+df["column_name"] = df["axes"].apply(lambda x: "-".join(x))
 df["column_name_ndf"] = df["column_name"] + df["ndf"].apply(lambda x: f" ({x})")
 
 df["dataset"] = df["name_parts"].apply(lambda x: "_".join(x[-1].split("_")[2:]).replace(".root",""))
 df["dataset"] = df["dataset"].apply(lambda x: translate.get(x.replace("Corr",""), x.replace("Corr","")))
 
 for channel, df_c in df.groupby("channel"):
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_{channel}", 
-        column_title="Axes (bins)", caption="Resulting $\chi^2$ values (and p-values) using the saturated model test from fits on different data, and pseudodata sets.", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_{channel}",
+        column_title="Axes (bins)", caption="Resulting $\chi^2$ values (and p-values) using the saturated model test from fits on different data, and pseudodata sets.",
         label="Pseudodata", sublabel="",
-        column_name="column_name_ndf", row_name="dataset", 
+        column_name="column_name_ndf", row_name="dataset",
         cell_columns=["chi2", "pvalue"], color_condition=lambda x, y: y < 5, cell_format=lambda x, y: f"${round(x,1)} ({round(y,1)}\%)$")
 
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_status_{channel}", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_status_{channel}",
         column_title="Axes", caption="Fit status and error status.", label="Pseudodata", sublabel="",
-        column_name="column_name", row_name="dataset", 
+        column_name="column_name", row_name="dataset",
         cell_columns=["status", "errstatus"], color_condition=lambda x, y: y !=0, cell_format=lambda x, y: f"{int(x)} ({int(y)})")
 
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_edmval_{channel}", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_edmval_{channel}",
         column_title="Axes", caption="Estimated distance to minimum.", label="Pseudodata", sublabel="",
-        column_name="column_name", row_name="dataset", 
+        column_name="column_name", row_name="dataset",
         cell_columns=["edmval"], color_condition=lambda x: False, cell_format=lambda x: x)
 
-    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_mass_{channel}", 
+    tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_mass_{channel}",
         column_title="Axes", caption="Mass and uncertainty.", label="Pseudodata", sublabel="",
-        column_name="column_name", row_name="dataset", 
+        column_name="column_name", row_name="dataset",
         cell_columns=["mass_obs", "mass_err"], color_condition=lambda x, y: x > y, cell_format=lambda x, y: f"${round(x*100,2)}\, \pm {round(y*100,2)}$")
 

@@ -5,7 +5,7 @@ import array
 import math
 import os
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -61,20 +61,20 @@ if __name__ == "__main__":
     for h in hists:
         if args.rebinY > 1: h.RebinY(args.rebinY)
         if args.rebinZ > 1: h.RebinZ(args.rebinZ)
-    
+
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 800, 800)
 
     logger.info(f"{hmcpass3D.GetNbinsZ()} eta bins")
     logger.info(f"{hmcpass3D.GetNbinsY()} pt  bins")
-    
-    hmcpass2D = hmcpass3D.Project3D("yze") # do y versus z which is pt versus eta 
+
+    hmcpass2D = hmcpass3D.Project3D("yze") # do y versus z which is pt versus eta
     hmcpass2D.SetName("hmcpass2D")
-    hmcfail2D = hmcfail3D.Project3D("yze") # do y versus z which is pt versus eta 
+    hmcfail2D = hmcfail3D.Project3D("yze") # do y versus z which is pt versus eta
     hmcfail2D.SetName("hmcfail2D")
-    hmcpass2Dtest = hmcpass3Dtest.Project3D("yze") # do y versus z which is pt versus eta 
+    hmcpass2Dtest = hmcpass3Dtest.Project3D("yze") # do y versus z which is pt versus eta
     hmcpass2Dtest.SetName("hmcpass2Dtest")
-    hmcfail2Dtest = hmcfail3Dtest.Project3D("yze") # do y versus z which is pt versus eta 
+    hmcfail2Dtest = hmcfail3Dtest.Project3D("yze") # do y versus z which is pt versus eta
     hmcfail2Dtest.SetName("hmcfail2Dtest")
 
     effMC = copy.deepcopy(hmcpass2D.Clone(args.labels[0]))

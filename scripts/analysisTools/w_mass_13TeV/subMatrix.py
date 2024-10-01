@@ -45,7 +45,7 @@ def niceName(name):
             ret = Wcharge + " " + ret.split("qGen")[1].split("_",1)[1]
         ret = ret.replace("gen","")
         return ret
-    
+
     elif "CMS_prefire" in name:
         if "prefire_stat_m" in name:
             num = re.findall(r'\d+', name) # get number
@@ -68,7 +68,7 @@ def niceName(name):
         if "FakesEtaCharge" in name: tmpvar = "#eta-ch"
         elif "FakesEta" in name: tmpvar = "#eta"
         elif "FakesPtNorm" in name: tmpvar = "p_{T}-norm"
-        elif "FakesPtSlope" in name: tmpvar = "p_{T}-shape"    
+        elif "FakesPtSlope" in name: tmpvar = "p_{T}-shape"
         return "QCD bkg {var}-{n} {lepCh}".format(var=tmpvar, n=num[0], lepCh=leptonCharge)
 
     elif re.match(".*effStatTnP\d+.*",name):
@@ -80,8 +80,8 @@ def niceName(name):
         return "Eff.stat. {n1} {lepCh}".format(n1=num[0],lepCh=leptonCharge)
 
     elif re.match(".*QCDscale.*",name):
-        # expect something like QCDscalePtChargeHelicity_PtVBin1genQ0AngCoeff0muF or less 
-        # TODO: distinguish W and Z        
+        # expect something like QCDscalePtChargeHelicity_PtVBin1genQ0AngCoeff0muF or less
+        # TODO: distinguish W and Z
         boson = "W" if "QCDscaleW" in name else "Z" if "QCDscaleZ" in name else ""
         ptnum = re.findall(r'PtVBin\d+', name)
         chargenum = re.findall(r'genQ\d+', name)
@@ -103,7 +103,7 @@ def niceName(name):
         return name
     elif name == "Z_nonClosure_parametrized_A_":
         return "muonScale_ZnonClosure"
-    else:  
+    else:
         return name
 
 def niceNameHEPDATA(name):
@@ -128,21 +128,21 @@ def niceNameHEPDATA(name):
         # eta binning for fakes systematics (PtNorm uses another one chosen below)
         FakesBins = [-2.4,-2.1,-1.5,-1.0,-0.5,0.0,0.5,1.0,1.5,2.1,2.4]
 
-        if "FakesEtaCharge" in name: 
+        if "FakesEtaCharge" in name:
             tmpvar = "$\eta$-norm-chargeUncorr"
             pt_or_eta = "\eta"
-        elif "FakesEta" in name: 
+        elif "FakesEta" in name:
             tmpvar = "$\eta$-norm"
             pt_or_eta = "\eta"
-        elif "FakesPtSlope" in name: 
-            tmpvar = "$p_{T}$-shape"    
+        elif "FakesPtSlope" in name:
+            tmpvar = "$p_{T}$-shape"
             pt_or_eta = "\eta"
-        elif "FakesPtNorm" in name: 
+        elif "FakesPtNorm" in name:
             tmpvar = "$p_{T}$-norm"
             pt_or_eta = "p_{T}"
             # for pt norm has to bin on pt
             FakesBins = [26, 33, 36, 40.5, 45, 50, 56] if "mu" in pfx else [30, 36, 40.5, 45, 50, 56]
-            
+
         #print "{n} FakeBins[{m}]".format(n=name,m=num)
         n = int(num[0])
         vlow = FakesBins[n-1]
@@ -161,7 +161,7 @@ def niceNameHEPDATA(name):
         if len(pfx):
             leptonCharge = "{lep}^{chs}".format(lep="\mu", # if "mu" in pfx else "e",
                                                 chs = "+" if "Plus" in pfx else "-" if "Minus" in pfx else "")
-        etaBinsEffStat = _etaBinsEffStatMu 
+        etaBinsEffStat = _etaBinsEffStatMu
         etalow  = str(etaBinsEffStat[n1-1])
         etahigh = str(etaBinsEffStat[n1])
         return "Eff.stat. ${l}<\eta<{h}$, ${lepCh}$".format(l=etalow,h=etahigh,lepCh=leptonCharge)
@@ -176,12 +176,12 @@ def niceNameHEPDATA(name):
         return "L1-trigger muon eff.syst., ${l}<\eta<{h}$".format(l=low,h=high)
 
     elif re.match( "smooth(el|mu)scale.*",name):
-        num = re.findall(r'\d+', name) # get number 
+        num = re.findall(r'\d+', name) # get number
         n = 0
         n2 = 0
         n3 = 0
         lep = "\mu" if "smoothmu" in name else "e"
-        if "scaleStat" in name: 
+        if "scaleStat" in name:
             n = int(num[0])
             return "$p_{{T}}^{{{lep}}}$ scale stat.{n}".format(lep=lep,n=n)
         else:
@@ -189,7 +189,7 @@ def niceNameHEPDATA(name):
             n2 = int(num[1])
             etabinsPtSyst = [0.0, 2.1, 2.4] if "smoothmu" in name else [0.0, 1.0, 1.5, 2.1, 2.4]
             # match the 'P' to select positive eta side
-            if re.match(".*etaside\d+P(plus|minus)*",name): 
+            if re.match(".*etaside\d+P(plus|minus)*",name):
                 low = str(etabinsPtSyst[n2])
                 high = str(etabinsPtSyst[n2+1])
             else:
@@ -236,7 +236,7 @@ def niceNameHEPDATA(name):
         return "$\\alpha_{S}$"
 
     elif "pdf" in name:
-        num = re.findall(r'\d+', name) # get number                                               
+        num = re.findall(r'\d+', name) # get number
         n = int(num[0]) # goes from 1 to 10            return "$\alpha_{S}$"
         return "Hessian {i}".format(i=n)
 
@@ -258,9 +258,9 @@ def niceNameHEPDATA(name):
         else:
             return name
 
-    else:  
+    else:
         return name
-        
+
 
 if __name__ == "__main__":
 
@@ -407,7 +407,7 @@ if __name__ == "__main__":
             elif args.type == 'hessian':
                 cov [(p1,p2)] = covmatrix.GetBinContent(indices[ip1],indices[ip2])
                 corr[(p1,p2)] = corrmatrix.GetBinContent(indices[ip1],indices[ip2])
-        
+
 
     print(f"===> Build covariance matrix from this set of params: {params}")
 
@@ -426,9 +426,9 @@ if __name__ == "__main__":
         #params = sorted(params, key= lambda x: int(re.sub('\D','',x)) if ('muRmuF' in x and x != "muRmuF")  else 0)
         #params = sorted(params, key= lambda x: int(re.sub('\D','',x)) if ('muR' in x and x != "muR" and 'muRmuF' not in x) else 0)
         #params = sorted(params, key= lambda x: int(re.sub('\D','',x)) if ('muF' in x and x != "muF" and 'muRmuF' not in x) else 0)
-        #params = sorted(params, key= lambda x: utilities.getNFromString(x) if 'effStat' in x else 0)            
-        #params = sorted(params, key= lambda x: lepInFakeSystForSort(x) if 'Fakes' in x else 0)   
-        # sort by charge if needed     
+        #params = sorted(params, key= lambda x: utilities.getNFromString(x) if 'effStat' in x else 0)
+        #params = sorted(params, key= lambda x: lepInFakeSystForSort(x) if 'Fakes' in x else 0)
+        # sort by charge if needed
 
     print('='*30)
     print(f"sorted params = {params}")
@@ -477,7 +477,7 @@ if __name__ == "__main__":
     th2_sub.GetYaxis().SetTickLength(0.)
     th2_cov.GetXaxis().SetTickLength(0.)
     th2_cov.GetYaxis().SetTickLength(0.)
-    
+
     ## pretty nested loop. enumerate the tuples
     nParams = len(params)
     # set axis labels
@@ -493,7 +493,7 @@ if __name__ == "__main__":
         th2_sub.GetYaxis().SetBinLabel(i+1, new_x)
         th2_cov.GetXaxis().SetBinLabel(i+1, new_x)
         th2_cov.GetYaxis().SetBinLabel(i+1, new_x)
-         
+
     print("Setting Values")
     for i,x in enumerate(params):
         for j,y in enumerate(params):
@@ -509,7 +509,7 @@ if __name__ == "__main__":
                 th2_cov.SetBinContent(j+1, i+1, cov [(x,y)])
 
     th2_sub.GetZaxis().SetRangeUser(-1, 1)
-    
+
     covMax = max(abs(th2_cov.GetMaximum()), abs(th2_cov.GetMinimum()))
     th2_cov.GetZaxis().SetRangeUser(-1.*covMax, covMax)
 
@@ -517,9 +517,9 @@ if __name__ == "__main__":
     print("Now finally drawing the matrix")
     print('='*30)
     matricesToPlot = []
-    if args.whichMatrix == "both": 
+    if args.whichMatrix == "both":
         matricesToPlot = [th2_sub, th2_cov]
-    elif args.whichMatrix == "covariance": 
+    elif args.whichMatrix == "covariance":
         matricesToPlot = [th2_cov]
     else:
         matricesToPlot = [th2_sub]
@@ -532,14 +532,14 @@ if __name__ == "__main__":
             corcov = 'Covariance' if args.whichMatrix == "covariance" else "Correlation"
 
         tmp_mat.SetTitle("")
-        if args.title: 
+        if args.title:
             tmp_mat.SetTitle(args.title)
             tmp_mat.GetZaxis().SetTitle(corcov)
             tmp_mat.GetZaxis().SetTitleSize(0.04)
             tmp_mat.GetZaxis().SetTitleOffset(1.2)
-                       
+
             args.skipLatexOnTop = True
-            
+
         if outdir:
             ROOT.gStyle.SetPaintTextFormat('1.2f')
             if len(params) < 30 and not args.noTextMatrix: tmp_mat.Draw('colz text45')

@@ -12,7 +12,7 @@ logger = logging.setup_logger(__file__, 3, True)
 
 # Perform bias tests for different pseudodata.
 #   The shift in the mass parameter is the bias
-# This script is step 2 and done within the cmssw-cc7 singularity and performs the fits 
+# This script is step 2 and done within the cmssw-cc7 singularity and performs the fits
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i","--input", type=str, help="input path to combine subfolders")
@@ -23,7 +23,7 @@ fittype = "WMass_pt_eta"
 combineDir = args.input
 
 def EXE(command):
-    logger.info(command) 
+    logger.info(command)
     os.system(command)  # for testing comment out this line
 
 def get_card(name):
@@ -54,7 +54,7 @@ for subdir in glob.glob(f"{combineDir}/*_vs_*/{fittype}"):
         results[nominal][pseudodata] = {}
 
     logger.info(f"Now at {subdir}")
-    
+
     card_minus = get_card(f"{subdir}/*_minus.txt")
     card_plus = get_card(f"{subdir}/*_plus.txt")
     card_combined = card_minus.replace("_minus.txt",".txt")
@@ -67,18 +67,18 @@ for subdir in glob.glob(f"{combineDir}/*_vs_*/{fittype}"):
         EXE("mv "+card_combined.split("/")[-1]+" "+card_combined)
         EXE("mv "+card_minus.split("/")[-1]+" "+card_minus)
         EXE("mv "+card_plus.split("/")[-1]+" "+card_plus)
-    
+
     if nominal not in results[nominal].keys():
         results[nominal][nominal] = {}
-    
+
     results[nominal][pseudodata] = {}
 
     for card, channel in (
-        (card_minus, "minus"), 
+        (card_minus, "minus"),
         (card_plus, "plus"),
         (card_combined, "combined")
         ):
-        logger.info(f"Now at {channel}") 
+        logger.info(f"Now at {channel}")
 
         input_hdf5 = card.replace(".txt",".hdf5")
 

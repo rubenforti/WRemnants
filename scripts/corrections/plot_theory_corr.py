@@ -19,7 +19,7 @@ parser = common.plot_parser()
 parser.add_argument("--theoryCorr", nargs="*", default=["scetlib_dyturbo", "horacenloew"], #choices=theory_corrections.valid_theory_corrections(),
     help="Apply corrections from indicated generator. First will be nominal correction.")
 parser.add_argument("--idxs", nargs="*", default=None, help="Indexes from systematic axis to be used for plotting.")
-parser.add_argument("--datasets", nargs="*", default=["ZmumuPostVFP"], 
+parser.add_argument("--datasets", nargs="*", default=["ZmumuPostVFP"],
     help="Apply corrections from indicated generator. First will be nominal correction.")
 parser.add_argument("--baseDir", type=str, default=f"{common.data_dir}/TheoryCorrections/", help="Base directory to the theory corrections")
 parser.add_argument("--noFlow", action='store_true', help="Do not show underlfow and overflow bins in plots")
@@ -46,7 +46,7 @@ num_dict = {p: {g: theory_corrections.load_corr_hist(f"{args.baseDir}/{g}Corr{p[
 
 def make_plot_2d(h2d, name, proc, axes, corr=None, plot_error=False, clim=None, flow=True, density=False, log=False):
     logger.info(f"Make 2d plot {name} with axes {axes[0]}, {axes[1]}")
-    
+
     xlabel = styles.axis_labels.get(axes[0],axes[0])
     ylabel = styles.axis_labels.get(axes[1],axes[1])
 
@@ -60,7 +60,7 @@ def make_plot_2d(h2d, name, proc, axes, corr=None, plot_error=False, clim=None, 
     if density:
         xbinwidths = np.diff(xedges)
         ybinwidths = np.diff(yedges)
-        binwidths = np.outer(xbinwidths, ybinwidths) 
+        binwidths = np.outer(xbinwidths, ybinwidths)
         h2d.values(flow=flow)[...] = h2d.values(flow=flow) / binwidths
 
     if plot_error:
@@ -112,7 +112,7 @@ def make_plot_2d(h2d, name, proc, axes, corr=None, plot_error=False, clim=None, 
     plot_tools.save_pdf_and_png(outdir, outfile)
     plot_tools.write_index_and_log(outdir, outfile, args=args)
 
-def make_plot_1d(h1ds, names, proc, axis, labels=None, corr=None, 
+def make_plot_1d(h1ds, names, proc, axis, labels=None, corr=None,
     ratio=True, normalize=False, xmin=None, xmax=None, ymin=None, ymax=None, flow=True, density=False, uncertainty_bands=False
 ):
     logger.info(f"Make 1D plot for corr {corr} with {len(names)} entries for axis {axis}")
@@ -195,7 +195,7 @@ for dataset, corr_hists in corr_dict.items():
         all_names = []
         all_labels = []
         all_axes = []
-       
+
         for corr, corrh in corr_hists.items():
             proc = base_proc
 
@@ -219,7 +219,7 @@ for dataset, corr_hists in corr_dict.items():
                     continue
                 if ("Wminus" not in proc) and ("Wplus" not in proc):
                     proc = f"{proc[0]}{'minus' if charge_idx==0 else 'plus'}{proc[1:]}"
-            
+
             for systAxName in ["systIdx", "tensor_axis_0", "var", "vars", "weak"]:
                 if systAxName in corrh.axes.name:
                     syst_axis = systAxName
@@ -228,7 +228,7 @@ for dataset, corr_hists in corr_dict.items():
                 raise RuntimeError(f"Systematics axis not found, available axes are {corrh.axes.name}")
 
             corr = corr.split("_")[0]
-            # retreive 
+            # retreive
             if type(corrh.axes[syst_axis]) == hist.axis.StrCategory:
                 idxs = [i for i, idx in enumerate(corrh.axes[syst_axis]) if args.idxs is None or str(idx) in args.idxs or str(i) in args.idxs]
                 names = [corrh.axes[syst_axis][i] for i in idxs]
@@ -236,8 +236,8 @@ for dataset, corr_hists in corr_dict.items():
             else:
                 idxs = [i for i in range(corrh.axes[syst_axis].size) if args.idxs is None or str(i) in args.idxs]
                 names = idxs[:]
-                labels = [styles.get_systematics_label(corr, i) for i in idxs] 
-            
+                labels = [styles.get_systematics_label(corr, i) for i in idxs]
+
             if len(idxs) == 0:
                 raise RuntimeError(f"No index found in systematic axis!")
             elif args.idxs is not None and len(idxs) != len(args.idxs):
@@ -245,7 +245,7 @@ for dataset, corr_hists in corr_dict.items():
 
             # split hists into systematics
             corrh_systs = {idx: corrh[{**sel, syst_axis:idx}] for idx in idxs}
-            
+
             corrh_den_systs = {idx: corrh_den[{**sel, syst_axis:idx}] for idx in idxs} if syst_axis in corrh_den else {1 : corrh_den}
             corrh_num_systs = {idx: corrh_num[{**sel, syst_axis:idx}] for idx in idxs} if syst_axis in corrh_num else {1 : corrh_num}
 
@@ -255,7 +255,7 @@ for dataset, corr_hists in corr_dict.items():
             all_hists+=hists
             all_hists_den+=hists_den
             all_hists_num+=hists_num
-            
+
             all_names+=names
             all_labels+=labels
 
@@ -267,27 +267,27 @@ for dataset, corr_hists in corr_dict.items():
                     h_num = hists_num[idx]
                     if len(axes) == 2:
                         make_plot_2d(h, n, proc, axes, corr=corr, flow=not args.noFlow, clim=args.clim)
-                        
+
                         # h2d = hh.divideHists(h_num.project(*axes), h_den.project(*axes))
-                        # ake_plot_2d(h2d, n, proc, axes, corr=corr, flow=not args.noFlow, clim=args.clim)  
+                        # ake_plot_2d(h2d, n, proc, axes, corr=corr, flow=not args.noFlow, clim=args.clim)
 
                     elif len(axes) > 2:
                         # lower dimensional projection, recompute ratio
-                        for ax1, ax2 in list(combinations(axes, 2)): 
+                        for ax1, ax2 in list(combinations(axes, 2)):
                             h2d = hh.divideHists(h_num.project(ax1, ax2), h_den.project(ax1, ax2))
-                    
-                            make_plot_2d(h2d, n, proc, axes, corr=corr, flow=not args.noFlow, clim=args.clim)                
+
+                            make_plot_2d(h2d, n, proc, axes, corr=corr, flow=not args.noFlow, clim=args.clim)
 
             # if "1d" in args.plots:
             #     for axis in axes:
-            #         make_plot_1d(hists, names, proc, axis, labels=labels, flow=not args.noFlow, corr=corr, 
+            #         make_plot_1d(hists, names, proc, axis, labels=labels, flow=not args.noFlow, corr=corr,
             #             xmin=args.xlim[0], xmax=args.xlim[1], ymin=args.ylim[0], ymax=args.ylim[1], uncertainty_bands=args.showUncertainties)
 
         if has_charge and ("Wminus" not in proc) and ("Wplus" not in proc):
             proc = f"{base_proc[0]}{'minus' if charge_idx==0 else 'plus'}{base_proc[1:]}"
 
         if "1d" in args.plots:
-            
+
             for axis in set(all_axes):
 
                 if len(all_hists[0].axes) > 1:

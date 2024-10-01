@@ -7,7 +7,7 @@ cfg = None
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
-#ROOT.gStyle.SetImageScaling(2.) 
+#ROOT.gStyle.SetImageScaling(2.)
 
 
 def translate(word):
@@ -29,14 +29,14 @@ def translate(word):
 
 def dummy(nbins = 1):
 
-    if cfg['logx']: 
+    if cfg['logx']:
         xmin = 0.999*float(cfg['xmin']) # hack to display lower/upper ticks on axis
         xmax = 1.001*float(cfg['xmax'])
     else:
         xmin = float(cfg['xmin'])
         xmax = float(cfg['xmax'])
-        
-    if cfg['logy']: 
+
+    if cfg['logy']:
         ymin = 0.999*float(cfg['ymin']) # hack to display lower/upper ticks on axis
         ymax = 1.001*float(cfg['ymax'])
     else:
@@ -81,11 +81,11 @@ def dummy(nbins = 1):
 def aux(c=None):
 
     if c==None:
-    
+
         tr = 0.95
-    
+
     else:
-    
+
         tr = 1.-c.GetRightMargin()
 
     latex = ROOT.TLatex()
@@ -97,13 +97,13 @@ def aux(c=None):
     if "_" in cfg['topRight']: latex.DrawLatex(tr, 0.945, cfg['topRight'])
     elif "^" in cfg['topRight']: latex.DrawLatex(tr, 0.945, cfg['topRight'])
     else: latex.DrawLatex(tr, 0.945, cfg['topRight']) # was 955 ??  945
-    
+
 
     latex.SetTextAlign(13)
     latex.SetTextFont(42)
     latex.SetTextSize(0.045)
     latex.DrawLatex(0.15, 0.985, cfg['topLeft'])
-    
+
 
 def canvas():
 
@@ -112,9 +112,9 @@ def canvas():
     c.SetRightMargin(0.05)
     c.SetLeftMargin(0.15)
     c.SetBottomMargin(0.11)
-    
+
     #c.SetFrameLineWidth(2)
-    
+
     if cfg['logy']: c.SetLogy()
     if cfg['logx']: c.SetLogx()
 
@@ -123,8 +123,8 @@ def canvas():
     c.Update()
 
     return c
-    
- 
+
+
 
 
 def auxRatio():
@@ -142,19 +142,19 @@ def auxRatio():
     latex.SetTextSize(0.06)
     latex.DrawLatex(0.15, 0.975, cfg['topLeft'])
 
-   
+
 
 
 def dummyRatio(nbins = 1, line=1):
 
-    if cfg['logx']: 
+    if cfg['logx']:
         xmin = 0.999*float(cfg['xmin']) # hack to display lower/upper ticks on axis
         xmax = 1.001*float(cfg['xmax'])
     else:
         xmin = float(cfg['xmin'])
         xmax = float(cfg['xmax'])
-        
-    if cfg['logy']: 
+
+    if cfg['logy']:
         ymin = 0.999*float(cfg['ymin']) # hack to display lower/upper ticks on axis
         ymax = 1.001*float(cfg['ymax'])
     else:
@@ -165,7 +165,7 @@ def dummyRatio(nbins = 1, line=1):
     # dummy
     dummyT = ROOT.TH1D("h1_%d" % random.randint(1e4, 1e5), "", nbins, xmin, xmax)
     dummyB = ROOT.TH1D("h2_%d" % random.randint(1e4, 1e5), "", nbins, xmin, xmax)
-    
+
     for i in range(0, nbins+1): dummyT.SetBinContent(i, -1e9)
     for i in range(0, nbins+1): dummyB.SetBinContent(i, -1e9)
 
@@ -210,7 +210,7 @@ def dummyRatio(nbins = 1, line=1):
 
     dummyT.GetYaxis().SetTitleOffset(1.3) # 1.7*dummyT.GetYaxis().GetTitleOffset()
     dummyT.GetYaxis().SetLabelOffset(1.4*dummyT.GetYaxis().GetLabelOffset())
-    
+
     dummyB.GetYaxis().SetTitleFont(43)
     dummyB.GetYaxis().SetTitleSize(35)
     dummyB.GetYaxis().SetLabelFont(43)
@@ -219,7 +219,7 @@ def dummyRatio(nbins = 1, line=1):
     dummyB.GetYaxis().SetTitleOffset(1.3) # 1.7*dummyB.GetYaxis().GetTitleOffset()
     dummyB.GetYaxis().SetLabelOffset(1.4*dummyB.GetYaxis().GetLabelOffset())
     dummyB.GetYaxis().SetNdivisions(505)
-    
+
     line = ROOT.TLine(float(cfg['xmin']), line, float(cfg['xmax']), line)
     line.SetLineColor(ROOT.kRed)
     line.SetLineWidth(2)
@@ -228,7 +228,7 @@ def dummyRatio(nbins = 1, line=1):
 
 def canvasRatio():
 
-    
+
     epsilon = 0.025
 
     c = ROOT.TCanvas("canvas%d" % random.randint(1e4, 1e5), "", 1000, 1000)
@@ -245,21 +245,20 @@ def canvasRatio():
     pad1.SetRightMargin(0.05)
     pad1.SetLeftMargin(0.15)
     #pad1.SetFrameLineWidth(2)
-                
+
     pad2.SetBottomMargin(0.37)
     pad2.SetTopMargin(0.0)
     pad2.SetRightMargin(0.05)
     pad2.SetLeftMargin(0.15)
     #pad2.SetFrameLineWidth(2)
-                
-                
+
+
     if cfg['logy']: pad1.SetLogy()
-    if cfg['logx']: 
-        pad2.SetLogx()                
-        pad1.SetLogx()     
+    if cfg['logx']:
+        pad2.SetLogx()
+        pad1.SetLogx()
 
     c.Modify()
     c.Update()
 
     return c, pad1, pad2
-    

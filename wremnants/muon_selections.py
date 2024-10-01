@@ -24,7 +24,7 @@ def getIsoBranch(isoDefinition="iso04vtxAgn"):
         raise NotImplementedError(f"Isolation definition {isoDefinition} not implemented")
 
 def apply_iso_muons(df, iso_first, iso_second, isoBranch, isoThreshold=0.15, name_first="trigMuons", name_second="nonTrigMuons"):
-    # iso_first/iso_second are integers with values -1/1 for fail/pass isolation, or 0 if not cut has to be applied 
+    # iso_first/iso_second are integers with values -1/1 for fail/pass isolation, or 0 if not cut has to be applied
     if iso_first:
         isoCond0 = "<" if iso_first == 1 else ">"
         df = df.Filter(f"{isoBranch}[{name_first}][0] {isoCond0} {isoThreshold}")
@@ -32,7 +32,7 @@ def apply_iso_muons(df, iso_first, iso_second, isoBranch, isoThreshold=0.15, nam
         isoCond1 = "<" if iso_second == 1 else ">"
         df = df.Filter(f"{isoBranch}[{name_second}][0] {isoCond1} {isoThreshold}")
     return df
-    
+
 def apply_met_filters(df):
     df = df.Filter("Flag_globalSuperTightHalo2016Filter && Flag_EcalDeadCellTriggerPrimitiveFilter && Flag_goodVertices && Flag_HBHENoiseIsoFilter && Flag_HBHENoiseFilter && Flag_BadPFMuonFilter")
 
@@ -96,7 +96,7 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
     if requirePixelHits:
         goodMuonsSelection += " && Muon_cvhNValidPixelHits > 0"
 
-    df = df.Define("goodMuons", goodMuonsSelection) 
+    df = df.Define("goodMuons", goodMuonsSelection)
     if nMuons >= 0:
         df = df.Filter(f"Sum(goodMuons) {condition} {nMuons}")
 
@@ -104,12 +104,12 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
 
 def define_trigger_muons(df, name_first="trigMuons", name_second="nonTrigMuons", dilepton=False):
     if dilepton:
-        # by convention define first as negative charge, but actually both leptons could be triggering here 
+        # by convention define first as negative charge, but actually both leptons could be triggering here
         logger.debug(f"Using dilepton trigger selection, the negative (positive) muon collection is named {name_first} ({name_second})")
         df = df.DefinePerSample(f"{name_first}_charge0", "-1")
         df = df.DefinePerSample(f"{name_second}_charge0", "1")
     else:
-        # mu- for even event numbers, mu+ for odd event numbers        
+        # mu- for even event numbers, mu+ for odd event numbers
         logger.debug(f"Using w-like trigger selection, the trigger (non trigger) muon collection is named {name_first} ({name_second})")
         df = df.Define(f"{name_first}_charge0", "isEvenEvent ? -1 : 1")
         df = df.Define(f"{name_second}_charge0", "isEvenEvent ? 1 : -1")
@@ -121,7 +121,7 @@ def define_trigger_muons(df, name_first="trigMuons", name_second="nonTrigMuons",
     df = muon_calibration.define_corrected_reco_muon_kinematics(df, name_second, ["pt", "eta", "phi"])
     return df
 
-def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuons"):    
+def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuons"):
     if smooth3dsf:
         if isWorZ:
             df = theory_tools.define_prefsr_vars(df)
@@ -138,7 +138,7 @@ def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuo
     else:
         # this is a dummy, the uT axis when present will have a single bin
         df = df.Define(f"{colNamePrefix}_uT0", "0.0f")
-        
+
     return df
 
 def select_z_candidate(df, mass_min=60, mass_max=120, name_first="trigMuons", name_second="nonTrigMuons", mass="wrem::muon_mass"):
@@ -170,7 +170,7 @@ def veto_electrons(df):
 
     df = df.Define("vetoElectrons", "Electron_pt > 10 && Electron_cutBased > 0 && abs(Electron_eta) < 2.4 && abs(Electron_dxy) < 0.05 && abs(Electron_dz)< 0.2")
     df = df.Filter("Sum(vetoElectrons) == 0")
-    
+
     return df
 
 def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuons", idx=0):
@@ -186,7 +186,7 @@ def select_standalone_muons(df, dataset, use_trackerMuons=False, muons="goodMuon
         df = df.Define(f"{muons}_SApt{idx}",  f"Muon_standalonePt[{muons}][{idx}]")
         df = df.Define(f"{muons}_SAeta{idx}", f"Muon_standaloneEta[{muons}][{idx}]")
         df = df.Define(f"{muons}_SAphi{idx}", f"Muon_standalonePhi[{muons}][{idx}]")
-    
+
     # the next cuts are mainly needed for consistency with the reco efficiency measurement for the case with global muons
     # note, when SA does not exist this cut is still fine because of how we define these variables
     df = df.Filter(f"{muons}_SApt{idx} > 15.0 && wrem::deltaR2({muons}_SAeta{idx}, {muons}_SAphi{idx}, {muons}_eta{idx}, {muons}_phi{idx}) < 0.09")
@@ -206,4 +206,4 @@ def hlt_string(era = "2016PostVFP"):
         case _:
             hltString = "HLT_IsoMu24"
     return hltString
-    
+

@@ -81,7 +81,7 @@ def get_pulls_and_constraints(fitresult_filename, labels, filters=[]):
         if not hasattr(rtree, label):
             logger.warning(f"Failed to find syst {label} in tree")
             continue
-            
+
         pulls[i] = getattr(rtree, label)
         constraints[i] = getattr(rtree, label+"_err")
         pulls_prefit[i] = getattr(rtree, label+"_In")
@@ -122,7 +122,7 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
         poi_type = poi_type_original.replace("sumxsec", "sumpois")
         poi_type = poi_type.replace("ratiometaratio", "ratiometapois")
         poi_names = get_poi_names(h5file, poi_type)
-        if poi in poi_names:      
+        if poi in poi_names:
             if poi_type == "noi":
                 poi_type = 'nois'
             if poi_type in ["sumpois", "sumpoisnorm", "ratiometapois"]:
@@ -157,7 +157,7 @@ def read_impacts_poi_h5(h5file, group, poi, skip_systNoConstraint=False):
         if impact_hist_total.endswith("cov"):
             total = total**0.5
 
-    if len(labels)+1 == len(impacts): 
+    if len(labels)+1 == len(impacts):
         labels = np.append(labels, "binByBinStat")
 
     if skip_systNoConstraint:
@@ -182,7 +182,7 @@ def read_impacts_poi_root(rtfile, group, poi):
         histname = impact_hist
     else:
         histname = "correlation_matrix_channelmu"
-        
+
     h = rtfile[histname].to_hist()
     labels = np.array(list(h.axes["yaxis"]), dtype=object)
 
@@ -206,7 +206,7 @@ def decode_poi_bin(name, var):
         # capture one or more consecutive digits; filter out empty strings
         return next(filter(None, re.split(r'(\d+)', name_split[-1])))
 
-def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=False):       
+def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=False):
     if isinstance(gen_axes, str):
         gen_axes = [gen_axes]
     if isinstance(base_processes, str):
@@ -229,7 +229,7 @@ def filter_poi_bins(names, gen_axes, selections={}, base_processes=[], flow=Fals
     if len(base_processes):
         mask = mask & df["Name"].apply(lambda x, b=base_processes: any([x.startswith(p) for p in b]))
     # remove rows that have additional axes that are not required (strip off process prefix and poi type postfix and compare length of gen axes assuming they are separated by '_')
-    mask = mask & df["Name"].apply(lambda x, a=gen_axes, b=base_processes: any(len(x.replace(p,"").split("_")[1:-1])==len(a) if x.startswith(p) else False for p in b))    
+    mask = mask & df["Name"].apply(lambda x, a=gen_axes, b=base_processes: any(len(x.replace(p,"").split("_")[1:-1])==len(a) if x.startswith(p) else False for p in b))
     # gen bin selections
     for k, v in selections.items():
         mask = mask & (df[k] == v)
@@ -251,7 +251,7 @@ def read_impacts_pois(fileobject, poi_type, scale=1.0, group=True, uncertainties
         raise IOError(f"Unknown fitresult format for object {fileobject}")
     if res is None:
         return None
-        
+
     df = pd.DataFrame({"Name":res[0], "value":res[1], "err_total":res[2], **res[3]})
 
     if scale != 1:
@@ -297,7 +297,7 @@ def read_impacts_pois_h5(h5file, poi_type, group=True, uncertainties=None):
 
     return names, centrals, totals, uncertainties
 
-def read_impacts_pois_root(rtfile, poi_type, group=True, uncertainties=None):   
+def read_impacts_pois_root(rtfile, poi_type, group=True, uncertainties=None):
     histname = f"nuisance_group_impact_{poi_type}" if group else f"nuisance_impact_{poi_type}"
     if f"{histname};1" not in rtfile.keys():
         logger.warning(f"Histogram {histname};1 not found in fitresult file")
@@ -331,14 +331,14 @@ def select_covariance_pois(cov, names, gen_axes=[], selections={}, base_processe
 
     # make matrix between selected POIs only
     new_cov = hist.Hist(
-        hist.axis.Integer(start=0, stop=len(indices), underflow=False, overflow=False), 
-        hist.axis.Integer(start=0, stop=len(indices), underflow=False, overflow=False), 
+        hist.axis.Integer(start=0, stop=len(indices), underflow=False, overflow=False),
+        hist.axis.Integer(start=0, stop=len(indices), underflow=False, overflow=False),
         storage=hist.storage.Double())
     new_cov.view(flow=False)[...] = cov.view(flow=False)[indices, :][:, indices]
 
     return new_cov
 
-def load_covariance_pois(fitresult, poi_type="mu"):   
+def load_covariance_pois(fitresult, poi_type="mu"):
     if is_root_file(fitresult):
         values, names = load_covariance_pois_root(fitresult, poi_type)
     elif is_h5_file(fitresult):
@@ -347,13 +347,13 @@ def load_covariance_pois(fitresult, poi_type="mu"):
         raise IOError(f"Unknown fitresult format for object {fitresult}")
 
     cov = hist.Hist(
-        hist.axis.Integer(start=0, stop=len(names), underflow=False, overflow=False), 
-        hist.axis.Integer(start=0, stop=len(names), underflow=False, overflow=False), 
+        hist.axis.Integer(start=0, stop=len(names), underflow=False, overflow=False),
+        hist.axis.Integer(start=0, stop=len(names), underflow=False, overflow=False),
         storage=hist.storage.Double())
     cov.view(flow=False)[...] = values
     return cov, names
 
-def load_covariance_pois_root(rtfile, poi_type="mu"):   
+def load_covariance_pois_root(rtfile, poi_type="mu"):
     matrix_key = f"covariance_matrix_channel{poi_type}"
     if matrix_key not in [c.replace(";1","") for c in rtfile.keys()]:
         IOError(f"Histogram {matrix_key} was not found in the fit results file!")
@@ -362,14 +362,14 @@ def load_covariance_pois_root(rtfile, poi_type="mu"):
     hcov = hist2d.values()
     return hcov, names
 
-def load_covariance_pois_h5(h5file, poi_type="mu"):   
+def load_covariance_pois_h5(h5file, poi_type="mu"):
     matrix_key = f"{poi_type}_outcov"
     names_key = f"{poi_type}_names"
     if matrix_key not in h5file.keys():
         IOError(f"Matrix {matrix_key} was not found in the fit results file!")
     if names_key not in h5file.keys():
         IOError(f"Names {names_key} not found in the fit results file!")
-    
+
     names = h5file[names_key][...].astype(str)
     npoi = len(names)
     # make matrix between POIs only; assume POIs come first
@@ -382,7 +382,7 @@ def get_theoryfit_data(fitresult, axes, base_processes = ["W"], poi_type="pmaske
     cov, names = load_covariance_pois(fitresult, poi_type)
     df = read_impacts_pois(fitresult, poi_type, group=False, uncertainties=[])
 
-    # select POIs 
+    # select POIs
     all_axes = [a for b in axes for a in b]
     cov = select_covariance_pois(cov, names, gen_axes=all_axes, base_processes=base_processes, flow=flow)
 
@@ -400,7 +400,7 @@ def get_theoryfit_data(fitresult, axes, base_processes = ["W"], poi_type="pmaske
     return data, cov
 
 def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
-    ref_massw = 80379 
+    ref_massw = 80379
     ref_massz = 91187.6
 
     fitresult = get_fitresult(filename)
@@ -420,4 +420,4 @@ def read_all_groupunc_df(filenames, uncs, rename_cols={}, names=[]):
     dfs = [read_groupunc_df(f, uncs, rename_cols, n) for f,n in itertools.zip_longest(filenames, names)]
 
     return pd.concat(dfs)
-    
+

@@ -77,7 +77,7 @@ def padArray(ref, matchLength):
 addVariation = hasattr(args, "varName") and args.varName is not None
 
 if args.fitresult and len(args.hists) > 1:
-	raise ValueError("Multiple hists not supported for combine-based pre/post-fit plotting")
+    raise ValueError("Multiple hists not supported for combine-based pre/post-fit plotting")
 
 entries = []
 varLabels = args.varLabel if addVariation else []
@@ -174,7 +174,7 @@ else:
     groups.setNominalName(nominalName)
     groups.loadHistsForDatagroups(nominalName, syst=args.baseName, procsToRead=datasets, applySelection=applySelection)
 
-exclude = ["Data"] 
+exclude = ["Data"]
 unstack = exclude[:]
 if args.noData:
     unstack.remove("Data")
@@ -277,17 +277,17 @@ for h in args.hists:
 
 
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
-            fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
+            fill_between=args.fillBetween if hasattr(args, "fillBetween") else None,
             lower_panel_variations=args.lowerPanelVariations if hasattr(args, "lowerPanelVariations") else 0,
             scaleRatioUnstacked=args.scaleRatioUnstacked,
-            action=action, unstacked=unstack, 
+            action=action, unstacked=unstack,
             fitresult=args.fitresult, prefit=args.prefit,
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel=rlabel,
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
-            cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols, 
+            cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols,
             unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [], double_lines=args.doubleLines if hasattr(args, "doubleLines") else False,
-            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
+            ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos,
             width_scale=1.25 if len(h.split("-")) == 1 else 1, lowerLegCols=args.lowerLegCols, lowerLegPos=args.lowerLegPos,
             subplotsizes=args.subplotSizes,
             )
@@ -313,7 +313,7 @@ for h in args.hists:
 
     stack_yields = groups.make_yields_df(args.baseName, prednames, norm_proc="Data", action=action)
     unstacked_yields = groups.make_yields_df(args.baseName, unstack, norm_proc="Data", action=action)
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         yield_tables={"Stacked processes" : stack_yields, "Unstacked processes" : unstacked_yields},
         analysis_meta_info={"AnalysisOutput" : groups.getMetaInfo()},
         args=args,

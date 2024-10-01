@@ -29,7 +29,7 @@ parser.add_argument("--logy", action='store_true', help="Make the yscale logarit
 parser.add_argument("--noData", action='store_true', help="Don't plot data")
 parser.add_argument("--pulls", action='store_true', help="Make ratio as pulls between data and reference inputs")
 parser.add_argument("--plots", type=str, nargs="+", default=["xsec", "uncertainties"], choices=["xsec", "uncertainties", "ratio"], help="Define which plots to make")
-parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig", "A"], 
+parser.add_argument("--selectionAxes", type=str, default=["qGen", "helicitySig", "A"],
     help="List of axes where for each bin a separate plot is created")
 parser.add_argument("--genFlow", action='store_true', help="Show overflow/underflow pois")
 parser.add_argument("--poiTypes", type=str, nargs="+", default=["pmaskedexp", "sumpois"], help="POI types used for the plotting",
@@ -63,7 +63,7 @@ if args.infile.endswith(".root"):
 if args.reference is not None and args.reference.endswith(".root"):
     args.reference = args.reference.replace(".root", ".hdf5")
 
-result, meta = conversion_tools.fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, merge_gen_charge_W=False)    
+result, meta = conversion_tools.fitresult_pois_to_hist(args.infile, poi_types=args.poiTypes, uncertainties=None, translate_poi_types=False, merge_gen_charge_W=False)
 
 if args.reference:
     if args.poiTypeReference is None:
@@ -77,7 +77,7 @@ grouping = styles.nuisance_groupings.get(args.grouping, None)
 translate_label = {}
 if args.translate:
     with open(args.translate) as f:
-        translate_label = json.load(f)    
+        translate_label = json.load(f)
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
@@ -107,7 +107,7 @@ def make_yields_df(hists, procs, signal=None, per_bin=False, yield_only=False, p
     logger.debug(f"Make yield df for {procs}")
     if per_bin:
         def sum_and_unc(h,scale=100 if percentage else 1):
-            return (h.values()*scale, np.sqrt(h.variances())*scale)   
+            return (h.values()*scale, np.sqrt(h.variances())*scale)
     else:
         def sum_and_unc(h,scale=100 if percentage else 1):
             return (sum(h.values())*scale, np.sqrt(sum(h.variances())*scale))
@@ -211,7 +211,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
     if ratioToData:
         hden=hist_xsec
 
-    for i, (h, l, m, c) in enumerate(zip(hist_others, label_others, marker_others, color_others)):   
+    for i, (h, l, m, c) in enumerate(zip(hist_others, label_others, marker_others, color_others)):
 
         y = h.values()/binwidths
         ax1.plot(centers, y, linewidth=0, marker=m, color=c, label=l)
@@ -226,7 +226,7 @@ def plot_xsec_unfolded(hist_xsec, hist_xsec_stat=None, hist_ref=None, poi_type="
                     color="black",
                     ax=ax2,
                     zorder=2,
-                ) 
+                )
                 continue
 
             y = hh.divideHists(h, hden, cutoff=0, rel_unc=True).values()
@@ -384,12 +384,12 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
             i += 1
 
         if i%3 == 0:
-            linestype = "-" 
+            linestype = "-"
         elif i%3 == 1:
-            linestype = "--" 
+            linestype = "--"
         else:
-            linestype = ":" 
-        
+            linestype = ":"
+
         hep.histplot(
             hist_err_syst_i,
             yerr=False,
@@ -439,7 +439,7 @@ def plot_uncertainties_unfolded(hist_xsec, hist_stat, hist_syst, poi_type, chann
     plt.close()
 
 def plot_uncertainties_with_ratio(
-    hist_xsec, hist_xsec_ref, poi_type, poi_type_ref, 
+    hist_xsec, hist_xsec_ref, poi_type, poi_type_ref,
     hist_stat=None, hist_syst=None, hist_stat_ref=None, hist_syst_ref=None,
     logy=False, relative_uncertainty=True, percentage=True, lumi=None,
     channel="ch0", normalize=False, flow=False
@@ -534,7 +534,7 @@ def plot_uncertainties_with_ratio(
         color="black",
         ax=ax2,
         # zorder=2,
-    )          
+    )
 
     uncertainties = make_yields_df([hist_err], ["Total", ], per_bin=True, yield_only=True, percentage=percentage)
 
@@ -557,7 +557,7 @@ def plot_uncertainties_with_ratio(
             color="grey",
             ax=ax2,
             # zorder=2,
-        )       
+        )
 
         uncertainties["stat"] = make_yields_df([hist_err_stat], ["stat"], per_bin=True, yield_only=True, percentage=percentage)["stat"]
 
@@ -589,12 +589,12 @@ def plot_uncertainties_with_ratio(
                 i += 1
 
             if i%3 == 0:
-                linestype = "-" 
+                linestype = "-"
             elif i%3 == 1:
-                linestype = "--" 
+                linestype = "--"
             else:
-                linestype = ":" 
-            
+                linestype = ":"
+
             hep.histplot(
                 hist_err_syst_i,
                 yerr=False,
@@ -649,7 +649,7 @@ for poi_type, poi_result in result.items():
         lumi = None
 
         for proc, proc_result in channel_result.items():
-            
+
             histo_others=[]
             if args.histfile:
                 groups_dict = {"W": "Wmunu", "W_qGen0": "Wminus", "W_qGen1": "Wplus", "Z": "Zmumu"}
@@ -682,7 +682,7 @@ for poi_type, poi_result in result.items():
                     hist_stat = hh.disableFlow(hist_stat, "ptVGen")
 
                 if args.selectAxis and args.selectEntries:
-                    histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]                
+                    histo_others = [h[{k: v}] for h, k, v in zip(histo_others, args.selectAxis, args.selectEntries)]
 
                 axes = hist_nominal.axes
                 hists_others = [hh.projectNoFlow(h, axes.name) for h in histo_others]
@@ -706,8 +706,8 @@ for poi_type, poi_result in result.items():
                             h_ref = hist_ref
                             h_ref_stat = hist_ref_stat
                         h_others = hists_others
-                    else: 
-                        idxs = {a.name: i for a, i in zip(selection_axes, bins) } 
+                    else:
+                        idxs = {a.name: i for a, i in zip(selection_axes, bins) }
                         if len(other_axes) == 0:
                             continue
                         logger.info(f"Make plot for axes {[a.name for a in other_axes]}, in bins {idxs}")
@@ -734,9 +734,9 @@ for poi_type, poi_result in result.items():
 
                     if "xsec" in args.plots:
                         plot_xsec_unfolded(h_nominal, h_stat, h_ref, poi_type=poi_type, channel=suffix, proc=proc, lumi=lumi,
-                            hist_others=h_others, 
+                            hist_others=h_others,
                             label_others=args.varLabels,
-                            marker_others=args.varMarkers, 
+                            marker_others=args.varMarkers,
                             color_others=args.colors,
                             pulls=args.pulls
                         )
@@ -748,7 +748,7 @@ for poi_type, poi_result in result.items():
 
                         plot_uncertainties_unfolded(h_nominal, h_stat, h_systs, poi_type=poi_type, channel=suffix, proc = proc, lumi=lumi,
                             relative_uncertainty=True,
-                            # normalize=args.normalize, relative_uncertainty=not args.absolute, 
+                            # normalize=args.normalize, relative_uncertainty=not args.absolute,
                             logy=args.logy)
 
                     if "ratio" in args.plots:
@@ -757,13 +757,13 @@ for poi_type, poi_result in result.items():
                         if bins != None:
                             h_ref_systs = h_ref_systs[{**idxs, "syst": slice(None)}]
 
-                        plot_uncertainties_with_ratio(h_nominal, h_ref, 
-                            poi_type=poi_type, poi_type_ref=poi_type_ref, 
+                        plot_uncertainties_with_ratio(h_nominal, h_ref,
+                            poi_type=poi_type, poi_type_ref=poi_type_ref,
                             hist_stat=h_stat, hist_stat_ref=h_ref_stat,
                             # hist_syst=h_syst, hist_syst_ref=h_ref_syst,
                             channel=channel,
-                            # normalize=args.normalize, relative_uncertainty=not args.absolute, 
-                            logy=args.logy, 
+                            # normalize=args.normalize, relative_uncertainty=not args.absolute,
+                            logy=args.logy,
                             # process_label = process_label, axes=channel_axes
                             )
 

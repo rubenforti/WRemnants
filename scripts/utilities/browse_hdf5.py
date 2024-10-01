@@ -20,7 +20,7 @@ from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
 
      parser = argparse.ArgumentParser()
      parser.add_argument("inputfile", type=str, nargs=1, help="Input file")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 for k in results[p]["output"].keys():
                      if args.histo and k != args.histo:
                           continue
-                     print(f"{space}{k}")                         
+                     print(f"{space}{k}")
                      if not args.noAxes:
                           histObj = results[p]['output'][k]
                           if isinstance(histObj, ioutils.H5PickleProxy):

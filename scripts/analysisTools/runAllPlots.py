@@ -43,7 +43,7 @@ plots_path = os.environ['PLOTS']
 what = "ZMassWLike" if isWlike else "WMass"
 inputPath = f"{combine_studies_path}/{what}/{customPath}/" # contains the TH2 histograms for combine
 outputPath = f"{plots_path}/fromMyWremnants/{what}_fit/{customPath}/" # where to store plots
-combineInputFile = f"{inputPath}/{what}CombineInput.root" 
+combineInputFile = f"{inputPath}/{what}CombineInput.root"
 useSmoothSF = False if "binnedSF" in inputPath else True # FIXME: a bit hardcoded for now
 ##################################
 
@@ -76,7 +76,7 @@ if useSmoothSF:
 else:
     diffNuisanceDict["effStat_isoSF"] = ".*effStat.*_iso"
 #################################################
-    
+
 print()
 
 ##############################
@@ -111,14 +111,14 @@ if not skipSystRatios:
         trueCommand = command + f" --systPostfix {key} -s '{value}'"
         print()
         safeSystem(trueCommand, dryRun=dryRun)
-                                                        
-    
+
+
 ## Now produce plots from fit results for data or Asimov (toys to be implemented)
 for fit in fits:
 
     if skipData and fit == "Data": continue
     if onlyData and fit != "Data": continue
-    
+
     typedir = "hessian" if fit == "Asimov" else "data"
 
     printText(f"Running plots for {fit} fit")
@@ -133,7 +133,7 @@ for fit in fits:
     if not skipImpacts:
         print()
         safeSystem(command, dryRun=dryRun)
-        
+
     ########################################
     printText("NUISANCES AND COSTRAINTS")
     yAxisSetting = " --y-setting -1.0 -0.5 0 0.5 1.0" if fit == "Asimov" else " --y-setting -5.0 -3.0 0 3.0 5.0"
@@ -152,7 +152,7 @@ for fit in fits:
     if not skipPostfitHistograms:
         print()
         safeSystem(command, dryRun=dryRun)
-        
+
 print()
 print("THE END!")
 print()

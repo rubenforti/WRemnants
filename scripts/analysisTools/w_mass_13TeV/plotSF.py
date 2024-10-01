@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # plot all SF from the input root file, and make some products for faster usage
-# for isolation and antiisolation, new SF can be defined by varying only the data efficiecy or MC one, which is needed to properly account for the anticorrelation between isolated and antiisolated leptons (forcefully anticorrelating the global sf uncertainty is not correct, the 100% anticorrelation holds only for the efficiencies) 
+# for isolation and antiisolation, new SF can be defined by varying only the data efficiecy or MC one, which is needed to properly account for the anticorrelation between isolated and antiisolated leptons (forcefully anticorrelating the global sf uncertainty is not correct, the 100% anticorrelation holds only for the efficiencies)
 # actually, we verified that the correlation is preserved also for the SF, since isoSF and antiisoSF are found to be generally anticorrelated by more than 95% (even 99% for |eta| < 2.0) for pt < 60 GeV
 # no need to do the same also for iso with no trigger, because this splitting is relevant when there are fakes, and for the 2 lepton phase space that background is negligible
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
                           "trigPlusOnly"      : ["triggerplus"],
                           "trigMinusOnly"     : ["triggerminus"],
         }
-    
+
     eras = args.era.split(',')
     fname = args.rootfile[0]
     outdir_original = args.outdir[0] # to keep it below
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     for folder in foldersToCreate:
         createPlotDirAndCopyPhp(folder)
     print()
-        
+
     histsSF = {}
     histsEff = {}
     for era in eras:
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     sf_version = [str(x) for x in args.sfversions.split(",")]
     eff_version = [str(x) for x in args.effversions.split(",")]
-    
+
     names = args.sfnames.split(',')
     f = safeOpenFile(fname)
     for n in names:
@@ -120,7 +120,7 @@ if __name__ == "__main__":
                 tmpEra = "F_preVFP" if era == "F" else era
                 for v in sf_version:
                     hname = f"SF2D_{v}_{n}_{tmpEra}_{ch}"
-                    hkey = f"{v}_{n}" 
+                    hkey = f"{v}_{n}"
                     hkey += (ch if n in args.workinPointsByCharge else "")
                     print(f"   {hkey} -> {hname}")
                     histsSF[era][hkey] = safeGetObject(f, hname)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                     for dataMC in ["Data", "MC"]:
                         realv = "" if v == "nominal" else f"{v}_"
                         hname = f"eff{dataMC}_{realv}{n}_{tmpEra}_{ch}"
-                        hkey = f"{v}_{n}" 
+                        hkey = f"{v}_{n}"
                         hkey += (ch if n in args.workinPointsByCharge else "")
                         print(f"   {hkey} -> {hname}")
                         histsEff[era][dataMC][hkey] = safeGetObject(f, hname)
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     canvas = ROOT.TCanvas("canvas","",800,800)
 
-    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800) 
+    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800)
     leftMargin = 0.06
     rightMargin = 0.01
     bottomMargin = 0.12
@@ -173,7 +173,7 @@ if __name__ == "__main__":
                                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
                                             nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
-                        
+
     prodHistsSF = {}
     for era in eras:
         prodHistsSF[era] = {}
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     for x in args.workinPointsByCharge:
         if x in names:
             namesForCheck += [f"{x}plus", f"{x}minus"]
-        
+
     for key in list(productsToMake.keys()):
         if not all(x in namesForCheck for x in productsToMake[key]):
             print()
@@ -194,7 +194,7 @@ if __name__ == "__main__":
             for sfv in sf_version:
                 prodname = f"fullSF2D_{sfv}_{key}_{era}"
                 yedges = []
-                for i,basename in enumerate(productsToMake[key]): 
+                for i,basename in enumerate(productsToMake[key]):
                     name = f"{sfv}_{basename}"
                     if i == 0:
                         stringProduct = basename
@@ -218,11 +218,11 @@ if __name__ == "__main__":
                                 print(f"ERROR in multiplication for prodHistsSF[{era}][{prodname}] with {name}")
                                 print(f"Nbins(X, Y) = {histsSF[era][name].GetNbinsX()},{histsSF[era][name].GetNbinsY()} ")
                                 quit()
-                                
-                prodHistsSF[era][prodname].SetTitle(f"{stringProduct}")            
+
+                prodHistsSF[era][prodname].SetTitle(f"{stringProduct}")
                 print(f"{era}: {sfv} -> {stringProduct}")
-                
-    fullout = outdir_local + "scaleFactorProduct.root" 
+
+    fullout = outdir_local + "scaleFactorProduct.root"
     f = ROOT.TFile.Open(fullout, "RECREATE")
     # put new ones in this files, without copying original histograms (although some are actually bare copies when the product has a single factor)
     if not f or not f.IsOpen():
@@ -243,7 +243,7 @@ if __name__ == "__main__":
               "tracking"     : "0.98,1.01",
               "reco"         : "0.94,1.02",
     }
-    
+
     for era in eras:
 
         outdir = outdir_local + era + "/"
@@ -256,7 +256,7 @@ if __name__ == "__main__":
                 zrange = f"::{minmax[ntmpNoCharge]}"
             else:
                 zrange = ""
-                        
+
             drawCorrelationPlot(histsSF[era][n], "muon #eta", "muon p_{T} (GeV)", f"Data/MC scale factor{zrange}",
                                 f"muonSF_{n}", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
@@ -314,7 +314,7 @@ if __name__ == "__main__":
                          onlyLineColor=True, useLineFirstHistogram=True, setRatioRangeFromHisto=True, setOnlyLineRatio=False,
                          lineWidth=1, ytextOffsetFromTop=0.2, useMultiHistRatioOption=True)
 
-                
+
         outdir = outdir_local + productSubfolder + era + "/"
 
         for n in list(prodHistsSF[era].keys()):

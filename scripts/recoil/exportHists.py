@@ -11,7 +11,7 @@ import wremnants.datasets.datagroups as datagroups
 def readProc(groups, hName, procs):
     groups.setNominalName(hName)
     groups.loadHistsForDatagroups(hName, syst="", procsToRead=procs)
-    
+
     bhist = sum([groups.groups[p].hists[hName] for p in procs])
     k = bhist.values()
     k[bhist.values()<0] = 0 # remove negative values

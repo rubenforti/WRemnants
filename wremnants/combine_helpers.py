@@ -12,12 +12,12 @@ logger = logging.child_logger(__name__)
 
 
 def add_mass_diff_variations(
-    cardTool, 
-    mass_diff_var, 
+    cardTool,
+    mass_diff_var,
     name,
     processes,
     constrain=False,
-    suffix="", 
+    suffix="",
     label="W",
     passSystToFakes=True,
 ):
@@ -44,7 +44,7 @@ def add_mass_diff_variations(
             # on reco level based on reco charge
             preOp=lambda h: hh.swap_histogram_bins(h, *args, "charge", 0),
         )
-        
+
     elif mass_diff_var == "cosThetaStarll":
         cardTool.addSystematic(**mass_diff_args,
             preOp=lambda h:  hh.swap_histogram_bins(h, *args, "cosThetaStarll", hist.tag.Slicer()[0:complex(0,0):]),
@@ -110,10 +110,10 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
 
 def add_explicit_BinByBinStat(cardTool, recovar, samples='signal_samples', wmass=False, source=None, label="Z"):
     """
-    add explicit bin by bin stat uncertainties 
+    add explicit bin by bin stat uncertainties
     Parameters:
-    source (tuple of str): take variations from histogram with name given by f"{source[0]}_{source[1]}" (E.g. used to correlate between masked channels). 
-        If None, use variations from nominal histogram 
+    source (tuple of str): take variations from histogram with name given by f"{source[0]}_{source[1]}" (E.g. used to correlate between masked channels).
+        If None, use variations from nominal histogram
     """
     datagroups = cardTool.datagroups
 
@@ -127,11 +127,11 @@ def add_explicit_BinByBinStat(cardTool, recovar, samples='signal_samples', wmass
         mirror=True,
         labelsByAxis=[f"_{p}" if p != recovar[0] else p for p in recovar],
     )
-    cardTool.setProcsNoStatUnc(cardTool.procGroups[samples])    
+    cardTool.setProcsNoStatUnc(cardTool.procGroups[samples])
     if source is not None:
         # signal region selection
         if wmass:
-            action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])  
+            action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])
         else:
             action_sel = lambda h, x: h[x]
 
@@ -157,7 +157,7 @@ def add_explicit_BinByBinStat(cardTool, recovar, samples='signal_samples', wmass
         cardTool.addSystematic(**info,
             name=cardTool.nominalName,
             systAxes=recovar_syst,
-            action=lambda h: 
+            action=lambda h:
                 hh.addHists(h.project(*recovar),
                     hh.expand_hist_by_duplicate_axes(h.project(*recovar), recovar, recovar_syst),
                     scale2=np.sqrt(h.project(*recovar).variances(flow=True))/h.project(*recovar).values(flow=True))
@@ -176,7 +176,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
     z_samples = [p for p in all_samples if p[0]=="Z"]
     w_samples = [p for p in all_samples if p[0]=="W"]
     mode = card_tool.datagroups.mode
-    
+
     for ewUnc in ewUncs:
         if "renesanceEW" in ewUnc:
             pass
@@ -252,7 +252,7 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
                 scale=scale,
                 preOp = preOp,
                 group = f"theory_ew_{ewUnc}",
-            )  
+            )
 
 
 def projectABCD(cardTool, h, return_variances=False, dtype="float64"):
@@ -292,17 +292,17 @@ def projectABCD(cardTool, h, return_variances=False, dtype="float64"):
 
 
 def add_noi_unfolding_variations(
-    cardTool, 
-    label, 
-    passSystToFakes, 
-    xnorm, 
-    poi_axes, 
+    cardTool,
+    label,
+    passSystToFakes,
+    xnorm,
+    poi_axes,
     wmass=False,
-    prior_norm=1, 
+    prior_norm=1,
     scale_norm=0.01,
     poi_axes_flow=[],#["ptGen", "ptVGen"],
 ):
-    poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
+    poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:]
     noi_args = dict(
         group=f"normXsec{label}",
         passToFakes=passSystToFakes,
@@ -325,11 +325,11 @@ def add_noi_unfolding_variations(
         return h
 
     def get_scalemap(axes, scale=None, select={}):
-        # make sure each gen bin variation has a similar effect in the reco space so that 
+        # make sure each gen bin variation has a similar effect in the reco space so that
         #  we have similar sensitivity to all parameters within the given up/down variations
         signal_samples = cardTool.procGroups['signal_samples']
         hScale = cardTool.getHistsForProcAndSyst(signal_samples[0], "yieldsUnfolding", nominal_name="nominal")
-        hScale = hScale[{"acceptance": True, **select}]   
+        hScale = hScale[{"acceptance": True, **select}]
         hScale.values(flow=True)[...] = abs(hScale.values(flow=True))
         hScale = hScale.project(*axes)
         hScale = disable_flow(hScale)
@@ -355,7 +355,7 @@ def add_noi_unfolding_variations(
     else:
         def make_poi_variations(h, poi_axes, scale):
             hNom = h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes},"acceptance": hist.tag.Slicer()[::hist.sum]}]
-            hVar = h[{"acceptance": True}]   
+            hVar = h[{"acceptance": True}]
             hVar = disable_flow(hVar)
             slices = [np.newaxis if a in hNom.axes else slice(None) for a in hVar.axes]
             hVar.values(flow=True)[...] = hVar.values(flow=True) * scale[*slices]
@@ -364,7 +364,7 @@ def add_noi_unfolding_variations(
         if wmass:
             # add two sets of systematics, one for each charge
             poi_axes = [p for p in poi_axes if p !="qGen"]
-            poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:] 
+            poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:]
             noi_args["labelsByAxis"] = [f"_{p}" if p != poi_axes[0] else p for p in poi_axes]
             noi_args["systAxes"] = poi_axes_syst
             for sign, sign_idx in (("minus",0), ("plus",1)):
@@ -375,7 +375,7 @@ def add_noi_unfolding_variations(
                     systAxesFlow=[n for n in poi_axes if n in poi_axes_flow],
                     preOpMap={
                         m.name: make_poi_variations if sign in m.name else (
-                            lambda h, poi_axes, scale: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes}, 
+                            lambda h, poi_axes, scale: h[{**{ax: hist.tag.Slicer()[::hist.sum] for ax in poi_axes},
                                 "acceptance": hist.tag.Slicer()[::hist.sum]}]
                             )
                             for g in cardTool.procGroups["signal_samples"] for m in cardTool.datagroups.groups[g].members},
@@ -446,8 +446,8 @@ def add_asym_xsec_groups(writer, tuples=[("W_qGen0","W_qGen1"),], prefixes=["r_q
 
 
 def add_helicty_xsec_groups(
-    writer, 
-    ntuples=[[f"helicitySig{i}" for i in range(0,9)]], 
+    writer,
+    ntuples=[[f"helicitySig{i}" for i in range(0,9)]],
     prefixes=["",],
     axes_names=[["Z", "ptVGen"], ["Z", "absYVGen"], ["Z", "ptVGen", "absYVGen"]],
 ):

@@ -105,12 +105,12 @@ class TheoryAgnosticHelper(object):
 
             scaled_hist = hh.multiplyHists(h, scale_hist, flow=True)
             scaled_hist=scaled_hist[{ax: hist.tag.Slicer()[::hist.sum] for ax in sum_axes}]
-            
+
             for rebin_axis in rebin_axes:
                 edges = [scaled_hist.axes[rebin_axis].edges[0], scaled_hist.axes[rebin_axis].edges[-1]]
                 scaled_hist = hh.rebinHist(scaled_hist, rebin_axis, edges)
                 # scaled_hist = hh.scaleHist(scaled_hist, 1./len(scaled_hist.axes[rebin_axis].edges))
-                
+
             summed_hist = hh.addHists(nom_hist, scaled_hist)
 
             return summed_hist
@@ -146,7 +146,7 @@ class TheoryAgnosticHelper(object):
             group = f"normXsec{self.label}",
             passToFakes = self.passSystToFakes
         )
-        
+
         # open file with theory bands
         with h5py.File(f"{common.data_dir}/angularCoefficients/theoryband_variations_corr.hdf5", "r") as ff:
             scale_hists = narf.ioutils.pickle_load_h5py(ff["theorybands"])
@@ -198,7 +198,7 @@ class TheoryAgnosticHelper(object):
                                 preOpMap=
                                         self.apply_theoryAgnostic_normVar_uncertainty(scale_hists,sign=sign,helicities=self.args.helicitiesToInflate, scale=self.args.theoryAgnosticBandSize,rebin_axes=["ptVgenSig","absYVgenSig"],sum_axes=["helicitySig"]),
                                     ),
-            
+
         if not sign_list == [""]:
             self.card_tool.addSystematic("yieldsTheoryAgnostic",
                                 rename=f"{nuisanceBaseName}CorrAllQ",

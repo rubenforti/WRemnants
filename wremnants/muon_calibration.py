@@ -24,8 +24,8 @@ narf.clingutils.Declare('#include "lowpu_utils.h"')
 data_dir = common.data_dir
 
 def make_muon_calibration_helpers(args,
-        mc_filename=data_dir+"/calibration/correctionResults_v718_idealgeom_gensim.root", 
-        data_filename=data_dir+"/calibration/correctionResults_v721_recjpsidata.root", 
+        mc_filename=data_dir+"/calibration/correctionResults_v718_idealgeom_gensim.root",
+        data_filename=data_dir+"/calibration/correctionResults_v721_recjpsidata.root",
         era = None):
 
     if era == "2018":
@@ -56,7 +56,7 @@ def make_jpsi_crctn_helpers(args, calib_filepaths, make_uncertainty_helper=False
     else:
         mc_corrfile = None
     if args.muonCorrData in ["massfit", "lbl_massfit"]:
-        data_corrfile = calib_filepaths['data_corrfile'][args.muonCorrData] 
+        data_corrfile = calib_filepaths['data_corrfile'][args.muonCorrData]
     else:
         data_corrfile = None
     tflite_file = calib_filepaths['tflite_file']
@@ -95,7 +95,7 @@ def make_Z_non_closure_helpers(args, calib_filepaths, closure_filepaths):
 
 def make_muon_bias_helpers(args):
     # apply a bias to MC to correct for the nonclosure with data in the muon momentum scale calibration
-    if args.biasCalibration is None: 
+    if args.biasCalibration is None:
         return None
 
     if args.biasCalibration in ["parameterized", "A", "M"]:
@@ -729,7 +729,7 @@ def crop_cov_mat(filepath, n_tot_params = 4, n_cropped_eta_bins = 2):
     start_idx = n_tot_params * n_cropped_eta_bins
     cov_mat_cropped = cov_mat[start_idx:-start_idx, start_idx:-start_idx]
     fout = uproot.recreate(filename.split(".")[0] + "_cropped_eta" + ".root")
-    fout['covariance_matrix'] = cov_mat_cropped 
+    fout['covariance_matrix'] = cov_mat_cropped
 
 def define_lblcorr_muons(df, cvh_helper, corr_branch="cvh"):
 
@@ -748,11 +748,11 @@ def define_lblcorr_muons(df, cvh_helper, corr_branch="cvh"):
 
 def define_corrected_muons(df, cvh_helper, jpsi_helper, args, dataset, smearing_helper=None, bias_helper=None):
     if not (dataset.is_data or dataset.name in common.vprocs):
-        corr_type = "none" 
+        corr_type = "none"
     else:
         corr_type = args.muonCorrData if dataset.is_data else args.muonCorrMC
 
-    # use continuous variable helix fits (cvh) with ideal or non ideal geometry 
+    # use continuous variable helix fits (cvh) with ideal or non ideal geometry
     corr_branch = "cvhideal" if "idealMC" in corr_type else "cvh"
 
     # layer-by-layer corrections (lbl)
@@ -806,7 +806,7 @@ def define_genFiltered_recoMuonSel(df, reco_sel = "goodMuons", require_prompt = 
         (
             f"wrem::filterRecoMuonsByGenTruth("
             f"    {reco_sel},"
-             "    Muon_genPartIdx," 
+             "    Muon_genPartIdx,"
              "    GenPart_pdgId,"
              "    GenPart_statusFlags,"
              "    GenPart_status,"
@@ -898,7 +898,7 @@ def calculate_matched_gen_muon_kinematics(df, reco_sel = "goodMuons"):
     return df
 
 def define_matched_genSmeared_muon_kinematics(df, reco_sel = "goodMuons"):
-    df = df.Define(f"{reco_sel}_genSmearedQop", 
+    df = df.Define(f"{reco_sel}_genSmearedQop",
         (f"ROOT::VecOps::RVec<double> res({reco_sel}_genQop.size());"
          "for (int i = 0; i < res.size(); i++) {"
          "    res[i] = wrem::smearGenQop("
@@ -909,7 +909,7 @@ def define_matched_genSmeared_muon_kinematics(df, reco_sel = "goodMuons"):
          "return res;"
         )
     )
-    df = df.Define(f"{reco_sel}_genSmearedPt", 
+    df = df.Define(f"{reco_sel}_genSmearedPt",
         (f"ROOT::VecOps::RVec<double> res({reco_sel}_genPt.size());"
          "for (int i = 0; i < res.size(); i++) {"
          f"    res[i] = {reco_sel}_genCharge[i] * std::sin({reco_sel}_genTheta[i]) / {reco_sel}_genSmearedQop[i];"
@@ -1013,7 +1013,7 @@ def add_jpsi_crctn_stats_unc_hists(
             results.append(muonScaleSyst_responseWeights_splines)
 
     if args.muonScaleVariation == 'massWeights' or args.validationHists:
-        if args.muonScaleVariation == 'massWeights' and isW: 
+        if args.muonScaleVariation == 'massWeights' and isW:
             jpsi_unc_helper = jpsi_crctn_data_unc_helper
         else:
             jpsi_unc_helper = make_jpsi_crctn_unc_helper(
@@ -1158,7 +1158,7 @@ def add_jpsi_crctn_Z_non_closure_hists(
 
 def transport_smearing_weights_to_reco(resultdict, procs, nonClosureScheme = "A-M-separated"):
     time0 = time.time()
-    
+
     hists_to_transport = ['muonScaleSyst_responseWeights_gaus']
     if nonClosureScheme == "A-M-separated":
         hists_to_transport.append('Z_non_closure_parametrized_A_gaus')
@@ -1196,7 +1196,7 @@ def transport_smearing_weights_to_reco(resultdict, procs, nonClosureScheme = "A-
                     *hist_gensmear.axes,
                     storage = hist_gensmear._storage_type()
                 )
-                
+
                 bin_ratio = hh.divideHists(hist_gensmear, nominal_gensmear)
                 hist_reco = hh.multiplyHists(nominal_reco, bin_ratio)
                 proc_hists[reco_histname] = narf.ioutils.H5PickleProxy(hist_reco)
@@ -1204,7 +1204,7 @@ def transport_smearing_weights_to_reco(resultdict, procs, nonClosureScheme = "A-
                 logger.warning(f"Histogram {histname} not found in {proc}")
                 logger.warning("nuisances generated by smearing weights not transported to RECO kinematics!")
                 return
-                
+
     logger.info(f"Transport smearing weights: {time.time() - time0}")
 
 def make_alt_reco_and_gen_hists(df, results, nominal_axes, nominal_columns, matched_reco_sel = "goodMuons"):
@@ -1219,13 +1219,13 @@ def make_alt_reco_and_gen_hists(df, results, nominal_axes, nominal_columns, matc
             continue
         else:
             nominal_cols_gen[idx[0]] = f"{matched_reco_sel}_{col}0_gen"
-            nominal_cols_gen_smeared[idx[0]] = f"{matched_reco_sel}_{col}0_gen_smeared"  
+            nominal_cols_gen_smeared[idx[0]] = f"{matched_reco_sel}_{col}0_gen_smeared"
 
     results.append(df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols_gen, "nominal_weight"], storage=hist.storage.Double()))
     results.append(df.HistoBoost("nominal_gen_smeared", nominal_axes, [*nominal_cols_gen_smeared, "nominal_weight"], storage=hist.storage.Double()))
 
     return [nominal_cols_gen, nominal_cols_gen_smeared]
-    
+
 def define_lbl_corrections_jpsi_calibration_ntuples(df, helper):
     df = df.DefinePerSample("Muplus_charge", "1")
     df = df.DefinePerSample("Muminus_charge", "-1")

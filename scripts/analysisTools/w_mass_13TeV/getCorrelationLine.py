@@ -113,7 +113,7 @@ if __name__ == "__main__":
         #hist.GetXaxis().SetBinLabel(inum,niceName(key))
         hist.GetXaxis().SetBinLabel(inum, key)
         hist.SetBinContent(inum, val*sign[key])
-        inum += 1        
+        inum += 1
         if inum > nToShow: break
 
     c = ROOT.TCanvas("c","",1200,800)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     if hist.GetNbinsX() >= 20: hist.LabelsOption("v","X")
 
     hist.SetTitle("parameter: " + param + "    channel: " + args.matrix.replace("channel",""))
-    if len(args.title): 
+    if len(args.title):
         if args.title == "0":
             hist.SetTitle("")
         else:

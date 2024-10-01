@@ -31,7 +31,7 @@ mpl.rcParams.update({
 
 logger = logging.setup_logger(__file__, 3, True)
 
-# Plot the shapes from the histmaker and theoy corrections input file 
+# Plot the shapes from the histmaker and theoy corrections input file
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", required=True, help="Input. Output files from the histmaker in .hdf5 format (E.g. from scripts/histmakers/w_z_gen_dists.py")
@@ -78,22 +78,22 @@ for dataset in args.datasets:
 
     for channel in args.channels:
         logger.info(f"Now at {channel}")
-        
+
         for systematic in args.systematics:
             logger.info(f"Now at {systematic}")
 
-            nominal = input_tools.read_and_scale(args.input, translate_process[dataset], 
+            nominal = input_tools.read_and_scale(args.input, translate_process[dataset],
                 f"nominal_gen_pdfMSHT20", calculate_lumi=False, scale=1)
-            minnlo = input_tools.read_and_scale(args.input, translate_process[dataset], 
+            minnlo = input_tools.read_and_scale(args.input, translate_process[dataset],
                 f"nominal_gen_pdf{translate_systematic_minnlo.get(systematic,systematic)}", calculate_lumi=False, scale=1)
-            theory = input_tools.read_and_scale(args.input, translate_process[dataset], 
+            theory = input_tools.read_and_scale(args.input, translate_process[dataset],
                 f"nominal_gen_scetlib_dyturbo{translate_systematic_theory.get(systematic,systematic)}VarsCorr", calculate_lumi=False, scale=1)
 
-            var_name_minnlo = "alphasVar" if systematic=="MSHT20as" else "pdfVar" 
+            var_name_minnlo = "alphasVar" if systematic=="MSHT20as" else "pdfVar"
             var_name_theory = "vars"
 
             for axis in args.axes:
-                                
+
                 if axis != None:
                     a_minnlo = translate_minnlo[axis]
                     # a_theory = translate_theory[axis]
@@ -109,23 +109,23 @@ for dataset in args.datasets:
                     if systematic=="MSHT20as":
 
                         var_names = ["alphaS", ]
-                        var_minnlo = [ 
-                            (minnlo[{var_name_minnlo : "as0116"}].project(a_minnlo).values()/nom, minnlo[{var_name_minnlo : "as0120"}].project(a_minnlo).values()/nom),]                    
+                        var_minnlo = [
+                            (minnlo[{var_name_minnlo : "as0116"}].project(a_minnlo).values()/nom, minnlo[{var_name_minnlo : "as0120"}].project(a_minnlo).values()/nom),]
                     else:
 
-                        var_minnlo = [ 
-                            (minnlo[{var_name_minnlo : 2*i-1}].project(a_minnlo).values()/nom, minnlo[{var_name_minnlo : 2*i}].project(a_minnlo).values()/nom) 
+                        var_minnlo = [
+                            (minnlo[{var_name_minnlo : 2*i-1}].project(a_minnlo).values()/nom, minnlo[{var_name_minnlo : 2*i}].project(a_minnlo).values()/nom)
                             for i in range(1, len(var_names)+1)   ]
 
                     # theory:
                     nom = theory[{var_name_theory : 0}].project(a_minnlo).values()
 
                     if systematic=="MSHT20as":
-                        var_theory = [ 
+                        var_theory = [
                             (theory[{var_name_theory : "pdf2"}].project(a_minnlo).values()/nom, theory[{var_name_theory : "pdf5"}].project(a_minnlo).values()/nom),]
                     else:
-                        var_theory = [ 
-                            (theory[{var_name_theory : 2*i-1}].project(a_minnlo).values()/nom, theory[{var_name_theory : 2*i}].project(a_minnlo).values()/nom) 
+                        var_theory = [
+                            (theory[{var_name_theory : 2*i-1}].project(a_minnlo).values()/nom, theory[{var_name_theory : 2*i}].project(a_minnlo).values()/nom)
                             for i in range(1, len(var_names)+1)   ]
 
                 for t, m, n in zip(var_theory, var_minnlo, var_names):
@@ -136,7 +136,7 @@ for dataset in args.datasets:
                     ax = fig.add_subplot(111)
 
                     ax.plot([min(x),max(x)], [1,1], linestyle="-", color="grey")
-                    ax.fill_between(x, 1 + std, 1 - std, color='grey', alpha=0.2, zorder=1, label="MC stat.") 
+                    ax.fill_between(x, 1 + std, 1 - std, color='grey', alpha=0.2, zorder=1, label="MC stat.")
 
                     ax.plot(x, m[0], linestyle="-", drawstyle='steps-mid', color="red", label="MiNNLO Up")
                     ax.plot(x, m[1], linestyle="-", drawstyle='steps-mid', color="blue", label="MiNNLO Down")
@@ -150,7 +150,7 @@ for dataset in args.datasets:
                     yMin = min(min(min(m[0]),min(m[1])), min(min(t[0]),min(t[1])))
                     yMax = max(max(max(m[0]),max(m[1])), max(max(t[0]),max(t[1])))
 
-                    yRange = yMax - yMin 
+                    yRange = yMax - yMin
                     yMin = yMin-yRange*0.02
                     yMax = yMax+yRange*0.02
                     ax.set_ylim(yMin , yMax)
@@ -165,7 +165,7 @@ for dataset in args.datasets:
                     if channel:
                         outname += f"_{channel}"
                     outname += f"_{dataset}_{systematic}_{n}"
-                    
+
                     plt.savefig(f"{outname}.png")
                     plt.savefig(f"{outname}.pdf")
                     plt.close()

@@ -7,7 +7,7 @@ import array
 import math
 import os
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--noIntegrateMassOverflows", action='store_true', help="When integrating mass, do not integrate also the overflow bins")
     args = parser.parse_args()
 
-    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger) 
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
     ROOT.TH1.SetDefaultSumw2()
 

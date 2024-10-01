@@ -24,7 +24,7 @@ histlist.append(f"{directory}/mw_with_mu_eta_pt_scetlib_dyturboCorr_idip{name}.h
 histlist.append(f"{directory}/mw_with_mu_eta_pt_scetlib_dyturboCorr_trigger{name}.hdf5")
 histlist.append(f"{directory}/mw_with_mu_eta_pt_scetlib_dyturboCorr_iso{name}.hdf5")
 
-listoflists = [["nominal"],["nominal_smoothMC","nominal_smoothMC","nominal","nominal_smoothErr"],["nominal_smoothMC","nominal_smoothMC","nominal","nominal_smoothErr"]] 
+listoflists = [["nominal"],["nominal_smoothMC","nominal_smoothMC","nominal","nominal_smoothErr"],["nominal_smoothMC","nominal_smoothMC","nominal","nominal_smoothErr"]]
 
 namelist = []
 namelist.append("IDIP")

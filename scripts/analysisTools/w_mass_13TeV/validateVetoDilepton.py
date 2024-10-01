@@ -75,14 +75,14 @@ if __name__ == "__main__":
     muonTitle = "Non triggering" if args. plotNonTrig else "Triggering"
     ###############################################################################################
     fname = args.inputfile[0]
-    
+
     ROOT.TH1.SetDefaultSumw2()
 
     outdir_original = f"{args.outdir[0]}/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-    
+
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
-    cwide = ROOT.TCanvas("cwide","",2400,600)                      
+    cwide = ROOT.TCanvas("cwide","",2400,600)
     adjustSettings_CMS_lumi()
     canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
             else:
                 scaleDict["plus"][proc] = scale
                 scaleDict["minus"][proc] = scale
-    
+
     for charge in charges.keys():
         chargeTag = charges[charge]
         chargeBin = 0 if charge == -1 else 1

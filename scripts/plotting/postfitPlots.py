@@ -34,7 +34,7 @@ parser.add_argument("--noUncertainty", action='store_true', help="Don't plot tot
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--prefit", action='store_true', help="Make prefit plot, else postfit")
 parser.add_argument("--filterProcs", type=str, nargs="*", default=None, help="Only plot the filtered processes")
-parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"], 
+parser.add_argument("--selectionAxes", type=str, default=["charge", "passIso", "passMT", "cosThetaStarll"],
     help="List of axes where for each bin a separate plot is created")
 parser.add_argument("--axlim", type=float, nargs='*', help="min and max for axes (2 values per axis)")
 parser.add_argument("--invertAxes", action='store_true', help="Invert the order of the axes when plotting")
@@ -132,7 +132,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
     if any(x in axes_names for x in ["ptVgen","absYVgen","helicity"]):
         histtype_data = "step"
         histtype_mc = "errorbar"
-    
+
     if len(h_data.axes) > 1:
         if args.invertAxes:
             logger.info("invert eta order")
@@ -161,8 +161,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         else:
             rlabel = f"${args.dataName}"+('-' if diff else r'\,/\,')+"Pred.$"
 
-        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            rlabel, args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1, 
+        fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim,
+            rlabel, args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1,
             subplotsizes=args.subplotSizes)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
@@ -194,7 +194,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             alpha=1.,
             zorder=2,
             flow='none',
-        )    
+        )
 
     if len(axes_names) > 1 and args.binSeparationLines is not None:
         # plot dashed vertical lines to sepate makro bins
@@ -215,7 +215,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         for i in range(1, axes[0].size + 1):
             if len(args.binSeparationLines) > 0 and not any(np.isclose(x, axes[0].edges[i]) for x in args.binSeparationLines):
                 continue
-            
+
             x = axes[-1].size * i
             x_lo = axes[-1].size * (i-1)
 
@@ -279,13 +279,13 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             label_unc = "Pred. unc."
 
             if diff:
-                ax2.fill_between(edges, 
-                        np.append((nom+std)-nom, ((nom+std)-nom)[-1]), 
+                ax2.fill_between(edges,
+                        np.append((nom+std)-nom, ((nom+std)-nom)[-1]),
                         np.append((nom-std)-nom, ((nom-std)-nom)[-1]),
                     step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label=label_unc)
             else:
-                ax2.fill_between(edges, 
-                        np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+                ax2.fill_between(edges,
+                        np.append((nom+std)/nom, ((nom+std)/nom)[-1]),
                         np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
                     step='post',facecolor=facecolor, zorder=0, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label=label_unc)
 
@@ -309,7 +309,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
                 else:
                     hvars = [hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hd, h_inclusive, cutoff=0.01, rel_unc=True)]
                     linestyle=["-","--"]
-                
+
                 hep.histplot(
                     hvars,
                     histtype="step",
@@ -348,14 +348,14 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             text_pieces.append("$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
         else:
             text_pieces.append(chi2_name + fr" = ${round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
-    
+
     plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data or "Nonprompt" in labels, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize, extra_text=text_pieces, extra_text_loc=args.extraTextLoc)
 
     if ratio or diff:
-        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize, 
+        plot_tools.addLegend(ax2, ncols=args.lowerLegCols, loc=args.lowerLegPos, text_size=args.legSize,
             extra_handles=extra_handles, extra_labels=extra_labels, custom_handlers=["stacked"])
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
@@ -379,9 +379,9 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             analysis_meta_info={"AnalysisOutput" : meta["meta_info"]}
         kwargs["analysis_meta_info"] = analysis_meta_info
 
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         yield_tables={
-            "Stacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip(labels, h_stack)], columns=["Process", "Yield", "Uncertainty"]), 
+            "Stacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip(labels, h_stack)], columns=["Process", "Yield", "Uncertainty"]),
             "Unstacked processes" : pd.DataFrame([(k, sum(h.values()), sum(h.variances())**0.5) for k,h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])], columns=["Process", "Yield", "Uncertainty"])},
         args=args, **kwargs
     )
@@ -502,9 +502,9 @@ if combinetf2:
                 or_vals = np.copy(h.values())
                 h.values()[...] = 1e5*np.log(h.values())
                 h.variances()[...] = 1e10*(h.variances())/np.square(or_vals)
-                
-        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"], 
-            hist_var=hist_var, 
+
+        make_plots(hist_data, hist_inclusive, hist_stack, info["axes"],
+            hist_var=hist_var,
             channel=channel, procs=procs, labels=labels, colors=colors, chi2=chi2, meta=meta, lumi=info["lumi"])
 else:
     # combinetf1
@@ -528,14 +528,14 @@ else:
 
             hist_data = fitresult["obs;1"].to_hist()
             values = np.reshape(hist_data.values()[ch_start:ch_end], shape)
-            hist_data = hist.Hist(*info["axes"], storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
+            hist_data = hist.Hist(*info["axes"], storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))
 
             # last bin can be masked channel; slice with [:nBins]
             hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()
-            hist_inclusive = hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
-                data=np.stack((np.reshape(hist_inclusive.values()[ch_start:ch_end], shape), np.reshape(hist_inclusive.variances()[ch_start:ch_end], shape)), axis=-1))  
+            hist_inclusive = hist.Hist(*info["axes"], storage=hist.storage.Weight(),
+                data=np.stack((np.reshape(hist_inclusive.values()[ch_start:ch_end], shape), np.reshape(hist_inclusive.variances()[ch_start:ch_end], shape)), axis=-1))
             hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist() for p in procs]
-            hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(), 
+            hist_stack = [hist.Hist(*info["axes"], storage=hist.storage.Weight(),
                 data=np.stack((np.reshape(h.values()[ch_start:ch_end], shape), np.reshape(h.variances()[ch_start:ch_end], shape)), axis=-1)) for h in hist_stack]
 
             if not args.prefit and not args.noChisq:
@@ -594,21 +594,21 @@ else:
             if nv % 2:
                 raise ValueError("if --axlim is specified it must have two values per axis!")
             axlim = np.array(args.axlim).reshape((int(nv/2), 2))
-            axes = [ax if lim is not None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])]) 
+            axes = [ax if lim is not None else hist.axis.Variable(ax.edges[(ax.edges >= lim[0]) & (ax.edges <= lim[1])])
                         for ax,lim in itertools.zip_longest(axes, axlim)]
         shape = [len(a) for a in axes]
 
         hist_data = fitresult["obs;1"].to_hist()
         nBins = hist_data.shape[0]
         values = np.reshape(hist_data.values(), shape)
-        hist_data = hist.Hist(*axes, storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))  
+        hist_data = hist.Hist(*axes, storage=hist.storage.Weight(), data=np.stack((values, values), axis=-1))
 
         # last bin can be masked channel; slice with [:nBins]
         hist_inclusive = fitresult[f"expfull_{fittype};1"].to_hist()[:nBins]
-        hist_inclusive = hist.Hist(*axes, storage=hist.storage.Weight(), 
-            data=np.stack((np.reshape(hist_inclusive.values(), shape), np.reshape(hist_inclusive.variances(), shape)), axis=-1))  
+        hist_inclusive = hist.Hist(*axes, storage=hist.storage.Weight(),
+            data=np.stack((np.reshape(hist_inclusive.values(), shape), np.reshape(hist_inclusive.variances(), shape)), axis=-1))
         hist_stack = [fitresult[f"expproc_{p}_{fittype};1"].to_hist()[:nBins] for p in procs]
-        hist_stack = [hist.Hist(*axes, storage=hist.storage.Weight(), 
+        hist_stack = [hist.Hist(*axes, storage=hist.storage.Weight(),
             data=np.stack((np.reshape(h.values(), shape), np.reshape(h.variances(), shape)), axis=-1)) for h in hist_stack]
 
         if not args.prefit:

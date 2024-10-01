@@ -33,13 +33,13 @@ if __name__ == "__main__":
     fname = args.rootfile[0]
     outdir = args.outdir[0]
     createPlotDirAndCopyPhp(outdir)
-    
+
     ROOT.TH1.SetDefaultSumw2()
 
-    adjustSettings_CMS_lumi()    
-    canvas1D = ROOT.TCanvas("canvas1D","",800,1000) 
+    adjustSettings_CMS_lumi()
+    canvas1D = ROOT.TCanvas("canvas1D","",800,1000)
 
-    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800) 
+    canvas_unroll = ROOT.TCanvas("canvas_unroll","",3000,800)
     leftMargin = 0.06
     rightMargin = 0.01
     bottomMargin = 0.12
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     setTDRStyle() # this one removes the stat box
 
-    
+
     charges = ["plus", "minus"] if args.charges == "both" else [args.charges]
 
     for charge in charges:
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         for k in nomihists.keys():
             nomihists_projEta[k] = nomihists[k].ProjectionX(f"{nomihists[k].GetName()}_eta", 1, nomihists[k].GetNbinsY(), "e")
             nomihists_projPt[k] = nomihists[k].ProjectionY(f"{nomihists[k].GetName()}_pt", 1, nomihists[k].GetNbinsX(), "e")
-            
+
         legEntry = {0: "Unpolarized term #sigma_{UL}"}
         for ai in range(1,6):
             ai_id = ai - 1
@@ -119,7 +119,7 @@ if __name__ == "__main__":
                  legendCoords="0.01,0.99,0.81,0.99;2", lowerPanelHeight=0.3, skipLumi=True, passCanvas=canvas1D,
                  transparentLegend=False,
                  onlyLineColor=True, noErrorRatioDen=True, useLineFirstHistogram=True, setOnlyLineRatio=True, lineWidth=2)
-        
+
         drawNTH1([nomihists_projPt[ai] for ai in nomihists_unroll.keys()], [legEntry[l] for l in legEntry.keys()], "Muon p_{T} (GeV)", "Events", f"WmunuCrossSection_byAngoularCoefficients_{charge}_1Dpt", outdir_dataMC,
                  topMargin=0.25, leftMargin=0.16, rightMargin=0.05, labelRatioTmp="A_{i} / #sigma_{UL}::-0.12,0.12",
                  legendCoords="0.01,0.99,0.81,0.99;2", lowerPanelHeight=0.3, skipLumi=True, passCanvas=canvas1D,

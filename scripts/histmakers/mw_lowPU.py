@@ -44,7 +44,7 @@ else:
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="e" else ["singleelectron"])),
-                        base_path=args.dataPath, 
+                        base_path=args.dataPath,
                         extended = "msht20an3lo" not in args.pdfs,
                         mode=analysis_label,
                         era=args.era,
@@ -126,14 +126,14 @@ def build_graph(df, dataset):
         df = unfolding_tools.define_gen_level(df, args.genLevel, dataset.name, mode=analysis_label)
 
         if hasattr(dataset, "out_of_acceptance"):
-            df = unfolding_tools.select_fiducial_space(df, mode="wmass", pt_min=args.pt[1], pt_max=args.pt[2], 
+            df = unfolding_tools.select_fiducial_space(df, mode="wmass", pt_min=args.pt[1], pt_max=args.pt[2],
                 mtw_min=mtw_min, selections=unfolding_selections, accept=False)
         else:
-            df = unfolding_tools.select_fiducial_space(df, mode="wmass", pt_min=args.pt[1], pt_max=args.pt[2], 
+            df = unfolding_tools.select_fiducial_space(df, mode="wmass", pt_min=args.pt[1], pt_max=args.pt[2],
                 mtw_min=mtw_min, selections=unfolding_selections, accept=True)
 
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
-            axes = [*axes, *unfolding_axes] 
+            axes = [*axes, *unfolding_axes]
             cols = [*cols, *unfolding_cols]
 
     if flavor == "mu":
@@ -172,16 +172,16 @@ def build_graph(df, dataset):
     else:
         # undo the scale/smearing corrections, needed to correct RawMET
         df = df.Define("Electron_pt_uncorr", "wrem::Egamma_undoCorrection(Electron_pt, Electron_eta, Electron_ecalCorr)")
-        if not dataset.is_data: 
+        if not dataset.is_data:
             df = df.Define("Electron_pt_corr", "wrem::applyEGammaScaleSmearingUnc(0, Electron_pt, Electron_eta, Electron_dEscaleUp, Electron_dEscaleDown, Electron_dEsigmaUp, Electron_dEsigmaDown, 0)")
             df = df.Filter("HLT_Ele20_WPLoose_Gsf")
-        else: 
+        else:
             df = df.Define("Electron_pt_corr", "wrem::applyEGammaScaleSmearingUnc(1, Electron_pt, Electron_eta, Electron_dEscaleUp, Electron_dEscaleDown, Electron_dEsigmaUp, Electron_dEsigmaDown, 0)")
             df = df.Filter("HLT_HIEle20_WPLoose_Gsf")
 
         df = df.Define("vetoElectrons", "Electron_pt_corr > 10 && Electron_cutBased > 0 && abs(Electron_eta) < 2.4")
         df = df.Filter("Sum(vetoElectrons)==1")
-        
+
         df = df.Define("vetoMuons", "Muon_pt > 10 && Muon_looseId && abs(Muon_eta) < 2.4 && abs(Muon_dxybs) < 0.05 && abs(Muon_dz)< 0.2")
         df = df.Filter("Sum(vetoMuons) == 0")
 
@@ -206,7 +206,7 @@ def build_graph(df, dataset):
         #df = df.Define("Lep_iso", "Electron_pfRelIso03_all[goodLeptons]") # Electron_miniPFRelIso_all Electron_pfRelIso03_all
         #df = df.Define("passIso", "Lep_iso < 0.15")
         df = df.Define("passIso", "wrem::electron_id::pass_iso<3>(Electron_vidNestedWPBitmap[goodLeptons])[0] > 0")
-        
+
 
     df = df.Define("trigMatch", "wrem::hasTriggerMatchLowPU(Lep_eta, Lep_phi, TrigObj_eta[goodTrigObjs], TrigObj_phi[goodTrigObjs])")
     df = df.Define("nonTrigMatch", "wrem::inverse(trigMatch)")
@@ -223,7 +223,7 @@ def build_graph(df, dataset):
 
     df = muon_selections.apply_met_filters(df)
 
-    if not dataset.is_data: 
+    if not dataset.is_data:
         if flavor == "mu":
             df = df.Define("lepSF_ISO", "wrem::lepSF(Lep_pt, Lep_eta, Lep_charge, 1)")
             df = df.Define("lepSF_IDIP", "wrem::lepSF(Lep_pt, Lep_eta, Lep_charge, 2)") # largest effect
@@ -263,18 +263,18 @@ def build_graph(df, dataset):
     df = df.Define("passMT", f"transverseMass > {mtw_min}")
 
     results.append(df.HistoBoost("lep_pt_eta_phi", [axis_pt, axis_eta, axis_phi, common.axis_charge, common.axis_passMT, common.axis_passIso], ["lep_pt", "lep_eta", "lep_phi", "lep_charge", "passMT", "passIso", "nominal_weight"]))
-    
+
     #df = df.Define("iso_tmp", "if(lep_iso > 0.15) { std::cout << lep_iso << std::endl; } return lep_iso;")
     #results.append(df.HistoBoost("lep_iso", [axis_iso], ["iso_tmp", "nominal_weight"]))
 
-    # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, common.axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))  
+    # results.append(df.HistoBoost("qcd_space", [axis_pt, axis_eta, axis_iso, common.axis_charge, axis_mT], ["lep_pt", "lep_eta", "lep_iso", "lep_charge", "transverseMass", "nominal_weight"]))
 
     df = df.Define("ptW", "wrem::pt_2(lep_pt, lep_phi, MET_corr_rec_pt, MET_corr_rec_phi)")
 
     results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
     results.append(df.HistoBoost("transverseMass", axes_mt, [*cols_mt, "nominal_weight"]))
 
-    if not dataset.is_data: 
+    if not dataset.is_data:
         # prefire
         df = df.Define("prefireCorr_syst", "wrem::prefireCorr_syst(Jet_pt, Jet_eta, Jet_phi, Jet_muEF, Jet_neEmEF, Jet_chEmEF, Photon_pt, Photon_eta, Photon_phi, Lep_pt, Lep_eta, Lep_phi)")
         df = df.Define("prefireCorr_syst_tensor", "Eigen::TensorFixedSize<double, Eigen::Sizes<2>> res; auto w = nominal_weight*prefireCorr_syst; std::copy(std::begin(w), std::end(w), res.data()); return res;")

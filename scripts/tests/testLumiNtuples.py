@@ -29,8 +29,8 @@ parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for lumin
 parser.add_argument("--nano", type=str, help="NanoAOD version to run on", default="tnp")
 args = parser.parse_args()
 
-filt = lambda x,filts=args.filterProcs: any([f in x.name for f in filts]) 
-datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles, filt=filt if args.filterProcs else None, 
+filt = lambda x,filts=args.filterProcs: any([f in x.name for f in filts])
+datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles, filt=filt if args.filterProcs else None,
     nanoVersion=args.nano)
 
 print("Setting option --debug to True")
@@ -62,7 +62,7 @@ axis_passMT = hist.axis.Boolean(name = "passMT")
 nominal_axes = [axis_eta, axis_pt, axis_charge, axis_passIso, axis_passMT]
 
 axis_ptVgen = hist.axis.Variable(
-    common.ptV_10quantiles_binning, 
+    common.ptV_10quantiles_binning,
     name = "ptVgen", underflow=False,
 )
 
@@ -97,7 +97,7 @@ def build_graph(df, dataset):
         df = df.Define("nominal_weight", "1.0")
         nominal = df.HistoBoost("nominal", nominal_axes, nominal_cols)
         results.append(nominal)
-                
+
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
         df = df.Define("weight_vtx", vertex_helper, ["GenVtx_z", "Pileup_nTrueInt"])
@@ -105,7 +105,7 @@ def build_graph(df, dataset):
         weight_expr = "weight*weight_pu"
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
-            
+
         nominal = df.HistoBoost("nominal", nominal_axes, [*nominal_cols, "nominal_weight"])
         results.append(nominal)
 

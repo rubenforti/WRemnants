@@ -32,9 +32,9 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         hBootstrap = h.copy()
 
     info=dict(
-        fakerate_axes=fakerate_axes, 
-        smoothing_axis_name=smoothing_axis_name, 
-        rebin_smoothing_axis=None, 
+        fakerate_axes=fakerate_axes,
+        smoothing_axis_name=smoothing_axis_name,
+        rebin_smoothing_axis=None,
         integrate_x=True
         )
 
@@ -43,7 +43,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     hD_sig = hSel_sig.get_hist(h)
     hss.append(hD_sig)
     labels.append("D (truth)")
-    
+
     info["smoothing_mode"] = smoothing_mode
     info["smoothing_order_fakerate"] = 2 if smoothing_mode=="fakerate" else 3
 
@@ -72,7 +72,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
             vals = np.array(vals)
             toy_mean = np.mean(vals, axis=0)
-            toy_var = np.var(vals, ddof=1, axis=0) 
+            toy_var = np.var(vals, ddof=1, axis=0)
             hD_simple.values(flow=True)[...] = toy_mean
             hD_simple.variances(flow=True)[...] = toy_var
         else:
@@ -106,7 +106,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
     #         vals = np.array(vals)
     #         toy_mean = np.mean(vals, axis=0)
-    #         toy_var = np.var(vals, ddof=1, axis=0) 
+    #         toy_var = np.var(vals, ddof=1, axis=0)
     #         hD_Xpol1.values(flow=True)[...] = toy_mean
     #         hD_Xpol1.variances(flow=True)[...] = toy_var
     #     else:
@@ -122,7 +122,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
     #     # hSel_Xpol2 = sel.FakeSelectorExtrapolateABCD(h, fakerate_axes=fakerate_axes, extrapolation_order=2, rebin_x=[0,11,21,40,44,49,55,62,80])
     #     # hD_Xpol2 = hSel_Xpol2.get_hist(h)
     #     # hss.append(hD_Xpol2)
-    #     # labels.append("pol2(x)")    
+    #     # labels.append("pol2(x)")
 
     # extended ABCD in 5 control regions
     logger.info("Make 1D extended ABCD prediction in 5 control regions")
@@ -149,7 +149,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
             vals = np.array(vals)
             toy_mean = np.mean(vals, axis=0)
-            toy_var = np.var(vals, ddof=1, axis=0) 
+            toy_var = np.var(vals, ddof=1, axis=0)
             hD_ext5.values(flow=True)[...] = toy_mean
             hD_ext5.variances(flow=True)[...] = toy_var
         else:
@@ -195,7 +195,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
             vals = np.array(vals)
             toy_mean = np.mean(vals, axis=0)
-            toy_var = np.var(vals, ddof=1, axis=0) 
+            toy_var = np.var(vals, ddof=1, axis=0)
             hD_ext8.values(flow=True)[...] = toy_mean
             hD_ext8.variances(flow=True)[...] = toy_var
         else:
@@ -234,10 +234,10 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
     linestyles = ["-", "-", "--", "--", ":"]
     colors = mpl.colormaps["tab10"]
-    
+
     if "charge" in hss[0].axes.name and len(hss[0].axes["charge"])==1:
         hss = [h[{"charge":slice(None,None,hist.sum)}] for h in hss]
-    
+
     axes = [f"abs{a.capitalize()}" if args.absval[i] else a for i, a in enumerate(hss[0].axes.name)]
 
     if len(axes)>1:
@@ -275,20 +275,20 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
 
     if ratio:
         fig, ax1, ax2 = plot_tools.figureWithRatio(hss[0], xlabel=xlabel, ylabel=ylabel, cms_label=args.cmsDecor,
-                                             rlabel=f"1/{labels[0]}", rrange=rrange, 
+                                             rlabel=f"1/{labels[0]}", rrange=rrange,
                                              automatic_scale=False, width_scale=1.2, ylim=(ymin, ymax))
     else:
         fig, ax1 = plot_tools.figure(hss[0], xlabel=xlabel, ylabel=ylabel, cms_label=args.cmsDecor,
-                                             automatic_scale=False, width_scale=1.2, ylim=(ymin, ymax))        
+                                             automatic_scale=False, width_scale=1.2, ylim=(ymin, ymax))
 
     # plot horizontal pT lines
-    for l in [24, 48, 72, 96]: 
+    for l in [24, 48, 72, 96]:
         ax1.plot([l,l],[ymin, ymax], linestyle="--", color="k")
 
     labels = labels[:len(hs)]
     if ratio:
         hr = [hh.divideHists(h1d, hss[0]) for h1d in hss]
-        
+
         if smoothing_mode in ["binned"]:
             chi2s = [sum((h1d.values(flow=True) - hss[0].values(flow=True))**2/(h1d.variances(flow=True) + hss[0].variances(flow=True))) for h1d in hss]
             ndf = len(hss[0].values(flow=True)) - normalized
@@ -302,7 +302,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         linestyle = linestyles[:len(hs)],
         ax = ax1
     )
-    
+
     if ratio:
         hep.histplot(
             hr,
@@ -327,7 +327,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         # yield_tables={"Stacked processes" : stack_yields, "Unstacked processes" : unstacked_yields},
         # analysis_meta_info={"AnalysisOutput" : groups.getMetaInfo()},
         args=args,

@@ -90,7 +90,7 @@ def define_jpsi_crctd_unc_z_mass(df):
             "    res[i] = ("
             "        ROOT::Math::PtEtaPhiMVector("
             "            nonTrigMuons_jpsi_crctd_pt_unc[i],"
-            "            nonTrigMuons_cvh_eta," 
+            "            nonTrigMuons_cvh_eta,"
             "            nonTrigMuons_cvh_phi,"
             "            wrem::muon_mass"
             "        )"
@@ -99,7 +99,7 @@ def define_jpsi_crctd_unc_z_mass(df):
             "return res;"
         )
     )
-    df = df.Define("Z_jpsi_crctd_mom4_unc", 
+    df = df.Define("Z_jpsi_crctd_mom4_unc",
         (
             "ROOT::VecOps::RVec<double> res(trigMuons_jpsi_crctd_mom4_unc.size());"
             "for (int i = 0; i < trigMuons_jpsi_crctd_mom4_unc.size(); i++) {"
@@ -111,7 +111,7 @@ def define_jpsi_crctd_unc_z_mass(df):
             "return res"
         )
     )
-    df = df.Define("massZ_jpsi_crctd_unc", 
+    df = df.Define("massZ_jpsi_crctd_unc",
         (
             "ROOT::VecOps::RVec<double> res(Z_jpsi_crctd_mom4_unc.size());"
             "for (int i = 0; i < Z_jpsi_crctd_mom4_unc.size(); i++) {"
@@ -168,7 +168,7 @@ def make_reco_over_gen_hists(df, results):
     cvh_over_gen =  df.HistoBoost("cvh_over_gen", [axis_pt_reco_over_gen], [*nominal_cols_cvh_over_gen, "nominal_weight"], storage=hist.storage.Double())
     uncrct_over_gen = df.HistoBoost("uncrct_over_gen", [axis_pt_reco_over_gen], [*nominal_cols_uncrct_over_gen, "nominal_weight"], storage=hist.storage.Double())
     gen_smeared_over_gen = df.HistoBoost("gen_smeared_over_gen", [axis_pt_reco_over_gen], [*nominal_cols_gen_smeared_over_gen, "nominal_weight"], storage=hist.storage.Double())
-    
+
     results.append(crctd_over_gen)
     results.append(cvh_over_gen)
     results.append(uncrct_over_gen)
@@ -191,15 +191,15 @@ def make_hists_for_event_weights_perse(
     df = df.Define(f"weights_{method}_up", f"{weights_col}(0,1)/{nominal_weight_col}")
     axis_weights = hist.axis.Regular(1000, 0.99, 1.01, underflow=True, overflow=True, name = "weights")
     weights_dn = df.HistoBoost(
-        f"weights_{method}_dn", 
+        f"weights_{method}_dn",
         [*nominal_axes, axis_weights],
-        [*nominal_cols, f"weights_{method}_dn"], 
+        [*nominal_cols, f"weights_{method}_dn"],
         storage=hist.storage.Double()
     )
     weights_up = df.HistoBoost(
-        f"weights_{method}_up", 
+        f"weights_{method}_up",
         [*nominal_axes, axis_weights],
-        [*nominal_cols, f"weights_{method}_up"], 
+        [*nominal_cols, f"weights_{method}_up"],
         storage=hist.storage.Double()
     )
     results.append(weights_dn)
@@ -210,39 +210,39 @@ def make_hists_for_event_weights_perse(
 # manually shift the muon pt by a certain proportion
 def make_hists_for_manual_scale_shifts(df, axes, cols, cols_gen_smeared, results):
     muonScaleVariationUpMil = df.HistoBoost(
-        "nominal_muonScaleVariationUpMil", 
+        "nominal_muonScaleVariationUpMil",
         axes,
-        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleUp_mil", *cols_gen_smeared[2:], "nominal_weight"], 
+        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleUp_mil", *cols_gen_smeared[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     muonScaleVariationDnMil = df.HistoBoost(
-        "nominal_muonScaleVariationDnMil", 
+        "nominal_muonScaleVariationDnMil",
         axes,
-        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleDn_mil", *cols_gen_smeared[2:], "nominal_weight"], 
+        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleDn_mil", *cols_gen_smeared[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     muonScaleVariationUpTenthmil = df.HistoBoost(
-        "nominal_muonScaleVariationUpTenthmil", 
+        "nominal_muonScaleVariationUpTenthmil",
         axes,
-        [cols[0], "goodMuons_pt0_scaleUp_tenthmil", *cols[2:], "nominal_weight"], 
+        [cols[0], "goodMuons_pt0_scaleUp_tenthmil", *cols[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     muonScaleVariationDnTenthmil = df.HistoBoost(
-        "nominal_muonScaleVariationDnTenthmil", 
+        "nominal_muonScaleVariationDnTenthmil",
         axes,
-        [cols[0], "goodMuons_pt0_scaleDn_tenthmil", *cols[2:], "nominal_weight"], 
+        [cols[0], "goodMuons_pt0_scaleDn_tenthmil", *cols[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     muonScaleVariationUpTenthmil_gen_smear = df.HistoBoost(
-        "nominal_muonScaleVariationUpTenthmil_gen_smear", 
+        "nominal_muonScaleVariationUpTenthmil_gen_smear",
         axes,
-        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleUp_tenthmil", *cols_gen_smeared[2:], "nominal_weight"], 
+        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleUp_tenthmil", *cols_gen_smeared[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     muonScaleVariationDnTenthmil_gen_smear = df.HistoBoost(
-        "nominal_muonScaleVariationDnTenthmil_gen_smear", 
+        "nominal_muonScaleVariationDnTenthmil_gen_smear",
         axes,
-        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleDn_tenthmil", *cols_gen_smeared[2:], "nominal_weight"], 
+        [cols_gen_smeared[0], "goodMuons_pt0_gen_smeared_scaleDn_tenthmil", *cols_gen_smeared[2:], "nominal_weight"],
         storage=hist.storage.Double()
     )
     results.append(muonScaleVariationUpMil)
@@ -267,20 +267,20 @@ def muon_scale_variation_from_manual_shift(
         )
 def make_hists_for_muon_scale_var_weights(df, axes, results, cols, nominal_cols_gen_smeared):
     df = make_hists_for_event_weights_perse(
-        df, axes, cols, 
+        df, axes, cols,
         "muonScaleSyst_responseWeights_tensor_gaus", "nominal_weight", "gaus",
         results
-    ) 
+    )
     df = make_hists_for_event_weights_perse(
-        df, axes, cols, 
+        df, axes, cols,
         "muonScaleSyst_responseWeights_tensor_splines", "nominal_weight", "splines",
         results
-    ) 
+    )
     df = make_hists_for_event_weights_perse(
-        df, axes, cols, 
+        df, axes, cols,
         "muonScaleSyst_responseWeights_tensor_massWeights", "nominal_weight", "massweights",
         results
-    ) 
+    )
     df = define_cols_for_manual_shifts(df)
     make_hists_for_manual_scale_shifts(df, axes, cols, nominal_cols_gen_smeared, results)
     return df

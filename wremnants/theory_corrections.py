@@ -63,7 +63,7 @@ def make_corr_helper_fromnp(filename=f"{common.data_dir}/N3LLCorrections/inclusi
         bins = corrf["bins"]
         axis_charge =  common.axis_chargeZgen
 
-    axis_syst = hist.axis.Regular(len(bins[0]) - 1, bins[0][0], bins[0][-1], 
+    axis_syst = hist.axis.Regular(len(bins[0]) - 1, bins[0][0], bins[0][-1],
                     name="systIdx", overflow=False, underflow=False)
     axis_mass = hist.axis.Variable(bins[1], name="mass")
     axis_y = hist.axis.Variable(bins[2], name="y")
@@ -233,7 +233,7 @@ def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, coef
     apply_coeff_corr = coeff_hist is not None and coeffs_from_hist
 
     # broadcast back mass and helicity axes (or vars axis)
-    sigmaUL_ratio = hh.divideHists(target_sigmaul, ref_helicity_hist[{"massVgen" : 0, "helicity" : -1.j}], 
+    sigmaUL_ratio = hh.divideHists(target_sigmaul, ref_helicity_hist[{"massVgen" : 0, "helicity" : -1.j}],
                                    flow=False, by_ax_name=False).values()[np.newaxis,...,np.newaxis,:] \
                             if target_sigmaul else np.ones_like(ref_helicity_hist)[...,np.newaxis]
 
@@ -243,7 +243,7 @@ def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, coef
     vars_ax = target_sigmaul.axes["vars"] if target_sigmaul else hist.axis.Regular(1 ,0, 1, name="vars")
     corr_coeffs = hist.Hist(*ref_coeffs.axes, corr_ax, vars_ax)
     # Corr = False is the uncorrected coeffs, corrected coeffs have the new A4
-    # NOTE: the corrected coeffs are multiplied through by the sigmaUL correction, so that the 
+    # NOTE: the corrected coeffs are multiplied through by the sigmaUL correction, so that the
     # new correction can be made as the ratio of the sum. To get the correct coeffs, this should
     # be divided back out
     corr_coeffs[...] = ref_coeffs.values()[...,np.newaxis,np.newaxis]
@@ -257,7 +257,7 @@ def make_corr_by_helicity(ref_helicity_hist, target_sigmaul, target_sigma4, coef
             scale = -1 if coeff in [1, 4] else 1
             idx = complex(0, coeff)
             corr_coeffs[...,idx,True,:] = coeff_hist[{"helicity" : idx}].values()[...,np.newaxis]*scale
-    # Scale by the sigmaUL correction, 
+    # Scale by the sigmaUL correction,
     corr_coeffs.values()[...,corr_coeffs.axes["corr"].index(True),:] *= sigmaUL_ratio
 
     corr_coeffs = set_corr_ratio_flow(corr_coeffs)
@@ -431,7 +431,7 @@ def read_corr(generator, corr_files, charge, axes=[]):
         elif generator == "dyturbo":
             h = input_tools.read_dyturbo_hist(corr_files, axes=axes, charge=charge)
 
-        vars_ax = h.axes["vars"] if "vars" in h.axes.name else hist.axis.StrCategory(["central"], name="vars") 
+        vars_ax = h.axes["vars"] if "vars" in h.axes.name else hist.axis.StrCategory(["central"], name="vars")
         hnD = hist.Hist(*h.axes, vars_ax)
         # Leave off the overflow, we won't use it anyway
         hnD[...] = np.reshape(h.values(), hnD.shape)

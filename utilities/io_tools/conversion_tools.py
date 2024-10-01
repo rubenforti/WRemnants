@@ -15,20 +15,20 @@ def transform_poi(poi_type, meta):
     if poi_type in ["nois"]:
         prior_norm = meta["args"]["priorNormXsec"]
         scale_norm = meta["args"]["scaleNormXsecHistYields"] if meta["args"]["scaleNormXsecHistYields"] is not None else 1
-        val = lambda theta, scale, k=prior_norm, x=scale_norm: (1+x)**(k * theta) * scale 
+        val = lambda theta, scale, k=prior_norm, x=scale_norm: (1+x)**(k * theta) * scale
         err = lambda theta, err, scale, k=prior_norm, x=scale_norm: (k*np.log(1+x) * (1+x)**(k * theta)) * scale * err
-        
-        # val = lambda theta, scale, k=prior_norm, x=scale_norm: (1 + x * k * theta) * scale 
-        # err = lambda theta, scale, k=prior_norm, x=scale_norm: (x * k * theta) * scale 
+
+        # val = lambda theta, scale, k=prior_norm, x=scale_norm: (1 + x * k * theta) * scale
+        # err = lambda theta, scale, k=prior_norm, x=scale_norm: (x * k * theta) * scale
         return val, err
     else:
         val = lambda poi, scale: poi * scale
         err = lambda poi, err, scale: err * scale
         return val, err
 
-def expand_flow(val, axes, flow_axes, var=None):                          
+def expand_flow(val, axes, flow_axes, var=None):
     # expand val and var arrays by ones for specified flow_axes in order to broadcast them into the histogram
-    for a in axes: 
+    for a in axes:
         if a.name not in flow_axes:
             if a.traits.underflow:
                 s_ = [s for s in val.shape]
@@ -52,16 +52,16 @@ def combine_channels(meta, merge_gen_charge_W):
     channel_energy={
         "2017G": "5TeV",
         "2017H": "13TeV",
-        "2016preVFP": "13TeV", 
-        "2016postVFP":"13TeV", 
-        "2017": "13TeV", 
+        "2016preVFP": "13TeV",
+        "2016postVFP":"13TeV",
+        "2017": "13TeV",
         "2018": "13TeV",
     }
     # merge electron and muon into lepton channels
     channel_flavor ={
-        "e": "l", 
+        "e": "l",
         "mu": "l",
-        "ee": "ll", 
+        "ee": "ll",
         "mumu": "ll",
     }
 
@@ -87,7 +87,7 @@ def combine_channels(meta, merge_gen_charge_W):
                 logger.debug("Merge W_qGen0 and W_qGen1 into W with charge axis")
                 axis_qGen = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "qGen")
                 gen_axes = {
-                    "W": [*gen_axes["W_qGen0"], axis_qGen], 
+                    "W": [*gen_axes["W_qGen0"], axis_qGen],
                     **{k:v for k,v in gen_axes.items() if k not in ["W_qGen0", "W_qGen1"]}
                 }
                 # gen_axes["W"] = [*gen_axes["W_qGen0"], axis_qGen]
@@ -109,10 +109,10 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
 ):
     # convert POIs in fitresult into histograms
     # uncertainties, use None to get all, use [] to get none
-    # grouped=True for grouped uncertainties 
-    # Different channels can have different year, flavor final state, particle final state, sqrt(s), 
+    # grouped=True for grouped uncertainties
+    # Different channels can have different year, flavor final state, particle final state, sqrt(s),
     #   if merge_channels=True the lumi is added up for final states with different flavors or eras with same sqrt(s)
-    
+
     # translate the name of the keys to be written out
     target_keys={
         "pmaskedexp": "xsec",
@@ -120,7 +120,7 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
         "pmaskedexpnorm": "xsec_normalized",
         "sumpoisnorm": "xsec_normalized",
     }
-    
+
     fitresult = combinetf_input.get_fitresult(infile.replace(".root",".hdf5"))
     meta = ioutils.pickle_load_h5py(fitresult["meta"])
     meta_info = meta["meta_info"]
@@ -130,13 +130,13 @@ def fitresult_pois_to_hist(infile, result=None, poi_types = None, translate_poi_
             poi_types = ["nois", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
         else:
             poi_types = ["mu", "pmaskedexp", "pmaskedexpnorm", "sumpois", "sumpoisnorm", "ratiometapois"]
-    
+
     if merge_channels:
         channel_info = combine_channels(meta, merge_gen_charge_W)
     else:
         channel_info = meta["channel_info"]
 
-    if result is None: 
+    if result is None:
         result = {}
     for poi_type in poi_types:
         logger.debug(f"Now at POI type {poi_type}")

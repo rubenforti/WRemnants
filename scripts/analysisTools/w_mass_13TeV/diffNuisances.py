@@ -50,7 +50,7 @@ def sortByCharge(name):
     return 0 if "minus" in name else 1 if "plus" in name else 2
 
 def sortParameters(params):
-    
+
     params = sorted(params)
     # the sorting below assumes that one would use systematics from a specific group, not a totally random list, otherwise the order might end up a bit scrambled
     if any(re.match('pdf.*',x) for x in params):
@@ -106,9 +106,9 @@ if __name__ == "__main__":
     parser.add_argument(     '--defaultYmax' , dest='defaultYmax', default=4.0, type=float, help='Set the default max value for y (but it is still overridden if some parameters are above)')
     #parser.add_argument(      "--y-setting",    dest="ysetting",  type=lambda s: [float(item) for item in s.split(',')], default="-5.0,-3,0,3,5.0",  help="Settings to customize y axis: comma-separated list of ymin,yhalfd,ycen,yhalfu,ymax, where horizontal lines are drawn")
     parser.add_argument('-R', "--rank-nuisances-by", dest="rankNuisancesBy",  default=None, choices=["", "pull", "sigma"],  type=str,  help="Rank nuisances based on either sigma or pull. It is devised to work with --pois '.*', but of course you can further filter nuisances and/or pois")
-    parser.add_argument('-N','--show-N' , dest='showN',    default=0, type=int, help='To be used with -R: it shows only the N nuisances ranked. If not positive, no limit is used')    
-    parser.add_argument(     '--lower-limit-pull' , dest='lowerLimitPull', default=-1.0, type=float, help='To be used with -R. Take only nuisances with pull above this value (in absolute value). If negative, use no limit')    
-    parser.add_argument(     '--upper-limit-sigma' , dest='upperLimitSigma', default=-1.0, type=float, help='To be used with -R. Take only nuisances with postfit sigma below this value . If negative, use no limit')    
+    parser.add_argument('-N','--show-N' , dest='showN',    default=0, type=int, help='To be used with -R: it shows only the N nuisances ranked. If not positive, no limit is used')
+    parser.add_argument(     '--lower-limit-pull' , dest='lowerLimitPull', default=-1.0, type=float, help='To be used with -R. Take only nuisances with pull above this value (in absolute value). If negative, use no limit')
+    parser.add_argument(     '--upper-limit-sigma' , dest='upperLimitSigma', default=-1.0, type=float, help='To be used with -R. Take only nuisances with postfit sigma below this value . If negative, use no limit')
     parser.add_argument(     '--use-hepdata-labels', dest='useHepdataLabels',    default=False, action='store_true', help='Write axis labels using latex for hepdata, with some name polishing')
     # following options are needed to prepare list of nuisances and POIs consistently with covariance matrices for hepdata
     parser.add_argument(     '--prepare-as-covariance-matrix', dest='prepareAsCovarianceMatrix',    default=False, action='store_true', help='Sort as in subMatrix.py to get better correspondance between matrix and list of POIs and nuisance parameters, when preparing material for hepdata')
@@ -140,8 +140,8 @@ if __name__ == "__main__":
     else:
         print("Sorry, scans method for option -t still has to be implemented")
         quit()
-        
-    print(f"Looking for regexp match {pois_regexps}")    
+
+    print(f"Looking for regexp match {pois_regexps}")
     valuesAndErrors = {}
     valuesAndErrors_exp = {}
     valuesPrefit = {}
@@ -165,11 +165,11 @@ if __name__ == "__main__":
     if len(params)==0:
         print("No parameters selected. Exiting.")
         quit()
-            
+
     # if you are going to rank nuisances, just skip the sorting by names, to save some time
     if args.rankNuisancesBy:
         # this sorting will be managed later
-        pass        
+        pass
     else:
         params = sortParameters(params)
         print('='*30)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
         flag = False
 
         ## this try catch catches the cases for which no gen (prefit) value exists. needed for the .* one
-        try: 
+        try:
             mean_p = valuesPrefit[name+'_gen'][0]
         except:
             #print(f"Exception caught: name = {name}")
@@ -206,7 +206,7 @@ if __name__ == "__main__":
             expval_f,experr_f = (valuesAndErrors_exp[name][0],abs(valuesAndErrors_exp[name][0]-valuesAndErrors_exp[name][1]))
         else:
             expval_f,experr_f = val_f,err_f
-        
+
         if args.absolute_values:
             valShift = val_f
             sigShift = err_f
@@ -221,7 +221,7 @@ if __name__ == "__main__":
                 if sigShift >= args.upperLimitSigma: continue
             numberRankedNuisances += 1
 
-        if outdir: 
+        if outdir:
             nuis_p_i+=1
             hist_fit_s.SetBinContent(nuis_p_i, val_f)
             hist_fit_s.SetBinError(nuis_p_i,err_f)
@@ -236,7 +236,7 @@ if __name__ == "__main__":
         if abs(val_f - mean_p) > args.vtol2*sigShift:
 
             # severely report this nuisance:
-            # 
+            #
             # the best fit moved by more than 2.0 sigma or the uncertainty (sigma)
             # changed by more than 50% (default thresholds) w.r.t the prefit values
             isFlagged[name] = 2
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
         elif abs(val_f - mean_p) > args.vtol*sigShift:
             # report this nuisance:
-            # 
+            #
             # the best fit moved by more than 0.3 sigma or the uncertainty (sigma)
             # changed by more than 10% (default thresholds) w.r.t the prefit values
             if args.show_all_parameters: isFlagged[name] = 1
@@ -254,7 +254,7 @@ if __name__ == "__main__":
             flag = True
 
         if flag or args.show_all_parameters: table[name] = row
-    
+
     #end of loop over all fitted parameters
 
     #----------
@@ -266,13 +266,13 @@ if __name__ == "__main__":
             args.postfix += "_{add}".format(add=addPostfix)
         else:
             args.postfix = addPostfix
-            
+
     outnameNoExt = "{od}/nuisances_{ps}_{suff}".format(od=outdir, ps=args.uniqueString, suff=args.postfix)
 
     for ext in args.format.split(','):
         txtfilename = "{noext}.{ext}".format(noext=outnameNoExt, ext=ext)
         txtfile = open(txtfilename,'w')
-     
+
         fmtstring = "%-40s     %15s"
         highlight = "*%s*"
         morelight = "!%s!"
@@ -310,18 +310,18 @@ if __name__ == "__main__":
         </head><body style="font-family: 'Verdana', sans-serif; font-size: 10pt;"><h1>Comparison of nuisances</h1>
         <table>
         """)
-     
-     
+
+
             if args.absolute_values:
                 what = "x, &sigma;<sub>fit</sub>";
             else:
                 what = "&Delta;x, &sigma;<sub>fit</sub>";
             txtfile.write("<tr><th>nuisance</th><th>signal fit<br/>%s</th>\n" % (what))
             fmtstring = "<tr><td><tt>%-40s</tt> </td><td> %-15s </td></tr>\n"
-     
+
         names = table.keys()
 
-        if args.rankNuisancesBy:    
+        if args.rankNuisancesBy:
             # rank by pull
             names = sorted(names, key = lambda x: abs(float((table[x][0].split(',')[0]).strip())), reverse=True)
             if args.rankNuisancesBy == "sigma":
@@ -329,11 +329,11 @@ if __name__ == "__main__":
                 names = sorted(names, key = lambda x: float((table[x][0].split(',')[1]).strip()))
         else:
             names = sortParameters(names)
-            
+
         highlighters = { 1:highlight, 2:morelight };
         nameCounter = 0
         for n in names:
-            if args.showN > 0 and nameCounter > args.showN: 
+            if args.showN > 0 and nameCounter > args.showN:
                 break
             nameCounter += 1
             v = table[n]
@@ -343,7 +343,7 @@ if __name__ == "__main__":
             if (n) in isFlagged: v[-1] = highlighters[isFlagged[n]] % v[-1]
             txtfile.write(fmtstring % (n, v[0]))
             txtfile.write('\n')
-     
+
         if ext == "latex":
             txtfile.write(" \\hline\n\end{tabular}\n")
         elif ext == "html":
@@ -357,7 +357,7 @@ if __name__ == "__main__":
         ROOT.gStyle.SetOptStat(0)
         fout = ROOT.TFile.Open("{fn}.root".format(fn=outnameNoExt),"RECREATE")
 
-        # need to shrink histogram, as some bins might have been removed when ranking. 
+        # need to shrink histogram, as some bins might have been removed when ranking.
         # Also, use same sorting as table
         hist_fit_s_ranked = None
         hist_expfit_s_ranked = None
@@ -369,7 +369,7 @@ if __name__ == "__main__":
             index_name = 1
             for n in names:
                 if args.showN > 0 and index_name > args.showN:
-                    break 
+                    break
                 else:
                     thisname = niceNameHEPDATA(n) if args.useHepdataLabels else niceName(n)
                     binNumber = hist_fit_s.GetXaxis().FindFixBin(thisname)
@@ -395,9 +395,9 @@ if __name__ == "__main__":
         cw = 800
         ch = 600
         if nbins >= 100:
-            cw = 2000            
+            cw = 2000
         elif nbins >= 50:
-            cw = 1200            
+            cw = 1200
         if args.canvasSize:
             cw = int(args.canvasSize.split(',')[0])
             ch = int(args.canvasSize.split(',')[1])
@@ -423,8 +423,8 @@ if __name__ == "__main__":
             hist_fit_s.SetTitle(args.uniqueString)
         elif nbins > 120:
             xLabelSize = 0.025
-            
-        if plotObsWithExp:            
+
+        if plotObsWithExp:
 
             # to plot observed (could be pseudodata) and expected, but also to compare two different fits (need to modify central value)
             x = array('d',[float(i+1) for i in range(nbins)])
@@ -446,7 +446,7 @@ if __name__ == "__main__":
             lat = ROOT.TLatex(); lat.SetNDC()
             lat.SetTextFont(42)
             lat.SetTextSize(0.05)
-            
+
             #leg = ROOT.TLegend(clm, 0.02, 1.0 - crm, 0.08)
             leg = ROOT.TLegend(clm, 0.92, 1.0 - crm, 0.98)
             leg.SetNColumns(3)
@@ -486,7 +486,7 @@ if __name__ == "__main__":
             gr_prefit.GetXaxis().SetNdivisions(nbins+1, ROOT.kFALSE)
             gr_prefit.GetYaxis().SetNdivisions(2*int(maxz))
 
-            # expected 
+            # expected
             gr_expected = ROOT.TGraphErrors(nbins,x,zero,exexp,eyexp)
             gr_expected.GetYaxis().SetRangeUser(-maxz,maxz)
             gr_expected.GetXaxis().SetRangeUser(-0.5,nbins+0.5)
@@ -517,7 +517,7 @@ if __name__ == "__main__":
 
             for ext in ['png', 'pdf']:
                 canvas_nuis.SaveAs("{noext}_compareObsAndExp.{ext}".format(noext=outnameNoExt, ext=ext))
-                
+
         else:
 
 

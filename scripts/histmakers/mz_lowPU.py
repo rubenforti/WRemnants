@@ -45,7 +45,7 @@ lep_pt_max = 9e99
 datasets = getDatasets(maxFiles=args.maxFiles,
                         filt=args.filterProcs,
                         excl=list(set(args.excludeProcs + ["singlemuon"] if flavor=="ee" else ["singleelectron"])),
-                        base_path=args.dataPath, 
+                        base_path=args.dataPath,
                         extended = "msht20an3lo" not in args.pdfs,
                         mode=analysis_label,
                         era=args.era,
@@ -74,17 +74,17 @@ axis_chargeVgen = qcdScaleByHelicity_helper.hist.axes["chargeVgen"]
 
 gen_axes = {
     "ptVGen": hist.axis.Variable([0, 8, 14, 20, 30, 40, 50, 60, 75, 90, 150], name = "ptVGen", underflow=False, overflow=False),
-    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),  
+    "absYVGen": hist.axis.Regular(10, 0, 2.5, name = "absYVGen", underflow=False, overflow=False),
 }
 
 if isUnfolding:
     unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(args.genAxes, gen_axes)
     datasets = unfolding_tools.add_out_of_acceptance(datasets, group = base_group)
-    
+
 # axes for final cards/fitting
 nominal_axes = [
     hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptll", underflow=False, overflow=True),
-    hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=True, underflow=True), 
+    hist.axis.Regular(20, -2.5, 2.5, name = "yll", overflow=True, underflow=True),
     common.axis_charge]
 
 # corresponding columns
@@ -127,21 +127,21 @@ def build_graph(df, dataset):
 
         if hasattr(dataset, "out_of_acceptance"):
             logger.debug("Reject events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=lep_pt_min, pt_max=lep_pt_max, 
+            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=lep_pt_min, pt_max=lep_pt_max,
                 mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=False)
         else:
             logger.debug("Select events in fiducial phase space")
-            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=lep_pt_min, pt_max=lep_pt_max, 
+            df = unfolding_tools.select_fiducial_space(df, mode="wlike", pt_min=lep_pt_min, pt_max=lep_pt_max,
                 mass_min=mass_min, mass_max=mass_max, selections=unfolding_selections, accept=True)
 
             unfolding_tools.add_xnorm_histograms(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, unfolding_axes, unfolding_cols)
-            axes = [*axes, *unfolding_axes] 
+            axes = [*axes, *unfolding_axes]
             cols = [*cols, *unfolding_cols]
 
     df = df.Define("TrigLep_charge", "isEvenEvent ? -1 : 1") # wlike charge
 
     if flavor == "mumu":
-        if not dataset.is_data: 
+        if not dataset.is_data:
             df = df.Define("Muon_pt_corr", "wrem::applyRochesterMC(Muon_pt, Muon_eta, Muon_phi, Muon_charge, Muon_genPartIdx, GenPart_pt, Muon_nTrackerLayers)")
             df = df.Filter("HLT_Mu17")
         else:
@@ -168,21 +168,21 @@ def build_graph(df, dataset):
         df = df.Define("Lep_phi", "Muon_phi[goodLeptons]")
         df = df.Define("Lep_charge", "Muon_charge[goodLeptons]")
         df = df.Define("Lep_mass", "Muon_mass[goodLeptons]")
-    
+
     else:
         # undo the scale/smearing corrections, needed to correct RawMET
         df = df.Define("Electron_pt_uncorr", "wrem::Egamma_undoCorrection(Electron_pt, Electron_eta, Electron_ecalCorr)")
 
-        if not dataset.is_data: 
+        if not dataset.is_data:
             df = df.Define("Electron_pt_corr", "wrem::applyEGammaScaleSmearingUnc(0, Electron_pt, Electron_eta, Electron_dEscaleUp, Electron_dEscaleDown, Electron_dEsigmaUp, Electron_dEsigmaDown, 0)")
             df = df.Filter("HLT_Ele20_WPLoose_Gsf")
-        else: 
+        else:
             df = df.Define("Electron_pt_corr", "wrem::applyEGammaScaleSmearingUnc(1, Electron_pt, Electron_eta, Electron_dEscaleUp, Electron_dEscaleDown, Electron_dEsigmaUp, Electron_dEsigmaDown, 0)")
             df = df.Filter("HLT_HIEle20_WPLoose_Gsf")
 
         df = df.Define("vetoElectrons", "Electron_pt_corr > 10 && Electron_cutBased > 0 && abs(Electron_eta) < 2.4")
         df = df.Filter("Sum(vetoElectrons)==2")
-        
+
         df = df.Define("vetoMuons", "Muon_pt > 10 && Muon_looseId && abs(Muon_eta) < 2.4 && abs(Muon_dxybs) < 0.05 && abs(Muon_dz)< 0.2")
         df = df.Filter("Sum(vetoMuons) == 0")
 
@@ -193,7 +193,7 @@ def build_graph(df, dataset):
 
         df = df.Define("goodLeptonsPlus", "goodLeptons && Electron_charge > 0")
         df = df.Define("goodLeptonsMinus", "goodLeptons && Electron_charge < 0")
-        
+
         df = df.Filter("(Electron_charge[goodLeptons][0] + Electron_charge[goodLeptons][1]) == 0")
         df = df.Define("goodTrigObjs", "wrem::goodElectronTriggerCandidateLowPU(TrigObj_id, TrigObj_pt, TrigObj_l1pt, TrigObj_l2pt, TrigObj_filterBits)")
 
@@ -313,7 +313,7 @@ def build_graph(df, dataset):
     results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
     results.append(df.HistoBoost("transverseMass", axes_mt, [*cols_mt, "nominal_weight"]))
 
-    if not dataset.is_data: 
+    if not dataset.is_data:
         # prefire
         df = df.Define("prefireCorr_syst", "wrem::prefireCorr_syst(Jet_pt, Jet_eta, Jet_phi, Jet_muEF, Jet_neEmEF, Jet_chEmEF, Photon_pt, Photon_eta, Photon_phi, Lep_pt, Lep_eta, Lep_phi)")
         df = df.Define("prefireCorr_syst_tensor", "Eigen::TensorFixedSize<double, Eigen::Sizes<2>> res; auto w = nominal_weight*prefireCorr_syst; std::copy(std::begin(w), std::end(w), res.data()); return res;")
@@ -343,7 +343,7 @@ def build_graph(df, dataset):
             #     df = lowPUcfg.lepSF_systs(df, results, "elSF_IDISO_syst",    36,  "wrem::lepSF_el_IDISO_syst(Lep_pt, Lep_eta, Lep_charge)", n, a, c)
 
             if not args.noRecoil and args.recoilUnc:
-                df = recoilHelper.add_recoil_unc_Z(df, results, dataset, c, a, n)            
+                df = recoilHelper.add_recoil_unc_Z(df, results, dataset, c, a, n)
 
     if hasattr(dataset, "out_of_acceptance"):
         # Rename dataset to not overwrite the original one

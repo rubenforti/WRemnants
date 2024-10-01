@@ -32,21 +32,21 @@ def plot_params(h, params, params_err, label=None, suffix="", proc=""):
     colors = mpl.colormaps["tab10"]
 
     fig, ax1 = plot_tools.figure(
-        h, ylabel=ylabel, xlabel=xlabel, 
-        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False, 
+        h, ylabel=ylabel, xlabel=xlabel,
+        cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False,
         automatic_scale=False,
         )
 
     fontsize = ax1.xaxis.label.get_size()
-    
+
     if as_histogram:
         # plot as histogram
         n, bins, _ = ax1.hist(
-            params, 
-            bins=50, 
-            range=xlim, 
-            color=colors(0), 
-            # label=label, 
+            params,
+            bins=50,
+            range=xlim,
+            color=colors(0),
+            # label=label,
             histtype="step"
             )
     else:
@@ -67,7 +67,7 @@ def plot_params(h, params, params_err, label=None, suffix="", proc=""):
         outfile += f"_{args.postfix}"
 
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)      
+    plot_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 if __name__ == '__main__':
@@ -91,13 +91,13 @@ if __name__ == '__main__':
 
     logger.info("Make full fake prediction w/o rebinning")
     fakeselector = sel.FakeSelector1DExtendedABCD(
-        hist_fake, 
-        fakerate_axes=fakerate_axes, 
-        smoothing_order_fakerate=smoothing_order_fakerate, 
+        hist_fake,
+        fakerate_axes=fakerate_axes,
+        smoothing_order_fakerate=smoothing_order_fakerate,
         smoothing_order_spectrum=smoothing_order_spectrum,
-        smoothing_polynomial_spectrum=smoothing_polynomial_spectrum, 
-        smoothing_mode="full", 
-        rebin_smoothing_axis=None, 
+        smoothing_polynomial_spectrum=smoothing_polynomial_spectrum,
+        smoothing_mode="full",
+        rebin_smoothing_axis=None,
         throw_toys=None,
         )
 

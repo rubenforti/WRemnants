@@ -77,7 +77,7 @@ if __name__ == "__main__":
                      "effMC"   : {"iso" : None, "antiiso" : None}
         }
 
-        for n in names:                        
+        for n in names:
 
             rangeRelUnc = "0.0,0.3" if "antiiso" in n else "0.0,0.01"
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-            
+
             # further studies
             # define SF by shifting either the data efficiency or the MC one, so to get two independent SF uncertainties
             # these are expected to be uncorrelated, so the actual SF uncertanties obtained propagating both from the original ratio should be the sum in quadrature of these two pieces
@@ -146,13 +146,13 @@ if __name__ == "__main__":
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas, plotRelativeError=True,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-            
+
             # now define really alternative sf shifting efficiency in either data or MC by the uncertainty. For iso or antiiso the shifts must be opposite, since eff(antiiso) = 1 - eff(iso)
             dataEffUnc = copy.deepcopy(hists["effData"][era][n].Clone("dataEffUnc"))
             mcEffUnc   = copy.deepcopy(hists["effMC"][era][n].Clone("mcEffUnc"))
             fillTH2fromTH2part(dataEffUnc, hists["effData"][era][n], fillWithError=True)
             fillTH2fromTH2part(mcEffUnc,   hists["effMC"][era][n], fillWithError=True)
-            
+
             dataEff_shift = copy.deepcopy(hists["effData"][era][n].Clone(hists["effData"][era][n].GetName()+"_shiftUnc"))
             dataEff_shift.Add(dataEffUnc, 1.0 if n == "iso" else -1.0)
             mcEff_shift = copy.deepcopy(hists["effMC"][era][n].Clone(hists["effMC"][era][n].GetName()+"_shiftUnc"))
@@ -198,8 +198,8 @@ if __name__ == "__main__":
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-            
-                
+
+
 
 
         # check correlations between S and Sbar where S is the iso sf and Sbar is the antiiso SF

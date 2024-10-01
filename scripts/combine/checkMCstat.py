@@ -68,15 +68,15 @@ def readTemplate(templateFile, templateDict, filt=None):
         lines = filter(filt, tf.readlines()) if filt else tf.readlines()
         source = string.Template("".join(lines))
     filled = source.substitute(templateDict)
-    return filled                                        
+    return filled
 
 if __name__ == "__main__":
-            
+
     parser = argparse.ArgumentParser()
     parser.add_argument('outdir', type=str, nargs=1, help='output directory to save things')
     parser.add_argument('-w', '--weight', default='1.0', type=float, help='Weight to fill dummy histogram')
     parser.add_argument('-d',  '--dryRun', action='store_true', help='Do not execute commands, just print them')
-    
+
     args = parser.parse_args()
 
     if not args.dryRun:
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     nprocs = len(procs)
     dataName = "Data"
     chan = "chan"
-    
+
     cardArgs = {
         "channel" :  chan,
         "channelPerProc" : chan.ljust(10)*nprocs,
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         "pseudodataHist" : "{h}_{d}".format(h=histName,d=dataName)
     }
 
-    
+
     eventsForTest = [math.pow(100,i) for i in range(1, 6)]
     for i,nEvts in enumerate(eventsForTest):
         hdata = ROOT.TH1D("{h}_{d}_{i}".format(h=histName, d=dataName, i=i),
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         hdata.Write(histName + "_" + dataName + "_" + chan)
         hmc.Write(  histName + "_" + signalName + "_" + chan)
         rf.Close()
-        
+
         cardArgs["inputfile"] = fname
         cardName = fdir + "/card.txt"
         cardContent = readTemplate(nominalTemplate, cardArgs)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         cardContent += "syst     lnN      {}\n".format("".join(include))
         cardContent += "\n"
         cardContent += "group allSysts = syst\n"
-        
+
         with open(cardName, "w") as card:
             card.write(cardContent)
             card.write("\n")

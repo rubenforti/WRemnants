@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 
 import json
 import os
@@ -19,15 +19,15 @@ def setTDRStyle():
     ROOT.gStyle.SetCanvasDefW(600);
     ROOT.gStyle.SetCanvasDefX(0);
     ROOT.gStyle.SetCanvasDefY(0);
-    
+
     ROOT.gStyle.SetPadBorderMode(0);
-    ROOT.gStyle.SetPadColor(0); 
+    ROOT.gStyle.SetPadColor(0);
     ROOT.gStyle.SetPadGridX(0);
     ROOT.gStyle.SetPadGridY(0);
     ROOT.gStyle.SetGridColor(0);
     ROOT.gStyle.SetGridStyle(3);
     ROOT.gStyle.SetGridWidth(1);
-    
+
     ROOT.gStyle.SetFrameBorderMode(0);
     ROOT.gStyle.SetFrameBorderSize(1);
     ROOT.gStyle.SetFrameFillColor(0);
@@ -80,12 +80,12 @@ def setTDRStyle():
     ROOT.gStyle.SetLabelFont(42, "XYZ");
     ROOT.gStyle.SetLabelOffset(0.007, "XYZ");
     ROOT.gStyle.SetLabelSize(0.04, "XYZ");
-    
+
     ROOT.gStyle.SetAxisColor(1, "XYZ");
-    ROOT.gStyle.SetStripDecimals(1); 
+    ROOT.gStyle.SetStripDecimals(1);
     ROOT.gStyle.SetTickLength(0.025, "XYZ");
     ROOT.gStyle.SetNdivisions(510, "XYZ");
-    ROOT.gStyle.SetPadTickX(1); 
+    ROOT.gStyle.SetPadTickX(1);
     ROOT.gStyle.SetPadTickY(1);
 
     ROOT.gStyle.SetOptLogx(0);
@@ -96,15 +96,15 @@ def setTDRStyle():
     ROOT.gStyle.SetPaintTextFormat(".2f");
 
 
-def CMS_lumi(pad = 0, 
-             lumi = "", 
-             up = False, 
-             skipPreliminary = True, 
-             reduceSize = False, 
+def CMS_lumi(pad = 0,
+             lumi = "",
+             up = False,
+             skipPreliminary = True,
+             reduceSize = False,
              offset = 0,
              offsetLumi = 0):
 
-    setTDRStyle()    
+    setTDRStyle()
 
     lm = pad.GetLeftMargin() - 0.15  ## 0.15 should be the default
     rm = min(0,0.16 - pad.GetRightMargin())  ## 0.16 should be the default
@@ -127,8 +127,8 @@ def CMS_lumi(pad = 0,
         if reduceSize:
             latex2.SetTextSize(0.5*pad.GetTopMargin())
         latex2.SetTextFont(62)
-        latex2.SetTextAlign(11)    
-        latex2.DrawLatex(lm+0.15+offset, 0.95, "CMS")    
+        latex2.SetTextAlign(11)
+        latex2.DrawLatex(lm+0.15+offset, 0.95, "CMS")
     else:
         latex2.SetTextSize(0.6*pad.GetTopMargin())
         if reduceSize:
@@ -136,7 +136,7 @@ def CMS_lumi(pad = 0,
             #latex2.SetTextSize(0.40*pad.GetTopMargin())
 
         latex2.SetTextFont(62)
-        latex2.SetTextAlign(11)    
+        latex2.SetTextAlign(11)
         latex2.DrawLatex(lm+0.175+offset, 0.85, "CMS")
 
     if not skipPreliminary:
@@ -148,13 +148,13 @@ def CMS_lumi(pad = 0,
             if reduceSize:
                 latex2.SetTextSize(0.5*pad.GetTopMargin())
             latex2.DrawLatex(lm+0.25+offset, 0.95, "Preliminary")
-      
+
         else:
             latex2.SetTextSize(0.6*pad.GetTopMargin())
             if reduceSize:
                 latex2.SetTextSize(0.45*pad.GetTopMargin())
             latex2.SetTextFont(52)
-            latex2.SetTextAlign(11)    
+            latex2.SetTextAlign(11)
             if reduceSize:
                 latex2.DrawLatex(lm+0.235+offset, 0.85, "Preliminary")
             else:

@@ -22,11 +22,11 @@ xsec_WmmunuPostVFP = 8703.87
 xsec_ZmmMass10to50PostVFP = 6997.0
 Z_TAU_TO_LEP_RATIO = (1.-(1. - BR_TAUToMU - BR_TAUToE)**2)
 
-wprocs = ["WplusmunuPostVFP", "WminusmunuPostVFP", "WminustaunuPostVFP", "WplustaunuPostVFP", 
+wprocs = ["WplusmunuPostVFP", "WminusmunuPostVFP", "WminustaunuPostVFP", "WplustaunuPostVFP",
     'Wplusmunu_MiNNLO-noqedisr', 'Wminusmunu_MiNNLO-noqedisr',
-    'Wplusmunu_horace-lo-photos', 'Wplusmunu_horace-lo-photos-mecoff', 'Wplusmunu_horace-nlo', 'Wplusmunu_horace-lo', 'Wplusmunu_horace-qed', 
+    'Wplusmunu_horace-lo-photos', 'Wplusmunu_horace-lo-photos-mecoff', 'Wplusmunu_horace-nlo', 'Wplusmunu_horace-lo', 'Wplusmunu_horace-qed',
     'Wminusmunu_horace-lo-photos', 'Wminusmunu_horace-lo-photos-mecoff', 'Wminusmunu_horace-nlo', 'Wminusmunu_horace-lo', 'Wminusmunu_horace-qed',
-    'Wplusmunu_winhac-lo-photos', 'Wplusmunu_winhac-lo', 'Wplusmunu_winhac-nlo', 
+    'Wplusmunu_winhac-lo-photos', 'Wplusmunu_winhac-lo', 'Wplusmunu_winhac-nlo',
     'Wminusmunu_winhac-lo-photos', 'Wminusmunu_winhac-lo', 'Wminusmunu_winhac-nlo']
 zprocs = ["ZmumuPostVFP", "ZtautauPostVFP", "ZmumuMiNLO", "ZmumuNNLOPS", 'Zmumu_MiNNLO-noqedisr',
     'Zmumu_horace-lo-photos', 'Zmumu_horace-lo-photos-isroff', 'Zmumu_horace-lo-photos-mecoff', 'Zmumu_horace-nlo', 'Zmumu_horace-lo', 'Zmumu_horace-new', 'Zmumu_horace-qed',
@@ -128,7 +128,7 @@ def get_binning_fakes_pt(min_pt, max_pt):
     # edges = np.arange(min_pt,32,1)
     # edges = np.append(edges, [e for e in [33,36,40,46,56] if e<max_pt][:-1])
     # edges = np.append(edges, [max_pt])
-    #edges = np.arange(min_pt,32.1,1.2)  
+    #edges = np.arange(min_pt,32.1,1.2)
     #edges = np.append(edges, [e for e in [34.4, 38, 44, 56] if e<max_pt][:-1])
     #edges = np.append(edges, [max_pt])
     #edges = np.arange(min_pt,32,2)
@@ -249,7 +249,7 @@ def set_subparsers(subparser, name, analysis_label):
         axmap["z_wlike"] = ["qGen", *axmap["w_mass"]]
         if analysis_label not in axmap:
             raise ValueError(f"Unknown analysis {analysis_label}!")
-        subparser.add_argument("--genAxes", type=str, nargs="+", 
+        subparser.add_argument("--genAxes", type=str, nargs="+",
                                default=axmap[analysis_label], choices=["qGen", "ptGen", "absEtaGen", "ptVGen", "absYVGen", "helicitySig"],
                                help="Generator level variable")
         subparser.add_argument("--genLevel", type=str, default='postFSR', choices=["preFSR", "postFSR"],
@@ -284,7 +284,7 @@ def common_histmaker_subparsers(parser, analysis_label):
     parser.add_argument("--analysisMode", type=str, default=None,
                         choices=["unfolding", "theoryAgnosticNormVar", "theoryAgnosticPolVar"],
                         help="Select analysis mode to run. Default is the traditional analysis")
-    
+
     tmpKnownArgs,_ = parser.parse_known_args()
     unfolding = tmpKnownArgs.analysisMode == "unfolding"
     parser.add_argument("--eta", nargs=3, type=float, help="Eta binning as 'nbins min max' (only uniform for now)", default=get_default_etabins(analysis_label))
@@ -309,9 +309,9 @@ def common_parser(analysis_label=""):
     initargs,_ = parser.parse_known_args()
 
     # initName for this internal logger is needed to avoid conflicts with the main logger named "wremnants" by default,
-    # otherwise the logger is apparently propagated back to the root logger causing each following message to be printed twice 
+    # otherwise the logger is apparently propagated back to the root logger causing each following message to be printed twice
     common_logger = logging.setup_logger(__file__, initargs.verbose, initargs.noColorLogger, initName="common_logger_wremnants")
-    
+
     import ROOT
     ROOT.ROOT.EnableImplicitMT(max(0,initargs.nThreads))
     import narf
@@ -332,7 +332,7 @@ def common_parser(analysis_label=""):
             filtered_values = [x for x in values if x not in ["none", None]]
             setattr(namespace, self.dest, filtered_values)
 
-    parser.add_argument("--pdfs", type=str, nargs="*", default=["ct18z", "msht20mcrange_renorm", "msht20mbrange_renorm"], 
+    parser.add_argument("--pdfs", type=str, nargs="*", default=["ct18z", "msht20mcrange_renorm", "msht20mbrange_renorm"],
         choices=theory_tools.pdfMap.keys(), help="PDF sets to produce error hists for. If empty, use PDF set used in production (weight=1).", action=PDFFilterAction)
     parser.add_argument("--altPdfOnlyCentral", action='store_true', help="Only store central value for alternate PDF sets")
     parser.add_argument("--maxFiles", type=int, help="Max number of files (per dataset)", default=None)
@@ -341,10 +341,10 @@ def common_parser(analysis_label=""):
     parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
     parser.add_argument("--forceDefaultName", action='store_true', help="Don't modify the name of the output file with some default strings")
     parser.add_argument("--theoryCorr", nargs="*", type=str, action=NoneFilterAction,
-        default=["scetlib_dyturbo", "scetlib_dyturboCT18ZVars", "scetlib_dyturboCT18Z_pdfas"], choices=theory_corrections.valid_theory_corrections(), 
+        default=["scetlib_dyturbo", "scetlib_dyturboCT18ZVars", "scetlib_dyturboCT18Z_pdfas"], choices=theory_corrections.valid_theory_corrections(),
         help="Apply corrections from indicated generator. First will be nominal correction.")
     parser.add_argument("--theoryCorrAltOnly", action='store_true', help="Save hist for correction hists but don't modify central weight")
-    parser.add_argument("--ewTheoryCorr", nargs="*", type=str, action=NoneFilterAction, choices=theory_corrections.valid_ew_theory_corrections(), 
+    parser.add_argument("--ewTheoryCorr", nargs="*", type=str, action=NoneFilterAction, choices=theory_corrections.valid_ew_theory_corrections(),
         default=["renesanceEW", "powhegFOEW", "pythiaew_ISR", "horaceqedew_FSR", "horacelophotosmecoffew_FSR", ],
         help="Add EW theory corrections without modifying the default theoryCorr list. Will be appended to args.theoryCorr")
     parser.add_argument("--skipHelicity", action='store_true', help="Skip the qcdScaleByHelicity histogram (it can be huge)")
@@ -381,11 +381,11 @@ def common_parser(analysis_label=""):
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)
         parser.add_argument("--dphiMuonMetCut", type=float, help="Threshold to cut |deltaPhi| > thr*np.pi between muon and met", default=0.0)
-        parser.add_argument("--muonCorrMC", type=str, default="idealMC_lbltruth", 
-            choices=["none", "trackfit_only", "trackfit_only_idealMC", "lbl", "idealMC_lbltruth", "idealMC_massfit", "idealMC_lbltruth_massfit"], 
+        parser.add_argument("--muonCorrMC", type=str, default="idealMC_lbltruth",
+            choices=["none", "trackfit_only", "trackfit_only_idealMC", "lbl", "idealMC_lbltruth", "idealMC_massfit", "idealMC_lbltruth_massfit"],
             help="Type of correction to apply to the muons in simulation")
-        parser.add_argument("--muonCorrData", type=str, default="lbl_massfit", 
-            choices=["none", "trackfit_only", "lbl", "massfit", "lbl_massfit"], 
+        parser.add_argument("--muonCorrData", type=str, default="lbl_massfit",
+            choices=["none", "trackfit_only", "lbl", "massfit", "lbl_massfit"],
             help="Type of correction to apply to the muons in data")
         parser.add_argument("--muScaleBins", type=int, default=1, help="Number of bins for muon scale uncertainty")
         parser.add_argument("--muonScaleVariation", choices=["smearingWeightsGaus", "smearingWeightsSplines", "massWeights"], default="smearingWeightsSplines",  help="method to generate nominal muon scale variation histograms")
@@ -398,7 +398,7 @@ def common_parser(analysis_label=""):
         parser.add_argument("--trackerMuons", action='store_true', help="Use tracker muons instead of global muons (need appropriate scale factors too). This is obsolete")
         parser.add_argument("--binnedScaleFactors", action='store_true', help="Use binned scale factors (different helpers)")
         parser.add_argument("--noSmooth3dsf", dest="smooth3dsf", action='store_false', help="If true (default) use smooth 3D scale factors instead of the original 2D ones (but eff. systs are still obtained from 2D version)")
-        parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing") 
+        parser.add_argument("--isoEfficiencySmoothing", action='store_true', help="If isolation SF was derived from smooth efficiencies instead of direct smoothing")
         parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency (legacy option for tests)")
         parser.add_argument("--isolationDefinition", choices=["iso04vtxAgn", "iso04", "iso04chg", "iso04chgvtxAgn"], default="iso04vtxAgn",  help="Isolation type (and corresponding scale factors)")
         parser.add_argument("--isolationThreshold", default=0.15, type=float, help="Threshold for isolation cut")
@@ -427,7 +427,7 @@ def common_parser(analysis_label=""):
                     raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
                 else:
                     sfFile = "allSmooth_2018_vtxAgnIso.root"
-            elif commonargs.era == "2017": 
+            elif commonargs.era == "2017":
                 if commonargs.isolationDefinition == "iso04":
                     raise NotImplementedError(f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported")
                 else:
@@ -442,7 +442,7 @@ def common_parser(analysis_label=""):
     parser.add_argument("--sfFile", type=str, help="File with muon scale factors", default=sfFile)
     parser = common_histmaker_subparsers(parser, analysis_label)
 
-    class PrintParserAction(argparse.Action):                                            
+    class PrintParserAction(argparse.Action):
         def __init__(self, option_strings, dest, nargs=0, **kwargs):
             if nargs != 0:
                 raise ValueError('nargs for PrintParserAction must be 0 since it does not require any argument')
@@ -457,7 +457,7 @@ def common_parser(analysis_label=""):
             thisLogger.warning("")
 
     parser.add_argument("--printParser", action=PrintParserAction, help="Print the whole parser with its arguments (use it as the last argument or default values might not be displayed correctly)")
-    
+
     return parser,initargs
 
 
@@ -512,13 +512,13 @@ OUTPUT ------------------------------------------------------------------------
 +------------------------------------------------------------------------------
 '''
 def string_to_list(string):
-	if type(string) == str:
-		string = string.split(",") # items have to be comma-separated 
-		return string
-	elif type(string) == list:
-		return string
-	else:
-		raise TypeError(
+    if type(string) == str:
+        string = string.split(",") # items have to be comma-separated
+        return string
+    elif type(string) == list:
+        return string
+    else:
+        raise TypeError(
             "string_to_list(): cannot convert an input that is"
             "neither a single string nor a list of strings to a list"
         )
@@ -536,13 +536,13 @@ OUTPUT ------------------------------------------------------------------------
 +------------------------------------------------------------------------------
 '''
 def list_to_string(list_str):
-	if type(list_str) == str:
-		return list_str
-	elif type(list_str) == list:
-		string = ""
-		return string.join(list_str)
-	else:
-		raise TypeError(
+    if type(list_str) == str:
+        return list_str
+    elif type(list_str) == list:
+        string = ""
+        return string.join(list_str)
+    else:
+        raise TypeError(
             "list_to_string(): cannot convert an input that is"
             " neither a single string or a list of strings"
         )

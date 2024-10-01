@@ -35,7 +35,7 @@ if args.doImpacts and not os.path.isdir(output_dir_impacts):
     os.mkdir(output_dir_impacts)
 
 def EXE(command):
-    logger.info(command) 
+    logger.info(command)
     os.system(command)  # for testing comment out this line
 
 def read_result(rootfile, nominal):
@@ -76,7 +76,7 @@ for nominal, r_n in results.items():
                 filename = r_c["filename"]
             else:
                 filename = r_c
-            
+
             if not args.update and isinstance(r_c, dict) and "mass" in r_c.keys() and "unc" in r_c.keys() and "tot" in r_c.keys():
                 m = r_c["mass"]
                 u = r_c["unc"]
@@ -89,17 +89,17 @@ for nominal, r_n in results.items():
                     "mass": m,
                     "unc":u,
                     "tot":t
-                }   
+                }
                 # save result.json so that next time the information does not have to be read again
                 with open(args.input,"w") as rfile:
                     json.dump(results, rfile, indent=4)
-            
+
             for group in args.impactTypes:
 
                 output_impacts = f"{output_dir_impacts}/{channel}_{group}_{nominal}_vs_{pseudodata}.html"
 
                 if args.doImpacts and not os.path.isfile(output_impacts):
-                
+
                     group_str = "-g" if group=="group" else ""
 
                     EXE(f"python3 scripts/combine/pullsAndImpacts.py -f {filename} {group_str} -s impact output -o {output_impacts}")
@@ -149,14 +149,14 @@ def plot_table_pdf(data, uncertainty="unc"):
 
             outfile.write(r"\begin{table}" +"\n")
             outfile.write(r"\topcaption{\label{table:pulls_pdf_"+nominal+"_"+uncertainty+"}"+"\n")
-            outfile.write(r""" Pulls table for different pdf sets. The fit is performed on """+fit_str+""" in the """+channel+r""" channel with """+uncertainty_str1+r""" 
+            outfile.write(r""" Pulls table for different pdf sets. The fit is performed on """+fit_str+""" in the """+channel+r""" channel with """+uncertainty_str1+r"""
     Entries read (pull on the $m_\P"""+boson_str+"""$ central value) $\pm$ (""" +uncertainty_str2+ r""").}"""+"\n")
             outfile.write(r"\centering"+"\n")
 
             columns = "l|"
             columns += "".join(["c" for c in range(len(pseudo))])
             outfile.write(r"\begin{tabular}{"+columns+"}"+"\n")
-            
+
             outfile.write("  Model + & \multicolumn{"+str(len(pseudo))+"}{c}{Pseudodata} " + r" \\"+"\n")
             outfile.write("  Uncertainty & " + " & ".join(pseudo) + r" \\"+"\n")
 
@@ -164,8 +164,8 @@ def plot_table_pdf(data, uncertainty="unc"):
 
             for nominal, df_n in df.groupby("nominal"):
                 entries = []
-                for p in pseudo:         
-                    df_p = df_n.loc[df_n["pseudo"] == p][["mass", uncertainty ]]        
+                for p in pseudo:
+                    df_p = df_n.loc[df_n["pseudo"] == p][["mass", uncertainty ]]
                     if len(df_p) == 1:
                         m, u = df_p.values[0]
                         m = round(100*m,2)
@@ -220,14 +220,14 @@ def plot_table_scale(data, uncertainty="unc"):
 
                 outfile.write(r"\begin{table}" +"\n")
                 outfile.write(r"\topcaption{\label{table:pulls_scale_"+nominal+"_"+uncertainty+"}"+"\n")
-                outfile.write(r""" Pulls table for """+closure_str+""". The fit is performed on """+fit_str+""" in different channels with """+uncertainty_str1+r""" 
+                outfile.write(r""" Pulls table for """+closure_str+""". The fit is performed on """+fit_str+""" in different channels with """+uncertainty_str1+r"""
         Entries read (pull on the $m_\P"""+boson_str+"""$ central value) $\pm$ (""" +uncertainty_str2+ r""").}"""+"\n")
                 outfile.write(r"\centering"+"\n")
 
                 columns = "l|"
                 columns += "".join(["c" for c in range(len(pseudo))])
                 outfile.write(r"\begin{tabular}{"+columns+"}"+"\n")
-                
+
                 outfile.write("  Model + & \multicolumn{"+str(len(pseudo))+"}{c}{Pseudodata} " + r" \\"+"\n")
                 outfile.write("  Uncertainty & " + " & ".join([translate.get(p, p) for p in pseudo]) + r" \\"+"\n")
 
@@ -235,8 +235,8 @@ def plot_table_scale(data, uncertainty="unc"):
 
                 for channel, df_n in df.groupby("channel"):
                     entries = []
-                    for p in pseudo:         
-                        df_p = df_n.loc[df_n["pseudo"] == p][["mass", uncertainty ]]        
+                    for p in pseudo:
+                        df_p = df_n.loc[df_n["pseudo"] == p][["mass", uncertainty ]]
                         if len(df_p) == 1:
                             m, u = df_p.values[0]
                             m = round(100*m,2)

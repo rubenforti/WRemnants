@@ -12,9 +12,9 @@ from utilities.io_tools import input_tools, output_tools
 from wremnants import plot_tools, theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-m", "--minnlo_file", type=str, default="w_z_gen_dists.pkl.lz4", help="MiNNLO gen file, denominator in ratio") 
-parser.add_argument("-c", "--corr_files", type=str, nargs='+', required=True, help="Reference files for the corrections (both W+ and W- for the W)") 
-parser.add_argument("-g", "--generator", type=str, choices=["dyturbo", "scetlib", "scetlib_dyturbo", "matrix_radish"], 
+parser.add_argument("-m", "--minnlo_file", type=str, default="w_z_gen_dists.pkl.lz4", help="MiNNLO gen file, denominator in ratio")
+parser.add_argument("-c", "--corr_files", type=str, nargs='+', required=True, help="Reference files for the corrections (both W+ and W- for the W)")
+parser.add_argument("-g", "--generator", type=str, choices=["dyturbo", "scetlib", "scetlib_dyturbo", "matrix_radish"],
     required=True, help="Generator used to produce correction hist")
 parser.add_argument("--outpath", type=str, default=f"{common.data_dir}/TheoryCorrections", help="Output path")
 parser.add_argument("-p", "--postfix", type=str, help="Postfix for output file name", default=None)
@@ -69,7 +69,7 @@ def read_corr(procName, generator, corr_files):
             numh = input_tools.read_scetlib_hist(corr_file, charge=charge, nonsing=nons)
         if "Y" in numh.axes.name:
             numh = hh.makeAbsHist(numh, "Y")
-        return numh 
+        return numh
     else:
         if args.generator == "matrix_radish":
             h = input_tools.read_matrixRadish_hist(corr_file, "ptVgen")
@@ -81,7 +81,7 @@ def read_corr(procName, generator, corr_files):
             if "Y" in h.axes.name:
                 h = hh.makeAbsHist(h, "Y")
 
-        vars_ax = h.axes["vars"] if "vars" in h.axes.name else hist.axis.StrCategory(["central"], name="vars") 
+        vars_ax = h.axes["vars"] if "vars" in h.axes.name else hist.axis.StrCategory(["central"], name="vars")
         hnD = hist.Hist(*h.axes, vars_ax)
         # Leave off the overflow, we won't use it anyway
         hnD[...] = np.reshape(h.values(), hnD.shape)
@@ -116,7 +116,7 @@ if args.axlim:
     axes = [f"abs{x}" if x.lower() == "y" else x for x in args.axes]
     if len(args.axlim) % 2:
         raise ValueError("axlim must be in pairs of 2 (low limit, high limit)")
-    numh = hh.rebinHistMultiAx(numh, axes, numh.axes.edges, args.axlim[::2], args.axlim[1::2]) 
+    numh = hh.rebinHistMultiAx(numh, axes, numh.axes.edges, args.axlim[::2], args.axlim[1::2])
 
 if numh.ndim-1 < minnloh.ndim:
     axes = []
@@ -128,13 +128,13 @@ if numh.ndim-1 < minnloh.ndim:
         elif not (ax.name in ax_map and ax_map[ax.name] in numh.axes.name):
             # TODO: Should be a little careful because this won't include overflow, as long as the
             # axis range is large enough, it shouldn't matter much
-            axes.append(hist.axis.Regular(1, ax.edges[0], ax.edges[-1], 
+            axes.append(hist.axis.Regular(1, ax.edges[0], ax.edges[-1],
                 underflow=ax.traits.underflow, overflow=ax.traits.overflow, name=ax.name))
             data = np.expand_dims(data, i)
 
     if axes[-1].name != "vars" and numh.axes.name[-1] == "vars":
         axes.append(numh.axes["vars"])
-    
+
     numh = hist.Hist(*axes, storage=numh.storage_type(), data=data)
 
 corrh_unc, minnloh, numh  = theory_corrections.make_corr_from_ratio(minnloh, numh)
@@ -193,7 +193,7 @@ if args.plotdir:
         "qT" : "$p_{{T}}^{{{final_state}}}$ (GeV)",
         "absY" : "$|y^{{{final_state}}}|$",
     }
-    
+
     for charge in minnloh.axes["charge"].centers:
         charge = complex(0, charge)
         proc = 'Z' if args.proc == 'z' else ("Wp" if charge.imag > 0 else "Wm")
@@ -206,17 +206,17 @@ if args.plotdir:
         plot_name = f"corr2D_{generator}_MiNNLO_{proc}"
         plot_tools.save_pdf_and_png(outdir, plot_name)
         plot_tools.write_index_and_log(outdir, plot_name, args=args, analysis_meta_info=meta_dict)
-        
+
         for varm,varn in zip(minnloh.axes.name[:-1], numh.axes.name[:-2]):
             fig = plot_tools.makePlotWithRatioToRef(
                 [minnloh[{"charge" : charge}].project(varm),
                     numh[{"vars" : 0, "charge" : charge}].project(varn),
                 ],
-                ["MiNNLO", generator, 
+                ["MiNNLO", generator,
                 ],
-                colors=["orange", "mediumpurple"], 
+                colors=["orange", "mediumpurple"],
                 linestyles=["solid", "dashed", ],
-                xlabel=xlabel[varm].format(final_state=final_state), 
+                xlabel=xlabel[varm].format(final_state=final_state),
                 ylabel="Events/bin",
                 rlabel="x/MiNNLO",
                 legtext_size=24,

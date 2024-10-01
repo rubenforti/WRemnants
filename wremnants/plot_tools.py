@@ -58,7 +58,7 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
             width = 1
         fig = plt.figure(figsize=(width_scale*height*width,height))
 
-    ax1 = fig.add_subplot() 
+    ax1 = fig.add_subplot()
 
     ax1.set_xlabel(xlabel)
     ax1.set_ylabel(ylabel)
@@ -74,11 +74,11 @@ def figure(href, xlabel, ylabel, ylim=None, xlim=None,
     if logx:
         ax1.set_xscale('log')
 
-    if grid: 
+    if grid:
         ax1.grid(which = "both")
-    if plot_title: 
+    if plot_title:
         ax1.set_title(plot_title, pad = title_padding)
-    return fig,ax1 
+    return fig,ax1
 
 def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     grid_on_main_plot = False, grid_on_ratio_plot = False, plot_title = None, title_padding = 0,
@@ -86,9 +86,9 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
     width_scale=1, automatic_scale=True, only_ratio=False, subplotsizes=[4,2]
 ):
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
-    
+
     if not only_ratio:
-        ax1 = fig.add_subplot(sum(subplotsizes), 1, (1, subplotsizes[0])) 
+        ax1 = fig.add_subplot(sum(subplotsizes), 1, (1, subplotsizes[0]))
         ax1.set_xlabel(" ")
         ax1.set_ylabel(ylabel)
         ax1.set_xlim(xlim)
@@ -100,16 +100,16 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
 
         if logy:
             ax1.set_yscale('log')
-        if grid_on_main_plot: 
+        if grid_on_main_plot:
             ax1.grid(which = "both")
-        if plot_title: 
+        if plot_title:
             ax1.set_title(plot_title, pad = title_padding)
-    ax2 = fig.add_subplot(sum(subplotsizes), 1, (subplotsizes[0]+1, sum(subplotsizes))) 
+    ax2 = fig.add_subplot(sum(subplotsizes), 1, (subplotsizes[0]+1, sum(subplotsizes)))
 
     ax2.set_xlabel(xlabel)
-    
+
     ax2.set_xlim(xlim)
-    if x_ticks_ndp: 
+    if x_ticks_ndp:
         ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
     ax2.set_ylabel(rlabel)
     ax2.set_ylim(rrange)
@@ -119,7 +119,7 @@ def figureWithRatio(href, xlabel, ylabel, ylim, rlabel, rrange, xlim=None,
             ax1.set_xscale('log')
         ax2.set_xscale('log')
 
-    if grid_on_ratio_plot: 
+    if grid_on_ratio_plot:
         ax2.grid(which = "both")
     if not only_ratio:
         return fig,ax1,ax2
@@ -205,16 +205,16 @@ def update_prop(handle, orig):
 
 
 def addLegend(
-    ax, 
-    ncols=2, 
-    extra_text=None, 
-    extra_text_loc=None, 
-    text_size=None, 
-    loc='upper right', 
+    ax,
+    ncols=2,
+    extra_text=None,
+    extra_text_loc=None,
+    text_size=None,
+    loc='upper right',
     bbox_to_anchor=None,
-    extra_handles=[], 
-    extra_labels=[], 
-    custom_handlers=[], 
+    extra_handles=[],
+    extra_labels=[],
+    custom_handlers=[],
     markerfirst=True,
     reverse=True,
     labelcolor=None,
@@ -232,7 +232,7 @@ def addLegend(
 
     text_size = get_textsize(ax, text_size)
     handler_map = get_custom_handler_map(custom_handlers)
-    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map, 
+    leg = ax.legend(handles=handles, labels=labels, prop={'size' : text_size}, ncol=ncols, loc=loc, handler_map=handler_map,
                     reverse=reverse, bbox_to_anchor=bbox_to_anchor, markerfirst=markerfirst, labelcolor=labelcolor)
 
     if extra_text is not None:
@@ -260,7 +260,7 @@ def get_textsize(ax, text_size):
         return ax.yaxis.label.get_size()
     elif text_size=="small":
         # legend size same as axis ticklabel size (numbers)
-        return ax.yaxis.get_ticklabels()[0].get_fontsize() 
+        return ax.yaxis.get_ticklabels()[0].get_fontsize()
     elif text_size=="verysmall":
         # legend size same as axis ticklabel size (numbers)
         return ax.yaxis.get_ticklabels()[0].get_fontsize()*0.6
@@ -269,8 +269,8 @@ def get_textsize(ax, text_size):
 
 
 def wrap_text(text, ax, lower_x, y, upper_x=None, text_size=None, transform=None, ha=None, va='center'):
-    # wrap text within lower_x and upper_x, 
-    #  if text is already given as pieces in a list, use these pieces, 
+    # wrap text within lower_x and upper_x,
+    #  if text is already given as pieces in a list, use these pieces,
     #  otherwise calculate the pieces automatically
     text_size = get_textsize(ax, text_size)
 
@@ -307,17 +307,17 @@ def add_cms_decor(ax, label=None, lumi=None, loc=2, data=True, text_size=None, n
 
 
 def makeStackPlotWithRatio(
-    histInfo, stackedProcs, histName="nominal", unstacked=None, 
+    histInfo, stackedProcs, histName="nominal", unstacked=None,
     fitresult=None, prefit=False,
     xlabel="", ylabel=None, rlabel = "Data/Pred.", rrange=[0.9, 1.1], ylim=None, xlim=None, nlegcols=2,
-    binwnorm=None, select={},  action = (lambda x: x), extra_text=None, extra_text_loc=(0.8, 0.7), grid = False, 
-    plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False, 
+    binwnorm=None, select={},  action = (lambda x: x), extra_text=None, extra_text_loc=(0.8, 0.7), grid = False,
+    plot_title = None, title_padding = 0, yscale=None, logy=False, logx=False,
     fill_between=False, ratio_to_data=False, baseline=True, legtext_size=20, cms_decor="Preliminary", lumi=16.8,
     no_fill=False, no_stack=False, no_ratio=False, density=False, flow='none', bin_density=300, unstacked_linestyles=[], double_lines=False,
     ratio_error=True, normalize_to_data=False, cutoff=1e-6, noSci=False, logoPos=2, width_scale=1.0,
     linewidth=2, alpha=0.7, lowerLegCols=2, lowerLegPos="upper right", lower_panel_variations=0, scaleRatioUnstacked=[], subplotsizes=[4,2],
 ):
-    add_ratio = not (no_stack or no_ratio) 
+    add_ratio = not (no_stack or no_ratio)
     if ylabel is None:
         ylabel = "Events/bin" if not density else "density"
 
@@ -335,7 +335,7 @@ def makeStackPlotWithRatio(
             logger.warning(f"Failed to find hist {histName} for proc {k}")
             continue
         h = action(histInfo[k].hists[histName])[select]
-        
+
         # Use this if the hist has been rebinned for combine
         if xlim:
             h = h[complex(0, xlim[0]):complex(0, xlim[1])]
@@ -351,12 +351,12 @@ def makeStackPlotWithRatio(
             data_hist = h
 
     if add_ratio:
-        fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx, 
+        fig, ax1, ax2 = figureWithRatio(stack[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, logy=logy, logx=logx,
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale,
             subplotsizes=subplotsizes,
             )
     else:
-        fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx, 
+        fig, ax1 = figure(stack[0], xlabel, ylabel, ylim, xlim=xlim, logy=logy, logx=logx,
             plot_title = plot_title, title_padding = title_padding, bin_density = bin_density, width_scale=width_scale
             )
         ax2 = None
@@ -379,7 +379,7 @@ def makeStackPlotWithRatio(
             if p == "Data":
                 histInfo[p].hists[histName].variances()[...] = vals
 
-        
+
         # for postfit uncertaity bands
         axis = histInfo[to_read[0]].hists[histName].axes[0].edges
 
@@ -392,17 +392,17 @@ def makeStackPlotWithRatio(
         std = np.sqrt(hexp.variances()) / binwidth
 
         hatchstyle = '///'
-        ax1.fill_between(axis, 
-                np.append(nom+std, (nom+std)[-1]), 
+        ax1.fill_between(axis,
+                np.append(nom+std, (nom+std)[-1]),
                 np.append(nom-std, (nom-std)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
 
         if add_ratio:
-            ax2.fill_between(axis, 
-                    np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+            ax2.fill_between(axis,
+                    np.append((nom+std)/nom, ((nom+std)/nom)[-1]),
                     np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
                 step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
-    
+
     opts=dict(stack=not no_stack, flow=flow)
     optsr=opts.copy() # no binwnorm for ratio axis
     optsr["density"]=density
@@ -411,7 +411,7 @@ def makeStackPlotWithRatio(
     else:
         opts["binwnorm"]=binwnorm
 
-    if type(unstacked) == str: 
+    if type(unstacked) == str:
         unstacked = unstacked.split(",")
 
     scale = 1.
@@ -436,7 +436,7 @@ def makeStackPlotWithRatio(
         zorder=1,
         **opts
     )
-    
+
     if "Data" in histInfo and ratio_to_data and add_ratio:
         hep.histplot(
             hh.divideHists(hh.sumHists(stack), data_hist, cutoff=cutoff, by_ax_name=False),
@@ -455,7 +455,7 @@ def makeStackPlotWithRatio(
         linestyles = ['solid']*len(unstacked)
         data_idx = -1
         if "Data" in unstacked:
-            data_idx = unstacked.index("Data") 
+            data_idx = unstacked.index("Data")
             linestyles[data_idx] = "None"
         linestyles = np.array(linestyles, dtype=object)
         logger.debug("Number of linestyles", len(linestyles))
@@ -465,7 +465,7 @@ def makeStackPlotWithRatio(
         elif double_lines:
             linestyles[data_idx+1::2] = ['solid']*len(linestyles[data_idx+1::2])
             linestyles[data_idx+2::2] = ['dashed']*len(linestyles[data_idx+2::2])
-        
+
         ratio_ref = data_hist if ratio_to_data else hh.sumHists(stack)
         if baseline and add_ratio:
             hep.histplot(
@@ -489,7 +489,7 @@ def makeStackPlotWithRatio(
                 unstack_down = action(histInfo[down].hists[histName])*scale
                 unstack_upr = hh.divideHists(unstack_up, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
                 unstack_downr = hh.divideHists(unstack_down, ratio_ref, 1e-6, flow=False, by_ax_name=False).values()
-                ax2.fill_between(unstack_up.axes[0].edges, 
+                ax2.fill_between(unstack_up.axes[0].edges,
                     np.insert(unstack_upr, 0, unstack_upr[0]),
                     np.insert(unstack_downr, 0, unstack_downr[0]),
                     step='pre', color=histInfo[up].color, alpha=0.5)
@@ -521,7 +521,7 @@ def makeStackPlotWithRatio(
                 )
             elif histInfo[proc].label and histInfo[proc].label not in extra_labels:
                 if fill_between is not None and i < fill_between:
-                    extra_handles.append(Polygon([[0,0], [0,0], [0,0], [0,0]], 
+                    extra_handles.append(Polygon([[0,0], [0,0], [0,0], [0,0]],
                         color=histInfo[proc].color, linestyle=style, linewidth=linewidth, alpha=alpha))
                 else:
                     extra_handles.append(Line2D([0], [0], color=histInfo[proc].color, linestyle=style, linewidth=linewidth))
@@ -542,8 +542,8 @@ def makeStackPlotWithRatio(
 
     addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
     if add_ratio:
-        addLegend(ax2, lowerLegCols, text_size=legtext_size, loc=lowerLegPos, 
-            extra_handles=extra_handles, extra_labels=extra_labels, 
+        addLegend(ax2, lowerLegCols, text_size=legtext_size, loc=lowerLegPos,
+            extra_handles=extra_handles, extra_labels=extra_labels,
             custom_handlers=["bandfilled"] if fill_between is not None else ["stacked"] if double_lines else [])
 
     fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
@@ -566,16 +566,16 @@ def makePlotWithRatioToRef(
     if len(hists_ratio) != len(labels) or len(hists_ratio) != len(colors):
         raise ValueError(f"Number of hists ({len(hists_ratio)}), colors ({len(colors)}), and labels ({len(labels)}) must agree!")
     ratio_hists = [hh.divideHists(h, hists[0], cutoff=cutoff, flow=False, rel_unc=True, by_ax_name=False) for h in hists_ratio[not baseline:]]
-    
+
     if not only_ratio:
         fig, ax1, ax2 = figureWithRatio(
-        hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
+        hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim,
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
             bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
     else:
         fig, ax2 = figureWithRatio(
-            hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, 
+            hists[0], xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim,
             grid_on_ratio_plot = grid, plot_title = plot_title, title_padding=title_padding,
             bin_density = bin_density, logy=logy, logx=logx, only_ratio=only_ratio, width_scale=width_scale
         )
@@ -631,8 +631,8 @@ def makePlotWithRatioToRef(
         ratio_hists = [hh.divideHists(h, hists[0], flow=False, rel_unc=True, by_ax_name=False) for h in hists_ratio]
         if fill_between != 0:
             for upr,downr,color in zip(ratio_hists[-fill_between::2], ratio_hists[-fill_between+1::2], colors[-fill_between::2]):
-                ax2.fill_between(upr.axes[0].edges, 
-                        np.append(upr.values(), upr.values()[-1]), 
+                ax2.fill_between(upr.axes[0].edges,
+                        np.append(upr.values(), upr.values()[-1]),
                         np.append(downr.values(), downr.values()[-1]),
                             step='post', color=color, alpha=0.5)
 
@@ -648,8 +648,8 @@ def makePlotWithRatioToRef(
             alpha=alpha,
             flow='none',
         )
- 
-        extra_handles = [Polygon([[0,0], [0,0], [0,0], [0,0]], color=c, linestyle=l, linewidth=linewidth, alpha=alpha) 
+
+        extra_handles = [Polygon([[0,0], [0,0], [0,0], [0,0]], color=c, linestyle=l, linewidth=linewidth, alpha=alpha)
             for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])]
         # extra_handles = [Line2D([0], [0], color=c, linestyle=l, linewidth=linewidth) for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])]
         extra_labels = exclude_data(labels)[:len(hists_noData)]
@@ -659,14 +659,14 @@ def makePlotWithRatioToRef(
 
     if not only_ratio:
         addLegend(ax1, nlegcols, extra_text=extra_text, extra_text_loc=extra_text_loc, text_size=legtext_size)
-        addLegend(ax2, lowerLegCols, loc=lowerLegPos, text_size=legtext_size, 
+        addLegend(ax2, lowerLegCols, loc=lowerLegPos, text_size=legtext_size,
             extra_handles=extra_handles, extra_labels=extra_labels, custom_handlers=["stackfilled"])
 
         # This seems like a bug, but it's needed
         if not xlim:
             xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
         fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
-        if x_ticks_ndp: 
+        if x_ticks_ndp:
             ax2.xaxis.set_major_formatter(StrMethodFormatter('{x:.' + str(x_ticks_ndp) + 'f}'))
 
     if cms_label:
@@ -685,7 +685,7 @@ def makeHistPlot2D(h2d, flow=False, **kwargs):
     variances = h2d.variances(flow=flow)
     makePlot2D(values, variances, xedges, yedges, **kwargs)
 
-def makePlot2D(values, variances=None, xedges=None, yedges=None, 
+def makePlot2D(values, variances=None, xedges=None, yedges=None,
     density=False, plot_uncertainties=False,
     xlabel="", ylabel="", zlabel="", colormap="RdBu", plot_title=None,
     ylim=None, xlim=None, zlim=None, zsymmetrize=None,
@@ -705,7 +705,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
     if density:
         xbinwidths = np.diff(xedges)
         ybinwidths = np.diff(yedges)
-        binwidths = np.outer(xbinwidths, ybinwidths) 
+        binwidths = np.outer(xbinwidths, ybinwidths)
         values /= binwidths
         variances /= binwidths
     elif plot_uncertainties:
@@ -726,7 +726,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
             zmin = values.min()
         zmax = values.max()
         zlim = (zmin,zmax)
-        
+
     # make symmetric range around value of zsymmetrize
     if zsymmetrize is not None:
         zrange = max((zmin-zsymmetrize), (zsymmetrize-zmax))
@@ -743,7 +743,7 @@ def makePlot2D(values, variances=None, xedges=None, yedges=None,
             verticalalignment='bottom', horizontalalignment="right")
 
     scale = max(1, np.divide(*ax.get_figure().get_size_inches())*0.3)
-    hep.cms.label(ax=ax, lumi=None, fontsize=20*scaleleg*scale, 
+    hep.cms.label(ax=ax, lumi=None, fontsize=20*scaleleg*scale,
         label=cms_label, data=has_data, loc=logoPos)
 
     return fig
@@ -822,7 +822,7 @@ def save_pdf_and_png(outdir, basename, fig=None):
     print(f"Wrote file(s) {fname}(.png)")
     logger.info(f"Wrote file(s) {fname}(.png)")
 
-def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__).parent}/Templates", 
+def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__).parent}/Templates",
         yield_tables=None, analysis_meta_info=None, args={}, nround=2):
     indexnamesave = "index.php"
     if "mit.edu" in socket.gethostname():
@@ -861,7 +861,7 @@ def write_index_and_log(outpath, logname, template_dir=f"{pathlib.Path(__file__)
         logger.info(f"Writing file {logname}")
 
 def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xlabel, ylim=None,
-                      legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5, 
+                      legend_loc="upper right", double_colors=False, capsize=10, width_scale=1.5,
                       center_color="black", cms_loc=2, label_points=True, legtext_size=None, lumi=None, bbox_to_anchor=None, markers=None,
                       top_offset=0, bottom_offset=0, padding=4, point_size=0.24, point_center_colors=None, cms_label="Preliminary", logoPos=0):
     nentries = len(df)+(bottom_offset-top_offset)
@@ -877,7 +877,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
         ylim = [0, nentries+1]
 
     fig, ax1 = figure(None, xlabel=xlabel, ylabel="",
-                    grid=False, automatic_scale=False, width_scale=width_scale, 
+                    grid=False, automatic_scale=False, width_scale=width_scale,
                     height=padding+point_size*nentries, xlim=xlim, ylim=ylim)
 
     ax1.plot([centerline, centerline], ylim, linestyle="solid", marker="none", color=center_color, linewidth=2)
@@ -912,7 +912,7 @@ def make_summary_plot(centerline, center_unc, center_label, df, colors, xlim, xl
             bbox_to_anchor = data_to_figure.transform(bbox_to_anchor)
             print(bbox_to_anchor)
 
-        addLegend(ax1, ncols=1, text_size=legtext_size, bbox_to_anchor=bbox_to_anchor, loc=legend_loc, reverse=True, 
+        addLegend(ax1, ncols=1, text_size=legtext_size, bbox_to_anchor=bbox_to_anchor, loc=legend_loc, reverse=True,
             extra_labels=extra_labels, markerfirst=True, labelcolor=center_color, extra_handles=extra_handles, custom_handlers=["verticleline"])
 
     ax1.minorticks_off()

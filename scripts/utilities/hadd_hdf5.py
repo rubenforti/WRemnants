@@ -25,7 +25,7 @@ def recursive_copy(res):
         return copy.deepcopy(res)
     elif type(res) == narf.ioutils.H5PickleProxy:
         # need to copy the underlying object, then make a proxy again for lazy reading of output file
-        return narf.ioutils.H5PickleProxy(res.get()) 
+        return narf.ioutils.H5PickleProxy(res.get())
     else:
         raise TypeError(f"Unknown type {type(res)} of object {res}")
 

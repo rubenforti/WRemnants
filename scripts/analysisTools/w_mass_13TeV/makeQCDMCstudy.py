@@ -53,7 +53,7 @@ if __name__ == "__main__":
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
 
     ###############################################################################################
-    
+
     def runKinematics(args):
 
         fname = args.inputfile[0]
@@ -321,17 +321,17 @@ if __name__ == "__main__":
                 hin = hh.makeAbsHist(hin, "eta")
                 etaAxisName = "abseta"
                 etaAxisTitle = "Reco muon |#eta|"
-                
+
             hin = hin[{etaAxisName : s[::hist.rebin(4)],
                        "pt" : s[::hist.rebin(4)]}]
             hpass = hin[{"hasMatch" : True}]
             htotal = hin[{"hasMatch" : s[::hist.sum]}]
-            
+
             hfrac = hh.divideHists(hpass, htotal)
             hfrac_root  = narf.hist_to_root(hfrac)
             hfrac_root.SetName(f"hfrac_{inputHistName}")
             hfrac_root.SetTitle(inputHistName)
-            
+
             drawCorrelationPlot(hfrac_root, etaAxisTitle, "Reco muon p_{T} (GeV)", f"Fraction of events with gen match",
                                 f"{hfrac_root.GetName()}", plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
@@ -384,7 +384,7 @@ if __name__ == "__main__":
                 hin = hh.makeAbsHist(hin, "eta")
                 etaAxisName = "abseta"
                 etaAxisTitle = "Reco muon |#eta|"
-                
+
             hin = hin[{etaAxisName : s[::hist.rebin(8)],
                        "pt" : s[::hist.rebin(8)],
                        "recoMet" if useMet else "mt": s[::hist.rebin(5)],
@@ -428,7 +428,7 @@ if __name__ == "__main__":
                                         smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                         draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                         nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-                    
+
                     hfr  = narf.hist_to_root(hf)
                     hfr.SetName(f"mtVsGenMt_failIso_ipt{ipt}_ieta{ieta}")
                     hfr.SetTitle(f"failIso {etaRangeText}     {ptRangeText}")
@@ -485,7 +485,7 @@ if __name__ == "__main__":
             logger.info(f"Running on process {d}")
             hin = histInfo[d].hists[inputHistName]
             logger.debug(hin.axes)
-                
+
             hp = hin[{"passIso" : True}]
             hf = hin[{"passIso" : False}]
             ht = hin[{"passIso" : s[::hist.sum]}]
@@ -501,7 +501,7 @@ if __name__ == "__main__":
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
                                 draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                                 nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
-                    
+
             hfr  = narf.hist_to_root(hf)
             hfr.SetName(f"jetMuonPt_failIso")
             hfr.SetTitle(f"failIso")
@@ -535,7 +535,7 @@ if __name__ == "__main__":
         canvas1D = ROOT.TCanvas("canvas1D", "", 800, 900)
         #canvas1D.SetGridx(1)
         canvas1D.SetGridy(1)
-        
+
         groups = Datagroups(fname, mode="w_mass")
         datasets = groups.getNames()
         if args.processes is not None and len(args.processes):
@@ -554,10 +554,10 @@ if __name__ == "__main__":
             hin = histInfo[d].hists[inputHistName]
             logger.debug(hin.axes)
             # ('goodMuons_genPartFlav0', 'eta', 'pt', 'charge', 'mt', 'passIso')
-            # integrate charge and fold eta into abseta 
+            # integrate charge and fold eta into abseta
             hin = hin[{"charge" : s[::hist.sum]}]
             hAbsetaPt = hh.makeAbsHist(hin, "eta")
-            # integrate eta-pt-charge for now        
+            # integrate eta-pt-charge for now
             hin = hin[{"pt"     : s[::hist.sum],
                        "eta"    : s[::hist.sum]}]
             # make eta into abseta for now
@@ -575,7 +575,7 @@ if __name__ == "__main__":
             hfail = hin[{"passIso": False}]
 
             muonFlavAxisName = "0=unmatched, 1=prompt, 3=light, 4=c, 5=b"
-            
+
             hFRF = hh.divideHists(hpass, hfail)
             hrootFRF  = narf.hist_to_root(hFRF)
             minFRF, maxFRF = getMinMaxHisto(hrootFRF, sumError=False)
@@ -601,7 +601,7 @@ if __name__ == "__main__":
             hrootFail  = narf.hist_to_root(hfail)
             hrootFail.SetName("yields_failIso_genPartFlav_mT")
             hrootFail.SetTitle(f"Fail isolation")
-            
+
             drawCorrelationPlot(hrootPass, muonFlavAxisName, "m_{T} (GeV)", f"Events (QCD MC)",
                                 hrootPass.GetName(), plotLabel="ForceTitle", outdir=outdir,
                                 smoothPlot=False, drawProfileX=False, scaleToUnitArea=False,
@@ -628,7 +628,7 @@ if __name__ == "__main__":
                     drawTH1(hroot1D, muonFlavAxisName, "Fraction of events::0,0.75", hroot1D.GetName(),
                             outdir, passCanvas=canvas1D, plotTitleLatex=hroot1D.GetTitle(),
                             drawStatBox=False, histFillColor=ROOT.kGray)
-                    
+
         copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 
     ###############################################################################################

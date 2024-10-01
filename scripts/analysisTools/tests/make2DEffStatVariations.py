@@ -26,7 +26,7 @@ def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,
     lepton = "Muon"
     # defined in plotUtils/utility.h
     createPlotDirAndCopyPhp(outdir)
-    
+
     nbins_eta = parHisto.GetNbinsX()
     etamin = round(parHisto.GetXaxis().GetBinLowEdge(1), 2)
     etamax = round(parHisto.GetXaxis().GetBinLowEdge(1+nbins_eta), 2)
@@ -51,7 +51,7 @@ def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,
             startIndex = npars*ivar
             # set parameters for a given hessian
             tf1_func_var.SetParameters(np.array([vec[i] for i in range(startIndex, startIndex+npars)], dtype=np.dtype('d')))
-            # now loop on pt bins to fill the histogram from the function and its variations 
+            # now loop on pt bins to fill the histogram from the function and its variations
             for ipt in range(nbins_pt):
                 pt = systHistos[0].GetYaxis().GetBinCenter(ipt+1)
                 if ivar:
@@ -70,7 +70,7 @@ def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,
 
     xaxisTitle = f"{lepton} #eta"
     yaxisTitle = f"{lepton} p_{{T}} (GeV)"
-    zaxisTitle = "Alternate - nominal" if getDiff else "Alternate" 
+    zaxisTitle = "Alternate - nominal" if getDiff else "Alternate"
     postfix = f"_{suffix}" if suffix else ""
     canvasName = f"effStatVar_{smoothFunction}_nominal{postfix}"
 
@@ -87,7 +87,7 @@ def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,
                             outdir,
                             1,1,False,False,False,1,
                             leftMargin=0.14,rightMargin=0.22,
-                            palette=palette, passCanvas=canv)    
+                            palette=palette, passCanvas=canv)
 
     for ivar in range(npars):
         if not skipPlot:
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--suffix", type=str, default=None, help="suffix for the ROOT file and plots")
     parser.add_argument("--ptbins", default=None, nargs=3, type=str, required=True, help="Pass npt, ptmin, ptmax, for the smoothed histogram")
     parser.add_argument("-f", "--smoothFunction", type=str, default="pol3", choices=["pol3", "pol2", "erf"], help="Smoothing function")
-    parser.add_argument(     '--plotDiff', action="store_true", help="Plot variations of the interpolation functions (alt-nomi), instead of the alternate function itself (but note that what is saved in the output file is always the alternate regardless)")    
+    parser.add_argument(     '--plotDiff', action="store_true", help="Plot variations of the interpolation functions (alt-nomi), instead of the alternate function itself (but note that what is saved in the output file is always the alternate regardless)")
     args = parser.parse_args()
 
     outdir = args.outdir[0]
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         outfilename = outfilename.replace('.root','_%s.root' % args.suffix)
     # defined in plotUtils/utility.h
     createPlotDirAndCopyPhp(outdir)
-    
+
     tf = safeOpenFile(args.covariancefile[0])
     covHisto = safeGetObject(tf, args.covariance)
     parHisto = safeGetObject(tf, args.parameters)

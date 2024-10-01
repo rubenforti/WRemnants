@@ -294,13 +294,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             # gen level bins, split by charge
             if "minus" in args.recoCharge:
                 datagroups.defineSignalBinsUnfolding(
-                    base_group, f"W_qGen0", 
-                    member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"), 
+                    base_group, f"W_qGen0",
+                    member_filter=lambda x: x.name.startswith("Wminus") and not x.name.endswith("OOA"),
                     axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
             if "plus" in args.recoCharge:
-                datagroups.defineSignalBinsUnfolding(base_group, 
-                    f"W_qGen1", 
-                    member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"), 
+                datagroups.defineSignalBinsUnfolding(base_group,
+                    f"W_qGen1",
+                    member_filter=lambda x: x.name.startswith("Wplus") and not x.name.endswith("OOA"),
                     axesNamesToRead=[ax for ax in datagroups.gen_axes_names if ax!="qGen"])
         else:
             datagroups.defineSignalBinsUnfolding(base_group, base_group[0], member_filter=lambda x: not x.name.endswith("OOA"))
@@ -319,12 +319,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         datagroups.fakerate_axes=args.fakerateAxes
         histselector_kwargs = dict(
             mode=args.fakeEstimation,
-            smoothing_mode=args.fakeSmoothingMode, 
+            smoothing_mode=args.fakeSmoothingMode,
             smoothingOrderSpectrum=args.fakeSmoothingOrder,
             smoothingPolynomialSpectrum=args.fakeSmoothingPolynomial,
             mcCorr=args.fakeMCCorr,
             integrate_x="mt" not in fitvar,
-            simultaneousABCD=simultaneousABCD, 
+            simultaneousABCD=simultaneousABCD,
             forceGlobalScaleFakes=args.forceGlobalScaleFakes,
         )
         datagroups.set_histselectors(datagroups.getNames(), inputBaseName, **histselector_kwargs)
@@ -522,9 +522,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
-        cardTool.addLnNSystematic("dummy", 
-            processes=['MCnoQCD'], 
-            size=1.0001, 
+        cardTool.addLnNSystematic("dummy",
+            processes=['MCnoQCD'],
+            size=1.0001,
             group="dummy")
 
     decorwidth = args.decorMassWidth or args.fitWidth
@@ -561,10 +561,10 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                     actionRequiresNomi=True,
                     action=syst_tools.decorrelateByAxes,
                     actionArgs=dict(
-                        axesToDecorrNames=args.fitMassDecorr, 
-                        newDecorrAxesNames=new_names, 
-                        axlim=args.decorrAxlim, 
-                        rebin=args.decorrRebin, 
+                        axesToDecorrNames=args.fitMassDecorr,
+                        newDecorrAxesNames=new_names,
+                        axlim=args.decorrAxlim,
+                        rebin=args.decorrRebin,
                         absval=args.decorrAbsval,
                         )
                 )
@@ -574,12 +574,12 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         if fitMassDiff:
             suffix = "".join([a.capitalize() for a in fitMassDiff.split("-")])
             combine_helpers.add_mass_diff_variations(
-                cardTool, 
+                cardTool,
                 fitMassDiff,
                 name=f"{massWeightName}{label}",
-                processes=signal_samples_forMass, 
+                processes=signal_samples_forMass,
                 constrain=constrainMass,
-                suffix=suffix, 
+                suffix=suffix,
                 label=label,
                 passSystToFakes=passSystToFakes,
             )
@@ -602,13 +602,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         elif isUnfolding:
             combine_helpers.add_noi_unfolding_variations(
-                cardTool, 
-                label, 
-                passSystToFakes, 
-                xnorm, 
-                poi_axes, 
+                cardTool,
+                label,
+                passSystToFakes,
+                xnorm,
+                poi_axes,
                 wmass=wmass,
-                prior_norm=args.priorNormXsec, 
+                prior_norm=args.priorNormXsec,
                 scale_norm=args.scaleNormXsecHistYields,
             )
 
@@ -625,11 +625,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             recovar = fitvar
         else:
             # need to find the reco variables that correspond to the masked channel
-            idx = args.inputFile.index(inputFile) 
+            idx = args.inputFile.index(inputFile)
             recovar = args.fitvar[idx].split("-")
 
         if xnorm and not args.fitresult:
-            # use variations from reco histogram and apply them to xnorm 
+            # use variations from reco histogram and apply them to xnorm
             source = ("nominal", "yieldsUnfolding")
         else:
             None
@@ -684,7 +684,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                                 rename="WidthZ0p8MeV",
                                 processes= ['single_v_nonsig_samples'] if wmass else signal_samples_forMass,
                                 action=lambda h: h[{"width" : ['widthZ2p49333GeV', 'widthZ2p49493GeV']}],
-                                group="ZmassAndWidth" if wmass else "widthZ", 
+                                group="ZmassAndWidth" if wmass else "widthZ",
                                 splitGroup = {"theory": ".*"},
                                 mirror=False,
                                 noi=args.fitWidth if not wmass else False,
@@ -724,9 +724,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
 
-    
+
         theory_helper = combine_theory_helper.TheoryHelper(label, cardTool, args, hasNonsigSamples=(wmass and not xnorm))
-        theory_helper.configure(resumUnc=args.resumUnc, 
+        theory_helper.configure(resumUnc=args.resumUnc,
             transitionUnc = not args.noTransitionUnc,
             propagate_to_fakes=to_fakes,
             np_model=args.npUnc,
@@ -781,9 +781,9 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         cardTool.addLnNSystematic("lumi", processes=['MCnoQCD'], size=1.017 if lowPU else 1.012, group="luminosity", splitGroup = {"experiment": ".*", "expNoCalib": ".*"},)
 
     if (
-        (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD") 
-        and cardTool.getFakeName() in datagroups.groups.keys() 
-        and not xnorm 
+        (cardTool.getFakeName() != "QCD" or args.qcdProcessName=="QCD")
+        and cardTool.getFakeName() in datagroups.groups.keys()
+        and not xnorm
         and (args.fakeSmoothingMode != "binned" or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar))
         ):
 
@@ -791,7 +791,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
         syst_axes = ["eta", "charge"] if (args.fakeSmoothingMode != "binned" or args.fakeEstimation not in ["extrapolate"]) else ["eta", "pt", "charge"]
         info=dict(
-            name=inputBaseName, 
+            name=inputBaseName,
             group="Fake",
             processes=cardTool.getFakeName(),
             noConstraint=False,
@@ -848,7 +848,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 if len(axesToDecorrNames) == 0:
                     # inclusive
                     hvar = hist.Hist(
-                        *hvar.axes, hist.axis.Integer(0, 1, name="var", underflow=False, overflow=False), 
+                        *hvar.axes, hist.axis.Integer(0, 1, name="var", underflow=False, overflow=False),
                         storage=hist.storage.Double(),
                         data = hvar.values(flow=True)[...,np.newaxis]
                     )
@@ -861,7 +861,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 for idx, mag in [(1,0.1),(2,0.1),]:
                     subgroup = f"{cardTool.getFakeName()}Param{idx}"
                     cardTool.addSystematic(
-                        name=inputBaseName, 
+                        name=inputBaseName,
                         group="Fake",
                         rename=subgroup+ (f"_{'_'.join(axesToDecorrNames)}" if len(axesToDecorrNames) else ""),
                         splitGroup = {subgroup: f".*", "experiment": ".*", "expNoCalib": ".*"},
@@ -1341,13 +1341,13 @@ if __name__ == "__main__":
             genvar = args.genAxes[i].split("-") if hasattr(args,"genAxes") and len(args.genAxes) else None
             iBaseName = args.baseName[0] if len(args.baseName)==1 else args.baseName[i]
             iLumiScale = args.lumiScale[0] if len(args.lumiScale)==1 else args.lumiScale[i]
-            
+
             cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, genvar, xnorm=args.fitresult is not None or args.baseName == "xnorm")
             outnames.append( (outputFolderName(args.outfolder, cardTool, args.doStatOnly, args.postfix), analysis_label(cardTool)) )
 
             writer.add_channel(cardTool)
             if isFloatingPOIs or isUnfolding:
-                fitvar = genvar if isPoiAsNoi else ["count"] 
+                fitvar = genvar if isPoiAsNoi else ["count"]
                 cardTool = setup(args, ifile, iBaseName, iLumiScale, fitvar, xnorm=True)
                 writer.add_channel(cardTool)
 

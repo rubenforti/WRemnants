@@ -43,18 +43,18 @@ for wp in workingPoints:
         outdir = f"{mainPath}/compareEffAndSFbyEventParity/{era}/{wp}/"
         file1  = f"{inputhPath}/efficiencies_{era}/mu_{wp}_{elements[0]}/allEfficiencies_2D.root"
         file2  = f"{inputhPath}/efficiencies_{era}/mu_{wp}_{elements[1]}/allEfficiencies_2D.root"
-        
+
         for n in hToPlot:
             h1 = f"{n}_{era}"
-            
+
             basecmd = f"python {scriptDir}w_mass_13TeV/makeRatioTH2.py {file1} {n} {file2} {n} -o {outdir} -p -n ratio_{tag}_{n}_{era} -x 'Muon #eta' -y 'Muon p_{{T}} (GeV)' -z '{era} {n} ratio::0.97,1.03' --skip1DPlot -t '{ratioTitle}' --palette -1 "
             print()
             print(basecmd)
-            
+
             basecmd_asym = f"python {scriptDir}w_mass_13TeV/makeRatioTH2.py {file1} {n} {file2} {n} -o {outdir} -a -n asymmetry_{tag}_{n}_{era} -x 'Muon #eta' -y 'Muon p_{{T}} (GeV)' -z '{era} {n} asymmetry::-0.05,0.05' --skip1DPlot -t '{asymTitle}' --palette -1 "
             if not skipAsym:
                 print()
                 print(basecmd_asym)
-        
+
     print()
     print()

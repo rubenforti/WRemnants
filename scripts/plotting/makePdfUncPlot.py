@@ -63,9 +63,9 @@ for dataset in args.datasets:
         xlabels["unrolled_gen"] = xlabels["unrolled_gen"].replace("Z", "W")
         xlabels["unrolled_gen_hel"] = xlabels["unrolled_gen_hel"].replace("Z", "W")
 
-    pdfInfo = theory_tools.pdfMap 
+    pdfInfo = theory_tools.pdfMap
     pdfNames = [pdfInfo[pdf]["name"] for pdf in args.pdfs]
-    
+
     axis_label = "pdfVar"
 
     uncType = [pdfInfo[pdf]["combine"] for pdf in args.pdfs]
@@ -85,9 +85,9 @@ for dataset in args.datasets:
         # ratioUL = hh.divideHists(coeffs[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}],hel_lhe[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}])
         # coeffs_lhe=hh.multiplyHists(hel_lhe,ratioUL)
         coeffs_lhe = hel_lhe
-        
+
         moments_pdf = input_tools.read_all_and_scale(args.infile, [dataset], [f"{args.baseName}_helicity_{pdfName}" for pdfName in pdfNames])
-        
+
         coeffs_pdf = []
         for moment_pdf in moments_pdf:
             hel_pdf =moment_pdf.project('ptVgen','absYVgen','helicity',axis_label)
@@ -104,11 +104,11 @@ for dataset in args.datasets:
         # ratioUL = hh.divideHists(coeffs[{'helicity':-1.j,'muRfact':1.j,'muFfact':1.j}],hel_heraext[{'helicity':-1.j}])
         # coeffs_heraext.append(hh.multiplyHists(hel_heraext,ratioUL))
         coeffs_heraext.append(hel_heraext)
-        
+
         uncType_hera = [pdfInfo["herapdf20ext"]["combine"]]
         uncScale_hera = [pdfInfo["herapdf20ext"]["scale"] if "scale" in pdfInfo["herapdf20ext"] else 1.]
         uncHists_hera = [[h[{axis_label : 0}], *theory_tools.hessianPdfUnc(h, axis_label, unc, scale)] for h,unc,scale in zip(coeffs_heraext, uncType_hera, uncScale_hera)]
-        
+
 
         for ipdf,pdf in enumerate(args.pdfs):
             if "herapdf20" in pdf:
@@ -131,7 +131,7 @@ for dataset in args.datasets:
 
             has_as = "alphasRange" in pdfInfo[pdf]
             if has_as:
-                asr = pdfInfo[pdf]["alphasRange"] 
+                asr = pdfInfo[pdf]["alphasRange"]
                 scale_alpha=(0.75 if asr == "002" else 1.5)
                 alphaNames.append(f"{args.baseName}_helicity_{args.baseName}_helicity_{pdfNames[ipdf]}alphaS{asr}")
                 #nominal_gen_pdfMSHT20alphaS002
@@ -143,15 +143,15 @@ for dataset in args.datasets:
                 coeffs_alpha.append(hel_alpha)
             uncHists[ipdf].extend([uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,1]-uncHists[ipdf][0])*scale_alpha,uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,2]-uncHists[ipdf][0])*scale_alpha])
             names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
-            
+
             colors[ipdf].extend([cmap(ipdf+1)]*2)
-            
+
 
         # add QCD scales
         uncHists.append([coeffs[{'muRfact':1.j,'muFfact':1.j}],*[coeffs[{"muRfact" : 2.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 0.5j, "muFfact" : 0.5j}],coeffs[{"muRfact" : 2.j, "muFfact" : 1.j}], coeffs[{"muRfact" : 0.5j, "muFfact" : 1.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 2.j}],coeffs[{"muRfact" : 1.j, "muFfact" : 0.5j}]]])
         names.append(["QCDscale_central","","","","","",""])
         colors.extend([[cmap(i)]*7 for i in range(len(args.pdfs)+1,len(args.pdfs)+2)])
-        
+
         uncHists.append([coeffs_lhe[{'muRfact':1.j,'muFfact':1.j}],*[coeffs_lhe[{"muRfact" : 2.j, "muFfact" : 2.j}],coeffs_lhe[{"muRfact" : 0.5j, "muFfact" : 0.5j}],coeffs_lhe[{"muRfact" : 2.j, "muFfact" : 1.j}], coeffs_lhe[{"muRfact" : 0.5j, "muFfact" : 1.j}],coeffs_lhe[{"muRfact" : 1.j, "muFfact" : 2.j}],coeffs_lhe[{"muRfact" : 1.j, "muFfact" : 0.5j}]]])
         names.append(["QCDscalelhe_central","","","","","",""])
         colors.extend([[cmap(i)]*7 for i in range(len(args.pdfs)+2,len(args.pdfs)+3)])
@@ -192,7 +192,7 @@ for dataset in args.datasets:
                 all_colors.extend(color)
                 all_colors_list.append(color)
                 all_names.extend(labels)
-            
+
             lower = np.minimum.reduce([h.values(flow=True) for h in all_hists])/np.abs(all_hists[0].values(flow=True))
             upper = np.maximum.reduce([h.values(flow=True) for h in all_hists])/np.abs(all_hists[0].values(flow=True))
 
@@ -201,7 +201,7 @@ for dataset in args.datasets:
                 symm = 0.5*np.ones_like(symm)
             elif ihel==4:
                 symm = 2*np.ones_like(symm)
-            
+
             fig = plot_tools.makePlotWithRatioToRef(all_hists, colors=all_colors, labels=all_names, alpha=0.4,
                 rrange=args.rrange, ylabel="$\sigma$/bin", xlabel=xlabels[obs], rlabel=f"x/{args.pdfs[0].upper()}", binwnorm=None, nlegcols=1, only_ratio=False,width_scale=2)
             outfile = f"{name}Hist_{obs}_{dataset}_sigma{round(ihel)}"
@@ -219,7 +219,7 @@ for dataset in args.datasets:
             ax2.set_xticks([])
             min_val = np.min(np.concatenate((symm,2-symm)))
             max_val = np.max(np.concatenate((symm,2-symm)))
-            
+
             if not ihel ==-1:
                 ax2.set_ylim(min_val,max_val)
             else:
@@ -235,7 +235,7 @@ for dataset in args.datasets:
             vars = max_arr.reshape((len(axis_ptV.centers)+1,len(axis_yV.centers)+1))
             vars[-1:,:] = 0.5*np.ones_like(vars[-1:,:])
             vars[:,-1:] = 0.5*np.ones_like(vars[:,-1:])
-            
+
             variations[...,int(ihel)+1]=vars
 
     hvariations = hist.Hist(axis_ptV,axis_yV,axis_helicity_multidim, name=f"theorybands_{dataset}",data=variations)

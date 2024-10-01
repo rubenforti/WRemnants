@@ -69,7 +69,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
         group = datagroups.groups[g_name]
         for member in group.members:
             if isW and (
-                (channel =="plus" and member.name.startswith("Wminus")) 
+                (channel =="plus" and member.name.startswith("Wminus"))
                 or (channel =="minus" and member.name.startswith("Wplus"))
             ):
                 continue
@@ -123,7 +123,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
     if "obs" not in [c.replace(";1","") for c in  fitresult.keys()]:
         logger.error(f"Shapes not found in fitresult file, run combine with --saveHists --computeHistErrors to get shapes.")
         return
-    
+
     hist_data = fitresult["obs"].to_hist()[bin_lo:bin_hi]/binwidths
     hist_pred = fitresult[f"expfull_{fittype}"].to_hist()[bin_lo:bin_hi]/binwidths
 
@@ -152,7 +152,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
         rrange = args.rrange
 
     if density:
-        ylabel = "a.u."    
+        ylabel = "a.u."
     else:
         if isW:
             process_label = "W"
@@ -196,7 +196,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
             ax=ax1,
             alpha=1.,
             zorder=2,
-        )    
+        )
 
     if ratio:
         hep.histplot(
@@ -229,14 +229,14 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
 
     hatchstyle = '///'
     if stack:
-        ax1.fill_between(axis, 
-            np.append(nom+std, (nom+std)[-1]), 
+        ax1.fill_between(axis,
+            np.append(nom+std, (nom+std)[-1]),
             np.append(nom-std, (nom-std)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0, label="Uncertainty")
 
     if ratio:
-        ax2.fill_between(axis, 
-            np.append((nom+std)/nom, ((nom+std)/nom)[-1]), 
+        ax2.fill_between(axis,
+            np.append((nom+std)/nom, ((nom+std)/nom)[-1]),
             np.append((nom-std)/nom, ((nom-std)/nom)[-1]),
             step='post',facecolor="none", zorder=2, hatch=hatchstyle, edgecolor="k", linewidth=0.0)
 
@@ -246,7 +246,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
     plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize)
 
     outfile = f"{fittype}"
-    outfile += (f"_{args.postfix}" if args.postfix else "") 
+    outfile += (f"_{args.postfix}" if args.postfix else "")
     outfile += (f"_{channel}" if channel else "")
     outfile += (f"_unstacked" if not stack else "")
 
@@ -262,7 +262,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
     # if not args.noData:
     #     summed_yields = pd.concat([summed_yields, make_yields_df([hist_data*bin_widths], ["Data"])])
 
-    plot_tools.write_index_and_log(outdir, outfile, 
+    plot_tools.write_index_and_log(outdir, outfile,
         # yield_tables={"Processes" : processes_yields, "Summed processes": summed_yields},#, "Unstacked processes" : unstacked_yields},
         analysis_meta_info={args.infile : datagroups.getMetaInfo()},
         args=args,

@@ -38,7 +38,7 @@ if __name__ == "__main__":
     steps_byCharge = ["reco", "tracking", "idip", "trigger"]
     steps_inclusive = ["iso"]
     allSteps = steps_byCharge[:] + steps_inclusive[:]
-    
+
     # SF_nomiAndAlt_GtoH_tracking_plus
     # SF_nomiAndAlt_onlyDataVar_GtoH_iso_both
     # SF_nomiAndAlt_onlyMCVar_GtoH_iso_both
@@ -89,10 +89,10 @@ if __name__ == "__main__":
                 #     ptBinRanges.append("#splitline{{[{ptmin},{ptmax}]}}{{GeV}}".format(ptmin=int(ptBins[ipt]), ptmax=int(ptBins[ipt+1])))
 
                 # drawSingleTH1(ratio_unrolled, XlabelUnroll, ztitle, ratio_unrolled.GetName(),
-                #               outdir, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="", 
+                #               outdir, drawLineLowerPanel="", lowerPanelHeight=0.0, labelRatioTmp="",
                 #               passCanvas=canvasWide,
                 #               legendCoords="0.15,0.85,0.82,0.9;2",
-                #               leftMargin=0.05,rightMargin=0.01,lumi=None, 
+                #               leftMargin=0.05,rightMargin=0.01,lumi=None,
                 #               drawVertLines="{a},{b}".format(a=hratio.GetNbinsY(),b=hratio.GetNbinsX()),
                 #               textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=30, drawLineTopPanel=1.0)
 

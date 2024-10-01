@@ -104,10 +104,10 @@ if __name__ == '__main__':
             h1ds = {k: [h[{"helicity":complex(0,i)}] for h in v] for k,v in hists1d.items()}
 
             ylabel = f"$\mathrm{{A}}_{i}$" if not args.plotXsecs else r"$\sigma_{"+(r"\mathrm{UL}" if i==-1 else str(i))+r"}\,[\mathrm{pb}]$"
-            fig, ax1 = plot_tools.figure(next(iter(h1ds.values()))[0], xlabel=styles.xlabels.get(var, var), 
+            fig, ax1 = plot_tools.figure(next(iter(h1ds.values()))[0], xlabel=styles.xlabels.get(var, var),
                 ylabel=ylabel,
                 grid=False, automatic_scale=False, width_scale=1.2, logy=False)
-            
+
             y_min=np.inf
             y_max=-np.inf
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                             zorder=3,
                             density=False,
                             binwnorm=1 if args.plotXsecs else None,
-                        )    
+                        )
                         y_min = min(y_min, min(h.values()))
                         y_max = max(y_max, max(h.values()))
             else:
@@ -148,13 +148,13 @@ if __name__ == '__main__':
                         )
                         y_min = min(y_min, min(h.values()))
                         y_max = max(y_max, max(h.values()))
-                
+
             if args.plotXsecs:
                 y_min, y_max = ax1.get_ylim()
             yrange = y_max-y_min
 
             x_min, x_max = ax1.get_xlim()
-            plt.plot([x_min, x_max], [0,0], color="black", linestyle="--")            
+            plt.plot([x_min, x_max], [0,0], color="black", linestyle="--")
 
             ax1.set_ylim([y_min-yrange*0.1, y_max+yrange*0.2])
 

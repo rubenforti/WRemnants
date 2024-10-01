@@ -21,7 +21,7 @@ class util:
         rescale = self.wxsec(generator)[0]/self.wxsec('fewz3p1')[0]
         values = {}
         if not infile:
-            for pol in polarizations: 
+            for pol in polarizations:
                 cp = '{ch}_{pol}'.format(ch=charge,pol=pol)
                 xsecs = []
                 for iv in xrange(len(ybins[cp][:-1])):
@@ -31,15 +31,15 @@ class util:
             return values
 
         histo_file = ROOT.TFile(infile, 'READ')
-    
+
         pstr = '' if not ip else '_pdf{ip}Up'.format(ip=ip)
-    
+
         for pol in polarizations:
             cp = '{ch}_{pol}'.format(ch=charge,pol=pol)
             xsecs = []
-            for iv, val in enumerate(ybins[cp][:-1]):                
+            for iv, val in enumerate(ybins[cp][:-1]):
                 if val in excludeYbins: continue
-                name = 'x_W{ch}_{pol}_Ybin_{iy}{suffix}'.format(ch=charge,pol=pol,iy=iv,ip=ip,suffix=pstr)                
+                name = 'x_W{ch}_{pol}_Ybin_{iy}{suffix}'.format(ch=charge,pol=pol,iy=iv,ip=ip,suffix=pstr)
                 histo = histo_file.Get(name)
                 val = rescale*histo.Integral()/36000./float(nchannels) # xsec file yields normalized to 36 fb-1
                 xsecs.append(float(val))
@@ -65,7 +65,7 @@ class util:
                 for s in systs:
                     histo_systs = histo_file.Get(binname+'_'+s)
                     envelope = max(envelope, abs(histo_systs.Integral()/36000./float(nchannels) - nominal))
-                    if doAlphaS: envelope = 1.5*envelope # one sigma corresponds to +-0.0015 (weights correspond to +-0.001) 
+                    if doAlphaS: envelope = 1.5*envelope # one sigma corresponds to +-0.0015 (weights correspond to +-0.001)
                     envelope = rescale*envelope
                 xsecs.append(float(envelope))
             values[pol] = xsecs
@@ -77,7 +77,7 @@ class util:
         # adding also other alphaS (envelope of Up/Down) and QCD scales (envelope) in quadrature
 
         print("Inside getPDFbandFromXsec() ...")
-        histo_file = ROOT.TFile(infile, 'READ')            
+        histo_file = ROOT.TFile(infile, 'READ')
 
         # NOTE: hnomi is a TH1
         for ieta in range(netabins):
@@ -89,17 +89,17 @@ class util:
                     print("Error in getPDFbandFromXsec(): I couldn't find histogram " + nomi)
                     quit()
 
-                hpdftmp = None            
-                pdfquadrsum = 0.0 
-                xsecnomi = hnomi.Integral(0, 1+hnomi.GetNbinsX())                
+                hpdftmp = None
+                pdfquadrsum = 0.0
+                xsecnomi = hnomi.Integral(0, 1+hnomi.GetNbinsX())
 
                 for ipdf in range(1, 61):
                     pdfvar = nomi + '_pdf{ip}Up'.format(ip=ipdf)
                     hpdftmp = histo_file.Get(pdfvar)
                     if not hpdftmp:
                         print("Error in getPDFbandFromXsec(): I couldn't find histogram " + pdfvar)
-                        quit()                    
-                    tmpval = hpdftmp.Integral(0, 1+hpdftmp.GetNbinsX()) - xsecnomi                     
+                        quit()
+                    tmpval = hpdftmp.Integral(0, 1+hpdftmp.GetNbinsX()) - xsecnomi
                     pdfquadrsum += tmpval * tmpval
 
                 envelopeQCD = 0
@@ -110,19 +110,19 @@ class util:
                             hqcdtmp = histo_file.Get(qcdvar)
                             if not hqcdtmp:
                                 print("Error in getPDFbandFromXsec(): I couldn't find histogram " + qcdvar)
-                                quit()                    
-                            tmpval = hqcdtmp.Integral(0, 1+hqcdtmp.GetNbinsX()) - xsecnomi                     
+                                quit()
+                            tmpval = hqcdtmp.Integral(0, 1+hqcdtmp.GetNbinsX()) - xsecnomi
                             envelopeQCD = max(abs(envelopeQCD),abs(tmpval))
-                                
+
                 alphaS = 0
                 for idir in ["Up", "Down"]:
                     alphaSvar = nomi + '_alphaS{d}'.format(d=idir)
                     halphaStmp = histo_file.Get(alphaSvar)
                     if not halphaStmp:
                         print("Error in getPDFbandFromXsec(): I couldn't find histogram " + alphaSdvar)
-                        quit()                    
-                    # 1.5 is because weight corresponds to 0.001, but should be 0.0015 
-                    tmpval = halphaStmp.Integral(0, 1+halphaStmp.GetNbinsX()) - xsecnomi  
+                        quit()
+                    # 1.5 is because weight corresponds to 0.001, but should be 0.0015
+                    tmpval = halphaStmp.Integral(0, 1+halphaStmp.GetNbinsX()) - xsecnomi
                     alphaS = max(abs(alphaS),abs(1.5*tmpval))
 
                 if histoTotTheory:
@@ -133,8 +133,8 @@ class util:
                 else:
                     histoPDF.SetBinError(ieta+1, ipt+1, math.sqrt(pdfquadrsum + envelopeQCD * envelopeQCD + alphaS * alphaS))
                     histoPDF.SetBinContent(ieta+1, ipt+1, xsecnomi)
-                                      
-                        
+
+
         histo_file.Close()
         return 0
 
@@ -143,12 +143,12 @@ class util:
 
         # obsolete, use the next one, generic for pt and eta
         print("Inside getPDFbandFromXsecEta() ...")
-        histo_file = ROOT.TFile(infile, 'READ')            
+        histo_file = ROOT.TFile(infile, 'READ')
 
         for ieta in range(netabins):
             pdfquadrsum = 0.0
             xsecnomi = 0.0
-            xsecpdf = [0.0 for i in range(60)] 
+            xsecpdf = [0.0 for i in range(60)]
             for ipt in range(firstPtBin,nptbins):
 
                 nomi = "x_W{ch}_lep_ieta_{ie}_ipt_{ip}".format(ch=charge, ie=ieta, ip=ipt)
@@ -157,8 +157,8 @@ class util:
                     print("Error in getPDFbandFromXsecEta(): I couldn't find histogram " + nomi)
                     quit()
 
-                hpdftmp = None            
-                xsecnomi += hnomi.Integral(0, 1+hnomi.GetNbinsX())                
+                hpdftmp = None
+                xsecnomi += hnomi.Integral(0, 1+hnomi.GetNbinsX())
 
                 for ipdf in range(1, 61):
                     pdfvar = nomi + '_pdf{ip}Up'.format(ip=ipdf)
@@ -166,15 +166,15 @@ class util:
                     if not hpdftmp:
                         print("Error in getPDFbandFromXsecEta(): I couldn't find histogram " + pdfvar)
                         quit()
-                    
+
                     xsecpdf[ipdf-1] += hpdftmp.Integral(0, 1+hpdftmp.GetNbinsX())
 
             pdfquadrsum = 0.0
             for ipdf in range(60):
-                tmpval = xsecpdf[ipdf] - xsecnomi 
+                tmpval = xsecpdf[ipdf] - xsecnomi
                 pdfquadrsum += tmpval*tmpval
             histoPDF.SetBinError(ieta+1, math.sqrt(pdfquadrsum))
-            histoPDF.SetBinContent(ieta+1, xsecnomi)                        
+            histoPDF.SetBinContent(ieta+1, xsecnomi)
 
         histo_file.Close()
         return 0
@@ -183,7 +183,7 @@ class util:
     def getPDFbandFromXsec1D(self, histoPDF, charge, infile, netabins, nptbins, firstVarBin=0, firstOtherVarBin=0, isEta = True, histoTotTheory = 0):
 
         print("Inside getPDFbandFromXsec1D() ...")
-        histo_file = ROOT.TFile(infile, 'READ')            
+        histo_file = ROOT.TFile(infile, 'READ')
 
         nvarbins = netabins if isEta else nptbins
         nothervarbins = nptbins if isEta else netabins
@@ -207,8 +207,8 @@ class util:
                     print("Error in getPDFbandFromXsec1D(): I couldn't find histogram " + nomi)
                     quit()
 
-                hpdftmp = None            
-                xsecnomi += hnomi.Integral(0, 1+hnomi.GetNbinsX())                
+                hpdftmp = None
+                xsecnomi += hnomi.Integral(0, 1+hnomi.GetNbinsX())
 
                 for ipdf in range(1, 61):
                     pdfvar = nomi + '_pdf{ip}Up'.format(ip=ipdf)
@@ -216,7 +216,7 @@ class util:
                     if not hpdftmp:
                         print("Error in getPDFbandFromXsec1D(): I couldn't find histogram " + pdfvar)
                         quit()
-                    
+
                     xsecpdf[ipdf-1] += hpdftmp.Integral(0, 1+hpdftmp.GetNbinsX())
 
                 #########################
@@ -227,16 +227,16 @@ class util:
                             hqcdtmp = histo_file.Get(qcdvar)
                             if not hqcdtmp:
                                 print("Error in getPDFbandFromXsec(): I couldn't find histogram " + qcdvar)
-                                quit()                    
+                                quit()
                             tmpval = hqcdtmp.Integral(0, 1+hqcdtmp.GetNbinsX())
                             xsecqcd["{qt}{iq}{d}".format(qt=qcdType,iq=iqcd,d=idir)] += tmpval
-                                
+
                 for idir in ["Up", "Down"]:
                     alphaSvar = nomi + '_alphaS{d}'.format(d=idir)
                     halphaStmp = histo_file.Get(alphaSvar)
                     if not halphaStmp:
                         print("Error in getPDFbandFromXsec(): I couldn't find histogram " + alphaSdvar)
-                        quit()                    
+                        quit()
                     tmpval = halphaStmp.Integral(0, 1+halphaStmp.GetNbinsX())
                     xsecalphaS[idir] +=  tmpval
                 #########################
@@ -244,7 +244,7 @@ class util:
 
             pdfquadrsum = 0.0
             for ipdf in range(60):
-                tmpval = xsecpdf[ipdf] - xsecnomi 
+                tmpval = xsecpdf[ipdf] - xsecnomi
                 pdfquadrsum += tmpval*tmpval
 
             envelopeQCD = 0
@@ -256,7 +256,7 @@ class util:
 
             alphaS = 0
             for idir in ["Up", "Down"]:
-                # 1.5 is because weight corresponds to 0.001, but should be 0.0015 
+                # 1.5 is because weight corresponds to 0.001, but should be 0.0015
                 tmpval = xsecalphaS[idir] - xsecnomi
                 alphaS = max(abs(alphaS),abs(1.5*tmpval))
 
@@ -287,7 +287,7 @@ class util:
         infile = "/afs/cern.ch/work/m/mciprian/public/whelicity_stuff/xsection_genAbsEtaPt_dressed_binningAnalysis_noWpt_yields_nativeMCatNLOxsec.root"
         if xsecWithWptWeights:
             infile = "/afs/cern.ch/work/m/mciprian/public/whelicity_stuff/xsection_genAbsEtaPt_dressed_mu_binningAnalysis_WptWeights_allQCDscales_yields_nativeMCatNLOxsec.root"
-        histo_file = ROOT.TFile(infile, 'READ')            
+        histo_file = ROOT.TFile(infile, 'READ')
 
         htheory = {}
         htheory_1Deta = {}
@@ -303,7 +303,7 @@ class util:
 
         print("ABSOLUTE XSEC")
         for charge in ["plus", "minus"]:
- 
+
             nomi = "gen_ptl1_absetal1_dressed_binAna_W{ch}_mu".format(ch=charge)
             hnomi = histo_file.Get(nomi + "_central")
             self.checkHistInFile(hnomi, nomi + "_central", infile, message="in getTheoryHistDiffXsecFast()")
@@ -343,18 +343,18 @@ class util:
             # projections
             htheory_1Deta[key] = htheory[key].ProjectionX(htheory[key].GetName()+"_1Deta",ptminbin,htheory[key].GetNbinsY())
             htheory_1Deta[key].SetDirectory(0)
-            htheory_1Dpt[key] = htheory[key].ProjectionY(htheory[key].GetName()+"_1Dpt",1,htheory[key].GetNbinsX())             
+            htheory_1Dpt[key] = htheory[key].ProjectionY(htheory[key].GetName()+"_1Dpt",1,htheory[key].GetNbinsX())
             htheory_1Dpt[key].SetDirectory(0)
             htheory_xsecnorm[key] = htheory[key].Clone(htheory[key].GetName() + "_xsecnorm")
             htheory_xsecnorm[key].SetDirectory(0)
-            htheory_xsecnorm[key].Scale(1./htheory_xsecnorm[key].Integral(1, htheory_xsecnorm[key].GetNbinsX(), 
-                                                                          ptminbin, htheory_xsecnorm[key].GetNbinsY())) 
+            htheory_xsecnorm[key].Scale(1./htheory_xsecnorm[key].Integral(1, htheory_xsecnorm[key].GetNbinsX(),
+                                                                          ptminbin, htheory_xsecnorm[key].GetNbinsY()))
             htheory_1Deta_xsecnorm[key] = htheory_1Deta[key].Clone(htheory_1Deta[key].GetName() + "_xsecnorm")
             htheory_1Deta_xsecnorm[key].SetDirectory(0)
-            htheory_1Deta_xsecnorm[key].Scale(1./htheory_1Deta_xsecnorm[key].Integral()) 
+            htheory_1Deta_xsecnorm[key].Scale(1./htheory_1Deta_xsecnorm[key].Integral())
             htheory_1Dpt_xsecnorm[key] = htheory_1Dpt[key].Clone(htheory_1Dpt[key].GetName() + "_xsecnorm")
             htheory_1Dpt_xsecnorm[key].SetDirectory(0)
-            htheory_1Dpt_xsecnorm[key].Scale(1./htheory_1Dpt_xsecnorm[key].Integral(ptminbin,htheory_1Dpt_xsecnorm[key].GetNbinsX())) 
+            htheory_1Dpt_xsecnorm[key].Scale(1./htheory_1Dpt_xsecnorm[key].Integral(ptminbin,htheory_1Dpt_xsecnorm[key].GetNbinsX()))
 
         # now charge asymmetry
         print("CHARGE AYMMETRY")
@@ -397,7 +397,7 @@ class util:
 #######################
 
     def getTheoryBandDiffXsec(self, hretTotTheory, hretPDF, theovars, hists, netabins, nptbins, charge="all"):
-        
+
         # AlphaS and QCD can have asymmetric uncertainties, so I need a TGraphAsymmErrors()
 
         # charge == all for asymmetry, plus or minus otherwise
@@ -410,7 +410,7 @@ class util:
                 envelopeAlphaS = 0.0  # basically Up and Down
                 nomi = hnomi.GetBinContent(ieta+1, ipt+1)
                 #envelopeAlphaS = 0.0
-                #envelopeQCD = 0.0                
+                #envelopeQCD = 0.0
                 envelopeQCD_vals = [nomi]     # muR, muF, muRmuF, with Up and Down
                 envelopeAlphaS_vals = [nomi]  # basically Up and Down
                 for nuis in theovars:
@@ -442,8 +442,8 @@ class util:
                 alphaSErrorLow  = abs(min(envelopeAlphaS_vals)-nomi)
                 QCDErrorHigh    = abs(max(envelopeQCD_vals)-nomi)
                 QCDErrorLow     = abs(min(envelopeQCD_vals)-nomi)
-                pdfAlphaSErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh) 
-                pdfAlphaSErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow) 
+                pdfAlphaSErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh)
+                pdfAlphaSErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow)
                 totTheoryErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh + QCDErrorHigh * QCDErrorHigh)
                 totTheoryErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow + QCDErrorLow * QCDErrorLow)
 
@@ -456,7 +456,7 @@ class util:
 
 
     def getTheoryBandDiffXsec1Dproj(self, hretTotTheory, hretPDF, theovars, hists, nvarbins, charge="all" ):
-        
+
         # AlphaS and QCD can have asymmetric uncertainties, so I need a TGraphAsymmErrors()
 
         hnomi = hists[(charge,"nominal")]
@@ -483,8 +483,8 @@ class util:
             alphaSErrorLow  = abs(min(envelopeAlphaS_vals)-nomi)
             QCDErrorHigh    = abs(max(envelopeQCD_vals)-nomi)
             QCDErrorLow     = abs(min(envelopeQCD_vals)-nomi)
-            pdfAlphaSErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh) 
-            pdfAlphaSErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow) 
+            pdfAlphaSErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh)
+            pdfAlphaSErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow)
             totTheoryErrorHigh = math.sqrt(pdfquadrsum + alphaSErrorHigh * alphaSErrorHigh + QCDErrorHigh * QCDErrorHigh)
             totTheoryErrorLow  = math.sqrt(pdfquadrsum + alphaSErrorLow * alphaSErrorLow + QCDErrorLow * QCDErrorLow)
 
@@ -495,7 +495,7 @@ class util:
 
 
     def checkTheoryBandDiffXsec1Dproj(self, hretPDF, hretAlpha, hretQCD, theovars, hists, nvarbins, charge="all" ):
-        
+
         # hretAlpha, hretQCD can have asymmetric uncertainties, so I need a TGraphAsymmErrors()
         # pdfs can stay as a TH1
 
@@ -542,7 +542,7 @@ class util:
 
     def getFromHessian(self, infile, keepGen=False, takeEntry=0, params=[]):
         _dict = {}
-        
+
         f = ROOT.TFile(infile, 'read')
         tree = f.Get('fitresults')
         if tree.GetEntries() > 1:
@@ -568,17 +568,17 @@ class util:
                 err  = getattr(ev, p.GetName()+'_err') if hasattr(ev, p.GetName()+'_err') else 0
 
             _dict[p.GetName()] = (mean, mean+err, mean-err)
-     
+
         return _dict
 
 
     def getFromToys(self, infile, keepGen=False, params=[]):
         _dict = {}
-        
+
         f = ROOT.TFile(infile, 'read')
         tree = f.Get('fitresults')
         lok  = tree.GetListOfLeaves()
-        
+
         for p in lok:
             if '_err'   in p.GetName(): continue
             if '_minos' in p.GetName(): continue
@@ -590,7 +590,7 @@ class util:
                 if not any(match): continue
 
             print('gettin parameter ', p.GetName(), 'from toys file')
-            
+
             tmp_hist = ROOT.TH1F(p.GetName(),p.GetName(), 100000, -5000., 5000.)
             tree.Draw(p.GetName()+'>>'+p.GetName())
             #tmp_hist = ROOT.gPad.GetPrimitive('foob')
@@ -601,13 +601,13 @@ class util:
 
         return _dict
 
-    def getHistosFromToys(self, infile, nbins=100, xlow=-3.0, xup=3.0, getPull=False, matchBranch=None,excludeBranch=None, selection="", 
+    def getHistosFromToys(self, infile, nbins=100, xlow=-3.0, xup=3.0, getPull=False, matchBranch=None,excludeBranch=None, selection="",
                           setStatOverflow=False, getMedian=False):
 
         # getPull = True will return a histogram centered at 0 and with expected rms=1, obtained as (x-x_gen)/x_err
 
         _dict = {}
-        
+
         f = ROOT.TFile(infile, 'read')
         tree = f.Get('fitresults')
         lok  = tree.GetListOfLeaves()
@@ -621,7 +621,7 @@ class util:
         for p in lok:
 
             tree.SetBranchStatus(p.GetName(),1)
-            
+
             if '_err'   in p.GetName(): continue
             if '_minos' in p.GetName(): continue
             if '_gen'   in p.GetName(): continue
@@ -632,10 +632,10 @@ class util:
             # mainly for tests
             #if np == nMaxBranch: break
             #np += 1
-            
+
             #print("Loading parameter --> %s " % p.GetName())
 
-            if getPull and (p.GetName()+"_gen") in lok and (p.GetName()+"_err") in lok:                
+            if getPull and (p.GetName()+"_gen") in lok and (p.GetName()+"_err") in lok:
                 tree.SetBranchStatus(p.GetName()+"_gen",1)
                 tree.SetBranchStatus(p.GetName()+"_err",1)
                 #print(" Making pull --> (x-x_gen)/x_err for parameter %s" % p.GetName())
@@ -668,9 +668,9 @@ class util:
                     #sys.stdout.flush()
                     #binCount += 1
                     vals.append(getattr(ev, p.GetName()))
-                    
+
                 vals.sort()
-                nElements = len(vals)            
+                nElements = len(vals)
                 if nElements%2: median = vals[(nElements-1)/2]
                 else:           median = 0.5 * (vals[nElements/2] +  vals[nElements/2 + 1])
                 _dict[p.GetName()] = (median, median+err, median-err, tmp_hist)
@@ -680,14 +680,14 @@ class util:
             tree.SetBranchStatus(p.GetName(),0)
             tree.SetBranchStatus(p.GetName()+"_gen",0)
             tree.SetBranchStatus(p.GetName()+"_err",0)
-     
+
         return _dict
 
 
 
     def getExprFromToys(self, name, expression, infile):
         f = ROOT.TFile(infile, 'read')
-        tree = f.Get('fitresults')        
+        tree = f.Get('fitresults')
         tmp_hist = ROOT.TH1F(name,name, 100000, -100., 5000.)
         tree.Draw(expression+'>>'+name)
         mean = tmp_hist.GetMean()
@@ -703,7 +703,7 @@ class util:
                 if abs(val)<absYmax:
                     ybins_expr.append('W{charge}_{pol}_W{charge}_{pol}_{ch}_Ybin_{iy}_pmaskedexp'.format(charge=charge,pol=allpol,ch=channel,iy=iv))
         num = 'W{charge}_{pol}_W{charge}_{pol}_{ch}_Ybin_{iy}_pmaskedexp'.format(charge=charge,pol=pol,ch=channel,iy=iy)
-        den = '('+'+'.join(ybins_expr)+')'        
+        den = '('+'+'.join(ybins_expr)+')'
         ret = self.getExprFromToys(charge+pol+channel+str(iy),'{num}/{den}'.format(num=num,den=den),infile)
         return ret
 
@@ -775,7 +775,7 @@ class util:
 
     def getExprFromHessian(self, name, expression, infile):
         f = ROOT.TFile(infile, 'read')
-        tree = f.Get('fitresults')        
+        tree = f.Get('fitresults')
         tmp_hist = ROOT.TH1F(name,name, 100000, -100., 5000.)
         tree.Draw(expression+'>>'+name)
         mean = tmp_hist.GetMean()  # if this is hessian and not toys, there is just one entry, so the mean is the entry
@@ -849,7 +849,7 @@ class util:
         return ret
 
 
-    def getDiffXsecAsymmetry1DFromHessianFast(self, ietaORipt, isIeta=True, 
+    def getDiffXsecAsymmetry1DFromHessianFast(self, ietaORipt, isIeta=True,
                                               nHistBins=1000, minHist=0., maxHist=1., tree=None, getErr=False, getGen=False):
         expr = "W_lep_i{var}_{ivar}_chargemetaasym".format(var="eta" if isIeta else "pt", ivar=ietaORipt)
         if getErr: expr += "_err"
@@ -875,7 +875,7 @@ class util:
         ave = histo.GetMean()
         rms = histo.GetRMS()
         total=histo.Integral()
-        if total < 100: 
+        if total < 100:
             print("effsigma: Too few entries to compute it: ", total)
             return 0.
         ierr=0
@@ -885,7 +885,7 @@ class util:
         nrms=int(rms/bwid)
         if nrms > nb/10: nrms=int(nb/10) # Could be tuned...
         widmin=9999999.
-        for iscan in xrange(-nrms,nrms+1): # // Scan window centre 
+        for iscan in xrange(-nrms,nrms+1): # // Scan window centre
             ibm=int((ave-xmin)/bwid)+1+iscan
             x=(ibm-0.5)*bwid+xmin
             xj=x; xk=x;
@@ -943,7 +943,7 @@ class util:
         if index<len(SAFE_COLOR_LIST): return SAFE_COLOR_LIST[index]
         else: return index
 
-    def getCoeffs(self,xL,xR,x0,err_xL,err_xR,err_x0, toyEvents=10000):        
+    def getCoeffs(self,xL,xR,x0,err_xL,err_xR,err_x0, toyEvents=10000):
         histos = { 'a0': ROOT.TH1D('a0','',100,-0.4,0.6),
                    'a4': ROOT.TH1D('a4','',100,-0.4,3.0)
                    }
@@ -965,7 +965,7 @@ class util:
         for k,h in histos.iteritems():
             ret[k] = (h.GetMean(),h.GetRMS())
         return ret
-            
+
     def getChargeAsy(self,xplus,xminus,err_xplus,err_xminus,toyEvents=10000):
         histo = ROOT.TH1F('hasy','',100,-0.05,0.5)
         for i in xrange(toyEvents):
@@ -999,7 +999,7 @@ class util:
         if len(los) == 0: return 0
         if len(los) == 1: return los[0]
         if len(los) > 1:
-            if useAll:                
+            if useAll:
                 return tuple(los)
             else:
                 return los[min(chooseIndex,len(los)-1)]

@@ -7,7 +7,7 @@ logger = logging.child_logger(__name__)
 # #5790fc blue
 # #f89c20 orange
 # #e42536 red
-# #964a8b light purple	
+# #964a8b light purple
 # #9c9ca1 grey
 # #7a21dd dark purple
 
@@ -41,7 +41,7 @@ process_supergroups = {
         "QCD": ["QCD"],
     },
     "w_mass":{
-        "Wmunu": ["Wmunu"], 
+        "Wmunu": ["Wmunu"],
         "Wtaunu": ["Wtaunu"],
         "Z": ["Ztautau", "Zmumu", "DYlowMass"],
         "Fake": ["Fake"],
@@ -193,12 +193,12 @@ nuisance_groupings = {
         "Total",
         "stat",
         "binByBinStat",
-        "theory", 
+        "theory",
         "expNoCalib",
         "muonCalibration",
     ],
     "max": common_groups + [
-        "angularCoeffs", 
+        "angularCoeffs",
         "pdfCT18Z",
         "pTModeling",
         "muon_eff_syst",
@@ -251,7 +251,7 @@ nuisance_groupings = {
         "binByBinStatW",
         "binByBinStatZ",
         "experiment",
-        "angularCoeffs", 
+        "angularCoeffs",
         "pdfCT18Z",
         "pTModeling",
         "theory_ew",
@@ -294,26 +294,26 @@ poi_types = {
 
 axis_labels = {
     "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
-    "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$", 
+    "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$",
     "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\mu\mu}$",
     "ewAbsYll": r"$\mathrm{Post\ FSR}\ |Y^{\mu\mu}|$",
-    "csCosTheta" : r"$\mathrm{Post\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "csCosTheta" : r"$\mathrm{Post\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$",
     "ptgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu}$",
-    "etagen": r"$\mathrm{Pre\ FSR}\ \eta^{\mu}$", 
+    "etagen": r"$\mathrm{Pre\ FSR}\ \eta^{\mu}$",
     "ptVgen": r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
-    "absYVgen": r"$\mathrm{Pre\ FSR}\ |Y^{\mu\mu}|$", 
-    "massVgen": r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$", 
-    "csCosThetagen" : r"$\mathrm{Pre\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "absYVgen": r"$\mathrm{Pre\ FSR}\ |Y^{\mu\mu}|$",
+    "massVgen": r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$",
+    "csCosThetagen" : r"$\mathrm{Pre\ FSR\ \cos{\theta^{\star}_{\mu\mu}}}$",
     "ptlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\mu}$",
-    "etalhe": r"$\mathrm{LHE}\ \eta^{\mu}$", 
+    "etalhe": r"$\mathrm{LHE}\ \eta^{\mu}$",
     "ptVlhe": r"$\mathrm{LHE}\ p_\mathrm{T}^{\mu\mu}$",
-    "absYVlhe": r"$\mathrm{LHE}\ |Y^{\mu\mu}|$", 
-    "massVlhe": r"$\mathrm{LHE}\ m^{\mu\mu}$", 
-    "cosThetaStarlhe" : r"$\mathrm{LHE\ \cos{\theta^{\star}_{\mu\mu}}}$", 
+    "absYVlhe": r"$\mathrm{LHE}\ |Y^{\mu\mu}|$",
+    "massVlhe": r"$\mathrm{LHE}\ m^{\mu\mu}$",
+    "cosThetaStarlhe" : r"$\mathrm{LHE\ \cos{\theta^{\star}_{\mu\mu}}}$",
     "qT" : r"$\mathrm{Pre\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
-    "Q" : r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$", 
+    "Q" : r"$\mathrm{Pre\ FSR}\ m^{\mu\mu}$",
     "absY" : r"$\mathrm{Pre\ FSR}\ Y^{\mu\mu}$",
-    "charge" : r"$\mathrm{Pre\ FSR\ charge}$", 
+    "charge" : r"$\mathrm{Pre\ FSR\ charge}$",
 }
 
 systematics_labels = {
@@ -322,18 +322,18 @@ systematics_labels = {
     "widthZ": r'$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
     "widthW": r'$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
     # powhegFOEW variations
-    'weak_no_ew': "no EW", 
-    'weak_no_ho': "no HO", 
-    'weak_default': "nominal", 
-    'weak_ps': "PS", 
+    'weak_no_ew': "no EW",
+    'weak_no_ho': "no HO",
+    'weak_default': "nominal",
+    'weak_ps': "PS",
     'weak_mt_dn': r'$m_\mathrm{t}^\mathrm{down}$',
     'weak_mt_up': r'$m_\mathrm{t}^\mathrm{up}$',
     'weak_mz_dn': r'$m_\mathrm{Z}^\mathrm{down}$',
     'weak_mz_up': r'$m_\mathrm{Z}^\mathrm{up}$',
     'weak_gmu_dn': r'$G_\mu^\mathrm{up}$',
     'weak_gmu_up': r'$G_\mu^\mathrm{down}$',
-    'weak_aem': r'$\alpha_\mathrm{EM}$',  
-    'weak_fs': 'FS',  
+    'weak_aem': r'$\alpha_\mathrm{EM}$',
+    'weak_fs': 'FS',
     'weak_mh_dn': r'$m_\mathrm{H}^\mathrm{down}$',
     'weak_mh_up': r'$m_\mathrm{H}^\mathrm{up}$',
     'weak_s2eff_0p23125': r'$\mathrm{sin}^2_\mathrm{eff}=0.23125$',
@@ -366,7 +366,7 @@ systematics_labels_idxs = {
     "horacelophotosmecoffew": {0: "nominal", 1: "Photos MEC off / on"},
     "virtual_ew" : {
         0: r"NLOEW + HOEW, CMS, ($G_\mu, m_\mathrm{Z}, \mathrm{sin}^2\Theta_\mathrm{eff}$) scheme",
-        1: r"NLOEW + HOEW, PS, ($G_\mu, m_\mathrm{Z}, \mathrm{sin}^2\Theta_\mathrm{eff}$) scheme", 
+        1: r"NLOEW + HOEW, PS, ($G_\mu, m_\mathrm{Z}, \mathrm{sin}^2\Theta_\mathrm{eff}$) scheme",
         2: r"NLOEW + HOEW, CMS, ($\alpha(m_\mathrm{Z}),m _\mathrm{Z}, \mathrm{sin}^2\Theta_\mathrm{eff}$) scheme", }
 }
 systematics_labels_idxs["virtual_ew_wlike"] = systematics_labels_idxs["virtual_ew"]
@@ -375,7 +375,7 @@ systematics_labels_idxs["virtual_ew_wlike"] = systematics_labels_idxs["virtual_e
 def get_systematics_label(key, idx=0):
     if key in systematics_labels:
         return systematics_labels[key]
-    
+
     # custom formatting
     if key in systematics_labels_idxs:
         return systematics_labels_idxs[key][idx]
@@ -412,7 +412,7 @@ def process_grouping(grouping, hist_stack, procs):
             stacks = [hist_stack[procs.index(p)] for p in old_procs if p in procs]
             if len(stacks) == 0:
                 continue
-            new_stack[new_name] = hh.sumHists(stacks)  
+            new_stack[new_name] = hh.sumHists(stacks)
     else:
         new_stack = hist_stack
         logger.warning(f"No supergroups found for input file with mode {grouping}, proceed without merging groups")

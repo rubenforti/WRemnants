@@ -26,7 +26,7 @@ if __name__ == "__main__":
     print(flavor)
     ####################################################################
     if analysis == "lowPU":
-        
+
         if args.mode == "mc_data":
             h_source = functions.readBoostHist(groups, "v_pt", ['Zmumu' if flavor=='mumu' else 'Zee'])
             h_target =functions.readBoostHist(groups, "v_pt", ['Data'])

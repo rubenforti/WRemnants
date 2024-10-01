@@ -86,7 +86,7 @@ if __name__ == "__main__":
     fname = args.inputfile[0]
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original)
-        
+
     ROOT.TH1.SetDefaultSumw2()
 
     canvas = ROOT.TCanvas("canvas", "", 800, 700)
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         # create copy to do other checks with uT
         hTestUt = hin.copy()
         h = hin.copy()
-        
+
         if args.passMt:
             h = h[{"passMT" : True}]
         else:
@@ -129,7 +129,7 @@ if __name__ == "__main__":
                               "passTrigger" : False}]
         hiso_noTrigger = h[{"charge" : s[::hist.sum],
                             "passTrigger" : s[::hist.sum]}]
-        
+
         n_iso_pass = hiso_passTrigger[{"passIso" : True}]
         n_iso_fail = hiso_passTrigger[{"passIso" : False}]
         n_iso_tot  = hiso_passTrigger[{"passIso" : s[::hist.sum]}]
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         # otherwise can use eff = npass/(npass+nfail) and use the formula for standard propagation
         # eff_err = 1./(nTot*nTot) * std::sqrt( nP*nP* e_nF*e_nF + nF*nF * e_nP*e_nP ) with nTot = nP + nF
         # For now we use boost directly, using n/N but assuming uncorrelated n and N, so the uncertainties are maximally wrong (but we might not use them)
-        
+
         # test, integrate uT and plot efficiencies vs eta-pt
         eff_iso_boost2D,eff_iso = getEtaPtEff(n_iso_pass, n_iso_tot, getRoot=True, rootName=f"{d}_MC_eff_iso", rootTitle="P(iso | trig)")
         drawCorrelationPlot(eff_iso, xAxisName, yAxisName, f"MC isolation efficiency",
@@ -218,7 +218,7 @@ if __name__ == "__main__":
         resultDict[f"{d}_MC_eff_triggerplus_etapt"] = eff_triggerplus_boost2D
         resultDict[f"{d}_MC_eff_triggerminus_etapt"] = eff_triggerminus_boost2D
 
-        
+
         # plot uT distribution for each charge, vs mT (pass or fail, or inclusive), integrate anything else
         # do it for events passing trigger and isolation
         nPtBins = hTestUt.axes["pt"].size
@@ -240,23 +240,23 @@ if __name__ == "__main__":
                 hroot.Scale(1./hroot.Integral()) # normalize to unit area to get shape
                 hNamesRoot[ih] += f"_{chargeStr}_{d}"
                 hroot.SetName(hNamesRoot[ih])
-                allHistsRoot.append(hroot)                
+                allHistsRoot.append(hroot)
             drawNTH1(allHistsRoot, hNamesRoot, "Projected recoil u_{T} (GeV)", "Normalized units", f"ut_{d}_{chargeStr}",
                      outdir, draw_both0_noLog1_onlyLog2=1, topMargin=0.05, labelRatioTmp="X / incl.::0.5,1.5",
                      legendCoords="0.2,0.8,0.77,0.92;1", passCanvas=canvas1D, skipLumi=True,
                      onlyLineColor=True, useLineFirstHistogram=True)
-                
+
     postfix = ""
     toAppend = []
     if args.passMt:
         toAppend.append("passMt")
     if args.rebinUt > 0:
-        toAppend.append(f"rebinUt{args.rebinUt}")     
+        toAppend.append(f"rebinUt{args.rebinUt}")
     postfix = "_".join(toAppend)
     if len(postfix):
         postfix = "_" + postfix
 
-    resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})    
+    resultDict.update({"meta_info" : narf.ioutils.make_meta_info_dict(args=args, wd=common.base_dir)})
 
     outfile = outdir + f"efficiencies3D{postfix}.pkl.lz4"
     logger.info(f"Going to store 3D histograms {resultDict.keys()} in file {outfile}")

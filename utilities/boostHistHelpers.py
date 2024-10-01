@@ -19,7 +19,7 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
     if h1.ndim > h2.ndim or h1.shape == h2.shape:
         return h1
 
-    s1 = h1.values(flow=flow).shape 
+    s1 = h1.values(flow=flow).shape
     s2 = h2.values(flow=flow).shape
 
     # the additional axes have to be broadcasted as leading
@@ -34,7 +34,7 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
     try:
         new_vals = np.broadcast_to(h1.values(flow=flow), broadcast_shape)
     except ValueError as e:
-        raise ValueError("Cannot broadcast hists with incompatible axes!\n" 
+        raise ValueError("Cannot broadcast hists with incompatible axes!\n"
                          f"    h1.shape {h1.shape}; h2.shape: {h2.shape}\n"
                          f"    h1.axes: {h1.axes}\n"
                          f"    h2.axes: {h2.axes}")
@@ -53,7 +53,7 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
     return hist.Hist(*h2.axes, data=new_vals, storage=h1.storage_type())
 
 def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_val=1., flow=True, createNew=True, by_ax_name=True):
-    """ 
+    """
         Parameters:
         rel_unc (bool): Treat the divisor as a constant
 
@@ -63,12 +63,12 @@ def divideHists(h1, h2, cutoff=1e-5, allowBroadcast=True, rel_unc=False, cutoff_
     if allowBroadcast:
         h1 = broadcastSystHist(h1, h2, flow, by_ax_name)
         h2 = broadcastSystHist(h2, h1, flow, by_ax_name)
-    
+
     if rel_unc:
         storage = h1.storage_type()
     else:
         storage = h1.storage_type() if h1.storage_type == h2.storage_type else hist.storage.Double()
-    
+
     outh = hist.Hist(*h1.axes, storage=storage) if createNew else h1
 
     h1vals,h2vals,h1vars,h2vars = valsAndVariances(h1, h2, flow=flow)
@@ -144,7 +144,7 @@ def multiplyWithVariance(vals1, vals2, vars1=None, vars2=None):
         relvar1, relvar2 = relVariances(vals1, vals2, vars1, vars2)
         np.add(relvar1, relvar2, out=relvar1)
         np.multiply(outvars, relvar1, out=outvars)
-        
+
     return outvals, outvars
 
 def multiplyHists(h1, h2, allowBroadcast=True, createNew=True, flow=True):
@@ -153,11 +153,11 @@ def multiplyHists(h1, h2, allowBroadcast=True, createNew=True, flow=True):
         h2 = broadcastSystHist(h2, h1, flow=flow)
 
     if h1.storage_type == hist.storage.Double and h2.storage_type == hist.storage.Double and createNew==False:
-        return h1*h2 
+        return h1*h2
 
     with_variance = h1.storage_type == hist.storage.Weight and h2.storage_type == hist.storage.Weight
     outh = h1
-    vals, varis = multiplyWithVariance(h1.values(flow=flow), h2.values(flow=flow), 
+    vals, varis = multiplyWithVariance(h1.values(flow=flow), h2.values(flow=flow),
                         h1.variances(flow=flow) if with_variance else None, h2.variances(flow=flow) if with_variance else None)
 
     if createNew:
@@ -193,7 +193,7 @@ def concatenateHists(h1, h2, allowBroadcast=True, by_ax_name=True, flow=False):
                 ax1,ax2 = ax2,ax1
 
             if ax1.edges[-1] == ax2.edges[0]:
-                axes.append(hist.axis.Variable(np.concatenate((ax1.edges, ax2.edges[1:])), name=ax1.name, 
+                axes.append(hist.axis.Variable(np.concatenate((ax1.edges, ax2.edges[1:])), name=ax1.name,
                     underflow=ax1.traits.underflow, overflow=ax2.traits.overflow))
             else:
                 raise ValueError(f"Cannot concatenate hists with inconsistent axes: {ax1.name} and {ax2.name}")
@@ -235,14 +235,14 @@ def addHists(h1, h2, allowBroadcast=True, createNew=True, scale1=None, scale2=No
         h2vals = scale2 * h2vals
         if hasWeights:
             h2vars = (scale2*scale2) * h2vars
-                    
+
     outh = h1
     if createNew:
         if not hasWeights:
             return hist.Hist(*outh.axes, data=h1vals+h2vals)
         else:
             return hist.Hist(*outh.axes, storage=hist.storage.Weight(),
-                            data=np.stack((h1vals+h2vals, h1vars+h2vars), axis=-1))            
+                            data=np.stack((h1vals+h2vals, h1vars+h2vars), axis=-1))
     else:
         outvals = h1vals if h1.shape == outh.shape else h2vals
         np.add(h1vals, h2vals, out=outvals)
@@ -277,13 +277,13 @@ def extendHistByMirror(hvar, hnom, downAsUp=False, downAsNomi=False):
     else:
         hnew = hist.Hist(*hvar.axes, mirrorAx,
                         data=np.stack((hvar.values(flow=True), hmirror.values(flow=True)), axis=-1))
-    
+
     return hnew
 
 # add new axis and set values of old histogram to idx
 def addGenChargeAxis(h, idx):
     return addGenericAxis(h, hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "qGen"), idx, add_trailing=False, flow=True)
-    
+
 def addSystAxis(h, size=1, offset=0, axname="systIdx"):
     return addGenericAxis(h, hist.axis.Regular(size,offset,size+offset, name=axName))
 
@@ -291,7 +291,7 @@ def addGenericAxis(h, axis, idx=None, add_trailing=True, flow=True):
     axes = [*h.axes, axis] if add_trailing else [axis, *h.axes]
     hnew = hist.Hist(*axes, storage=h.storage_type())
     if idx != None:
-        # add old histogram only in single bin 
+        # add old histogram only in single bin
         slices = [idx if ax==axis else slice(None) for ax in hnew.axes]
         hnew.view(flow=flow)[*slices] = h.view(flow=flow)
     else:
@@ -322,7 +322,7 @@ def scaleHist(h, scale, createNew=True, flow=True, scaleVarianceLinearly=False):
         if h.storage_type == hist.storage.Weight:
             h.variances(flow=flow)[...] *= varianceScale
         return h
-    
+
 def normalize(h, scale=1e6, createNew=True, flow=True):
     if h.storage_type == hist.storage.Weight:
         scale = scale/h.sum(flow=flow).value
@@ -347,7 +347,7 @@ def makeAbsHist(h, axis_name, rename=True):
         abs_ax = hist.axis.Variable(new_edges, **axInfo)
 
     hnew = hist.Hist(*h.axes[:axidx], abs_ax, *h.axes[axidx+1:], storage=h.storage_type())
-    
+
     s = hist.tag.Slicer()
     view = h[{axis_name : s[ax.index(0):]}].view(flow=True) + np.flip(h[{axis_name : s[:ax.index(0)]}].view(flow=True), axis=axidx)
     hnew[...] = np.take(view, range(ax.traits.underflow, abs_ax.size+ax.traits.underflow), axidx)
@@ -372,16 +372,16 @@ def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
             h = rebinHist(h, ax, rebin)
         elif low is not None and high is not None:
             # in case high edge is upper edge of last bin we need to manually set the upper limit
-            upper = hist.overflow if high==h.axes[ax].edges[-1] else complex(0, high) 
+            upper = hist.overflow if high==h.axes[ax].edges[-1] else complex(0, high)
             logger.info(f"Restricting the axis '{ax}' to range [{low}, {high}]")
             sel[ax] = slice(complex(0, low), upper, hist.rebin(rebin) if rebin else None)
         elif type(rebin) == int and rebin > 1:
             logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
             sel[ax] = slice(None,None,hist.rebin(rebin))
-    return h[sel] if len(sel)>0 else h        
+    return h[sel] if len(sel)>0 else h
 
 def mirrorAxis(h, axis, flow=True):
-    # mirror an axis by projecting the entries to the absolute value of the axis and copy it 
+    # mirror an axis by projecting the entries to the absolute value of the axis and copy it
     htmp = makeAbsHist(h, axis, rename=False)
     idx = htmp.axes.name.index(axis)
     vals = htmp.values(flow=flow)
@@ -426,14 +426,14 @@ def rebinHist(h, axis_name, edges, flow=True):
     if not compatibleBins(ax.edges, edges):
         raise ValueError(f"Cannot rebin histogram due to incompatible edges for axis '{ax.name}'\n"
                             f"Edges of histogram are {ax.edges}, requested rebinning to {edges}")
-        
+
     # If you rebin to a subset of initial range, keep the overflow and underflow
     overflow = ax.traits.overflow or (edges[-1] < ax.edges[-1] and not np.isclose(edges[-1], ax.edges[-1]))
     underflow = ax.traits.underflow or (edges[0] > ax.edges[0] and not np.isclose(edges[0], ax.edges[0]))
     new_ax = hist.axis.Variable(edges, name=ax.name, overflow=overflow, underflow=underflow)
     axes = list(h.axes)
     axes[ax_idx] = new_ax
-    
+
     hnew = hist.Hist(*axes, name=h.name, storage=h.storage_type())
 
     if type(ax) == hist.axis.StrCategory:
@@ -458,10 +458,10 @@ def rebinHist(h, axis_name, edges, flow=True):
     # where the final bin isn't the same between the initial and rebinned histogram, you
     # want to drop this value. Add tolerance of 1/2 min bin width to avoid numeric issues
     flow_add = (underflow+overflow)*flow
-    hnew.values(flow=flow)[...] = np.add.reduceat(h.values(flow=flow), edge_idx, 
+    hnew.values(flow=flow)[...] = np.add.reduceat(h.values(flow=flow), edge_idx,
             axis=ax_idx).take(indices=range(new_ax.size+flow_add), axis=ax_idx)
     if hnew.storage_type == hist.storage.Weight:
-        hnew.variances(flow=flow)[...] = np.add.reduceat(h.variances(flow=flow), edge_idx, 
+        hnew.variances(flow=flow)[...] = np.add.reduceat(h.variances(flow=flow), edge_idx,
                 axis=ax_idx).take(indices=range(new_ax.size+flow_add), axis=ax_idx)
     return hnew
 
@@ -554,7 +554,7 @@ def rebinHistsToCommon(hists, axis_idx, keep_full_range=False):
             vals = np.append(low_vals, np.take(h.view(), range(merge_idx, max_idx), axis_idx))
             zero_pad_shape = list(newh.shape)
             zero_pad_shape[axis_idx] -= vals.shape[axis_idx]
-            vals = np.append(vals, np.full(zero_pad_shape, 
+            vals = np.append(vals, np.full(zero_pad_shape,
                 hist.accumulators.WeightedSum(0, 0) if newh.storage_type == hist.storage.Weight else 0.))
             newh[...] = vals
             full_hists.append(newh)
@@ -563,13 +563,13 @@ def rebinHistsToCommon(hists, axis_idx, keep_full_range=False):
         rebinned_hists = [rebinHist(h, h.axes[axis_idx].name, new_edges) for h in full_hists]
 
     return rebinned_hists
-   
+
 def projectNoFlow(h, proj_ax, exclude=[]):
     s = hist.tag.Slicer()
     if type(proj_ax) == str:
         proj_ax = [proj_ax]
     hnoflow = h[{ax : s[0:hist.overflow:hist.sum] for ax in h.axes.name if ax not in exclude+list(proj_ax)}]
-    return hnoflow.project(*proj_ax) 
+    return hnoflow.project(*proj_ax)
 
 def unrolledHist(h, obs=None, binwnorm=None, add_flow_bins=False):
     # add_flow_bins to add the overflow and underflow bins into bins of the unrolled histogram
@@ -662,9 +662,9 @@ def syst_min_or_max_env_hist(h, proj_ax, syst_ax, indices, no_flow=[], do_min=Tr
         names.insert(-1, names.pop(idx))
         # Moves axis to second to last position
         fullview = np.moveaxis(fullview, idx, -2)
-    
+
     op = np.argmin if do_min else np.argmax
-    # Index of min/max values considering only the eventual projection  
+    # Index of min/max values considering only the eventual projection
     idx = op(view.value if hasattr(view, "value") else view, axis=-1)
     opview = fullview[(*np.indices(fullview.shape[:-1]), idx)]
 
@@ -727,13 +727,13 @@ def expand_hist_by_duplicate_axis(href, ref_ax_name, new_ax_name, swap_axes=Fals
         new_axes = [*axes, new_ax]
         new_axis_idx=-1
     else:
-        new_axes = [new_ax, *axes] 
+        new_axes = [new_ax, *axes]
         new_axis_idx=0
     if swap_axes:
         new_axes[new_axis_idx], new_axes[ref_ax_idx+1] = new_axes[ref_ax_idx+1], new_axes[new_axis_idx]
     hnew = hist.Hist(*new_axes, storage=href.storage_type())
 
-    # Temporarily move axis to duplicate first 
+    # Temporarily move axis to duplicate first
     data = np.moveaxis(href.values(flow=flow), ref_ax_idx, 0)
     # Copy data from other axis along the diagnoal, off-diagonals will be zero
     exp_data = data*np.reshape(np.identity(data.shape[0]), (data.shape[0], data.shape[0], *(1 for i in data.shape[1:])))
@@ -754,7 +754,7 @@ def expand_hist_by_duplicate_axes(href, ref_ax_names, new_ax_names, **kwargs):
     return href
 
 def swap_histogram_bins(histo, axis1, axis1_bin1, axis1_bin2, axis2=None, axis2_slice=None, flow=True, axis1_replace=None):
-    # swap content from axis1: axis1_bin1 with axis1: axis1_bin2 
+    # swap content from axis1: axis1_bin1 with axis1: axis1_bin2
     # optionally for a subset of the histogram defined by axis2: axis2_slice
     # optionally the selected bin content can be replaced by axis1_replace (example use case: setting up and down variations to nominal)
     if axis2 is not None and axis2_slice is None:
@@ -779,7 +779,7 @@ def swap_histogram_bins(histo, axis1, axis1_bin1, axis1_bin2, axis2=None, axis2_
             slices2.append(histo.axes[a].index(axis1_bin2))
             if axis1_replace:
                 slicesR.append(histo.axes[a].index(axis1_replace))
-        elif axis2 is not None and a == axis2:                  
+        elif axis2 is not None and a == axis2:
             slices1.append(axis2_slice)
             slices2.append(axis2_slice)
             if axis1_replace:

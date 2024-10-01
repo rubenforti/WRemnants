@@ -35,7 +35,7 @@ h = safeGetObject(rf, hname)
 hnomi = getTH2fromTH3(h, f"hnomi_{charge}", 1)
 hsyst = getTH2fromTH3(h, f"hsyst_{charge}", 10 if step == "reco" else 8)
 
-canvas = ROOT.TCanvas("canvas","",900,800) 
+canvas = ROOT.TCanvas("canvas","",900,800)
 setTDRStyle() # this one removes the stat box
 
 outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=True)

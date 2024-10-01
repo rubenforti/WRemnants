@@ -39,7 +39,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                                         isoEfficiencySmoothing = False,
                                         smooth3D=False,
                                         isoDefinition="iso04vtxAgn"):
-    
+
     logger.debug(f"Make efficiency helper smooth")
 
     # need the following hack to call the helpers with this enum class from python
@@ -53,7 +53,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
         logger.error(f"Analysis {what_analysis} not implemented. Please check")
         quit()
     logger.debug(f"Running {templateAnalysisArg.split('::')[-1]} analysis")
-        
+
     eradict = { "2016PreVFP" : "BtoF",
                 "2016PostVFP" : "GtoH",
                 "2017" : "GtoH",
@@ -158,9 +158,9 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                 # effSyst_decorrEtaEdges[isyst+1]] the range selection in boost later on will stop at the left
                 #edge of the chosen bin number, e.g. h[b:b+1] will pick the range containing the single bin b, unlike in ROOT
                 indexEtaLow = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge
-                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001) 
+                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001)
                 sf_syst_2D.view(flow=False)[indexEtaLow:indexEtaHigh, :, axis_charge.index(charge), axis_eff_type_2D.index(eff_type), 2+isyst] = hist_hist.view(flow=False)[indexEtaLow:indexEtaHigh, :,axis_nomiAlt_eff.size-1]
-                        
+
     # set overflow and underflow eta-pt bins equal to adjacent bins
     sf_syst_2D.view(flow=True)[0, ...] = sf_syst_2D.view(flow=True)[1, ...]
     sf_syst_2D.view(flow=True)[axis_eta_eff.extent-1, ...] = sf_syst_2D.view(flow=True)[axis_eta_eff.extent-2, ...]
@@ -214,9 +214,9 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                     #edge of the chosen bin number, e.g. h[b:b+1] will pick the range containing the single bin b, unlike in ROOT
                     # also do not sum 1 because sf_syst_3D.view(flow=False) will consider 0 the first bin index (with flow=True instead 0 is the underflow but only if it exists, otherwise 0 is the first bin)
                     indexEtaLow = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge
-                    indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001) 
+                    indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001)
                     sf_syst_3D.view(flow=False)[indexEtaLow:indexEtaHigh, :, axis_charge.index(charge), axis_eff_type_3D.index(eff_type), 2+isyst, :] *= syst_view_etaPtUt[indexEtaLow:indexEtaHigh, :, :] # hist_hist.view(flow=False)[indexEtaLow:indexEtaHigh, :, :, 0]
-                    
+
         # set overflow and underflow eta-pt bins equal to adjacent bins
         sf_syst_3D.view(flow=True)[0, ...]                       = sf_syst_3D.view(flow=True)[1, ...]
         sf_syst_3D.view(flow=True)[axis_eta_eff.extent-1, ...]   = sf_syst_3D.view(flow=True)[axis_eta_eff.extent-2, ...]
@@ -231,7 +231,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             logger.error(f"Attention, rebinning ut by {rebinUt} as a test")
             sf_syst_3D = sf_syst_3D[{axis_ut_eff.name : hist.rebin(rebinUt)}]
         #logger.debug(f"sf_syst_2D.shape = {sf_syst_2D.shape}")
-        #logger.debug(f"sf_syst_3D.shape = {sf_syst_3D.shape}") # this is currently (48, 205, 2, 5, 50, N_ut) for eta,pt,charge,effType,nomiAndSyst,ut        
+        #logger.debug(f"sf_syst_3D.shape = {sf_syst_3D.shape}") # this is currently (48, 205, 2, 5, 50, N_ut) for eta,pt,charge,effType,nomiAndSyst,ut
         sf_syst_2D_pyroot = narf.hist_to_pyroot_boost(sf_syst_2D)
         sf_syst_3D_pyroot = narf.hist_to_pyroot_boost(sf_syst_3D)
         # nomi and syst are stored in the same histogram, just use different helpers to override the () operator for now, until RDF is improved
@@ -259,10 +259,10 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
         axis_nsyst = hist.axis.Integer(0, Nsyst, underflow = False, overflow = False, name = "n_syst_variations")
         helper_syst.tensor_axes = [axis_all, axis_nsyst]
         #
-                       
+
     ##############
     ## now the EFFSTAT
-    
+
     # for the stat histograms, an axis will contain the efficiency type, in some cases it might have a single bin (e.g. tracking, reco, and idip)
     # but for trigger and isolation needs more, because of the different cases to handle inside the helper class (pass/fail trigger or iso/antiiso with/without trigger)
     # could actually stack reco-idip-trig together, but better to have the helper deal with a single histogram at a time
@@ -318,7 +318,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                                            "boostHist" : None,
                                            "helper" : None,
                                            "is3D": False}
-        
+
     for effStatKey in effStat_manager.keys():
         nom_up_effStat_axis = None
         axis_eff_type = None
@@ -326,13 +326,13 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
         is3D = effStat_manager[effStatKey]["is3D"]
         for ic, (charge, charge_tag) in enumerate(charges.items()):
             for eff_type in effStat_manager[effStatKey]["axisLabels"]:
-                
+
                 if eff_type in chargeDependentSteps:
                     axis_charge_def = axis_charge
                     chargeTag = charge_tag
                 else:
                     axis_charge_def = axis_charge_inclusive
-                    chargeTag = "both"                    
+                    chargeTag = "both"
                     if ic: continue # must continue after having set the charge axis
 
                 if is3D:
@@ -393,7 +393,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                                                                              name = effStatKey,
                                                                              storage = hist.storage.Weight())
 
-                        
+
                 # hist_hist may or may not have overflows, but the left-hand side histogram have them: read with flow=False to get only things in acceptance here
                 if smooth3D:
                     if is3D:
@@ -411,7 +411,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
                     effStat_manager[effStatKey]["boostHist"].view(flow=False)[:, :, axis_charge_def.index(charge), axis_eff_type.index(eff_type), nom_up_effStat_axis.index(0)] = hist_hist.view(flow=False)[:,:, 0]
                     for iup in range(1, 1 + nPtEigenBins):
                         effStat_manager[effStatKey]["boostHist"].view(flow=False)[:, :, axis_charge_def.index(charge), axis_eff_type.index(eff_type), nom_up_effStat_axis.index(iup)] = hist_hist.view(flow=False)[:,:, iup]
-                    
+
 
         # set overflow and underflow equal to adjacent bins
         effStat_manager[effStatKey]["boostHist"].view(flow=True)[0, ...] = effStat_manager[effStatKey]["boostHist"].view(flow=True)[1, ...]
@@ -429,7 +429,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             if "sf_iso" in effStatKey:
                 helper_stat = ROOT.wrem.muon_efficiency_smooth_helper_stat_iso_utDep[templateAnalysisArg, netabins, nPtEigenBins, ncharges, type(sf_stat_pyroot)]( ROOT.std.move(sf_stat_pyroot) )
             else:
-                helper_stat = ROOT.wrem.muon_efficiency_smooth_helper_stat_utDep[templateAnalysisArg, netabins, nPtEigenBins, ncharges, type(sf_stat_pyroot)]( ROOT.std.move(sf_stat_pyroot) )            
+                helper_stat = ROOT.wrem.muon_efficiency_smooth_helper_stat_utDep[templateAnalysisArg, netabins, nPtEigenBins, ncharges, type(sf_stat_pyroot)]( ROOT.std.move(sf_stat_pyroot) )
         else:
             if "sf_iso" in effStatKey:
                 helper_stat = ROOT.wrem.muon_efficiency_smooth_helper_stat_iso[templateAnalysisArg, netabins, nPtEigenBins, ncharges, type(sf_stat_pyroot)]( ROOT.std.move(sf_stat_pyroot) )
@@ -440,7 +440,7 @@ def make_muon_efficiency_helpers_smooth(filename = data_dir + "/muonSF/allSmooth
             axis_eta_eff_tensor = hist.axis.Regular(axis_eta_eff.size, axis_eta_eff.edges[0], axis_eta_eff.edges[-1], name = axis_eta_eff.name, overflow = False, underflow = False)
         elif isinstance(axis_eta_eff, bh.axis.Variable):
             axis_eta_eff_tensor = hist.axis.Variable(axis_eta_eff.edges, name = axis_eta_eff.name, overflow = False, underflow = False)
-        axis_ptEigen_eff_tensor = hist.axis.Integer(0, effStat_manager[effStatKey]["nPtEigenBins"], underflow = False, overflow =False, name = "nPtEigenBins")    
+        axis_ptEigen_eff_tensor = hist.axis.Integer(0, effStat_manager[effStatKey]["nPtEigenBins"], underflow = False, overflow =False, name = "nPtEigenBins")
         effStatTensorAxes = [axis_eta_eff_tensor, axis_ptEigen_eff_tensor, axis_charge_def]
         helper_stat.tensor_axes = effStatTensorAxes
         effStat_manager[effStatKey]["helper"] = helper_stat
@@ -481,7 +481,7 @@ def make_muon_efficiency_helpers_smooth_altSyst(filename = data_dir + "/muonSF/a
         logger.error(f"Analysis {what_analysis} not implemented. Please check")
         quit()
     logger.debug(f"Running {templateAnalysisArg.split('::')[-1]} analysis")
-        
+
     eradict = { "2016PreVFP" : "BtoF",
                 "2016PostVFP" : "GtoH",
                 "2017" : "GtoH",
@@ -533,7 +533,7 @@ def make_muon_efficiency_helpers_smooth_altSyst(filename = data_dir + "/muonSF/a
                 # effSyst_decorrEtaEdges[isyst+1]] the range selection in boost later on will stop at the left
                 #edge of the chosen bin number, e.g. h[b:b+1] will pick the range containing the single bin b, unlike in ROOT
                 indexEtaLow = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst] + 0.001) # add epsilon to ensure picking the bin on the right of the edge
-                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001) 
+                indexEtaHigh = axis_eta_eff.index(effSyst_decorrEtaEdges[isyst+1] + 0.001)
                 sf_syst_2D.values(flow=False)[indexEtaLow:indexEtaHigh, :, axis_charge.index(charge), 2+isyst] = hist_hist.values(flow=False)[indexEtaLow:indexEtaHigh, :,axis_nomiAlt_eff.size-1]
 
     # set overflow and underflow eta-pt bins equal to adjacent bins

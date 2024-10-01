@@ -53,17 +53,17 @@ def prepareChargeFit(options, charges=["plus"]):
     cardSubfolderFullName = options.inputdir + options.cardFolder
     postfix = options.postfix
     cardkeyname = 'card'
-    if options.fitSingleCharge: 
+    if options.fitSingleCharge:
     # this cardkeyname is needed only when a single datacard for a given charge is different from those that would be used
-    # for the combination (e.g. because to facilitate the combination some lines that require both charges are 
+    # for the combination (e.g. because to facilitate the combination some lines that require both charges are
     # added to the datacard for a specific charge)
         cardkeyname += "_singleCharge{ch}".format(ch=charges[0])
         if postfix == "":
             postfix = "only{ch}".format(ch=charges[0])
         else:
             postfix = postfix + "_only{ch}".format(ch=charges[0])
-        
-    datacards=[]; 
+
+    datacards=[];
     channels=[]
     binname = "ZMassWLike" if options.isWlike else "ZMassDilepton" if options.isDilepton else "WMass"
 
@@ -94,7 +94,7 @@ def prepareChargeFit(options, charges=["plus"]):
         combinedCard = "{d}/{b}_{s}.txt".format(d=os.path.abspath(cardSubfolderFullName), b=binname, s=cardkeyname)
         ccCmd = "combineCards.py --noDirPrefix {cards} > {combinedCard} ".format(cards=' '.join(['{ch}={dcfile}'.format(ch=channels[i],dcfile=card) for i,card in enumerate(datacards)]), combinedCard=combinedCard)
         ## run the commands: need cmsenv in the combinetf release
-        print 
+        print
         print
         if args.skip_card:
             safeSystem(ccCmd, dryRun=True)
@@ -106,14 +106,14 @@ def prepareChargeFit(options, charges=["plus"]):
 
         if options.doOnlyCard:
             return
-        
+
         txt2hdf5Cmd = 'text2hdf5.py {cf} --dataset {dn}'.format(cf=combinedCard, dn=options.dataname)
         if options.theoryAgnostic:
             maskchan = ["--maskedChan {mc}".format(mc=maskedChannel) for maskedChannel in maskedChannels]
             txt2hdf5Cmd += " --sparse {mc} --X-allow-no-background".format(mc=" ".join(maskchan))
         else:
             txt2hdf5Cmd += " --X-allow-no-signal"
-            
+
         if len(postfix):
             txt2hdf5Cmd = txt2hdf5Cmd + " --postfix " + postfix
         if options.clipSystVariations > 0.0:
@@ -121,8 +121,8 @@ def prepareChargeFit(options, charges=["plus"]):
         if options.clipSystVariationsSignal > 0.0:
             txt2hdf5Cmd = txt2hdf5Cmd + " --clipSystVariationsSignal " + str(options.clipSystVariationsSignal)
 
-        print 
-        if options.skip_text2hdf5: 
+        print
+        if options.skip_text2hdf5:
             print(txt2hdf5Cmd)
         else:
             print("Running text2hdf5.py, it might take time ...")
@@ -146,7 +146,7 @@ def prepareChargeFit(options, charges=["plus"]):
         if args.theoryAgnostic:
             combineCmd += " --POIMode mu --allowNegativePOI"
         else:
-            combineCmd += " --POIMode none"                        
+            combineCmd += " --POIMode none"
 
         fitdir_data = "{od}/fit/data/".format(od=os.path.abspath(cardSubfolderFullName))
         fitdir_Asimov = fitdir_data.replace("/fit/data/", "/fit/hessian/")
@@ -180,19 +180,19 @@ def prepareChargeFit(options, charges=["plus"]):
         else:
             print(combineCmd_toys)
         print
-            
+
     else:
         print("Warning, I couldn't find the following cards. Check names and paths")
         for card in datacards:
             if not os.path.exists(card):
                 print(card)
 
-            
+
 def combineCharges(options):
     prepareChargeFit(options, charges=['plus','minus'])
 
-    
-if __name__ == "__main__":    
+
+if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--input', dest='inputdir', default='', type=str, help='input directory with the root files inside (cards are eventually stored in the foldr specified with option --cf)')
@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
     if not args.combineCharges and not args.fitSingleCharge:
         print("Warning: must pass one option between --fit-single-charge and --comb to fit single charge or combination.")
-    
+
     if args.combineCharges:
         if args.fitSingleCharge:
             print("Error: options --fit-single-charge and --comb are incompatible. Abort")
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         if len(fitCharges) != 2:
             print("Error: --comb requires two charges, use -C 'plus,minus' and try again")
             quit()
-            
+
     if args.fitSingleCharge:
         for charge in fitCharges:
             prepareChargeFit(args, charges=[charge])
@@ -282,7 +282,7 @@ if __name__ == "__main__":
             print('-'*30)
 
     if args.combineCharges and len(fitCharges)==2:
-        combineCharges(args)                
+        combineCharges(args)
         print('-'*30)
         print("Done with charge combination")
         print('-'*30)

@@ -5,7 +5,7 @@ import array
 import math
 import os
 import re
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     if len(args.inputfile) != len(args.hname) or len(args.inputfile) != len(args.legendEntry):
         logger.error("Different number of input options for histograms")
         quit()
-        
+
     hists3D = []
     for i in range(len(args.inputfile)):
         f = safeOpenFile(args.inputfile[i])
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         if args.rebinX > 1: h.RebinX(args.rebinX)
         if args.rebinY > 1: h.RebinY(args.rebinY)
         if args.rebinZ > 1: h.RebinZ(args.rebinZ)
-    
+
     adjustSettings_CMS_lumi()
     canvas = ROOT.TCanvas("canvas", "", 900, 800)
     canvas.SetTickx(1)
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         izmin,izmax = args.zbin
 
     colors = [ROOT.kBlack, ROOT.kBlue, ROOT.kRed+2, ROOT.kGreen+2, ROOT.kOrange+2]
-        
+
     for ieta in range(1, 1 + hists3D[0].GetNbinsZ()):
         if not (izmin <= ieta <= izmax):
             continue
@@ -105,7 +105,7 @@ if __name__ == "__main__":
                 hists[-1].SetLineWidth(2)
                 if ih and args.normalize:
                     hists[-1].Scale(hists[0].Integral()/hists[-1].Integral())
-                    
+
             miny, maxy =  getMinMaxMultiHisto(hists, excludeEmpty=False, sumError=False)
 
             hfirst = hists[0]
@@ -129,7 +129,7 @@ if __name__ == "__main__":
             header = "{} < #eta < {}".format(round(hists3D[0].GetZaxis().GetBinLowEdge(ieta),1), round(hists3D[0].GetZaxis().GetBinUpEdge(ieta),1))
             header += "   ---   "
             header += "{} < p_{{T}} < {} GeV".format(round(hists3D[0].GetYaxis().GetBinLowEdge(ipt),0), round(hists3D[0].GetYaxis().GetBinUpEdge(ipt),0))
-            
+
             leg = ROOT.TLegend(0.2, 0.6, 0.9, 0.9)
             leg.SetNColumns(1)
             leg.SetFillColor(0)
@@ -137,7 +137,7 @@ if __name__ == "__main__":
             leg.SetFillColorAlpha(0,0.6)
             leg.SetBorderSize(0)
             leg.SetHeader(header)
-            for il, l in enumerate(args.legendEntry):            
+            for il, l in enumerate(args.legendEntry):
                 legEntry = l
                 if il and args.normalize:
                     legEntry += " (norm)"

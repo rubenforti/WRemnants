@@ -40,15 +40,15 @@ def makePlot(hist_data, hist_mc, fOut, xLabel, npv, outDir_):
         'xtitle'            : xLabel,
         'ytitle'            : "Events",
 
-        'topRight'          : lumi_header, 
+        'topRight'          : lumi_header,
         'topLeft'           : "#bf{CMS} #scale[0.7]{#it{Preliminary}}",
 
-    } 
+    }
 
 
     plotter.cfg = cfg
     canvas = plotter.canvas()
-    dummy = plotter.dummy()   
+    dummy = plotter.dummy()
     canvas.cd()
     dummy.Draw("HIST")
     hist_data.Draw("SAME")
@@ -84,7 +84,7 @@ def makePlot_fit(hist_data, hist_mc, fOut, xLabel, npv, outDir_):
 
     hist_data.SetLineColor(ROOT.kBlack)
     hist_data.SetLineWidth(2)
-    
+
     hist_mc.SetLineColor(ROOT.kRed)
     hist_mc.SetLineWidth(2)
 
@@ -102,10 +102,10 @@ def makePlot_fit(hist_data, hist_mc, fOut, xLabel, npv, outDir_):
         'xtitle'            : xLabel,
         'ytitle'            : "Events",
 
-        'topRight'          : lumi_header, 
+        'topRight'          : lumi_header,
         'topLeft'           : "#bf{CMS} #scale[0.7]{#it{Preliminary}}",
 
-    } 
+    }
 
     fit_mc = ROOT.TF1("fit_mc", "gaus", -100, 100)
     hist_mc.Fit("fit_mc")
@@ -115,7 +115,7 @@ def makePlot_fit(hist_data, hist_mc, fOut, xLabel, npv, outDir_):
 
     plotter.cfg = cfg
     canvas = plotter.canvas()
-    dummy = plotter.dummy()   
+    dummy = plotter.dummy()
     canvas.cd()
     dummy.Draw("HIST")
     hist_data.Draw("SAME")
@@ -191,7 +191,7 @@ def met_xy_reweighting(direction = "x", corrType="uncorr", polyOrderData=-1, pol
 
     if polyOrderData > 0:
         fit_data = ROOT.TF1("fit_data_%s" % direction, "pol%d" % polyOrderData, 0, npv_max)
-        result = g_data.Fit(fit_data.GetName(), "NSE", "", npv_fit_min, npv_fit_max) 
+        result = g_data.Fit(fit_data.GetName(), "NSE", "", npv_fit_min, npv_fit_max)
         fit_data.SetLineColor(ROOT.kBlack)
         fit_data.GetXaxis().SetRangeUser(0, npv_max)
         fit_data.SetLineWidth(2)
@@ -199,7 +199,7 @@ def met_xy_reweighting(direction = "x", corrType="uncorr", polyOrderData=-1, pol
 
     if polyOrderMC > 0:
         fit_mc = ROOT.TF1("fit_mc_%s" % direction, "pol%d" % polyOrderMC, 0, npv_max)
-        result = g_mc.Fit(fit_mc.GetName(), "NSE", "", npv_fit_min, npv_fit_max) 
+        result = g_mc.Fit(fit_mc.GetName(), "NSE", "", npv_fit_min, npv_fit_max)
         fit_mc.SetLineColor(ROOT.kRed)
         fit_mc.SetLineStyle(ROOT.kDashed)
         fit_mc.GetXaxis().SetRangeUser(0, npv_max)
@@ -225,14 +225,14 @@ def met_xy_reweighting(direction = "x", corrType="uncorr", polyOrderData=-1, pol
         'xtitle'            : "Number of primary vertices",
         'ytitle'            : "#LT MET_{%s} #GT (Gev)" % direction,
 
-        'topRight'          : lumi_header, 
+        'topRight'          : lumi_header,
         'topLeft'           : "#bf{CMS} #scale[0.7]{#it{Preliminary}}",
 
-    } 
+    }
 
     plotter.cfg = cfg
     canvas = plotter.canvas()
-    dummy = plotter.dummy()   
+    dummy = plotter.dummy()
     canvas.cd()
     dummy.Draw("HIST")
     g_data.Draw("PE SAME")
@@ -274,7 +274,7 @@ def met_xy_reweighting(direction = "x", corrType="uncorr", polyOrderData=-1, pol
     canvas.SaveAs(f"{outDir_}/MET_{direction}_npv.png")
     canvas.SaveAs(f"{outDir_}/MET_{direction}_npv.pdf")
     canvas.Delete()
-    
+
     return outDict
 
 

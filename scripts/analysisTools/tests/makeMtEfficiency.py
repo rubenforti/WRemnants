@@ -12,7 +12,7 @@ import os.path
 import pickle
 import re
 import shutil
-## safe batch mode                                 
+## safe batch mode
 import sys
 import time
 
@@ -48,27 +48,27 @@ if __name__ == "__main__":
     parser.add_argument("hdf5fileDeepMet", type=str, nargs=1, help="Input file with histograms for deepMet")
     parser.add_argument("hdf5filePFMet", type=str, nargs=1, help="Input file with histograms for PFMet")
     parser.add_argument("outputfolder",  type=str, nargs=1)
-    
+
     parser.add_argument("--mt", type=str, nargs="+", default=["mt_MET"], help="mt histograms to use")
     parser.add_argument("--mtleg", type=str, nargs="+", default=["PFMET"], help="mt name for legend")
     parser.add_argument("--signal", type=str, default="Wmunu_plus", help="Process to be used for signal efficiency")
     parser.add_argument("--postfix", type=str, default=None, help="Postfix for output folder")
     parser.add_argument(     '--invertmt', default=False , action='store_true',   help='Invert mt cut to derive efficiency (default is mT>threshold)')
     args = parser.parse_args()
-           
+
     fname = args.rootfile[0]
     postfix = f"_{args.postfix}" if args.postfix else ""
     outdir_original = f"{args.outputfolder[0]}/mtCutEfficiency{postfix}/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
-    
+
     ROOT.TH1.SetDefaultSumw2()
-    
+
     nomihists = {}
     hqcd = {}
     hother = {}
 
 def getHistograms(inputfile):
-    
+
     groups = make_datagroups_2016(inputfile, applySelection=False)
     datasets = groups.getNames() # this has all the original defined groups
     datasetsNoQCD = list(filter(lambda x: x != "QCD", datasets)) # exclude QCD MC if present
@@ -76,7 +76,7 @@ def getHistograms(inputfile):
     inputHistName = "mTStudyForFakes"
     groups.setNominalName(inputHistName)
     groups.loadHistsForDatagroups(inputHistName, syst="", procsToRead=datasets, applySelection=False)
-    histInfo = groups.getDatagroups() # keys are same as returned by groups.getNames() 
+    histInfo = groups.getDatagroups() # keys are same as returned by groups.getNames()
     rootHists = {d: None for d in datasetsNoQCD}
     s = hist.tag.Slicer()
     for d in datasets:
@@ -84,10 +84,10 @@ def getHistograms(inputfile):
         hnarf = histInfo[d].hists[inputHistName]
         # start integrating
         hnarf = hnarf[{"eta" : s[::hist.sum],
-                       "pt" : s[0:hist.len:hist.sum], # make sure to remove overflow here, we often don't cut on pt 
+                       "pt" : s[0:hist.len:hist.sum], # make sure to remove overflow here, we often don't cut on pt
                        "hasJets": s[::hist.sum]
-                
-    
+
+
     # read histograms
     infile = safeOpenFile(fname)
     for mt in args.mt:
@@ -151,11 +151,11 @@ def getHistograms(inputfile):
                     eff = nomihists[mt][proc].IntegralAndError(mtcutbin, nBinsTot+1, err)
                     eff /= nomihists[mt][proc].IntegralAndError(0,nBinsTot+1, err)
                 cutEff[mt][proc].SetPoint(cutEff[mt][proc].GetN(), nomihists[mt][proc].GetBinLowEdge(mtcutbin), eff)
-            cutEff[mt][proc].SetLineColor(grColors[ip])    
-            cutEff[mt][proc].SetMarkerColor(grColors[ip])    
-            cutEff[mt][proc].SetLineWidth(2)    
+            cutEff[mt][proc].SetLineColor(grColors[ip])
+            cutEff[mt][proc].SetMarkerColor(grColors[ip])
+            cutEff[mt][proc].SetLineWidth(2)
             cutEff[mt][proc].SetLineStyle(imt + 1)
-            cutEff[mt][proc].SetMarkerStyle((20 + imt) if len(args.mt) > 2 else (20 + imt + 4*imt)) # for two cases it should make full or open marker    
+            cutEff[mt][proc].SetMarkerStyle((20 + imt) if len(args.mt) > 2 else (20 + imt + 4*imt)) # for two cases it should make full or open marker
             grList.append(cutEff[mt][proc])
             grLeg.append(f"{args.mtleg[imt]} {procLeg}")
 
@@ -163,17 +163,17 @@ def getHistograms(inputfile):
     canvas1D = ROOT.TCanvas("canvas1D", "", 900, 800)
     adjustSettings_CMS_lumi()
     signCut = "<" if args.invertmt else ">"
-    
+
     drawGraphCMS(grList, "Transverse mass threshold (GeV)", f"Efficiency for m_{{T}} {signCut} threshold::0.0,1.5", "mtCutEfficiency", outdir, grLeg,
                  legendCoords="0.15,0.7,0.9,0.94;2", passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL", useOriginalGraphStyle=True)
 
     # get S/B
     for den in [args.signal, "background"]:
-    
+
         grSoverB = {}
         maxy = 0.0
         miny = 10000.0
-        for imt,mt in enumerate(args.mt):    
+        for imt,mt in enumerate(args.mt):
             grSoverB[mt] = ROOT.TGraphErrors()
             sob = 1.0
             for mtcutbin in mtcutbins:
@@ -186,9 +186,9 @@ def getHistograms(inputfile):
                 grSoverB[mt].SetPoint(grSoverB[mt].GetN(), nomihists[mt]["background"].GetBinLowEdge(mtcutbin), sob)
                 maxy = max(maxy, sob)
                 miny = min(miny, sob)
-            grSoverB[mt].SetLineColor(grColors[imt])    
-            grSoverB[mt].SetMarkerColor(grColors[imt])    
-            grSoverB[mt].SetLineWidth(2)    
+            grSoverB[mt].SetLineColor(grColors[imt])
+            grSoverB[mt].SetMarkerColor(grColors[imt])
+            grSoverB[mt].SetLineWidth(2)
             grSoverB[mt].SetMarkerStyle((20 + imt) if len(args.mt) > 2 else (20 + imt + 4*imt))
             grLeg2.append(f"{args.mtleg[imt]}")
 

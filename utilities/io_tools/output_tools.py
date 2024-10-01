@@ -47,7 +47,7 @@ def writeMetaInfoToRootFile(rtfile, exclude_diff='notebooks', args=None):
     meta_dict = narf.ioutils.make_meta_info_dict(exclude_diff, args=args, wd=common.base_dir)
     d = rtfile.mkdir("meta_info")
     d.cd()
-    
+
     for key, value in meta_dict.items():
         out = ROOT.TNamed(str(key), str(value))
         out.Write()
@@ -60,7 +60,7 @@ def write_analysis_output(results, outfile, args):
         to_append.append(args.theoryCorr[0]+"Corr")
     if args.maxFiles is not None:
         to_append.append(f"maxFiles_{args.maxFiles}".replace("-","m"))
-    if len(args.pdfs)>=1 and args.pdfs[0] != "ct18z": 
+    if len(args.pdfs)>=1 and args.pdfs[0] != "ct18z":
         to_append.append(args.pdfs[0])
     if hasattr(args, "ptqVgen") and args.ptqVgen:
         to_append.append("vars_qtbyQ")
@@ -167,7 +167,7 @@ def copy_to_eos(tmpFolder, outpath, outfolder=None, deleteFullTmp=False):
 
     shutil.rmtree(tmpFolder.replace(fullpath, ""))
 
-def write_theory_corr_hist(output_name, process, output_dict, args=None, file_meta_data=None): 
+def write_theory_corr_hist(output_name, process, output_dict, args=None, file_meta_data=None):
     outname = output_name
     output_filename = f"{outname}Corr{process}.pkl.lz4"
     logger.info(f"Write correction file {output_filename}")
@@ -182,7 +182,7 @@ def split_eos_path(path):
     path = os.path.realpath(path)
     if not is_eosuser_path(path):
         raise ValueError(f"Expected a path on /eos/user, found {path}!")
-        
+
     splitpath = [x for x in path.split("/") if x]
     # Can be /eos/user/<letter>/<username> or <letter-username>
     if "home-" in splitpath[1]:
