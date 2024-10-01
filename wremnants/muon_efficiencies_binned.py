@@ -1,13 +1,14 @@
-import ROOT
-import pathlib
-import hist
-import narf
-import numpy as np
-import boost_histogram as bh
 import logging
+import pathlib
 import pickle
-import lz4.frame
 
+import boost_histogram as bh
+import hist
+import lz4.frame
+import numpy as np
+import ROOT
+
+import narf
 from utilities import common
 
 narf.clingutils.Declare('#include "muon_efficiencies_binned.h"')

@@ -1,12 +1,13 @@
-import os
-import glob
-import pdb
-import json
 import argparse
+import glob
+import json
+import os
+import pdb
 
 os.sys.path.append(os.path.expandvars('/home/d/dwalter/WRemnants/'))
 
 from utilities import logging
+
 logger = logging.setup_logger(__file__, 3, True)
 
 # Perform bias tests for different pseudodata.

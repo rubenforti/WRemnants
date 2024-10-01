@@ -1,5 +1,13 @@
-import ROOT, os, sys, re, array, math, json
+import array
+import json
+import math
+import os
+import re
+import sys
+
 import numpy as np
+import ROOT
+
 
 class util:
 

@@ -1,19 +1,21 @@
-import mplhep as hep
-import matplotlib.pyplot as plt
-from matplotlib import cm
-
-import uproot
 import argparse
 import os
+import pdb
+
+import hist
+import matplotlib.pyplot as plt
+import mplhep as hep
 import numpy as np
 import pandas as pd
-import hist
-import pdb
-from utilities import logging, common
-from wremnants import plot_tools
-from utilities.io_tools import input_tools, output_tools
-from utilities.io_tools.combinetf_input import get_fitresult, load_covariance_pois, select_covariance_pois
+import uproot
+from matplotlib import cm
 
+from utilities import common, logging
+from utilities.io_tools import input_tools, output_tools
+from utilities.io_tools.combinetf_input import (get_fitresult,
+                                                load_covariance_pois,
+                                                select_covariance_pois)
+from wremnants import plot_tools
 
 hep.style.use(hep.style.ROOT)
 

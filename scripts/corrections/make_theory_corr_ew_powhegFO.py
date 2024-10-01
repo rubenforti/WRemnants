@@ -1,14 +1,16 @@
+import argparse
+import os
+import pdb
+
+import h5py
+import hist
 import numpy as np
-from wremnants import theory_corrections, theory_tools
+
+import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-import hist
-import argparse
-import os
-import h5py
-import narf
-import pdb
+from wremnants import theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
 
@@ -38,10 +40,11 @@ print(h)
 s = hist.tag.Slicer()
 
 if args.debug:
-    from wremnants import plot_tools
-    import mplhep as hep
     import matplotlib as mpl
     import matplotlib.pyplot as plt
+    import mplhep as hep
+
+    from wremnants import plot_tools
 
     hnum = h[{"weak" : "weak_default"}].project("massVlhe")
     hden = h[{"weak" : "weak_no_ew"}].project("massVlhe")

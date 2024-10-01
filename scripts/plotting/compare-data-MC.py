@@ -1,9 +1,11 @@
-from wremnants.datasets.datagroups import Datagroups
-from wremnants import plot_tools
-import matplotlib.pyplot as plt
 import argparse
-import os
 import logging
+import os
+
+import matplotlib.pyplot as plt
+
+from wremnants import plot_tools
+from wremnants.datasets.datagroups import Datagroups
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--study", type = str, help = "the name of study for the combine files")

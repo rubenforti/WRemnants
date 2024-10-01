@@ -2,16 +2,21 @@
 
 # open root files, integrate mass axis and plot yields vs eta-pt for passing and failing probes
 
-import os, re, array, math
-import time
 import argparse
-from utilities import logging
-
+import array
+import math
+import os
+import re
 ## safe batch mode                                 
 import sys
+import time
+
+from utilities import logging
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -21,6 +26,7 @@ from copy import *
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 sys.path.append(os.getcwd())
 
 if __name__ == "__main__":

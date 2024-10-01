@@ -1,11 +1,14 @@
-from utilities import differential, common, logging
-from wremnants import syst_tools, theory_tools, theory_corrections, theoryAgnostic_tools
 from copy import deepcopy
+
+import h5py
 import hist
 import numpy as np
 import pandas as pd
-import h5py
 import uproot
+
+from utilities import common, differential, logging
+from wremnants import (syst_tools, theory_corrections, theory_tools,
+                       theoryAgnostic_tools)
 
 logger = logging.child_logger(__name__)
 

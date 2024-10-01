@@ -4,16 +4,18 @@
 # example
 # python w-mass-13TeV/makeSystRatios.py /scratch/mciprian/CombineStudies/WMass/scetlibCorr_nnpdf31_testSF_trashdebug/byHelicityPtCharge_correlateEffStatIsoByCharge/WMassCombineInput.root /eos/user/m/mciprian/www/WMassAnalysis/fromMyWremnants/Wmass_fit/scetlibCorr_nnpdf31_testSF_trashdebug/byHelicityPtCharge_correlateEffStatIsoByCharge/makeSystRatios/ -s ".*effStatTnP_trigger_eta20.*q1.*" -c plus --systPostfix effStatTnP_trigger_eta20plus
 
-import re
-import os, os.path
 import argparse
+import os
+import os.path
+import re
 import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -23,6 +25,7 @@ from copy import *
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 
 def plotUnrolledHistogram(h, process, syst, outdir, canvas, hist2DforBins, yAxisTitle="syst/nomi",
                           errorBars=False, channelCharge=None,

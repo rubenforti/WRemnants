@@ -1,16 +1,19 @@
-import lz4.frame
-import pickle
-import hist
-from utilities import boostHistHelpers as hh,logging
-import numpy as np
-import os
 import json
-import hdf5plugin
+import os
+import pickle
+import re
+
 import h5py
-from narf import ioutils
+import hdf5plugin
+import hist
+import lz4.frame
+import numpy as np
 import ROOT
 import uproot
-import re
+
+from narf import ioutils
+from utilities import boostHistHelpers as hh
+from utilities import logging
 
 logger = logging.child_logger(__name__)
 

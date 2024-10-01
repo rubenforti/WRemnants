@@ -7,22 +7,25 @@
 
 # python w-mass-13TeV/diffNuisances.py --infile /scratch/mciprian/CombineStudies/WMass/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --outdir plots/fromMyWremnants/Wmass_fit/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/diffNuisances/  -a --format html --type hessian  --suffix Asimov --pois '.*QCDscale_Coeff0.*genVplus' --uniqueString 'QCDscales_Coeff0_chargePlus' --y-setting -1.0 -0.5 0 0.5 1.0; python w-mass-13TeV/diffNuisances.py --infile /scratch/mciprian/CombineStudies/WMass/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --outdir plots/fromMyWremnants/Wmass_fit/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/diffNuisances/  -a --format html --type hessian  --suffix Asimov --pois '.*QCDscale_Coeff1.*genVplus' --uniqueString 'QCDscales_A0_chargePlus' --y-setting -1.0 -0.5 0 0.5 1.0; python w-mass-13TeV/diffNuisances.py --infile /scratch/mciprian/CombineStudies/WMass/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --outdir plots/fromMyWremnants/Wmass_fit/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/diffNuisances/  -a --format html --type hessian  --suffix Asimov --pois '.*QCDscale_Coeff5.*genVplus' --uniqueString 'QCDscales_A4_chargePlus' --y-setting -1.0 -0.5 0 0.5 1.0
 
-import re, os, math
+import argparse
 import datetime
+import math
+import os
+import re
 from optparse import OptionParser
 
+import utilitiesCMG
 from subMatrix import niceName, niceNameHEPDATA
 
-import argparse
-
-import utilitiesCMG
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -30,6 +33,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 
 def sortEffSyst(name):
     sortEffSystDict = {"idip" : 0,

@@ -7,17 +7,19 @@
 
 # python w_mass_13TeV/plotSF.py file.root output/folder/ -e 'GtoH' -n 'trigger,idip,iso,antiiso,isonotrig,antiisonotrig' -wpc reco tracking idip trigger [--make-prod] [--skip-eff]
 
-import re
-import os, os.path
-import logging
 import argparse
+import logging
+import os
+import os.path
+import re
 import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

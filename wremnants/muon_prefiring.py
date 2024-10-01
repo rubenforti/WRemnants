@@ -1,6 +1,8 @@
-import ROOT
 import pathlib
+
 import hist
+import ROOT
+
 import narf.clingutils
 from utilities import common
 

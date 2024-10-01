@@ -1,16 +1,17 @@
-from utilities import boostHistHelpers as hh, common, logging, differential
-from utilities.io_tools import output_tools
+import math
+import os
 
-from wremnants.datasets.datagroups import Datagroups
-from wremnants.datasets.dataset_tools import getDatasets
-from wremnants import theory_tools, syst_tools, theory_corrections, unfolding_tools, helicity_utils
+import hist
+import numpy as np
 
 import narf
-
-import os
-import hist
-import math
-import numpy as np
+from utilities import boostHistHelpers as hh
+from utilities import common, differential, logging
+from utilities.io_tools import output_tools
+from wremnants import (helicity_utils, syst_tools, theory_corrections,
+                       theory_tools, unfolding_tools)
+from wremnants.datasets.datagroups import Datagroups
+from wremnants.datasets.dataset_tools import getDatasets
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)

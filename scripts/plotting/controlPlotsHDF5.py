@@ -1,19 +1,17 @@
-import mplhep as hep
-import matplotlib.pyplot as plt
-import numpy as np
-import hist
 import itertools
-
-from utilities import logging, common, boostHistHelpers as hh
-from utilities.io_tools import output_tools
-from utilities.styles import styles
-
-from narf import combineutils
-
-from wremnants import plot_tools
-
 import pdb
 
+import hist
+import matplotlib.pyplot as plt
+import mplhep as hep
+import numpy as np
+
+from narf import combineutils
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
+from utilities.styles import styles
+from wremnants import plot_tools
 
 parser = common.plot_parser()
 parser.add_argument("infile", help="Output h5py file of the setupCombine.py")

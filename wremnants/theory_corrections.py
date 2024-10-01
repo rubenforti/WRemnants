@@ -1,18 +1,21 @@
+import glob
 import os
-import ROOT
 import pathlib
-import hist
-import narf
-import numpy as np
-import lz4.frame
 import pickle
 import re
-import glob
+
 import h5py
-from wremnants.correctionsTensor_helper import makeCorrectionsTensor
-from utilities import boostHistHelpers as hh, common, logging
+import hist
+import lz4.frame
+import numpy as np
+import ROOT
+
+import narf
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import input_tools
 from wremnants import theory_tools
+from wremnants.correctionsTensor_helper import makeCorrectionsTensor
 
 logger = logging.child_logger(__name__)
 

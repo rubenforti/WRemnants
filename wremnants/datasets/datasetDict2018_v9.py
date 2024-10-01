@@ -1,4 +1,5 @@
 import copy
+
 from utilities import common
 
 lumicsv = f"{common.data_dir}/bylsoutput_2018.csv"

@@ -1,7 +1,9 @@
-from utilities import differential, logging
-from wremnants import syst_tools, theory_tools, helicity_utils
 from copy import deepcopy
+
 import hist
+
+from utilities import differential, logging
+from wremnants import helicity_utils, syst_tools, theory_tools
 
 logger = logging.child_logger(__name__)
 

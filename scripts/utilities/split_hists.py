@@ -1,15 +1,14 @@
 import argparse
-import h5py
+import concurrent.futures
 import copy
 
-from utilities import logging
-from utilities.io_tools import input_tools
+import boost_histogram as bh
+import h5py
+
 import narf
 import narf.ioutils
-import boost_histogram as bh
-
-import concurrent.futures
-
+from utilities import logging
+from utilities.io_tools import input_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, help="Input hdf5 file")

@@ -1,14 +1,13 @@
-import ROOT
-import pandas as pd
-import numpy as np
-from scipy.stats import chi2
-
-from utilities import logging, common
-from utilities.io_tools import output_tools, tex_tools
-from utilities.io_tools.combinetf_input import get_fitresult
-
 import pdb
 
+import numpy as np
+import pandas as pd
+import ROOT
+from scipy.stats import chi2
+
+from utilities import common, logging
+from utilities.io_tools import output_tools, tex_tools
+from utilities.io_tools.combinetf_input import get_fitresult
 
 translate = {
     "asimov": "Asimov",

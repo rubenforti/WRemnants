@@ -9,23 +9,25 @@
 #
 # python scripts/analysisTools/w_mass_13TeV/plotPrefitTemplatesWRemnants.py /scratch/mciprian/CombineStudies/TRASHTEST/updateNote_DeepMET/WMass_eta_pt_charge/WMassCombineInput.root scripts/analysisTools/plots/fromMyWremnants/fitResults/updateNote_DeepMET/WMass_eta_pt_charge/plotPrefitTemplatesWRemnants/ -l 16.8 --gatherProcesses WsignalRegion
 
-import re
-import os, os.path
 import argparse
+import os
+import os.path
+import re
 import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from copy import *
-import wremnants
 
+import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())

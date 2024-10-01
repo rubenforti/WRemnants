@@ -1,8 +1,9 @@
 import argparse
-from utilities import common, logging, differential
+import os
+
+from utilities import common, differential, logging
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
-import os
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)
@@ -18,14 +19,15 @@ isUnfolding = args.analysisMode == "unfolding"
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
+import hist
+
 import narf
 import wremnants
-from wremnants import theory_tools, syst_tools, theory_corrections, muon_selections, unfolding_tools
-from wremnants.histmaker_tools import scale_to_data, aggregate_groups
-from wremnants.datasets.dataset_tools import getDatasets
-import hist
 import wremnants.lowpu as lowpu
-
+from wremnants import (muon_selections, syst_tools, theory_corrections,
+                       theory_tools, unfolding_tools)
+from wremnants.datasets.dataset_tools import getDatasets
+from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 
 ###################################
 flavor = args.flavor # mumu, ee

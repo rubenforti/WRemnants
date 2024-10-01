@@ -1,9 +1,11 @@
+import argparse
+
+import numpy as np
 import ROOT
 import scipy
-import argparse
-from utilities.io_tools import combinetf_input
+
 from narf import ioutils
-import numpy as np
+from utilities.io_tools import combinetf_input
 
 parser = argparse.ArgumentParser()
 parser.add_argument("infile", type=str, help="combinetf output ROOT file")

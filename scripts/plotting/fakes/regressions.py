@@ -1,20 +1,17 @@
-from utilities import logging, common
+import hist
+import matplotlib as mpl
+import numpy as np
+from scipy import stats
+from scipy.optimize import nnls
+
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.styles import styles
-from utilities import boostHistHelpers as hh
-
-from scipy.optimize import nnls
-from scipy import stats
-
-from wremnants import plot_tools
-from wremnants.datasets.datagroups import Datagroups
 from wremnants import histselections as sel
-
+from wremnants import plot_tools
 from wremnants import regression as reg
-
-import hist
-import numpy as np
-import matplotlib as mpl
+from wremnants.datasets.datagroups import Datagroups
 
 
 def plot_chi2(chi2, ndf, suffix=""):

@@ -1,5 +1,6 @@
-import ROOT
 import random
+
+import ROOT
 
 cfg = None
 

@@ -4,7 +4,13 @@
 ### This runs the minimal command, which is usually sufficient
 ### Each script has additional options for more customization, please check them
 
-import ROOT, os, sys, re, array
+import array
+import os
+import re
+import sys
+
+import ROOT
+
 sys.path.append(os.getcwd() + "/plotUtils/")
 from plotUtils.utility import safeSystem
 

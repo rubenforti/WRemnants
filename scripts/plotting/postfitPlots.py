@@ -1,26 +1,25 @@
-import mplhep as hep
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib import colormaps
+import argparse
 import itertools
 import os
+import pdb
+
 import hist
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import mplhep as hep
 import numpy as np
-import argparse
 import pandas as pd
-import itertools
+import scipy.stats
+from matplotlib import colormaps
+from matplotlib.lines import Line2D
 
 from narf import ioutils
-
-import scipy.stats
-
-from utilities import common, logging, differential, boostHistHelpers as hh
+from utilities import boostHistHelpers as hh
+from utilities import common, differential, logging
+from utilities.io_tools import (combinetf2_input, combinetf_input, input_tools,
+                                output_tools)
 from utilities.styles import styles
 from wremnants import plot_tools
-from utilities.io_tools import input_tools, output_tools, combinetf_input, combinetf2_input
-
-import pdb
 
 hep.style.use(hep.style.ROOT)
 

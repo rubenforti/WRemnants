@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-import os, array, math
 import argparse
-
+import array
+import math
+import os
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

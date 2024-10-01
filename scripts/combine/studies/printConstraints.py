@@ -1,7 +1,9 @@
-from utilities import input_tools
+import argparse
+
 import ROOT
 import uproot
-import argparse
+
+from utilities import input_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, help="path to input fit results root file")

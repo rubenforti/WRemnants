@@ -1,12 +1,12 @@
 import argparse
-import h5py
 import copy
+import pdb
 
+import h5py
+
+import narf
 from utilities import logging
 from utilities.io_tools import input_tools
-import narf
-
-import pdb
 
 parser = argparse.ArgumentParser()
 parser.add_argument("infiles", type=str, nargs="+", help="Input hdf5 files")

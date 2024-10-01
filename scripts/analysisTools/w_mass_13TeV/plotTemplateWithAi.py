@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 
-import re
-import os, os.path
 import argparse
+import os
+import os.path
+import re
 import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from copy import *
-import wremnants
 
+import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())

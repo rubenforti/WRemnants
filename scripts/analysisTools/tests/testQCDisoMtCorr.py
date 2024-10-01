@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
 
-import os, re, array, math
-import time
 import argparse
+import array
+import math
+import os
+import pickle
+import re
+## safe batch mode                                 
+import sys
+import time
+
+import hist
+import lz4.frame
 
 import narf
 import wremnants
-import hist
-import lz4.frame, pickle
-from wremnants.datasets.datagroups2016 import make_datagroups_2016
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from wremnants import histselections as sel
+from wremnants.datasets.datagroups2016 import make_datagroups_2016
 
-from utilities import boostHistHelpers as hh, common, logging
-
-## safe batch mode                                 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -27,7 +33,8 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
 from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 
 if __name__ == "__main__":

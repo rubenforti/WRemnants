@@ -1,10 +1,12 @@
-from utilities import boostHistHelpers as hh, common, logging
+import re
+
+import hist
+import numpy as np
+
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import input_tools
 from wremnants import histselections, syst_tools
-
-import numpy as np
-import hist
-import re
 
 logger = logging.child_logger(__name__)
 

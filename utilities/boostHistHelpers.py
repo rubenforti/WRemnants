@@ -1,11 +1,13 @@
-import hist
-import numpy as np
-from functools import reduce
 import collections
-from utilities import common, logging
-from wremnants import plot_tools
 import copy
 import itertools
+from functools import reduce
+
+import hist
+import numpy as np
+
+from utilities import common, logging
+from wremnants import plot_tools
 
 logger = logging.child_logger(__name__)
 

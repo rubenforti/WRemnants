@@ -1,10 +1,10 @@
 
 import itertools
+
 import hist
 import numpy as np
 
 from narf import ioutils
-
 from utilities import logging
 from utilities.io_tools import combinetf_input
 

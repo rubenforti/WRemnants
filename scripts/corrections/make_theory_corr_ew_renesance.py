@@ -1,15 +1,17 @@
+import argparse
+import os
+import pdb
+
+import h5py
+import hist
 import numpy as np
-from wremnants import theory_corrections, theory_tools
+import ROOT
+
+import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-import hist
-import argparse
-import os
-import h5py
-import narf
-import pdb
-import ROOT
+from wremnants import theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
 

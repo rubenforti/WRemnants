@@ -1,19 +1,22 @@
-from collections import OrderedDict
-from wremnants import histselections as sel
-from utilities import boostHistHelpers as hh, common, logging
-from utilities.io_tools import output_tools
-import narf
-import ROOT
-import uproot
-import time
-import numpy as np
+import copy
+import itertools
+import math
 import os
 import pathlib
-import itertools
 import re
+import time
+from collections import OrderedDict
+
 import hist
-import copy
-import math
+import numpy as np
+import ROOT
+import uproot
+
+import narf
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
+from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
 

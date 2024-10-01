@@ -1,11 +1,18 @@
 #!/usr/bin/env python                                                       
  
 #from shutil import copyfile
-import re, sys, os, os.path, ROOT, copy, math
-from array import array
 #import numpy as np
 #import root_numpy
 import argparse
+import copy
+import math
+import os
+import os.path
+import re
+import sys
+from array import array
+
+import ROOT
 
 # in the fit, bins with 0 content in the nominal are ignored.
 # so, after we made the shape files, we can just set to 0 the negative content of bins in the

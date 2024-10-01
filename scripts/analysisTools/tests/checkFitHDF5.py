@@ -1,7 +1,6 @@
 import narf
 import narf.combineutils
 
-
 filename = "/scratch/shared/mw/combine_studies/mw_unblinding/WMass_eta_pt_charge/WMass.hdf5"
 #filename = "/scratch/shared/mw/combine_studies/mz_wlike_unblinding/ZMassWLike_eta_pt_charge/ZMassWLike.hdf5"
 filename = "/scratch/shared/mw/combine_studies/mz_wlike_unblinding/ZMassWLike_eta_pt_charge_fitMassDiff_charge/ZMassWLike.hdf5"

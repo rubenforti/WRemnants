@@ -1,17 +1,19 @@
 import argparse
 import os
-import numpy as np
+from itertools import combinations
+
+import hist
 import matplotlib as mpl
+import mplhep as hep
+import numpy as np
 from matplotlib import cm
 from matplotlib.colors import LogNorm
-import hist
-from itertools import combinations
-import mplhep as hep
 
-from utilities import common, logging, boostHistHelpers as hh
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.styles import styles
-from wremnants import theory_corrections, plot_tools
+from wremnants import plot_tools, theory_corrections
 
 parser = common.plot_parser()
 parser.add_argument("--theoryCorr", nargs="*", default=["scetlib_dyturbo", "horacenloew"], #choices=theory_corrections.valid_theory_corrections(),

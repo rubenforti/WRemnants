@@ -1,11 +1,11 @@
-import h5py
 import os
-import narf
+import pdb
 
+import h5py
+
+import narf
 from utilities import common, logging
 from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
-
-import pdb
 
 parser = common.base_parser()
 parser.add_argument("--observed", type=str, default=None, help="fitresult file with observed results")

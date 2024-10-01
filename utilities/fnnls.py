@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # from https://github.com/lostsea/fast-nnls/tree/master
 def fnnls(AtA, Aty, epsilon=None, iter_max=None):
     """

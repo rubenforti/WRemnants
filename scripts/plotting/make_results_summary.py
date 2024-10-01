@@ -1,9 +1,11 @@
 import argparse
-from utilities.io_tools import combinetf_input, input_tools, output_tools
-from utilities import common
+
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 import pandas as pd
+from matplotlib import ticker
+
+from utilities import common
+from utilities.io_tools import combinetf_input, input_tools, output_tools
 from wremnants import plot_tools
 
 parser = common.plot_parser()

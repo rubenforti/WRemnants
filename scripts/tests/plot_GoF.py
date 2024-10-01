@@ -1,20 +1,20 @@
 # plot goodness of fit from toys with data and/or pseudodata 
 # use full nll as test statistic
 
-import uproot
-import os
 import argparse
-import mplhep as hep
+import os
+import pdb
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import mplhep as hep
 import numpy as np
+import uproot
 from scipy.stats import chi2
+
 from utilities import common, logging
 from utilities.io_tools import output_tools
 from wremnants import plot_tools
-
-
-import pdb
 
 hep.style.use(hep.style.ROOT)
 

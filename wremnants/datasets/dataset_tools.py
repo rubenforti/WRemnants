@@ -1,21 +1,23 @@
-import narf
-from utilities import logging
+import glob
+import os
+import pathlib
+import random
+import socket
 import subprocess
 import sys
-import os
-import glob
-import random
-import pathlib
-import socket
-#set the debug level for logging incase of full printout 
-from wremnants.datasets.datasetDict_v9 import dataDictV9, dataDictV9extended
+
+import ROOT
+import XRootD.client
+
+import narf
+from utilities import logging
+from wremnants.datasets.datasetDict2017_v9 import dataDictV9_2017
+from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
 from wremnants.datasets.datasetDict_gen import genDataDict
 from wremnants.datasets.datasetDict_lowPU import dataDictLowPU
 from wremnants.datasets.datasetDict_lowPU2023 import dataDictLowPU2023
-import ROOT
-import XRootD.client
-from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
-from wremnants.datasets.datasetDict2017_v9 import dataDictV9_2017
+#set the debug level for logging incase of full printout 
+from wremnants.datasets.datasetDict_v9 import dataDictV9, dataDictV9extended
 
 logger = logging.child_logger(__name__)
 

@@ -1,15 +1,16 @@
-from utilities import logging
-from utilities.io_tools import input_tools
-import argparse 
-import lz4.frame
+import argparse
+import os
+import pdb
 import pickle
 import re
-import os
+
+import lz4.frame
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-import pdb
+from utilities import logging
+from utilities.io_tools import input_tools
 
 mpl.rcParams.update({
     "legend.fontsize" : "medium",

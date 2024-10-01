@@ -3,29 +3,34 @@
 # example (only charge plus)
 # python fitresults.root -o outputPath/postFitHistograms/ --suffix postVFP -l 16.8 [-c plus --no2Dplot]
 
-import os, re
 import argparse
+import os
+import re
+import sys
 from array import array
+
 import scipy
 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from copy import *
-import wremnants
 
 import utilitiesCMG
-utilities = utilitiesCMG.util()
-from utilities import logging
 
+import wremnants
+
+utilities = utilitiesCMG.util()
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+from utilities import logging
+
 
 def normalizeTH2byBinWidth(h2):
     for ix in range(1,1+h2.GetNbinsX()):

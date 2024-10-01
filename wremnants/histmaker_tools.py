@@ -1,5 +1,6 @@
-from narf.ioutils import H5PickleProxy
 import time
+
+from narf.ioutils import H5PickleProxy
 from utilities import logging
 
 logger = logging.child_logger(__name__)

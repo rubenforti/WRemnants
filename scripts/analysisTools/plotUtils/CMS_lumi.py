@@ -1,6 +1,13 @@
 #!/usr/bin/env python 
 
-import re, sys, os, os.path, subprocess, json, ROOT
+import json
+import os
+import os.path
+import re
+import subprocess
+import sys
+
+import ROOT
 
 centerOfMassEnergy = 13
 

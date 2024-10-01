@@ -8,19 +8,25 @@
 # python w-mass-13TeV/subMatrix.py /scratch/mciprian/CombineStudies/WMass/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --outdir plots/fromMyWremnants/Wmass_fit/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/subMatrix/ --type hessian --postfix Asimov -p '.*pdf\d+' --uniqueString "PDFs" --title "correlation: PDFs" --skipLatexOnTop
 
 
-import os, re, operator, math
-import datetime
 import argparse
+import datetime
+import math
+import operator
+import os
+import re
 from array import array
 
 import utilitiesCMG
+
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -28,6 +34,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 
 def niceName(name):
 

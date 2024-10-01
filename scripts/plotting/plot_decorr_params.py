@@ -1,21 +1,17 @@
+import pdb
 import re
-import uproot
 
-from narf import ioutils
-
-from utilities import logging, common
-from utilities.io_tools import combinetf_input, output_tools
-from utilities.styles import styles
-
-from wremnants import plot_tools
-
-import numpy as np
 import matplotlib as mpl
+import numpy as np
+import uproot
 from matplotlib import pyplot as plt
 from scipy.stats import chi2
 
-import pdb
-
+from narf import ioutils
+from utilities import common, logging
+from utilities.io_tools import combinetf_input, output_tools
+from utilities.styles import styles
+from wremnants import plot_tools
 
 if __name__ == '__main__':
     parser = common.plot_parser()

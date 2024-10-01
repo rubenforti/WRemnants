@@ -1,15 +1,24 @@
 #!/usr/bin/env python
 
-import re, sys, os, os.path, subprocess, json, ROOT, copy, math
-import numpy as np
-from utilities import common, logging
-from functools import partial
-from utilities.io_tools import output_tools
-
-from array import array
+import copy
+import json
+import math
+import os
+import os.path
+import re
 import shutil
+import subprocess
+import sys
+from array import array
+from functools import partial
+
+import numpy as np
+import ROOT
+
 #sys.path.append(os.getcwd() + "/plotUtils/")
 from scripts.analysisTools.plotUtils.CMS_lumi import *
+from utilities import common, logging
+from utilities.io_tools import output_tools
 
 logger = logging.child_logger(__name__)
 

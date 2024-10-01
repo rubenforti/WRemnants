@@ -1,12 +1,15 @@
-import ROOT
+import collections.abc
+import re
+
 import hist
 import numpy as np
-from utilities import boostHistHelpers as hh, common, logging, differential
-from wremnants import theory_tools, helicity_utils, theoryAgnostic_tools
-from wremnants.helicity_utils import axis_helicity
+import ROOT
+
+from utilities import boostHistHelpers as hh
+from utilities import common, differential, logging
+from wremnants import helicity_utils, theory_tools, theoryAgnostic_tools
 from wremnants.datasets.datagroups import Datagroups
-import re
-import collections.abc
+from wremnants.helicity_utils import axis_helicity
 
 logger = logging.child_logger(__name__)
 

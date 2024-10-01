@@ -6,33 +6,32 @@
 # example
 # python scripts/analysisTools/w_mass_13TeV/makeQCDMCstudy.py /scratch/mciprian/CombineStudies/TRASHTEST/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_extMC_noSF.hdf5 scripts/analysisTools/plots/fromMyWremnants/testFakes_studies/  -v 4
 
-from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
+import argparse
+import os
+import pickle
+import re
+import shutil
+## safe batch mode
+import sys
+
+import hist
+import lz4.frame
+import numpy as np
+
+import narf
+import wremnants
 #from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
+from wremnants import histselections as sel
+from wremnants import syst_tools, theory_tools
+from wremnants.datasets.datagroups import Datagroups
 
-import narf
-import wremnants
-from wremnants import theory_tools,syst_tools
-import hist
-
-import numpy as np
-
-import pickle
-import lz4.frame
-
-import argparse
-import os
-import shutil
-import re
-
-## safe batch mode
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

@@ -1,17 +1,25 @@
 
-import sys,array,math,os,copy,shutil,decimal
+import array
+import copy
+import decimal
 import json
+import math
+import os
+import shutil
+import sys
 
 import ROOT
+
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
-import narf
 import hist
 import numpy as np
-from wremnants.datasets import datagroups
+
+import narf
 from utilities import boostHistHelpers as hh
+from wremnants.datasets import datagroups
 
 
 def loadJSON(jsIn):

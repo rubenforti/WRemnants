@@ -1,9 +1,12 @@
-from collections import OrderedDict
-from utilities import boostHistHelpers as hh
-import narf
 import logging
+from collections import OrderedDict
+
 import hist
 import numpy as np
+
+import narf
+from utilities import boostHistHelpers as hh
+
 
 def processDict():
     procs = OrderedDict(

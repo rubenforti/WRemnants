@@ -2,22 +2,24 @@
 
 # to get TH2 histograms for weights vs vertex z and pileup
 
-import os, re
 import argparse
+import os
+import re
+import sys
 from array import array
 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from utilities import common
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+from utilities import common
 
 ROOT.gStyle.SetOptStat(0)
 ROOT.TH1.SetDefaultSumw2()

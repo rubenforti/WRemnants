@@ -1,9 +1,11 @@
-import ROOT
 import pathlib
-import hist
-import narf
-import numpy as np
+
 import boost_histogram as bh
+import hist
+import numpy as np
+import ROOT
+
+import narf
 from utilities import common, logging
 
 logger = logging.child_logger(__name__)

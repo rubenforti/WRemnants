@@ -1,13 +1,14 @@
-from utilities import logging
-import argparse 
-import uproot
-import re
+import argparse
 import os
+import pdb
+import re
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import uproot
 
-import pdb
+from utilities import logging
 
 mpl.rcParams.update({
     "legend.fontsize" : "medium",

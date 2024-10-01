@@ -1,38 +1,44 @@
 #!/usr/bin/env python3
 
-import os, re, array, math
 import argparse
-from copy import *
-
+import array
 import itertools
-import numpy as np
-import tensorflow as tf
-import hist
-import boost_histogram as bh
-import narf
-import narf.fitutils
+import math
+import os
 import pickle
-import lz4.frame
-import time
-from functools import partial
-from scipy.interpolate import RegularGridInterpolator
-from utilities import boostHistHelpers as hh, common, logging
-from utilities.io_tools import output_tools
-
+import re
 ## safe batch mode
 import sys
+import time
+from copy import *
+from functools import partial
+
+import boost_histogram as bh
+import hist
+import lz4.frame
+import numpy as np
+import tensorflow as tf
+from scipy.interpolate import RegularGridInterpolator
+
+import narf
+import narf.fitutils
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
+import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 
-import wremnants
 logger = logging.setup_logger(__file__, 3, False)
 
 # TODO: might move this function to a common efficiency_util.py script

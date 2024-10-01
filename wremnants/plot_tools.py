@@ -1,26 +1,30 @@
-import pathlib
-import mplhep as hep
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import patches, ticker
-from matplotlib.patches import Polygon
-from matplotlib.lines import Line2D
-from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
-from matplotlib.legend_handler import HandlerLine2D
-from utilities import boostHistHelpers as hh,common,logging
-from utilities.io_tools import output_tools
-import hist
-import math
-import numpy as np
-import re
-import os
-import shutil
-import sys
 import datetime
 import json
-import narf 
+import math
+import os
+import pathlib
+import re
+import shutil
 import socket
+import sys
 import textwrap
+
+import hist
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import mplhep as hep
+import numpy as np
+from matplotlib import patches, ticker
+from matplotlib.legend_handler import HandlerLine2D
+from matplotlib.lines import Line2D
+from matplotlib.patches import Polygon
+from matplotlib.ticker import \
+    StrMethodFormatter  # for setting number of decimal places on tick labels
+
+import narf
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
 
 hep.style.use(hep.style.ROOT)
 

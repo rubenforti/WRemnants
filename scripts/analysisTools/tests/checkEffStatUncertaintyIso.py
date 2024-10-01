@@ -2,18 +2,20 @@
 
 # study isolation efficiency and antiisolation one, focusing on stat uncertainty and how to correlated them
 
-import re
-import os, os.path
-import logging
 import argparse
-import shutil
+import logging
 import math
-
+import os
+import os.path
+import re
+import shutil
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

@@ -1,11 +1,13 @@
-import hist
-import pathlib
 import argparse
-import numpy as np
 import os
-from utilities import logging
-from enum import Enum
+import pathlib
 import re
+from enum import Enum
+
+import hist
+import numpy as np
+
+from utilities import logging
 
 base_dir = f"{pathlib.Path(__file__).parent}/../"
 wremnants_dir = f"{pathlib.Path(__file__).parent}/../wremnants"
@@ -314,7 +316,7 @@ def common_parser(analysis_label=""):
     ROOT.ROOT.EnableImplicitMT(max(0,initargs.nThreads))
     import narf
     import wremnants
-    from wremnants import theory_corrections,theory_tools
+    from wremnants import theory_corrections, theory_tools
 
     class PDFFilterAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):

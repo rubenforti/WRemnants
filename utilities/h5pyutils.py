@@ -1,5 +1,7 @@
-import numpy as np
 import math
+
+import numpy as np
+
 
 def writeFlatInChunks(arr, h5group, outname, maxChunkBytes = 1024**2):    
     arrflat = arr.reshape(-1)

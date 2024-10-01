@@ -1,19 +1,20 @@
-import ROOT
 import pathlib
-import hist
-import narf
-from utilities import rdf_tools
-from utilities import common, logging
-from utilities import boostHistHelpers as hh
-import uproot
-import numpy as np
-import scipy
+import pickle
+import time
 import warnings
 from functools import reduce
-import narf.tfliteutils
-import time
+
+import hist
 import lz4.frame
-import pickle
+import numpy as np
+import ROOT
+import scipy
+import uproot
+
+import narf
+import narf.tfliteutils
+from utilities import boostHistHelpers as hh
+from utilities import common, logging, rdf_tools
 
 logger = logging.child_logger(__name__)
 

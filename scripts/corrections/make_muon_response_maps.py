@@ -1,15 +1,17 @@
-import narf
-import narf.fitutils
+import math
+
 import h5py
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import tensorflow as tf
 import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
-import narf.tfutils
-import math
 
-import matplotlib as mpl
+import narf
+import narf.fitutils
+import narf.tfutils
+
 mpl.rcParams['figure.dpi'] = 300
 
 

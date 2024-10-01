@@ -1,4 +1,5 @@
-from utilities.common import xsec_ZmmPostVFP,xsec_WpmunuPostVFP,xsec_WmmunuPostVFP
+from utilities.common import (xsec_WmmunuPostVFP, xsec_WpmunuPostVFP,
+                              xsec_ZmmPostVFP)
 
 # winhac cross sections from: https://gitlab.cern.ch/cms-wmass/private/issue-tracking/-/issues/34#note_7052239
 xsec_winhac_WplusToMuNu_LO = 10104.50380

@@ -1,15 +1,16 @@
-import mplhep as hep
-import matplotlib.pyplot as plt
+import pdb
+
 import matplotlib as mpl
-from utilities import logging, common
+import matplotlib.pyplot as plt
+import mplhep as hep
+import numpy as np
+import pandas as pd
+
+from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.io_tools.combinetf_input import get_fitresult
 from wremnants import plot_tools
 
-import pandas as pd
-import numpy as np
-
-import pdb
 
 def get_mass_obs(filename):
     fitresult = get_fitresult(filename)

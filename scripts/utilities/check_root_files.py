@@ -5,19 +5,20 @@
 
 import argparse
 import os
-import sys
 import re
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from utilities import logging
+
 
 def isBadRootFile(fname, checkTree=True, treeName="Events"):
     try:

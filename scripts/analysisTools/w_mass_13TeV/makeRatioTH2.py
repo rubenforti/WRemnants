@@ -34,15 +34,18 @@
 ################################
 
 
-import os, array, math
 import argparse
-from copy import *
-
+import array
+import math
+import os
 ## safe batch mode
 import sys
+from copy import *
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

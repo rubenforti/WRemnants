@@ -1,16 +1,18 @@
-import hist
-from utilities import logging
-import numpy as np
-import os
+import itertools
 import json
-import hdf5plugin
+import os
+import re
+
 import h5py
-from narf import ioutils
+import hdf5plugin
+import hist
+import numpy as np
+import pandas as pd
 import ROOT
 import uproot
-import pandas as pd
-import itertools
-import re
+
+from narf import ioutils
+from utilities import logging
 
 logger = logging.child_logger(__name__)
 

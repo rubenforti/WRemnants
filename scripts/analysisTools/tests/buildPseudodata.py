@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
 
 # quick script to build a pseudodata histogram summing whatever you need for tests
-import os, re, array, math
-import time
 import argparse
+import array
+import math
+import os
+import pickle
+import re
+## safe batch mode                                 
+import sys
+import time
+
+import hist
+import lz4.frame
 
 import narf
 import wremnants
-import hist
-import lz4.frame, pickle
+from utilities import boostHistHelpers as hh
+from utilities import common
 from wremnants import histselections as sel
 
-from utilities import boostHistHelpers as hh,common
-## safe batch mode                                 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -24,7 +31,8 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
 
 ## Dictionary with info to build pseudodata
 # file is the file to read from

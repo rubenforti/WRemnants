@@ -1,28 +1,36 @@
 import argparse
-from utilities import common, rdf_tools, logging, differential
-from utilities.io_tools import output_tools
-from utilities.common import background_MCprocs as bkgMCprocs,data_dir
-from wremnants.datasets.datagroups import Datagroups
 import os
+
+from utilities import common, differential, logging, rdf_tools
+from utilities.common import background_MCprocs as bkgMCprocs
+from utilities.common import data_dir
+from utilities.io_tools import output_tools
+from wremnants.datasets.datagroups import Datagroups
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)
 
-import ROOT
-import narf
-import wremnants
-from wremnants import (helicity_utils, theory_tools, syst_tools,theory_corrections, muon_calibration, muon_prefiring, muon_selections, 
-                       muon_efficiencies_binned, muon_efficiencies_smooth, muon_validation, unfolding_tools, theoryAgnostic_tools, pileup, vertex)
-from wremnants.histmaker_tools import scale_to_data, aggregate_groups
-from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
+import math
+import pathlib
+import time
+
 import hist
 import lz4.frame
-import math
-import time
-from utilities import common,boostHistHelpers as hh
-import pathlib
 import numpy as np
+import ROOT
+
+import narf
+import wremnants
+from utilities import boostHistHelpers as hh
+from utilities import common
+from wremnants import (helicity_utils, muon_calibration,
+                       muon_efficiencies_binned, muon_efficiencies_smooth,
+                       muon_prefiring, muon_selections, muon_validation,
+                       pileup, syst_tools, theory_corrections, theory_tools,
+                       theoryAgnostic_tools, unfolding_tools, vertex)
+from wremnants.datasets.dataset_tools import getDatasets
+from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
+from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 
 parser.add_argument("--lumiUncertainty", type=float, help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%)", default=1.012)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
@@ -57,9 +65,11 @@ if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 
 if args.useRefinedVeto:
-    from wremnants.muon_efficiencies_newVeto import make_muon_efficiency_helpers_newVeto
+    from wremnants.muon_efficiencies_newVeto import \
+        make_muon_efficiency_helpers_newVeto
 else:
-    from wremnants.muon_efficiencies_veto    import make_muon_efficiency_helpers_veto
+    from wremnants.muon_efficiencies_veto import \
+        make_muon_efficiency_helpers_veto
 
 isUnfolding = args.analysisMode == "unfolding"
 isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]

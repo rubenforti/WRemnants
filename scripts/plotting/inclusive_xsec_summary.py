@@ -2,26 +2,22 @@
 # make a summary plot with different theory predictions
 # make a latex summary table with the breakdown of uncertainties 
 
-from wremnants import plot_tools
-
-from utilities import common, logging
-from utilities.io_tools import output_tools, combinetf_input, conversion_tools, tex_tools
-
-from utilities.styles.styles import nuisance_groupings
-
-from narf import ioutils
-
+import json
 import math
+import pdb
 
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import mplhep as hep
 import numpy as np
 import pandas as pd
-import json
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import mplhep as hep
-
-import pdb
+from narf import ioutils
+from utilities import common, logging
+from utilities.io_tools import (combinetf_input, conversion_tools,
+                                output_tools, tex_tools)
+from utilities.styles.styles import nuisance_groupings
+from wremnants import plot_tools
 
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")

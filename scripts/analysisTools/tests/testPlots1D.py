@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 
-from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
-#from wremnants import plot_tools,theory_tools,syst_tools
-from utilities import boostHistHelpers as hh,common, logging
+import argparse
+import logging
+import os
+import re
+import shutil
+## safe batch mode
+import sys
+
+import hist
+import lz4.frame
+import numpy as np
 
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections
-import hist
-
-import numpy as np
+#from wremnants import plot_tools,theory_tools,syst_tools
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import input_tools
+from wremnants import histselections as sel
+from wremnants import syst_tools, theory_corrections, theory_tools
+from wremnants.datasets.datagroups import Datagroups
 
-import lz4.frame
-
-import argparse
-import os
-import shutil
-import logging
-import re
-
-## safe batch mode
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -35,7 +35,9 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
+
 
 def plotDistribution2D(args, groups, datasets, histname, outdir, canvas2Dshapes=None,
                        xAxisName="x axis", yAxisName="y axis", zAxisName="Events",

@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 
-import os, datetime, re, operator, math
 import argparse
+import datetime
+import math
+import operator
+import os
+import re
 import shutil
-
-from utilities import logging
+## safe batch mode
+import sys
 from array import array
 from copy import *
 
-## safe batch mode
-import sys
+from utilities import logging
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

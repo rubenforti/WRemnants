@@ -2,24 +2,27 @@
 
 # to check if SF Up/Down variations are effectively the mirrored image of each other wrt to the nominal
 
-import re
-import os, os.path
-import logging
 import argparse
+import logging
+import os
+import os.path
+import re
 import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from copy import *
-from scripts.analysisTools.plotUtils.utility import *
+
 import wremnants
+from scripts.analysisTools.plotUtils.utility import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -10,15 +10,19 @@
 #
 # python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/  -c "plus,minus" --fit-single-charge [--skip-fit-data]
 
-import os, re, copy, math, array
-
 import argparse
-
+import array
+import copy
+import math
+import os
+import re
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

@@ -4,44 +4,49 @@
 # currently: reco*tracking*idip
 # uncertainties on idip could be neglected
 
-import os, re, array, math
 import argparse
+import array
+import math
+import os
+import pickle
+import re
+import time
 from copy import *
+from functools import partial
 
+import boost_histogram as bh
+import hist
+import lz4.frame
 import numpy as np
 import tensorflow as tf
-import hist
-import boost_histogram as bh
-import narf
-import narf.fitutils
-import pickle
-import lz4.frame
-import time
-from utilities import boostHistHelpers as hh
-
-from functools import partial
+import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
 
+import narf
+import narf.fitutils
+from utilities import boostHistHelpers as hh
 from utilities import common
 
-import utilitiesCMG
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
-from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
-
 import wremnants
+from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
+    makeAntiSFfromSFandEffi
+
 
 def getHistWithStatUncBand(hsf):
     # hsf has axis "nomi-statUpDown-syst"

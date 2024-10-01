@@ -1,5 +1,6 @@
-import narf
 import ROOT
+
+import narf
 
 narf.clingutils.Declare('#include "theory_corrections.h"')
 

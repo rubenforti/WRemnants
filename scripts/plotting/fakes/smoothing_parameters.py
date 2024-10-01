@@ -1,14 +1,13 @@
-from utilities import logging, common
+import matplotlib as mpl
+import numpy as np
+
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.styles import styles
-from utilities import boostHistHelpers as hh
-
+from wremnants import histselections as sel
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
-
-import numpy as np
-import matplotlib as mpl
 
 
 def plot_params(h, params, params_err, label=None, suffix="", proc=""):

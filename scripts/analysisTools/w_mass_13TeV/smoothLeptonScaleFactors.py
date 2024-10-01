@@ -16,43 +16,47 @@
 # --> a summary of bad fits (if any) is printed on stdout for each step, but also in a txt file for easier check
 #     when running multiple steps in series. For the smoothing to make sense, status and covstatus MUST be 0 for all fits
 
-import os, re, array, math
 import argparse
+import array
+import math
+import os
+import pickle
+import re
 from copy import *
+from functools import partial
 
+import boost_histogram as bh
+import hist
+import lz4.frame
 import numpy as np
 import tensorflow as tf
-import hist
-import boost_histogram as bh
-import narf
-import narf.fitutils
-import pickle
-import lz4.frame
-
-from functools import partial
+import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
 
+import narf
+import narf.fitutils
 from utilities import common
 
-import utilitiesCMG
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
+import wremnants
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
-from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
-
-import wremnants
+from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
+    makeAntiSFfromSFandEffi
 
 # for a quick summary at the end
 badFitsID_data = {}

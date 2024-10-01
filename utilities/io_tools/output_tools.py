@@ -1,18 +1,20 @@
-import string
-import os
-import sys 
-import subprocess
-import time
-import hdf5plugin
-import h5py
-import narf
-import numpy as np
-from utilities import common, logging
 import glob
-import shutil
-import lz4.frame
+import os
 import pickle
+import shutil
+import string
+import subprocess
+import sys
 import tempfile
+import time
+
+import h5py
+import hdf5plugin
+import lz4.frame
+import numpy as np
+
+import narf
+from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 

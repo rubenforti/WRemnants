@@ -1,10 +1,13 @@
 import argparse
-from utilities import common, boostHistHelpers as hh
-from utilities.io_tools import input_tools, output_tools, combinetf2_input
-from wremnants import syst_tools,plot_tools
+import pickle
+
 import hist
 import numpy as np
-import pickle
+
+from utilities import boostHistHelpers as hh
+from utilities import common
+from utilities.io_tools import combinetf2_input, input_tools, output_tools
+from wremnants import plot_tools, syst_tools
 
 parser = common.plot_parser()
 parser.add_argument("--unfolded", type=str, required=False)

@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 
-from shutil import copyfile
-import re, sys, os, os.path, subprocess, json, ROOT
-import numpy as np
 import argparse
+import json
+import os
+import os.path
+import re
+import subprocess
+import sys
+from shutil import copyfile
+
+import numpy as np
+import ROOT
 
 parser = argparse.ArgumentParser()
 parser.add_argument("inputfile", type=str, nargs=1, help="Input root file");

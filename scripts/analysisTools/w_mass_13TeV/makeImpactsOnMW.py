@@ -12,27 +12,34 @@
 # only efficiency subgroups
 # python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_efficiencySplit -x ".*" -k ".*eff_(all|stat|syst)" --margin 0.45,0.12,0.1,0.1
 
-import os, datetime, re, operator, math
 import argparse
+import datetime
+import math
+import operator
+import os
+import re
 import shutil
-
-from utilities import logging
+## safe batch mode
+import sys
 from array import array
 from copy import *
 
-## safe batch mode
-import sys
+from utilities import logging
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 import utilitiesCMG
+
 utilities = utilitiesCMG.util()
 
 from scripts.analysisTools.plotUtils.utility import *
+
 
 def getBetterLabel(k, isWlike):
     if k == "binByBinStat":

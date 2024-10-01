@@ -1,10 +1,13 @@
 
-import ROOT
-import functions
-import plotter
-import hist as bh
-import narf
 import math
+
+import functions
+import hist as bh
+import plotter
+import ROOT
+
+import narf
+
 
 def stacked_plot_ratio(groups, hName, procs, outDir, suffix="", xMin=0, xMax=100, yMin=0, yMax=-1.75, xLabel="xLabel", yLabel="Events", logX=False, logY=False, rebin=1, legPos=[], yRatio=1.15, blind=False, dataNormProc="", labels=[], charge=None, extraRatios=[], fakes_scalefactor=1.0):
 

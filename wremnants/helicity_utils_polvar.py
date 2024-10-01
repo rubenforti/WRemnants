@@ -1,20 +1,19 @@
-import ROOT
 import pathlib
-import hist
-import narf
-import narf.clingutils
-import boost_histogram as bh
-import uproot
-import pathlib
-import hist
 import pickle
-import lz4.frame
-import numpy as np
+
+import boost_histogram as bh
 import h5py
 import hdf5plugin
+import hist
+import lz4.frame
+import numpy as np
+import ROOT
+import uproot
 
-from utilities import common, logging
+import narf
+import narf.clingutils
 from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)

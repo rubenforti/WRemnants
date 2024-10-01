@@ -1,23 +1,24 @@
-import uproot
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-import pandas as pd
 import argparse
-import dash
-from dash import dcc
-import dash_daq as daq
-from dash import html
-from dash.dependencies import Input, Output
-from utilities import logging
-from utilities.io_tools import input_tools, output_tools, combinetf_input, conversion_tools
-from wremnants import plot_tools
+import json
 import os
 import re
-import json
-from narf import ioutils
 
+import dash
+import dash_daq as daq
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import uproot
+from dash import dcc, html
+from dash.dependencies import Input, Output
+from plotly.subplots import make_subplots
+
+from narf import ioutils
+from utilities import logging
+from utilities.io_tools import (combinetf_input, conversion_tools, input_tools,
+                                output_tools)
 from utilities.styles.styles import nuisance_groupings as groupings
+from wremnants import plot_tools
 
 logger = logging.child_logger(__name__)
 

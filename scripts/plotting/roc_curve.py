@@ -1,22 +1,23 @@
-from utilities import logging, common
-from utilities.io_tools import output_tools
-from utilities.styles import styles
-from utilities import boostHistHelpers as hh
-
-from wremnants import plot_tools
-from wremnants import histselections as sel
-from wremnants.datasets.datagroups import Datagroups
+import pdb
 
 import hist
-import numpy as np
 import matplotlib as mpl
+import numpy as np
+
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
+from utilities.styles import styles
+from wremnants import histselections as sel
+from wremnants import plot_tools
+from wremnants.datasets.datagroups import Datagroups
+
 # from matplotlib import pyplot as plt
 # import mplhep as hep
 # import uncertainties as unc
 # import uncertainties.unumpy as unp
 # from scipy import stats
 
-import pdb
 
 def distance_point_to_line(p1, p2, points):
     # p1, p2 are each an array of one point, points can be an array of multiple points

@@ -1,16 +1,15 @@
-from utilities import logging, common
-from utilities.io_tools import output_tools
-from utilities.styles import styles
-from utilities import boostHistHelpers as hh
-
-from wremnants import plot_tools
-from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
-
 import hist
-import numpy as np
 import matplotlib as mpl
 import mplhep as hep
+import numpy as np
+
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import output_tools
+from utilities.styles import styles
+from wremnants import histselections as sel
+from wremnants import plot_tools
+from wremnants.datasets.datagroups import Datagroups
 
 
 def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc="", ylabel="a.u.", smoothing_mode="binned", normalized=False, bootstrap=False):

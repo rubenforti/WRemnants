@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-import os
 import argparse
-
+import os
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -16,6 +17,7 @@ sys.path.append(os.getcwd() + "/plotUtils/")
 from utility import *
 
 import wremnants
+
 
 def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,
                       smoothFunction="pol3", suffix=None,

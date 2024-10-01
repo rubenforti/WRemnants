@@ -1,13 +1,15 @@
-from utilities import logging, common
+import math
+
+import hist
+import matplotlib as mpl
+import mplhep as hep
+import numpy as np
+
+from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 
-import numpy as np
-import matplotlib as mpl
-import hist
-import math
-import mplhep as hep
 
 # harmonic polynomials
 def p0(theta, phi):

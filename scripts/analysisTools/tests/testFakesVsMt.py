@@ -8,27 +8,32 @@
 #       so one has to use it based on the input pkl file in order for the validation to be consistent (even though
 #       the derivation of the correction is still well defined, since a different histogram is used to compute it)
 
-import os, re, array, math
-import time
 import argparse
+import array
+import math
+import os
+import pickle
+import re
+## safe batch mode                                 
+import sys
+import time
+
+import hist
+import lz4.frame
+import numpy as np
 
 import narf
 import narf.fitutils
 import wremnants
-import hist
-import lz4.frame, pickle
-from wremnants.datasets.datagroups import Datagroups
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from wremnants import legacy_functions as sel
+from wremnants.datasets.datagroups import Datagroups
 
-import numpy as np
-
-from utilities import boostHistHelpers as hh, common, logging
-
-## safe batch mode                                 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -36,9 +41,9 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-
 #sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
 from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 
 # will use as input the histogram mTStudyForFakes with eta-pt-charge-mt-passIso-hasJet, where mt is the full distribution

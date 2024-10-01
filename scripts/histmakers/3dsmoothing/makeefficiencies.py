@@ -1,10 +1,12 @@
 import logging
-import lz4.frame
 import pickle
-import hdf5plugin
+
 import h5py
-import narf
+import hdf5plugin
+import lz4.frame
 import ROOT
+
+import narf
 
 #FIRST STEP IN EFFICIENCY CREATION
 

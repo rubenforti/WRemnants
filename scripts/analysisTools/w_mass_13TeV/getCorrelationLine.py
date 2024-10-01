@@ -2,23 +2,27 @@
 
 # python w-helicity-13TeV/getCorrelationLine.py cards/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/fit/hessian/fitresults_123456789_Asimov_combinedLep_bbb1_cxs1.root -o plots/diffXsecAnalysis/muon/diffXsec_mu_2019_04_09_newSystAndWtau_fixTriSF/getCorrelationLine/ -p CMS_Wmu_sig_lepeff -m sumpoisnorm -n 50
 
-import os, re, operator, math
 import argparse
 import datetime
-
+import math
+import operator
+import os
+import re
 from array import array
-
 #from subMatrix import niceName # skip for now, have to adapt the script
 from operator import itemgetter
 
 import utilitiesCMG
+
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

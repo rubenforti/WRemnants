@@ -1,7 +1,7 @@
 import ROOT
-from wremnants import muon_calibration
-from wremnants import theory_tools
+
 from utilities import common, logging
+from wremnants import muon_calibration, theory_tools
 
 logger = logging.child_logger(__name__)
 

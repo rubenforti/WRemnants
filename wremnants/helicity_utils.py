@@ -1,21 +1,21 @@
-import ROOT
 import pathlib
-import hist
-import narf.clingutils
-import uproot
-import pathlib
-import hist
 import pickle
-import lz4.frame
-from wremnants.correctionsTensor_helper import makeCorrectionsTensor
-from wremnants.theory_tools import helicity_xsec_to_angular_coeffs
-from utilities import common, logging
-from utilities import boostHistHelpers as hh
-from utilities.io_tools import input_tools
-import numpy as np
+
 import h5py
 import hdf5plugin
+import hist
+import lz4.frame
+import numpy as np
+import ROOT
+import uproot
+
 import narf
+import narf.clingutils
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import input_tools
+from wremnants.correctionsTensor_helper import makeCorrectionsTensor
+from wremnants.theory_tools import helicity_xsec_to_angular_coeffs
 
 logger = logging.child_logger(__name__)
 

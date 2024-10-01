@@ -1,8 +1,9 @@
-import os
-from utilities import logging
-import argparse 
-import itertools
+import argparse
 import glob
+import itertools
+import os
+
+from utilities import logging
 
 logger = logging.setup_logger(__file__, 3, True)
 

@@ -3,17 +3,21 @@
 # create dummy histogram with 1 bin changing number of events and event weight, and run expected fit with data or data+MC stat only
 # currently works only after creating singularity image with cmssw-cc7, to use cmsenv from the combine fit
 
-import os, re, array, math
 import argparse
+import array
+import math
+import os
+import re
 import string
+## safe batch mode
+import sys
 
 import numpy as np
 
-## safe batch mode
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

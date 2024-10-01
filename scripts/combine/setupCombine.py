@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-from wremnants import CardTool,combine_helpers, combine_theory_helper, combine_theoryAgnostic_helper, HDF5Writer, syst_tools, theory_corrections
-from wremnants.regression import Regressor
-from wremnants.histselections import FakeSelectorSimpleABCD
-from wremnants.syst_tools import massWeightNames
-from wremnants.datasets.datagroups import Datagroups
-
-from utilities import common, logging, boostHistHelpers as hh
-from utilities.io_tools import input_tools
 import argparse
-import hist
-import math, copy
+import copy
+import math
+
 import h5py
-import narf.ioutils
-import narf.combineutils
+import hist
 import numpy as np
+
+import narf.combineutils
+import narf.ioutils
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.io_tools import input_tools
+from wremnants import (CardTool, HDF5Writer, combine_helpers,
+                       combine_theory_helper, combine_theoryAgnostic_helper,
+                       syst_tools, theory_corrections)
+from wremnants.datasets.datagroups import Datagroups
+from wremnants.histselections import FakeSelectorSimpleABCD
+from wremnants.regression import Regressor
+from wremnants.syst_tools import massWeightNames
+
 
 def make_subparsers(parser):
 

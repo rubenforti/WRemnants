@@ -1,16 +1,18 @@
 
-import sys,argparse
+import argparse
+import sys
 
 import ROOT
+
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
 import functions
 import plotutils
+
 import narf
 import wremnants.histselections as sel
-
 from wremnants.datasets import datagroups
 
 if __name__ == "__main__":

@@ -1,15 +1,17 @@
-import uproot
-import hist
 import argparse
-from wremnants import plot_tools,theory_tools
+import logging
+import os
+import pickle
+
+import hist
+import lz4.frame
+import matplotlib.pyplot as plt
+import uproot
+from matplotlib import cm
+
 from utilities import boostHistHelpers as hh
 from utilities.io_tools import input_tools
-import pickle
-import lz4.frame
-import os
-from matplotlib import cm
-import matplotlib.pyplot as plt
-import logging
+from wremnants import plot_tools, theory_tools
 
 logging.basicConfig(level=logging.INFO)
 

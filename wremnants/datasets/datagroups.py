@@ -1,22 +1,24 @@
-from utilities import boostHistHelpers as hh,common,logging
+import functools
+import itertools
+import math
+import os
+import pickle
+import re
+
+import h5py
+import hist
+import lz4.frame
+import numpy as np
+import pandas as pd
+import ROOT
+
+import narf
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from utilities.io_tools import input_tools
 from utilities.styles import styles
-import lz4.frame
-import pickle
-import h5py
-import narf
-import ROOT
-import re
-import os
-import itertools
-import functools
-import hist
-import pandas as pd
-import math
-import numpy as np
-
-from wremnants.datasets.datagroup import Datagroup
 from wremnants import histselections as sel
+from wremnants.datasets.datagroup import Datagroup
 
 logger = logging.child_logger(__name__)
 
@@ -73,10 +75,12 @@ class Datagroups(object):
         self.setGenAxes()
 
         if "lowpu" in self.mode:
-            from wremnants.datasets.datagroupsLowPU import make_datagroups_lowPU as make_datagroups
+            from wremnants.datasets.datagroupsLowPU import \
+                make_datagroups_lowPU as make_datagroups
             self.era = "2017H"
         else:
-            from wremnants.datasets.datagroups2016 import make_datagroups_2016 as make_datagroups
+            from wremnants.datasets.datagroups2016 import \
+                make_datagroups_2016 as make_datagroups
             self.era = "2016postVFP"
 
         make_datagroups(self, **kwargs)

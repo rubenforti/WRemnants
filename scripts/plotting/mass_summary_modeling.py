@@ -1,10 +1,12 @@
 import argparse
-from utilities.io_tools import combinetf_input,output_tools
-from utilities import common
-from wremnants import plot_tools,theory_tools
+
 import matplotlib.pyplot as plt
-from matplotlib import ticker
 import pandas as pd
+from matplotlib import ticker
+
+from utilities import common
+from utilities.io_tools import combinetf_input, output_tools
+from wremnants import plot_tools, theory_tools
 
 parser = argparse.ArgumentParser()
 parser = common.plot_parser()

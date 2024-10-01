@@ -10,37 +10,35 @@
 #python scripts/analysisTools/w_mass_13TeV/makeVertexStudy.py /scratch/mciprian/CombineStudies/vertexStudy/mw_TEST_scetlib_dyturboCorr_ZdileptonSelection.hdf5 scripts/analysisTools/plots/fromMyWremnants/vertexStudy/testNew/Zmumu_dilepton/ -n vertexStudyHisto_noCut vertexStudyHisto_vetoMuon vertexStudyHisto_goodMuon vertexStudyHisto_fullSelNoMT --dzCut 0.1 -v 4 -p ZmumuPostVFP --Zdilepton
 
 
-from wremnants import histselections as sel
+import argparse
+import os
+import pickle
+import re
+import shutil
+## safe batch mode
+import sys
+
+import boost_histogram as bh
+import h5py
+import hdf5plugin
+import hist
+import lz4.frame
+import numpy as np
+
+import narf
+import wremnants
+from narf import ioutils
 #from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
+from wremnants import histselections as sel
+from wremnants import syst_tools, theory_corrections, theory_tools
 
-import narf
-from narf import ioutils
-import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections
-import hist
-import boost_histogram as bh
-
-import hdf5plugin
-import h5py
-
-import numpy as np
-
-import pickle
-import lz4.frame
-
-import argparse
-import os
-import shutil
-import re
-
-## safe batch mode
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -50,7 +48,8 @@ from copy import *
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import plotPrefitHistograms
+from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import \
+    plotPrefitHistograms
 
 sys.path.append(os.getcwd())
 

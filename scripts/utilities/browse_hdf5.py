@@ -2,18 +2,20 @@
 
 import argparse
 import os
+import pickle
 import sys
 
-import lz4.frame
-import pickle
-import hist
-from utilities import boostHistHelpers as hh, logging
+import h5py
 #import wremnants
 import hdf5plugin
-import h5py
+import hist
+import lz4.frame
+import ROOT
+
 import narf
 from narf import ioutils
-import ROOT
+from utilities import boostHistHelpers as hh
+from utilities import logging
 from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)

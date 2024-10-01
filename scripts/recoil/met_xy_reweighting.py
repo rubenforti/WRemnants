@@ -1,16 +1,19 @@
 
-import sys,argparse
+import argparse
+import sys
 
 import ROOT
+
 ROOT.gROOT.SetBatch(True)
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
 import functions
 import plotter
-import narf
 
+import narf
 from wremnants.datasets import datagroups
+
 
 def makePlot(hist_data, hist_mc, fOut, xLabel, npv, outDir_):
 

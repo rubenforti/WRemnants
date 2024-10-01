@@ -1,18 +1,18 @@
-import ROOT
-import hist
-import numpy as np
+import array
 import copy
-import logging
-import sys
 import decimal
 import json
+import logging
 import os
-import array
-from utilities import common as common
-from utilities.io_tools import input_tools
+import sys
 
+import hist
+import numpy as np
+import ROOT
 import tensorflow as tf
 
+from utilities import common as common
+from utilities.io_tools import input_tools
 
 ROOT.gInterpreter.Declare('#include "recoil_tools.h"')
 ROOT.gInterpreter.Declare('#include "recoil_helper.h"')

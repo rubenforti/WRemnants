@@ -1,18 +1,20 @@
-from wremnants.combine_helpers import projectABCD
-from utilities import boostHistHelpers as hh, common, logging
-from utilities.io_tools import output_tools, combinetf_input
-
-import time
-import numpy as np
-import hist
-import h5py
-from utilities.h5pyutils import writeFlatInChunks, writeSparse
 import math
-import pandas as pd
 import os
-import narf
 import re
+import time
 from collections import defaultdict
+
+import h5py
+import hist
+import numpy as np
+import pandas as pd
+
+import narf
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
+from utilities.h5pyutils import writeFlatInChunks, writeSparse
+from utilities.io_tools import combinetf_input, output_tools
+from wremnants.combine_helpers import projectABCD
 
 logger = logging.child_logger(__name__)
 

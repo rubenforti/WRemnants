@@ -1,9 +1,12 @@
 
-import sys,argparse
+import argparse
 import pickle
-import wremnants.datasets.datagroups as datagroups
+import sys
 
 import functions
+
+import wremnants.datasets.datagroups as datagroups
+
 
 def readProc(groups, hName, procs):
     groups.setNominalName(hName)

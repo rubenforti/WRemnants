@@ -1,13 +1,15 @@
+import argparse
+import os
+import pathlib
+
+import hist
+import matplotlib.pyplot as plt
 import numpy as np
-from wremnants import plot_tools, theory_corrections, theory_tools
+
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-import pathlib
-import hist
-import argparse
-import os
-import matplotlib.pyplot as plt
+from wremnants import plot_tools, theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--minnlo_file", type=str, default="w_z_gen_dists.pkl.lz4", help="MiNNLO gen file, denominator in ratio") 

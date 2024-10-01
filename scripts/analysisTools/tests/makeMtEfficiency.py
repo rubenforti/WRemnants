@@ -2,30 +2,36 @@
 
 # python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_lowIso_plus/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_highIso_plus/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_lowIso_plus_1morejet/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus --invertmt;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_highIso_plus_1morejet/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus --invertmt
 
-# take mT distributions and check S/B for different mT cuts (ideally done for low isolation region without mT cuts)
-import os, os.path, re, array, math
-import time
 import argparse
-import shutil
+import array
 import ctypes
+import math
+# take mT distributions and check S/B for different mT cuts (ideally done for low isolation region without mT cuts)
+import os
+import os.path
+import pickle
+import re
+import shutil
+## safe batch mode                                 
+import sys
+import time
+
+import hist
+import lz4.frame
+import numpy as np
 
 import narf
 import narf.fitutils
 import wremnants
-import hist
-import lz4.frame, pickle
-from wremnants.datasets.datagroups2016 import make_datagroups_2016
+from utilities import boostHistHelpers as hh
+from utilities import common, logging
 from wremnants import histselections as sel
+from wremnants.datasets.datagroups2016 import make_datagroups_2016
 
-import numpy as np
-
-from utilities import boostHistHelpers as hh, common, logging
-
-## safe batch mode                                 
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -33,7 +39,8 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
 
 if __name__ == "__main__":
 

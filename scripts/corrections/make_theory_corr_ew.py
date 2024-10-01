@@ -1,14 +1,16 @@
+import argparse
+import os
+import pdb
+
+import h5py
+import hist
 import numpy as np
-from wremnants import theory_corrections, theory_tools
+
+import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-import hist
-import argparse
-import os
-import h5py
-import narf
-import pdb
+from wremnants import theory_corrections, theory_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", nargs="+", type=str, default=["w_z_gen_dists_scetlib_dyturboCorr_ewinput.hdf5"], help="File containing EW hists")

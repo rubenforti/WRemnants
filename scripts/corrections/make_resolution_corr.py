@@ -1,15 +1,17 @@
-import wremnants
-import narf
-import numpy as np
-import scipy
-import ROOT
-import hist
-import matplotlib.pyplot as plt
 import pickle
+
+import hist
 import lz4
 import lz4.frame
-
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import ROOT
+import scipy
+
+import narf
+import wremnants
+
 mpl.rcParams['figure.dpi'] = 300
 
 fnamedata = f"{wremnants.data_dir}/calibration/sigmaDATA_LBL_JYZ.root"
