@@ -11,6 +11,11 @@ Activate git Large File Storage (only need to do this once for a given user/home
 ```
 git lfs install
 ```
+
+Activate git pre-commit hooks (only need to do this once for a given repository)
+```
+git config core.hooksPath .githooks
+```
     
 Get the code (after forking from the central WMass repository)
 ```bash
