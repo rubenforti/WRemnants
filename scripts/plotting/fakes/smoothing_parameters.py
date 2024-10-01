@@ -15,8 +15,8 @@ def plot_params(h, params, params_err, label=None, suffix="", proc=""):
     logger.info(f"Min(chi2)={params.min()}; Max(chi2)={params.max()}")
     logger.info(f"Mean(chi2)={params.mean()}; std(chi2)={params.std()}")
 
-    p_mean_label = f"$\mu = {round(params.mean(), 1)}$"
-    p_std_label = f"$\sigma = {round(params.std(), 1)}$"
+    p_mean_label = fr"$\mu = {round(params.mean(), 1)}$"
+    p_std_label = fr"$\sigma = {round(params.std(), 1)}$"
 
     as_histogram=False
 

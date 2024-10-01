@@ -85,7 +85,7 @@ def getHistograms(inputfile):
         # start integrating
         hnarf = hnarf[{"eta" : s[::hist.sum],
                        "pt" : s[0:hist.len:hist.sum], # make sure to remove overflow here, we often don't cut on pt
-                       "hasJets": s[::hist.sum]
+                       "hasJets": s[::hist.sum]}]
 
 
     # read histograms

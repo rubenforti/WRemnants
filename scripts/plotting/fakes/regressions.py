@@ -31,15 +31,15 @@ def plot_chi2(chi2, ndf, suffix=""):
     logger.info(f"Mean(chi2)={chi2_flat.mean()}; std(chi2)={chi2_flat.std()}")
     logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {p_total}%)")
 
-    chi2label=f"$\\chi^2/\\mathrm{{ndf}} = {round(chi2_total,0)}/{ndf_total}$"
-    plabel=f"$p={p_total}\%$"
+    chi2label=fr"$\\chi^2/\\mathrm{{ndf}} = {round(chi2_total,0)}/{ndf_total}$"
+    plabel=fr"$p={p_total}\%$"
 
     chi2_flat[chi2_flat>xlim[1]] = xlim[1]-0.1
 
     colors = mpl.colormaps["tab10"]
 
     fig, ax1, ax2 = plot_tools.figureWithRatio(
-        h, ylabel="Entries", xlabel="$\chi^2$",
+        h, ylabel="Entries", xlabel=r"$\chi^2$",
         cms_label=args.cmsDecor, xlim=xlim, ylim=None, logy=False,
         rrange=[0.5, 1.5], automatic_scale=False,
         rlabel="1/chi2")
@@ -48,7 +48,7 @@ def plot_chi2(chi2, ndf, suffix=""):
 
     n, bins, _ = ax1.hist(chi2_flat, bins=50, range=xlim, color=colors(0), label="Entries", histtype="step")
 
-    ax1.plot(x_chi2, y_chi2, color='red', label=f"$\chi^2({ndf})$")
+    ax1.plot(x_chi2, y_chi2, color='red', label=fr"$\chi^2({ndf})$")
 
     ax2.plot(xlim, [1,1], marker="", linestyle='-', color="k")
 
@@ -95,7 +95,7 @@ def plot_pvalues(chi2, ndf, order=1, suffix=""):
     logger.info(f"Total chi2/ndf = {chi2_total}/{ndf_total} = {chi2_total/ndf_total} (p = {p_total}%)")
 
     chi2label=f"$\\chi^2/\\mathrm{{ndf}} = {int(round(chi2_total,0))}/{ndf_total}$"
-    plabel=f"Total $p={p_total}\%$"
+    plabel=fr"Total $p={p_total}\%$"
 
     colors = mpl.colormaps["tab10"]
 
@@ -144,8 +144,8 @@ def plot_params(params, suffix=""):
     logger.info(f"Min(chi2)={params.min()}; Max(chi2)={params.max()}")
     logger.info(f"Mean(chi2)={params.mean()}; std(chi2)={params.std()}")
 
-    p_mean_label = f"$\mu = {round(params.mean(), 1)}$"
-    p_std_label = f"$\sigma = {round(params.std(), 1)}$"
+    p_mean_label = fr"$\mu = {round(params.mean(), 1)}$"
+    p_std_label = fr"$\sigma = {round(params.std(), 1)}$"
 
     xlim = [params.min(), params.max()]
 
@@ -383,7 +383,7 @@ def plot_diagnostics_extendedABCD(
 
         regions = ["FR"]
 
-    etavar="\eta"
+    etavar=r"\eta"
     logy=False
     linestyles = ["-", "-", "--", "--", ":"]
     colors = mpl.colormaps["tab10"]

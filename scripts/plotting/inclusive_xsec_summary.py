@@ -41,10 +41,10 @@ if args.translate:
         translate_label = json.load(f)
 
 pois = ["W_qGen0_sumxsec", "W_qGen1_sumxsec", "W_sumxsec", "Z_sumxsec", "r_qGen_W__ratiometaratio", "r_WZ_ratiometaratio"]
-poi_names = ["$\mathrm{W}^{-}$", "$\mathrm{W}^{+}$", "$\mathrm{W}$", "$\mathrm{Z}$", "$\mathrm{W}^{+}/\mathrm{W}^{-}$", "$\mathrm{W/Z}$"]
+poi_names = [r"$\mathrm{W}^{-}$", r"$\mathrm{W}^{+}$", r"$\mathrm{W}$", r"$\mathrm{Z}$", r"$\mathrm{W}^{+}/\mathrm{W}^{-}$", r"$\mathrm{W/Z}$"]
 
 pois = ["W_qGen0_sumxsec", "W_qGen1_sumxsec", "W_sumxsec", "r_qGen_W_ratiometaratio",]
-poi_names = ["$\mathrm{W}^{-}$", "$\mathrm{W}^{+}$", "$\mathrm{W}$", "$\mathrm{W}^{+}/\mathrm{W}^{-}$",]
+poi_names = [r"$\mathrm{W}^{-}$", r"$\mathrm{W}^{+}$", r"$\mathrm{W}$", r"$\mathrm{W}^{+}/\mathrm{W}^{-}$",]
 
 
 combine = {
@@ -170,14 +170,14 @@ for i, poi_name in enumerate(poi_names[::-1]):
         total = round(total, sig_digi)
 
     ax.text(lo+0.01, i+0.5, poi_name, fontsize=20, verticalalignment="bottom", horizontalalignment="left")
-    title = f"${norm} \pm {total}"
+    title = fr"${norm} \pm {total}"
     if "/" in poi_name:
         title += "$"
     else:
-        title += "\,\mathrm{pb}$"
+        title += r"\,\mathrm{pb}$"
     ax.text(hi-0.05, i+0.5, title, fontsize=20, verticalalignment="bottom", horizontalalignment="left")
 
-ax.text(hi-0.05, len(poi_names)+0.5, "$\mathrm{Measured} \pm {unc}$", fontsize=20, verticalalignment="bottom", horizontalalignment="left")
+ax.text(hi-0.05, len(poi_names)+0.5, r"$\mathrm{Measured} \pm {unc}$", fontsize=20, verticalalignment="bottom", horizontalalignment="left")
 
 x0 = ax.plot([1.,1.],[0,len(norms)], color="black")
 ax.plot([lo, hi], [len(norms),len(norms)], color="black")

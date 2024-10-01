@@ -99,14 +99,14 @@ def plot_harmonic_polynomials(outdir, args):
             val_x = h1d.axes[0].centers
             val_y = h1d.values()
             if i == 0:
-                idx = "\mathrm{UL}"
+                idx = r"\mathrm{UL}"
             else:
                 idx = str(i-1)
             if moments:
                 val_y = val_y * scales[i] + offsets[i]
-                label=f"$\mathrm{{M}}_{idx}$"
+                label=fr"$\mathrm{{M}}_{idx}$"
             else:
-                label=f"$\mathrm{{P}}_{idx}$"
+                label=fr"$\mathrm{{P}}_{idx}$"
 
             ax1.plot(val_x, val_y, color=colors(i), linestyle=linestyles[j], label=label)
             j += 1

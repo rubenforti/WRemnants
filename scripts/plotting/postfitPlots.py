@@ -345,7 +345,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
 
         if len(h_data.values())<100:
             text_pieces.append(chi2_name)
-            text_pieces.append("$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
+            text_pieces.append(fr"$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
         else:
             text_pieces.append(chi2_name + fr" = ${round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
 

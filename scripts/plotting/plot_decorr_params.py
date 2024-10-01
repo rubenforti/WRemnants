@@ -59,12 +59,12 @@ if __name__ == '__main__':
             xlabel = param.split("MeV")[0]
             if xlabel.startswith("massShift"):
                 proc = xlabel.replace("massShift","")[0]
-                xlabel = "$\mathit{m}_\mathrm{"+str(proc)+"}$ (MeV)"
+                xlabel = r"$\mathit{m}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset = 80354 if proc=="W" else 91187.6
 
             if xlabel.startswith("Width"):
                 proc = xlabel.replace("Width","")[0]
-                xlabel = "$\mathit{\Gamma}_\mathrm{"+str(proc)+"}$ (MeV)"
+                xlabel = r"$\mathit{\Gamma}_\mathrm{"+str(proc)+"}$ (MeV)"
                 offset= 2091.13 if proc=="W" else 2494.13
 
             scale = float(re.search(r'\d+(\.\d+)?', param.split("MeV")[0].replace("p",".")).group())
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             xlabel = param
 
         if not args.absoluteParam or "Diff" in param:
-            xlabel = "$\Delta "+xlabel[1:]
+            xlabel = r"$\Delta "+xlabel[1:]
             offset=0
 
         df_p["Names"] = df_p["Name"].apply(lambda x: "".join([x.split("MeV")[-1].split("_")[0] for x in x.split("_decorr")]))
@@ -94,9 +94,9 @@ if __name__ == '__main__':
 
         # hardcode formatting of known axes
         if "eta" in axes:
-            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
+            df_p["yticks"] = df_p["eta"].apply(lambda x: round((x-12)*0.2,1)).astype(str)+r"<\mathit{\eta}^{\mu}<"+df_p["eta"].apply(lambda x: round((x-12)*0.2+0.2,1)).astype(str)
             if "charge" in axes:
-                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace("\mu","\mu^{+}") if x["charge"]==1 else x["yticks"].replace("\mu","\mu^{-}"), axis=1)
+                df_p["yticks"] = df_p.apply(lambda x: x["yticks"].replace(r"\mu",r"\mu^{+}") if x["charge"]==1 else x["yticks"].replace(r"\mu",r"\mu^{-}"), axis=1)
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
             ylabel = " "
         elif "etaAbsEta" in axes:
@@ -106,18 +106,18 @@ if __name__ == '__main__':
             ylabel = " "
         elif "lumi" in axes:
             axis_ranges = [[278769, 278808], [278820, 279588], [279653, 279767], [279794, 280017], [280018, 280385], [281613, 282037], [282092, 283270], [283283, 283478], [283548, 283934], [283946, 284044]]
-            df_p["yticks"] = df_p["lumi"].apply(lambda x: "Run $\in$ ["+str(axis_ranges[x][0])+", "+str(axis_ranges[x][1])+"]").astype(str)
+            df_p["yticks"] = df_p["lumi"].apply(lambda x: r"Run $\in$ ["+str(axis_ranges[x][0])+", "+str(axis_ranges[x][1])+"]").astype(str)
             ylabel = " "
         elif "etaRegionRange" in axes:
             # axis_ranges = {0:"2",1:"1",2:"0"}
-            axis_ranges = {0:"Both $|\mathit{\eta}^{\mu}| < 0.9$",1:"One $|\mathit{\eta}^{\mu}| < 0.9$",2:"Both $|\mathit{\eta}^{\mu}| > 0.9$"}
+            axis_ranges = {0:r"Both $|\mathit{\eta}^{\mu}| < 0.9$",1:r"One $|\mathit{\eta}^{\mu}| < 0.9$",2:r"Both $|\mathit{\eta}^{\mu}| > 0.9$"}
             # axis_ranges = {0:"Both central",1:"One central",2:"Both forward"}
             df_p["yticks"] = df_p["etaRegionRange"].apply(lambda x: str(axis_ranges[x])).astype(str)
 
-            ylabel = "$(|\mathit{\eta}^{\mu^+}| < 0.9) + (|\mathit{\eta}^{\mu^-}| < 0.9)$"
+            ylabel = r"$(|\mathit{\eta}^{\mu^+}| < 0.9) + (|\mathit{\eta}^{\mu^-}| < 0.9)$"
         elif "etaRegionSign" in axes:
             # axis_ranges = {0:"-2",1:"0",2:"2"}
-            axis_ranges = {0:"Both $\mathit{\eta}^{\mu} < 0$",1:"One $\mathit{\eta}^{\mu} < 0$",2:"Both $\mathit{\eta}^{\mu} > 0$"}
+            axis_ranges = {0:r"Both $\mathit{\eta}^{\mu} < 0$",1:r"One $\mathit{\eta}^{\mu} < 0$",2:r"Both $\mathit{\eta}^{\mu} > 0$"}
             # axis_ranges = {0:"$SS\ \eta\ neg.$",1:"$OS\ \eta$",2:"$SS\ \eta\ pos.$"}
             df_p["yticks"] = df_p["etaRegionSign"].apply(lambda x: str(axis_ranges[x])).astype(str)
             # ylabel="$\mathrm{sign}(\mathit{\eta}^{\mu^+}) + \mathrm{sign}(\mathit{\eta}^{\mu^-})$"
@@ -183,11 +183,11 @@ if __name__ == '__main__':
 
             chi2_stat = 2*(nll_inclusive - nll)[0]
             if args.data:
-                chi2_label = "\mathit{\chi}^2/\mathit{ndf}"
+                chi2_label = r"\mathit{\chi}^2/\mathit{ndf}"
             else:
                 # in case of pseudodata fits there are no statistical fluctuations and we can only access the expected p-value, where ndf has to be added to the test statistic
                 chi2_stat += ndf
-                chi2_label = "<\mathit{\chi}^2/\mathit{ndf}>"
+                chi2_label = r"<\mathit{\chi}^2/\mathit{ndf}>"
 
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
@@ -201,7 +201,7 @@ if __name__ == '__main__':
                 raise NotImplementedError("Can only plot chi2 if legend is 'center left'")
 
             plot_tools.wrap_text(
-                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", f"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"],
+                [f"${chi2_label} = {str(round(chi2_stat,1))}/{ndf}$", fr"$\mathit{{p}} = {str(round(p_value*100))}\,\%$"],
                 ax1, x_chi2, y_chi2, text_size=args.legSize)
 
             ax1.fill_between([c-c_err, c+c_err], ylim[0], ylim[1], color='gray', alpha=0.3)

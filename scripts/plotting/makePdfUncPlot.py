@@ -70,7 +70,7 @@ for dataset in args.datasets:
 
     uncType = [pdfInfo[pdf]["combine"] for pdf in args.pdfs]
     uncScale = [pdfInfo[pdf]["scale"] if "scale" in pdfInfo[pdf] else 1. for pdf in args.pdfs]
-    names = [[pdfName+" $\pm1\sigma$", "", ""] for pdfName in pdfNames]
+    names = [[pdfName+r" $\pm1\sigma$", "", ""] for pdfName in pdfNames]
     cmap = cm.get_cmap("tab10")
     colors = [[cmap(i)]*3 for i in range(len(args.pdfs))]
 
@@ -142,7 +142,7 @@ for dataset in args.datasets:
                 # coeffs_alpha.append(hh.multiplyHists(hel_alpha,ratioUL))
                 coeffs_alpha.append(hel_alpha)
             uncHists[ipdf].extend([uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,1]-uncHists[ipdf][0])*scale_alpha,uncHists[ipdf][0]+(coeffs_alpha[ipdf][...,2]-uncHists[ipdf][0])*scale_alpha])
-            names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
+            names[ipdf].extend([pdfNames[ipdf]+r"alpha $\pm1\sigma$",""])
 
             colors[ipdf].extend([cmap(ipdf+1)]*2)
 
@@ -203,7 +203,7 @@ for dataset in args.datasets:
                 symm = 2*np.ones_like(symm)
 
             fig = plot_tools.makePlotWithRatioToRef(all_hists, colors=all_colors, labels=all_names, alpha=0.4,
-                rrange=args.rrange, ylabel="$\sigma$/bin", xlabel=xlabels[obs], rlabel=f"x/{args.pdfs[0].upper()}", binwnorm=None, nlegcols=1, only_ratio=False,width_scale=2)
+                rrange=args.rrange, ylabel=r"$\sigma$/bin", xlabel=xlabels[obs], rlabel=f"x/{args.pdfs[0].upper()}", binwnorm=None, nlegcols=1, only_ratio=False,width_scale=2)
             outfile = f"{name}Hist_{obs}_{dataset}_sigma{round(ihel)}"
             ax1,ax2 = fig.axes
 

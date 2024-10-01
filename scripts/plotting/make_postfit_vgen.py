@@ -91,9 +91,9 @@ if not args.noetapt_postfit:
     hists_nom.append(etapth)
     hists_err.extend(hist_to_up_down_unc(etapth))
     if args.w:
-        label = "$\mathit{m}_{W}$ "
+        label = r"$\mathit{m}_{W}$ "
     else:
-        label = "$\mathit{m}_{Z}$ "
+        label = r"$\mathit{m}_{Z}$ "
     label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ "
     labels.append(label)
     colors.append("#E42536" if args.w else "#964A8B")
@@ -148,8 +148,8 @@ if args.xlim:
 hists = hists_nom + hists_err
 
 xlabels = {
-    "absYVgen": "\mathit{y}",
-    "ptVgen": "\mathit{p}_{T}"
+    "absYVgen": r"\mathit{y}",
+    "ptVgen": r"\mathit{p}_{T}"
 }
 xlabel = xlabels[args.obs]
 

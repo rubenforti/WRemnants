@@ -77,7 +77,7 @@ ax.step(bins, np.append(nEntries,nEntries[-1]), color="black", where="post", lin
 rangey = 0, max(nEntries)*1.2
 
 for i, dt, l, p in zip(range(len(data)), data, testlabels, pvalues):
-    ax.plot([dt,dt], rangey, color=cm(i/len(data)), label=f"{l} $p={round(p*100,1)}\%$")
+    ax.plot([dt,dt], rangey, color=cm(i/len(data)), label=fr"{l} $p={round(p*100,1)}\%$")
 
 norm = (rangex[1]-rangex[0])/nBins*len(toys)
 

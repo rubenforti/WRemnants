@@ -292,7 +292,7 @@ def plot_closure(h, outdir, suffix="", outfile=f"closureABCD", ratio=True, proc=
         if smoothing_mode in ["binned"]:
             chi2s = [sum((h1d.values(flow=True) - hss[0].values(flow=True))**2/(h1d.variances(flow=True) + hss[0].variances(flow=True))) for h1d in hss]
             ndf = len(hss[0].values(flow=True)) - normalized
-            labels = [f"{l} $\chi^2/ndf={round(c)}/{ndf}$" if i!= 0 else l for i, (l, c) in enumerate(zip(labels, chi2s))]
+            labels = [fr"{l} $\chi^2/ndf={round(c)}/{ndf}$" if i!= 0 else l for i, (l, c) in enumerate(zip(labels, chi2s))]
 
     hep.histplot(
         hs,

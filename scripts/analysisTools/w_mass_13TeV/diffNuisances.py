@@ -345,7 +345,7 @@ if __name__ == "__main__":
             txtfile.write('\n')
 
         if ext == "latex":
-            txtfile.write(" \\hline\n\end{tabular}\n")
+            txtfile.write(r" \\hline\n\end{tabular}\n")
         elif ext == "html":
             txtfile.write("</table></body></html>\n")
         txtfile.close()

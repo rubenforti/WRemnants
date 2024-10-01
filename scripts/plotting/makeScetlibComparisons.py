@@ -134,10 +134,10 @@ xlabels["sigma4_ptV"] = xlabels["ptV"]
 xlabels["sigma4_absYV"] = xlabels["absYV"]
 
 ylabels = {
-    "sigma4_ptV" : "$\sigma_{4}$/bin",
-    "sigma4_absYV" : "$\sigma_{4}$/bin",
-    "a4_ptV" : "$\A_{4}$/bin",
-    "a4_absYV" : "$\A_{4}$/bin",
+    "sigma4_ptV" : r"$\sigma_{4}$/bin",
+    "sigma4_absYV" : r"$\sigma_{4}$/bin",
+    "a4_ptV" : r"$\A_{4}$/bin",
+    "a4_absYV" : r"$\A_{4}$/bin",
 }
 
 def transform_and_project(histND, scale, axis_name, action=None):
@@ -277,7 +277,7 @@ for generator, label in generators_info:
 if len(all_hists) > 1:
     all_hists = hh.rebinHistsToCommon(all_hists, axis_idx=0, keep_full_range=args.keep_full_range)
 
-ylabel = "$\sigma$/bin" if args.hist_name not in ylabels else ylabels[args.hist_name]
+ylabel = r"$\sigma$/bin" if args.hist_name not in ylabels else ylabels[args.hist_name]
 fig = plot_tools.makePlotWithRatioToRef(all_hists, colors=all_colors, labels=all_labels, alpha=0.7, ylim=args.ylim,
         rrange=args.rrange, ylabel=ylabel, xlabel=xlabels[args.hist_name], rlabel=f"x/{short_name[args.ratio_ref]}",
         binwnorm=1.0, nlegcols=1, logy=args.logy, logx=args.logx,

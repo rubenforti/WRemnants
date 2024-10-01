@@ -70,13 +70,14 @@ df = df.sort_values(by=["column_name",'dataset'])
 for channel, df_c in df.groupby("channel"):
     tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_{channel}",
         column_title="Pseudodata",
-        caption="Resulting $\chi^2$ values (and p-values) using the saturated model test from fits on different data, and pseudodata sets.",
+        caption=r"Resulting $\chi^2$ values (and p-values) using the saturated model test from fits on different data, and pseudodata sets.",
         label="Model", sublabel="",
         column_name="dataset", row_name="column_name",
-        cell_columns=["chi2", "pvalue"], color_condition=lambda x, y: y < 5, cell_format=lambda x, y: f"${round(x,1)} ({round(y,1)}\%)$")
+        cell_columns=["chi2", "pvalue"], color_condition=lambda x, y: y < 5, cell_format=lambda x, y: fr"${round(x,1)} ({round(y,1)}\%)$")
 
     tex_tools.make_latex_table(df_c, output_dir=outdir, output_name=f"table_mass_{channel}",
         column_title="Pseudodata", caption="Mass and uncertainty.", label="Model", sublabel="",
         column_name="dataset", row_name="column_name",
-        cell_columns=["mass_obs", "mass_err"], color_condition=lambda x, y: abs(x) > y, cell_format=lambda x, y: f"${round(x*100,2)}\, \pm {round(y*100,2)}$")
+        cell_columns=["mass_obs", "mass_err"], color_condition=lambda x, y: abs(x) > y,
+        cell_format=lambda x, y: fr"${round(x*100,2)}\, \pm {round(y*100,2)}$")
 

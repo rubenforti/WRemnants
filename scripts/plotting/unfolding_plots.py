@@ -159,7 +159,7 @@ def plot(fittype, channel=None, data=True, stack=True, density=False, ratio=True
         else:
             process_label = "Z"
 
-        yLabel="d$\sigma ("+process_label+")$ [pb]"
+        yLabel=r"d$\sigma ("+process_label+")$ [pb]"
         if "ptGen" in args.axes:
             ylabel = yLabel.replace("[pb]","[pb/GeV]")
 

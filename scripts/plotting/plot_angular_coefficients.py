@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
             h1ds = {k: [h[{"helicity":complex(0,i)}] for h in v] for k,v in hists1d.items()}
 
-            ylabel = f"$\mathrm{{A}}_{i}$" if not args.plotXsecs else r"$\sigma_{"+(r"\mathrm{UL}" if i==-1 else str(i))+r"}\,[\mathrm{pb}]$"
+            ylabel = fr"$\mathrm{{A}}_{i}$" if not args.plotXsecs else r"$\sigma_{"+(r"\mathrm{UL}" if i==-1 else str(i))+r"}\,[\mathrm{pb}]$"
             fig, ax1 = plot_tools.figure(next(iter(h1ds.values()))[0], xlabel=styles.xlabels.get(var, var),
                 ylabel=ylabel,
                 grid=False, automatic_scale=False, width_scale=1.2, logy=False)

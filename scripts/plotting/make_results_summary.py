@@ -53,7 +53,7 @@ legtop=top-0.73
 
 
 text_size = 15 #
-fig = plot_tools.make_summary_plot(80353, 6, "80353 $\pm$ 6",
+fig = plot_tools.make_summary_plot(80353, 6, r"80353 $\pm$ 6",
     # Don't plot stat error separately
     dfw_cms[["Name", "value", "err_total"]].iloc[1:,:],
     center_color="#666666",
@@ -80,16 +80,16 @@ fig = plot_tools.make_summary_plot(80353, 6, "80353 $\pm$ 6",
 ax = plt.gca()
 
 text_size_large = plot_tools.get_textsize(ax, "small")
-ax.annotate("$\mathit{m}_{{W}}$ in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
+ax.annotate(r"$\mathit{m}_{{W}}$ in MeV", (80265, top+0.5), fontsize=text_size, ha="left", color="black", annotation_clip=False)
 for i,row in dfw_cms.iterrows():
     isCMS = row.loc["Name"] == "CMS"
     isEW = row.loc["Name"] == "Electroweak fit"
     pos = top-step*i
     ax.annotate(row["Name"], (xpos, pos), fontsize=text_size_large, ha="left", annotation_clip=False, color=row.loc["color"])#, weight=600)
     if row.loc["Name"] in ["CMS", "CDF", "ATLAS", "PDG Average"]:
-        label = f"{row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f}"
+        label = fr"{row.loc['value']:.1f} $\pm$ {round(row.loc['err_total'], 1):.1f}"
     else:
-        label = f"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"
+        label = fr"{row.loc['value']:.0f} $\pm$ {round(row.loc['err_total'], 0):.0f}"
 
     if not isEW:
         ax.annotate(label, (80265, pos), fontsize=text_size, ha="left", va="center", color=row.loc["color"] if isCMS or isEW else "black", annotation_clip=False)

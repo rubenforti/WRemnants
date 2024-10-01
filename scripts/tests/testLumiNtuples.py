@@ -25,7 +25,7 @@ parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP"
 parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency")
 parser.add_argument("--muonCorrMag", default=1.e-4, type=float, help="Magnitude of dummy muon momentum calibration uncertainty")
 parser.add_argument("--muonCorrEtaBins", default=1, type=int, help="Number of eta bins for dummy muon momentum calibration uncertainty")
-parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
+parser.add_argument("--lumiUncertainty", type=float, help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
 parser.add_argument("--nano", type=str, help="NanoAOD version to run on", default="tnp")
 args = parser.parse_args()
 

@@ -1,6 +1,9 @@
 #!/bin/bash
 # This pre-commit hook fixes whitespace issues and formats Python files
 
+# Exit if any command fails
+set -e
+
 # Find all staged Python files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$')
 
@@ -9,14 +12,25 @@ if [ -z "$STAGED_FILES" ]; then
   exit 0
 fi
 
+# Check for syntax errors in each staged Python file
+for FILE in $STAGED_FILES; do
+  # Use python's compile command to check for syntax errors
+  python -m py_compile "$FILE" 2>/dev/null
+
+  # Check the exit status of the previous command
+  if [ $? -ne 0 ]; then
+    echo "Syntax error in $FILE. Commit aborted."
+    exit 1
+  fi
+done
+
 # Loop through each staged Python file and fix whitespace issues
 for FILE in $STAGED_FILES; do
   # Remove trailing whitespace
   sed -i 's/[[:space:]]\+$//' "$FILE"
 
-  # Optionally, you can replace tabs with spaces
-  # Uncomment the next line if you want to replace tabs with 4 spaces:
-  # sed -i 's/\t/    /g' "$FILE"
+  # replace tabs with 4 spaces:
+  sed -i 's/\t/    /g' "$FILE"
 
   # Run isort to organize imports
   isort "$FILE"
