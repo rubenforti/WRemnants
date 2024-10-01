@@ -118,7 +118,7 @@ namespace wrem {
     protected:
 
         Eigen::MatrixXd covariance(int etabin);
-        void DoHessianShifts(int etabin, int ipar, double *inpars, double *outpars);
+        void DoHessianShifts(int etabin, int ipar, const std::vector<double> &inpars, std::vector<double> &outpars);
 
         std::string smoothFunctionName_ = "cheb3";
         TH3D *covhist_;
@@ -208,7 +208,7 @@ namespace wrem {
         return covMat;
     }
 
-    void EtaPtCorrelatedEfficiency::DoHessianShifts(int etabin, int ipar, double *inpars, double *outpars) {
+    void EtaPtCorrelatedEfficiency::DoHessianShifts(int etabin, int ipar, const std::vector<double> &inpars, std::vector<double> &outpars) {
     
         // diagonalize the covariance matrix
         Eigen::MatrixXd covMat = covariance(etabin);
@@ -244,17 +244,18 @@ namespace wrem {
     // method to return the actual function variations for all parameters filling the externally provided array "variations"
     double EtaPtCorrelatedEfficiency::DoEffSyst(int etabin, double pt, double *variations, bool getDiff=false) {
 
-        double inpars[ndim_], outpars[ndim_];
+        std::vector<double> inpars(ndim_);
+        std::vector<double> outpars(ndim_);
     
         for (int ipar = 0; ipar < ndim_; ++ipar) {
             inpars[ipar] = parhist_->GetBinContent(etabin, ipar+1);
         }
     
-        double nominal = function_->EvalPar(&pt, inpars);
+        double nominal = function_->EvalPar(&pt, inpars.data());
         
         for (int ipar = 0; ipar < ndim_; ++ipar) {
             DoHessianShifts(etabin, ipar, inpars, outpars);
-            variations[ipar] = function_->EvalPar(&pt, outpars);
+            variations[ipar] = function_->EvalPar(&pt, outpars.data());
             if (getDiff) variations[ipar] -= nominal;
         }
         return nominal;
@@ -267,7 +268,8 @@ namespace wrem {
             std::cout << "EtaPtCorrelatedEfficiency::DoEffSyst(int etabin, int ipar):  ipar >= " << ndim_ << " (" << ipar << ")" << std::endl;
             exit(EXIT_FAILURE);
         }
-        double inpars[ndim_], outpars[ndim_];
+        std::vector<double> inpars(ndim_);
+        std::vector<double> outpars(ndim_);
     
         for (int jpar = 0; jpar < ndim_; ++jpar) {
             inpars[jpar] = parhist_->GetBinContent(etabin, jpar+1);
@@ -283,7 +285,8 @@ namespace wrem {
     // method to return all parameters in a single vector
     std::vector<double> EtaPtCorrelatedEfficiency::DoEffSyst(int etabin) {
 
-        double inpars[ndim_], outpars[ndim_];
+        std::vector<double> inpars(ndim_);
+        std::vector<double> outpars(ndim_);
     
         for (int jpar = 0; jpar < ndim_; ++jpar) {
             inpars[jpar] = parhist_->GetBinContent(etabin, jpar+1);
