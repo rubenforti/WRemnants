@@ -2,9 +2,6 @@
 
 # to get TH2 histograms for weights vs vertex z and pileup
 
-import argparse
-import os
-import re
 import sys
 from array import array
 

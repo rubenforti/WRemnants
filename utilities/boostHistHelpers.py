@@ -1,4 +1,3 @@
-import collections
 import copy
 import itertools
 from functools import reduce
@@ -33,7 +32,7 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
 
     try:
         new_vals = np.broadcast_to(h1.values(flow=flow), broadcast_shape)
-    except ValueError as e:
+    except ValueError:
         raise ValueError("Cannot broadcast hists with incompatible axes!\n"
                          f"    h1.shape {h1.shape}; h2.shape: {h2.shape}\n"
                          f"    h1.axes: {h1.axes}\n"

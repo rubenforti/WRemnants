@@ -2,7 +2,6 @@ import argparse
 import os
 import pathlib
 import re
-from enum import Enum
 
 import hist
 import numpy as np

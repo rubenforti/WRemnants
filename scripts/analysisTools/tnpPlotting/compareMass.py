@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 
-import argparse
 import array
-import math
 import os
-import re
 ## safe batch mode
 import sys
-import time
 
 from utilities import logging
 

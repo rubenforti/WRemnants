@@ -1,6 +1,5 @@
 import argparse
 import os
-import pdb
 
 import h5py
 import hist
@@ -103,6 +102,5 @@ for f in [args.input]:
         meta_dict[label] = meta
     except ValueError as e:
         logger.warning(f"No meta data found for file {f}")
-        pass
 
 output_tools.write_theory_corr_hist(correction_name, "Z", res, args, meta_dict)

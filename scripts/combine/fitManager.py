@@ -12,10 +12,7 @@
 
 import argparse
 import array
-import copy
-import math
 import os
-import re
 ## safe batch mode
 import sys
 

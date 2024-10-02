@@ -8,11 +8,6 @@
 # python w-mass-13TeV/subMatrix.py /scratch/mciprian/CombineStudies/WMass/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/nominal/fit/hessian/fitresults_123456789_Asimov_bbb1_cxs0.root --outdir plots/fromMyWremnants/Wmass_fit/10Sept2022_qcdBkgVar/qcdScale_byHelicityPt/subMatrix/ --type hessian --postfix Asimov -p '.*pdf\d+' --uniqueString "PDFs" --title "correlation: PDFs" --skipLatexOnTop
 
 
-import argparse
-import datetime
-import math
-import operator
-import os
 import re
 from array import array
 
@@ -571,7 +566,6 @@ if __name__ == "__main__":
 
     if args.showMoreCorrelated:
         print("Option --show-more-correlated is not yet implemented")
-        pass
 
     copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

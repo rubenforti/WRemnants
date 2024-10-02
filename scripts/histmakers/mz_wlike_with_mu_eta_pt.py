@@ -9,8 +9,6 @@ from wremnants.datasets.datagroups import Datagroups
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)
 
-import math
-import time
 
 import hist
 import lz4.frame

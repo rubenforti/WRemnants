@@ -1,4 +1,3 @@
-import pathlib
 
 import hist
 import ROOT

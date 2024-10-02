@@ -1,6 +1,5 @@
 import argparse
 import copy
-import pdb
 
 import h5py
 

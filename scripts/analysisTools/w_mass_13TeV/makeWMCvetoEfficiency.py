@@ -7,11 +7,8 @@
 # example
 # python scripts/analysisTools/w_mass_13TeV/makeWMCvetoEfficiency.py /scratch/mciprian/CombineStudies/testZmumuVeto/WMCtruthVetoEffi/mw_with_mu_eta_pt_VETOEFFI_scetlib_dyturboCorr_maxFiles_m1_genPt0_noRecoPtEta.hdf5 scripts/analysisTools/plots/fromMyWremnants/testZmumuVeto/WMCtruthVetoEffi_genPt0_noRecoPtEta/ -v 4 --rebinPt 2
 
-import argparse
 import os
 import pickle
-import re
-import shutil
 ## safe batch mode
 import sys
 

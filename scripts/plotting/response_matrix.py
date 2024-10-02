@@ -1,6 +1,3 @@
-import argparse
-import os
-import pdb
 
 import hist
 import matplotlib.pyplot as plt

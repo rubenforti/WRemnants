@@ -1,10 +1,6 @@
 import argparse
 import copy
-import logging
 import os
-import pathlib
-import pickle
-import shutil
 
 import boost_histogram as bh
 import h5py

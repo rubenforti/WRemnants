@@ -4,7 +4,6 @@
 
 import json
 import math
-import pdb
 
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt

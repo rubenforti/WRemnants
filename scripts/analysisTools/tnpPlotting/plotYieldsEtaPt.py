@@ -2,14 +2,10 @@
 
 # open root files, integrate mass axis and plot yields vs eta-pt for passing and failing probes
 
-import argparse
 import array
-import math
 import os
-import re
 ## safe batch mode
 import sys
-import time
 
 from utilities import logging
 

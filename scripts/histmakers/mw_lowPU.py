@@ -1,4 +1,3 @@
-import argparse
 import os
 
 from utilities import common, differential, logging

@@ -1,4 +1,3 @@
-import argparse
 import os
 
 from utilities import common, differential, logging, rdf_tools
@@ -10,10 +9,7 @@ from wremnants.datasets.datagroups import Datagroups
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__).replace("_VETOEFFI",""))
 parser,initargs = common.common_parser(analysis_label)
 
-import math
 import os
-import pathlib
-import time
 
 import hist
 import lz4.frame

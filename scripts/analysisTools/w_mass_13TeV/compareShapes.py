@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
-import os
-import os.path
-import re
-import shutil
 ## safe batch mode
 import sys
 

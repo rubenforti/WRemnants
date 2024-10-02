@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-import argparse
 import array
 import itertools
-import math
 import os
 import pickle
-import re
 ## safe batch mode
 import sys
 import time

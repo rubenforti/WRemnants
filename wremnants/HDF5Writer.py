@@ -1,7 +1,6 @@
 import math
 import os
 import re
-import time
 from collections import defaultdict
 
 import h5py

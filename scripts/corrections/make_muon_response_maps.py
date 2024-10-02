@@ -1,4 +1,3 @@
-import math
 
 import h5py
 import matplotlib as mpl

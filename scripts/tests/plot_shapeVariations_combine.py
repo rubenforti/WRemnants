@@ -1,6 +1,5 @@
 import argparse
 import os
-import pdb
 import re
 
 import matplotlib as mpl

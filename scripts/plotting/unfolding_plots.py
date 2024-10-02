@@ -1,6 +1,3 @@
-import argparse
-import os
-import pdb
 
 import boost_histogram as bh
 import hist

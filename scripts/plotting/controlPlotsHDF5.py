@@ -1,5 +1,4 @@
 import itertools
-import pdb
 
 import hist
 import matplotlib.pyplot as plt

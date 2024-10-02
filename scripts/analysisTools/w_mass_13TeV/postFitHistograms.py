@@ -3,7 +3,6 @@
 # example (only charge plus)
 # python fitresults.root -o outputPath/postFitHistograms/ --suffix postVFP -l 16.8 [-c plus --no2Dplot]
 
-import argparse
 import os
 import re
 import sys

@@ -179,7 +179,6 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
 
     for ewUnc in ewUncs:
         if "renesanceEW" in ewUnc:
-            pass
             if w_samples:
                 # add renesance (virtual EW) uncertainty on W samples
                 card_tool.addSystematic(f"{ewUnc}Corr",

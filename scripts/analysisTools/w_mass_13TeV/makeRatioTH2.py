@@ -34,10 +34,8 @@
 ################################
 
 
-import argparse
 import array
 import math
-import os
 ## safe batch mode
 import sys
 from copy import *

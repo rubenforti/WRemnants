@@ -7,12 +7,7 @@
 
 # python w_mass_13TeV/plotSF.py file.root output/folder/ -e 'GtoH' -n 'trigger,idip,iso,antiiso,isonotrig,antiisonotrig' -wpc reco tracking idip trigger [--make-prod] [--skip-eff]
 
-import argparse
 import logging
-import os
-import os.path
-import re
-import shutil
 ## safe batch mode
 import sys
 

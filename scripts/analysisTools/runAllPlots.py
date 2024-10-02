@@ -6,7 +6,6 @@
 
 import array
 import os
-import re
 import sys
 
 import ROOT

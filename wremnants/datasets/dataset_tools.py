@@ -1,10 +1,5 @@
-import glob
 import os
-import pathlib
 import random
-import socket
-import subprocess
-import sys
 
 import ROOT
 import XRootD.client

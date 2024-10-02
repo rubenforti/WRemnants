@@ -1,9 +1,6 @@
 # plot goodness of fit from toys with data and/or pseudodata
 # use full nll as test statistic
 
-import argparse
-import os
-import pdb
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt

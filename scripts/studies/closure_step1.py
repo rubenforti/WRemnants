@@ -1,5 +1,4 @@
 import argparse
-import glob
 import itertools
 import os
 

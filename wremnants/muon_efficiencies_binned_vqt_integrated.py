@@ -1,6 +1,4 @@
 import logging
-import pathlib
-import pickle
 
 import boost_histogram as bh
 import hist

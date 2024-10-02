@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import os
-import pickle
-import sys
 
 import h5py
 #import wremnants

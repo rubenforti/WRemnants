@@ -1,7 +1,6 @@
 import argparse
 import os
 import pathlib
-import pickle
 
 import lz4.frame
 

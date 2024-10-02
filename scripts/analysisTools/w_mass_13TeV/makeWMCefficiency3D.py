@@ -3,11 +3,8 @@
 ## make MC efficiency for W vs eta-pt-ut for trigger and isolation
 ## Requires event yields made with the W  histmaker, with proper event selection
 
-import argparse
 import os
 import pickle
-import re
-import shutil
 ## safe batch mode
 import sys
 

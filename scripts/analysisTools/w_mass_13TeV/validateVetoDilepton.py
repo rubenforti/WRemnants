@@ -15,11 +15,7 @@
 # Regular(45, 15, 60, underflow=False, overflow=False, name='ptNonTrig')
 # Boolean(name='passMT')
 
-import argparse
 import os
-import pickle
-import re
-import shutil
 ## safe batch mode
 import sys
 

@@ -5,16 +5,9 @@
 import argparse
 import array
 import ctypes
-import math
 # take mT distributions and check S/B for different mT cuts (ideally done for low isolation region without mT cuts)
-import os
-import os.path
-import pickle
-import re
-import shutil
 ## safe batch mode
 import sys
-import time
 
 import hist
 import lz4.frame

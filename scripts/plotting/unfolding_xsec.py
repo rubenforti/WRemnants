@@ -1,7 +1,5 @@
-import argparse
 import itertools
 import json
-import os
 
 import hist
 import matplotlib as mpl

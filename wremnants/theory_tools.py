@@ -1,5 +1,3 @@
-import copy
-from math import pi, sqrt
 
 import hist
 import numpy as np

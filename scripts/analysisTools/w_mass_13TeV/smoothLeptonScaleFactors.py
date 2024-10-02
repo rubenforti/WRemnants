@@ -16,12 +16,10 @@
 # --> a summary of bad fits (if any) is printed on stdout for each step, but also in a txt file for easier check
 #     when running multiple steps in series. For the smoothing to make sense, status and covstatus MUST be 0 for all fits
 
-import argparse
 import array
 import math
 import os
 import pickle
-import re
 from copy import *
 from functools import partial
 

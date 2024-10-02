@@ -1,7 +1,5 @@
-import pathlib
 import pickle
 import time
-import warnings
 from functools import reduce
 
 import hist

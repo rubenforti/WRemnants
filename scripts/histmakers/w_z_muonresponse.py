@@ -1,14 +1,10 @@
-import argparse
 
 from utilities import common, differential, logging, rdf_tools
 from utilities.io_tools import output_tools
 
 parser,initargs = common.common_parser("w_mass")
 
-import math
 import os
-import pathlib
-import time
 
 import hist
 import lz4.frame

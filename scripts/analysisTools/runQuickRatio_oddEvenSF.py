@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse
 import array
-import math
 import os
 ## safe batch mode
 import sys

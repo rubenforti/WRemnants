@@ -12,13 +12,8 @@
 # only efficiency subgroups
 # python scripts/analysisTools/w_mass_13TeV/makeImpactsOnMW.py filesFromjosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/fitresults_123456789.root -o scripts/analysisTools/plots/fromMyWremnants/fitResults/fromJosh/histmaker_output_Jun11_2f929ca/WMass_eta_pt_charge/makeImpactsOnMW/ --scaleToMeV --postfix asimov_efficiencySplit -x ".*" -k ".*eff_(all|stat|syst)" --margin 0.45,0.12,0.1,0.1
 
-import argparse
-import datetime
-import math
-import operator
 import os
 import re
-import shutil
 ## safe batch mode
 import sys
 from array import array

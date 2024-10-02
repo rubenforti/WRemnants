@@ -4,15 +4,11 @@
 # currently: reco*tracking*idip
 # uncertainties on idip could be neglected
 
-import argparse
 import array
-import math
 import os
 import pickle
-import re
 import time
 from copy import *
-from functools import partial
 
 import boost_histogram as bh
 import hist

@@ -2,7 +2,6 @@ import argparse
 import glob
 import json
 import os
-import pdb
 
 os.sys.path.append(os.path.expandvars('/home/submit/tyjyang/analysis/wmass/WRemnants/'))
 

@@ -1,6 +1,5 @@
 import argparse
 import os
-import pdb
 
 import hist
 import numpy as np

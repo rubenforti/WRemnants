@@ -7,14 +7,9 @@
 # example
 # python scripts/analysisTools/w_mass_13TeV/mergeFilesSF2D.py wremnants-data/data/muonSF/allSmooth_GtoHout.root allSmooth_GtoHout_vtxAgnIso.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isonotrig_both/smoothedSFandEffi_isonotrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_iso_both/smoothedSFandEffi_iso_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isoantitrig_both/smoothedSFandEffi_isoantitrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_plus/smoothedSFandEffi_trigger_GtoH_plus.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_minus/smoothedSFandEffi_trigger_GtoH_minus.root
 
-import argparse
 import array
-import math
 import os
-import pickle
-import re
 from copy import *
-from functools import partial
 
 import boost_histogram as bh
 import hist

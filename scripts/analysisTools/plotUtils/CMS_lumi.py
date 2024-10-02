@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-import json
-import os
-import os.path
-import re
-import subprocess
-import sys
 
 import ROOT
 

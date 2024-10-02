@@ -2,13 +2,8 @@
 
 # study isolation efficiency and antiisolation one, focusing on stat uncertainty and how to correlated them
 
-import argparse
 import logging
 import math
-import os
-import os.path
-import re
-import shutil
 ## safe batch mode
 import sys
 

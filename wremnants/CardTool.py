@@ -1,11 +1,8 @@
-import copy
 import itertools
 import math
 import os
 import pathlib
 import re
-import time
-from collections import OrderedDict
 
 import hist
 import numpy as np

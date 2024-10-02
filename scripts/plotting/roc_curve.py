@@ -1,4 +1,3 @@
-import pdb
 
 import hist
 import matplotlib as mpl

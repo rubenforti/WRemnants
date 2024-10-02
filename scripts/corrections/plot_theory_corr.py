@@ -1,5 +1,3 @@
-import argparse
-import os
 from itertools import combinations
 
 import hist

@@ -1,4 +1,3 @@
-from functools import reduce
 
 import hist
 import numpy as np

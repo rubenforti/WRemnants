@@ -7,7 +7,6 @@ import argparse
 import array
 import math
 import os
-import re
 import string
 ## safe batch mode
 import sys

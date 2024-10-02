@@ -1,4 +1,3 @@
-import pathlib
 
 import boost_histogram as bh
 import hist

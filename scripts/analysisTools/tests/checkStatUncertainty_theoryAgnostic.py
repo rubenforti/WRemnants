@@ -3,8 +3,6 @@
 import argparse
 import logging
 import os
-import re
-import shutil
 ## safe batch mode
 import sys
 

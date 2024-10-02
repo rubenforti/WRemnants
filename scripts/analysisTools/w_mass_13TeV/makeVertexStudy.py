@@ -10,11 +10,7 @@
 #python scripts/analysisTools/w_mass_13TeV/makeVertexStudy.py /scratch/mciprian/CombineStudies/vertexStudy/mw_TEST_scetlib_dyturboCorr_ZdileptonSelection.hdf5 scripts/analysisTools/plots/fromMyWremnants/vertexStudy/testNew/Zmumu_dilepton/ -n vertexStudyHisto_noCut vertexStudyHisto_vetoMuon vertexStudyHisto_goodMuon vertexStudyHisto_fullSelNoMT --dzCut 0.1 -v 4 -p ZmumuPostVFP --Zdilepton
 
 
-import argparse
 import os
-import pickle
-import re
-import shutil
 ## safe batch mode
 import sys
 

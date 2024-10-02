@@ -1,7 +1,6 @@
 
 import argparse
 import pickle
-import sys
 
 import functions
 

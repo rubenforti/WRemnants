@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
-import datetime
-import math
-import operator
-import os
-import re
-import shutil
 ## safe batch mode
 import sys
 from array import array

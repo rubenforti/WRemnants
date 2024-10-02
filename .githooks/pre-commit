@@ -47,6 +47,9 @@ for FILE in $STAGED_FILES; do
   # Run isort to organize imports
   isort "$FILE"
 
+  # Remove unused imports
+  autoflake --in-place "$FILE"
+
   # Re-add the file to the staging area after fixing whitespace and formatting
   git add "$FILE"
 done

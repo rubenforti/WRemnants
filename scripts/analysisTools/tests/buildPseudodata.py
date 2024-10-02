@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 
 # quick script to build a pseudodata histogram summing whatever you need for tests
-import argparse
 import array
-import math
 import os
-import pickle
-import re
 ## safe batch mode
 import sys
-import time
 
 import hist
 import lz4.frame

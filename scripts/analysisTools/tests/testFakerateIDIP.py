@@ -2,13 +2,9 @@
 
 import argparse
 import array
-import math
 import os
-import pickle
-import re
 ## safe batch mode
 import sys
-import time
 
 import hist
 import lz4.frame

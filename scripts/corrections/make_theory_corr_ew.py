@@ -1,6 +1,4 @@
 import argparse
-import os
-import pdb
 
 import h5py
 import hist

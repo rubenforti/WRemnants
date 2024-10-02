@@ -159,7 +159,6 @@ for f in [args.minnlo_file]+args.corr_files:
             meta["config"] = input_tools.get_scetlib_config(f)
     except ValueError as e:
         logger.warning(f"No meta data found for file {f}")
-        pass
 
 output_dict = {
     f"{generator}_minnlo_ratio" : corrh,
