@@ -4,6 +4,8 @@
 #include "TH2D.h"
 #include <memory>
 
+#include "utils.h"
+
 namespace wrem {
 
 class vertex_helper {

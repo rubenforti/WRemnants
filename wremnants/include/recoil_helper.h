@@ -4,8 +4,11 @@
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
+
 #include "defines.h"
 #include "tfliteutils.h"
+#include "utils.h"
 
 
 namespace wrem {
@@ -177,7 +180,7 @@ public:
         for(int k=0; k<N_UNC; k++) {
         //if(ret.unc_weights[k] < 0.99999 or ret.unc_weights[k] > 1.00001)
             if(std::isnan(ret.unc_weights[k]) or std::isinf(ret.unc_weights[k])) {
-            cout << k << " INF/NAN " << std::isnan(ret.unc_weights[k]) << " " << std::isinf(ret.unc_weights[k]) << "  " <<  pt << " " << ut_para << " " << ut_perp << endl;
+            std::cout << k << " INF/NAN " << std::isnan(ret.unc_weights[k]) << " " << std::isinf(ret.unc_weights[k]) << "  " <<  pt << " " << ut_para << " " << ut_perp << std::endl;
             }
         }
         return ret;

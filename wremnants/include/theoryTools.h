@@ -5,6 +5,7 @@
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <ROOT/RVec.hxx>
 #include "utils.h"
+#include "csVariables.h"
 
 namespace wrem {
 

@@ -23,8 +23,8 @@ double dot(const T& vec1, const T& vec2) {
 
 template <typename T>
 T cross(const T& vec1, const T& vec2) {
-    auto cross = ROOT::Math::Cross<double>({vec1.x(), vec1.y(), vec1.z()}, {vec2.x(), vec2.y(), vec2.z()});
-    T res(cross[0], cross[1], cross[2]);
+    auto cross = vec1.Cross(vec2);
+    T res(cross.x(), cross.y(), cross.z());
     return res;
 }
 

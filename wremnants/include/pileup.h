@@ -4,6 +4,8 @@
 #include "TH1D.h"
 #include <memory>
 
+#include "utils.h"
+
 namespace wrem {
 
 class pileup_helper {

@@ -4,6 +4,7 @@
 #include "TROOT.h"
 #include "TH2D.h"
 #include "TH3D.h"
+#include "TF1.h"
 #include "TFile.h"
 #include "TMath.h"
 
@@ -242,7 +243,7 @@ namespace wrem {
     }
 
     // method to return the actual function variations for all parameters filling the externally provided array "variations"
-    double EtaPtCorrelatedEfficiency::DoEffSyst(int etabin, double pt, double *variations, bool getDiff=false) {
+    double EtaPtCorrelatedEfficiency::DoEffSyst(int etabin, double pt, double *variations, bool getDiff) {
 
         std::vector<double> inpars(ndim_);
         std::vector<double> outpars(ndim_);

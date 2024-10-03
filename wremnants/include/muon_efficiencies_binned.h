@@ -2,6 +2,7 @@
 #define WREMNANTS_MUON_EFFICIENCIES_BINNED_H
 
 #include <boost/histogram/axis.hpp>
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <array>
 
 namespace wrem {
@@ -237,7 +238,7 @@ namespace wrem {
         
         int checkEffTypeInAxis(boost::histogram::axis::category<std::string> axis, const std::string& match = "match") {
             int ret = -1;
-            for (Int_t i = 0; i < axis.size(); i++) {
+            for (int i = 0; i < axis.size(); i++) {
                 if (match == axis.value(i)) {
                     ret = i;
                     break;

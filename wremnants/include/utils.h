@@ -790,7 +790,7 @@ public:
 private:
     std::size_t ntoys_;
     double var_scaling_;
-    std::vector<mt19937> rng_;
+    std::vector<std::mt19937> rng_;
 
 };
 

@@ -6,8 +6,6 @@ import narf
 
 ROOT.gInterpreter.AddIncludePath(f"{pathlib.Path(__file__).parent}/include/")
 
-# this is needed (at least) for usage of TF1 in EtaPtCorrelatedEfficiency.h
-narf.clingutils.Load("libHist")
 
 narf.clingutils.Declare('#include "muonCorr.h"')
 narf.clingutils.Declare('#include "histoScaling.h"')

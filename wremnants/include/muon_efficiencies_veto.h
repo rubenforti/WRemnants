@@ -2,6 +2,7 @@
 #define WREMNANTS_MUON_EFFICIENCIES_VETO_H
 
 #include <boost/histogram/axis.hpp>
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <array>
 #include "defines.h"
 

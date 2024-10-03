@@ -4,6 +4,11 @@
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <TVector2.h>
+#include <Math/Vector4D.h>
+#include <eigen3/unsupported/Eigen/CXX11/Tensor>
+
+#include "utils.h"
 #include "defines.h"
 #include "tfliteutils.h"
 

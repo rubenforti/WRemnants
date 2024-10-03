@@ -21,11 +21,10 @@ namespace wrem {
         
     enum class Era {
         Era_2016PreVFP,
-	Era_2016PostVFP,
-	Era_2017,
-	Era_2018
+        Era_2016PostVFP,
+        Era_2017,
+        Era_2018
     };
-
 
     const unsigned int MUON_PDGID = 13;
     

@@ -1,7 +1,7 @@
 #ifndef WREMNANTS_LOWPU_UTILS_H
 #define WREMNANTS_LOWPU_UTILS_H
 
-
+#include <iostream>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include "defines.h"
@@ -128,17 +128,17 @@ bool debug(Vec_i TrigObj_filterBits) {
 
 
 
-    //cout << goodLeptons.size() << " " << goodLeptonsPlus.size() << " " << goodLeptonsMinus.size() << " " << trgMatch.size() << endl;
+    //std::cout << goodLeptons.size() << " " << goodLeptonsPlus.size() << " " << goodLeptonsMinus.size() << " " << trgMatch.size() << std::endl;
     //if(goodLeptons.size() != 2) return true;
     //if(goodLeptons.size() <= 2) return true;
-    cout << TrigObj_filterBits.size()  << endl;
+    std::cout << TrigObj_filterBits.size()  << std::endl;
     
 
     for(int k=0; k < TrigObj_filterBits.size(); k++) {
         
         //if(goodLeptons.at(k) and trigMatch.at(k)) lol = true;
-        cout << " TrigObj_filterBits=" << TrigObj_filterBits.at(k)  << endl;
-        //cout << " goodLeptons=" << goodLeptons.at(k) << " goodLeptonsPlus=" << goodLeptonsPlus.at(k) << " goodLeptonsMinus=" << goodLeptonsMinus.at(k) << " trgMatch=" << trgMatch.at(k) << endl;
+        std::cout << " TrigObj_filterBits=" << TrigObj_filterBits.at(k)  << std::endl;
+        //std::cout << " goodLeptons=" << goodLeptons.at(k) << " goodLeptonsPlus=" << goodLeptonsPlus.at(k) << " goodLeptonsMinus=" << goodLeptonsMinus.at(k) << " trgMatch=" << trgMatch.at(k) << std::endl;
     }
     
 

@@ -1,12 +1,14 @@
 #ifndef WREMNANTS_LOWPU_ROCHESTER_H
 #define WREMNANTS_LOWPU_ROCHESTER_H
 
+#include <fstream>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include "defines.h"
 
 //#include <boost/math/special_functions/erf.hpp>
 #include "TMath.h"
+#include "TRandom.h"
 
 namespace wrem {
     

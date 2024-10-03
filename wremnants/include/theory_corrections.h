@@ -2,11 +2,15 @@
 #define WREMNANTS_THEORY_CORRECTIONS_H
 
 #include <boost/histogram.hpp>
-#include "utils.h"
 #include <cmath>
-#include "traits.h"
+
+#include "utils.h"
 #include "csVariables.h"
 #include "theoryTools.h"
+
+// from narf
+#include "traits.h"
+#include "histutils.h"
 
 namespace wrem {
 
