@@ -6,6 +6,7 @@ import narf
 
 ROOT.gInterpreter.AddIncludePath(f"{pathlib.Path(__file__).parent}/include/")
 
+narf.clingutils.Load("libHist")
 
 narf.clingutils.Declare('#include "muonCorr.h"')
 narf.clingutils.Declare('#include "histoScaling.h"')
