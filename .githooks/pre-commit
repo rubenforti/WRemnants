@@ -9,10 +9,10 @@ trap 'echo "Error on line $LINENO: $BASH_COMMAND" >&2' ERR
 
 
 # Find all staged c++ files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.h$' || true)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(c|cpp|h|hpp)$' || true)
 
 for FILE in $STAGED_FILES; do
-  clang++ -I./narf/narf/include/ -fsyntax-only $FILE 
+  clang++ -I./narf/narf/include/ -fsyntax-only -Wno-deprecated $FILE 
   if [ $? -ne 0 ]; then
     echo "Syntax error in $FILE. Commit aborted."
     exit 1
@@ -62,12 +62,19 @@ for FILE in $STAGED_FILES; do
   # Remove unused imports
   autoflake --in-place "$FILE"
 
-  # Re-add the file to the staging area after fixing whitespace and formatting
-  git add "$FILE"
+  # Track the modified files
+  MODIFIED_FILES+=("$FILE")
 done
 
-# Allow the commit to proceed
-echo "All pre-commit hooks passed"
+# Notify the user if any Python files were modified
+if [ ${#MODIFIED_FILES[@]} -gt 0 ]; then
+  echo "The following Python files were modified and need to be re-staged:"
+  for FILE in "${MODIFIED_FILES[@]}"; do
+    echo "  $FILE"
+  done
+  echo "Please review the changes and manually add the modified files to the staging area."
+fi
+
 exit 0
 
 
