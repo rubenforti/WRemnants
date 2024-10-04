@@ -85,6 +85,9 @@ xlabels = {
     "ptGen" : r"$\mathit{p}_{T}^{\mu}$ (GeV)",
     "ptW" : r"$\mathit{p}_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
     "ptVGen" : r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
+    "ptVgen" : r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
+    "ptWgen" : r"$\mathit{p}_{T}^\mathrm{W}$ (GeV)",
+    "ptZgen" : r"$\mathit{p}_{T}^\mathrm{Z}$ (GeV)",
     "muonJetPt": r"$\mathit{p}_{T}^\mathrm{jet[\mu]}$ (GeV)",
     "eta" : r"$\mathit{\eta}^{\mu}$",
     "etaGen" : r"$\mathit{\eta}^{\mu}$",
@@ -118,7 +121,7 @@ xlabels = {
     "ewLogDeltaM": "ewLogDeltaM",
     "dxy":r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": r"$I$ (GeV)",
-    "relIso": "$I_\mathrm{rel}$",
+    "relIso": r"$I_\mathrm{rel}$",
 }
 
 legend_labels = {
@@ -130,20 +133,20 @@ legend_labels = {
     'gamma_nu1.': r'$\mathit{\gamma}_{\nu}$',
     'Lambda20.25': r'$\mathit{\Lambda}_{2}$',
     'Lambda2-0.25': r'$\mathit{\Lambda}_{2}$',
-    'h_qqV-1.': r'$\mathit{H}$',
-    'h_qqV1.': r'$\mathit{H}$',
-    's-1.': r'$\mathit{S}$',
-    's1.': r'$\mathit{S}$',
-    'b_qqV-0.5': r'$\mathit{B}_{qqV}$',
-    'b_qqbarV-0.5': r'$\mathit{B}_{qqV}$',
-    'b_qqS-0.5': r'$\mathit{B}_{q\bar{q}V}$',
-    'b_qqDS-0.5': r'$\mathit{B}_{q\bar{q}V}$',
-    'b_qqV0.5': r'$\mathit{B}_{soft\ qq}$',
-    'b_qqbarV0.5': r'$\mathit{B}_{soft\ qq}$',
-    'b_qqS0.5': r'$\mathit{B}_{qq\Delta S}$',
-    'b_qqDS0.5': r'$\mathit{B}_{qq\Delta S}$',
-    'b_qg-0.5': r'$\mathit{B}_{qg}$',
-    'b_qg0.5': r'$\mathit{B}_{qg}$',
+    'h_qqV-1.': 'Hard func.',
+    'h_qqV1.': 'Hard func.',
+    's-1.': 'Soft func.',
+    's1.': 'Soft func.',
+    'b_qqV-0.5': r'$qqV$ BF',
+    'b_qqV0.5': r'$qqV$ BF',
+    'b_qqbarV-0.5': r'$q\bar{q}V$ BF',
+    'b_qqbarV0.5': r'$q\bar{q}V$ BF',
+    'b_qqS-0.5': r'$qqS$ BF',
+    'b_qqS0.5': r'$qqS$ BF',
+    'b_qqDS-0.5': r'$qq\Delta S$ BF',
+    'b_qqDS0.5': r'$qq\Delta S$ BF',
+    'b_qg-0.5': r'$qg$ BF',
+    'b_qg0.5': r'$qg$ BF',
 }
 
 legend_labels_combine = {
@@ -155,7 +158,18 @@ legend_labels_combine = {
     "QCDscaleWinclusive_PtV0_13000helicity_3_SymAvg": r'$\mathit{A}_3$',
     "resumTNP_gamma_nu" : r'$\mathit{\gamma}_{\nu}$',
     "chargeVgenNP0scetlibNPWLambda2": r'$\mathit{\Lambda}_{2}$',
-    "pythia_shower_kt": r"Pythia shower $\mathit{k}_T$"
+    "pythia_shower_kt": r"Pythia shower $\mathit{k}_T$",
+    "nlo_ew_virtual": "EW virtual",
+    "weak_default": "EW virtual",
+    "virtual_ewCorr0": "EW virtual",
+    "horacelophotosmecoffew_FSRCorr0": "FSR MEC off",
+    "horaceqedew_FSRCorr0": "FSR horace",
+    "pythiaew_ISRCorr0": "ISR off",
+    "horacelophotosmecoffew_FSRCorr1": "FSR MEC off",
+    "horaceqedew_FSRCorr1": "FSR horace",
+    "pythiaew_ISRCorr1": "ISR off",
+    'pdfMSHT20mbrangeSymAvg': r'$\mathit{m}_b + 1.25\, GeV$',
+    'pdfMSHT20mcrangeSymAvg': r'$\mathit{m}_c + 0.2\, GeV$',
 }
 
 # uncertainties
@@ -266,13 +280,13 @@ text_dict = {
 }
 
 poi_types = {
-    "mu": "$\mu$",
-    "nois": "$\mathrm{NOI}$",
-    "pmaskedexp": "d$\sigma$ [pb]",
-    "sumpois": "d$\sigma$ [pb]",
-    "pmaskedexpnorm": "1/$\sigma$ d$\sigma$",
-    "sumpoisnorm": "1/$\sigma$ d$\sigma$",
-    "ratiometapois": "$\sigma(W^{+})/\sigma(W^{-})$",
+    "mu": r"$\mu$",
+    "nois": r"$\mathrm{NOI}$",
+    "pmaskedexp": r"d$\sigma$ [pb]",
+    "sumpois": r"d$\sigma$ [pb]",
+    "pmaskedexpnorm": r"1/$\sigma$ d$\sigma$",
+    "sumpoisnorm": r"1/$\sigma$ d$\sigma$",
+    "ratiometapois": r"$\sigma(W^{+})/\sigma(W^{-})$",
     "helpois": "Ai",
     "helmetapois": "Ai",
 }
@@ -302,35 +316,35 @@ axis_labels = {
 }
 
 systematics_labels = {
-    "massShiftZ100MeV": '$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$',
-    "massShiftW100MeV": '$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$',
-    "widthZ": '$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
-    "widthW": '$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
+    "massShiftZ100MeV": r'$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$',
+    "massShiftW100MeV": r'$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$',
+    "widthZ": r'$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$',
+    "widthW": r'$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$',
     # powhegFOEW variations
     'weak_no_ew': "no EW", 
     'weak_no_ho': "no HO", 
     'weak_default': "nominal", 
     'weak_ps': "PS", 
-    'weak_mt_dn': '$m_\mathrm{t}^\mathrm{down}$', 
-    'weak_mt_up': '$m_\mathrm{t}^\mathrm{up}$', 
-    'weak_mz_dn': '$m_\mathrm{Z}^\mathrm{down}$', 
-    'weak_mz_up': '$m_\mathrm{Z}^\mathrm{up}$', 
-    'weak_gmu_dn': '$G_\mu^\mathrm{up}$', 
-    'weak_gmu_up': '$G_\mu^\mathrm{down}$', 
+    'weak_mt_dn': r'$m_\mathrm{t}^\mathrm{down}$',
+    'weak_mt_up': r'$m_\mathrm{t}^\mathrm{up}$',
+    'weak_mz_dn': r'$m_\mathrm{Z}^\mathrm{down}$',
+    'weak_mz_up': r'$m_\mathrm{Z}^\mathrm{up}$',
+    'weak_gmu_dn': r'$G_\mu^\mathrm{up}$',
+    'weak_gmu_up': r'$G_\mu^\mathrm{down}$',
     'weak_aem': r'$\alpha_\mathrm{EM}$',  
     'weak_fs': 'FS',  
-    'weak_mh_dn': '$m_\mathrm{H}^\mathrm{down}$',  
-    'weak_mh_up': '$m_\mathrm{H}^\mathrm{up}$',   
-    'weak_s2eff_0p23125': '$\mathrm{sin}^2_\mathrm{eff}=0.23125$',  
-    'weak_s2eff_0p23105': '$\mathrm{sin}^2_\mathrm{eff}=0.23105$',   
-    'weak_s2eff_0p22155': '$\mathrm{sin}^2_\mathrm{eff}=0.22155$',  
-    'weak_s2eff_0p23185': '$\mathrm{sin}^2_\mathrm{eff}=0.23185$',  
-    'weak_s2eff_0p23205': '$\mathrm{sin}^2_\mathrm{eff}=0.23205$', 
-    'weak_s2eff_0p23255': '$\mathrm{sin}^2_\mathrm{eff}=0.23255$',  
-    'weak_s2eff_0p23355': '$\mathrm{sin}^2_\mathrm{eff}=0.23355$',  
-    'weak_s2eff_0p23455': '$\mathrm{sin}^2_\mathrm{eff}=0.23455$',  
-    'weak_s2eff_0p22955': '$\mathrm{sin}^2_\mathrm{eff}=0.22955$',  
-    'weak_s2eff_0p22655': '$\mathrm{sin}^2_\mathrm{eff}=0.22655$',
+    'weak_mh_dn': r'$m_\mathrm{H}^\mathrm{down}$',
+    'weak_mh_up': r'$m_\mathrm{H}^\mathrm{up}$',
+    'weak_s2eff_0p23125': r'$\mathrm{sin}^2_\mathrm{eff}=0.23125$',
+    'weak_s2eff_0p23105': r'$\mathrm{sin}^2_\mathrm{eff}=0.23105$',
+    'weak_s2eff_0p22155': r'$\mathrm{sin}^2_\mathrm{eff}=0.22155$',
+    'weak_s2eff_0p23185': r'$\mathrm{sin}^2_\mathrm{eff}=0.23185$',
+    'weak_s2eff_0p23205': r'$\mathrm{sin}^2_\mathrm{eff}=0.23205$',
+    'weak_s2eff_0p23255': r'$\mathrm{sin}^2_\mathrm{eff}=0.23255$',
+    'weak_s2eff_0p23355': r'$\mathrm{sin}^2_\mathrm{eff}=0.23355$',
+    'weak_s2eff_0p23455': r'$\mathrm{sin}^2_\mathrm{eff}=0.23455$',
+    'weak_s2eff_0p22955': r'$\mathrm{sin}^2_\mathrm{eff}=0.22955$',
+    'weak_s2eff_0p22655': r'$\mathrm{sin}^2_\mathrm{eff}=0.22655$',
     # EW
     'pythiaew_ISRCorr1': 'Pythia ISR on / off',
     'horacelophotosmecoffew_FSRCorr1': 'Photos MEC off / on',
@@ -372,7 +386,7 @@ def get_systematics_label(key, idx=0):
         else:
             label = str(idx-1)
 
-        return f"$\pm\sigma_\mathrm{{{label}}}$"        
+        return fr"$\pm\sigma_\mathrm{{{label}}}$"
 
     # default return key
     logger.info(f"No label found for {key}")
