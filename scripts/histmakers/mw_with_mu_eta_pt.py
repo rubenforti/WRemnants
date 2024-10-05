@@ -33,7 +33,7 @@ parser.add_argument("--oneMCfileEveryN", type=int, default=None, help="Use 1 MC 
 parser.add_argument("--noAuxiliaryHistograms", action="store_true", help="Remove auxiliary histograms to save memory (removed by default with --unfolding or --theoryAgnostic)")
 parser.add_argument("--mtCut", type=int, default=common.get_default_mtcut(analysis_label), help="Value for the transverse mass cut in the event selection")
 parser.add_argument("--vetoGenPartPt", type=float, default=15.0, help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency")
-parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt preFSR muons in acceptance")
+parser.add_argument("--selectVetoEventsMC", action="store_true", help="Select events which fail the veto, by enforcing at least two prompt postFSR muons in acceptance")
 parser.add_argument("--noTrigger", action="store_true", help="Just for test: remove trigger HLT bit selection and trigger matching (should also remove scale factors with --noScaleFactors for it to make sense)")
 parser.add_argument("--selectNonPromptFromSV", action="store_true", help="Test: define a non-prompt muon enriched control region")
 parser.add_argument("--selectNonPromptFromLightMesonDecay", action="store_true", help="Test: define a non-prompt muon enriched control region with muons from light meson decays")
@@ -158,7 +158,6 @@ axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, over
 axis_passTrigger = hist.axis.Boolean(name = "passTrigger")
 
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name = "ut")
-axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
 # sum those groups up in post processing
 groups_to_aggregate = args.aggregateGroups
 
@@ -600,24 +599,32 @@ def build_graph(df, dataset):
             df = df.Define("goodMuons_genPartFlav0", "Muon_genPartFlav[goodMuons][0]")
             df = df.Define("nJetsClean", "Sum(goodCleanJetsNoPt)")
             df = df.Define("leadjetPt", "(nJetsClean > 0) ? Jet_pt[goodCleanJetsNoPt][0] : 0.0")
-            df = df.Filter("goodMuons_genPartFlav0 == 3") # FOR TESTS
+            # df = df.Filter("goodMuons_genPartFlav0 == 3") # FOR TESTS
             #
             axis_genPartFlav = hist.axis.Regular(6,-0.5,5.5,name="Muon genPart flavor")
-            results.append(df.HistoBoost("Muon_genPartFlav", [axis_genPartFlav], ["goodMuons_genPartFlav0", "nominal_weight"]))
             results.append(df.HistoBoost("Muon_genPartFlav_multi", [axis_genPartFlav, axis_eta_coarse_fakes, axis_pt_coarse_fakes, axis_charge, axis_mt_coarse_fakes, axis_passIso], ["goodMuons_genPartFlav0", "goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nominal_weight"]))
             #
             otherStudyForFakes = df.HistoBoost("otherStudyForFakes", otherStudyForFakes_axes, ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "nJetsClean", "leadjetPt", "deltaPhiMuonMet", "nominal_weight"])
             results.append(otherStudyForFakes)
             # gen match studies
+            axis_match = hist.axis.Boolean(name = "hasMatch")
+            axis_prompt = hist.axis.Boolean(name = "isPrompt")
+            axis_genPt = hist.axis.Regular(60, 0., 60., name = "genPtMuonsStatus1", underflow=False, overflow=True)
             df = df.Define("postfsrMuonsStatus1", "GenPart_status == 1 && abs(GenPart_pdgId) == 13")
-            df = df.Define("postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && (GenPart_statusFlags & 1 || GenPart_statusFlags & (1 << 5))")
-            df = df.Define("postfsrMuonsStatus1notPrompt", "postfsrMuonsStatus1 && !(GenPart_statusFlags & 1 || GenPart_statusFlags & (1 << 5))")
+            df = df.Define("GenPart_isPrompt", "GenPart_statusFlags & 1 || GenPart_statusFlags & (1 << 5)")
+            df = df.Define("genIsMatchedToRecoMuon", "wrem::hasMatchDR2collWithSingle(GenPart_eta,GenPart_phi,goodMuons_eta0,goodMuons_phi0)")
+            df = df.Define("postfsrMuonsStatus1genMatched", "postfsrMuonsStatus1 && genIsMatchedToRecoMuon")
+            df = df.Define("postfsrMuonsStatus1_pt", "GenPart_pt[postfsrMuonsStatus1genMatched]")
+            df = df.Define("postfsrMuonsStatus1_isPrompt", "GenPart_isPrompt[postfsrMuonsStatus1genMatched]")
+            postfsrMuonsGenMatchStatus1 = df.HistoBoost("postfsrMuonsGenMatchStatus1", [axis_genPt, axis_prompt, axis_pt, axis_genPartFlav, axis_passIso], ["postfsrMuonsStatus1_pt", "postfsrMuonsStatus1_isPrompt", "goodMuons_pt0", "goodMuons_genPartFlav0", "passIso", "nominal_weight"])
+            results.append(postfsrMuonsGenMatchStatus1)
             #
+            df = df.Define("postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && GenPart_isPrompt")
+            df = df.Define("postfsrMuonsStatus1notPrompt", "postfsrMuonsStatus1 && !GenPart_isPrompt")
             df = df.Define("muonGenMatchStatus1", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1],GenPart_phi[postfsrMuonsStatus1])")
             df = df.Define("muonGenMatchStatus1prompt", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1prompt],GenPart_phi[postfsrMuonsStatus1prompt])")
             df = df.Define("muonGenMatchStatus1notPrompt", "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuonsStatus1notPrompt],GenPart_phi[postfsrMuonsStatus1notPrompt])")
             #
-            axis_match = hist.axis.Boolean(name = "hasMatch")
             etaPtGenMatchStatus1 = df.HistoBoost("etaPtGenMatchStatus1", [axis_eta, axis_pt, axis_match], ["goodMuons_eta0", "goodMuons_pt0", "muonGenMatchStatus1", "nominal_weight"])
             results.append(etaPtGenMatchStatus1)
             etaPtGenMatchStatus1prompt = df.HistoBoost("etaPtGenMatchStatus1prompt", [axis_eta, axis_pt, axis_match], ["goodMuons_eta0", "goodMuons_pt0", "muonGenMatchStatus1prompt", "nominal_weight"])
@@ -734,10 +741,22 @@ def build_graph(df, dataset):
         results.append(df.HistoBoost("nominal_weight", [hist.axis.Regular(200, -4, 4)], ["nominal_weight"], storage=hist.storage.Double()))
 
         if args.makeMCefficiency:
+            axes_WeffMC = [axis_eta, axis_pt_eff, axis_ut, axis_charge, axis_passIso, axis_passMT, axis_passTrigger]
             cols_WeffMC = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_uT0", "goodMuons_charge0",
                            "passIso", "passMT", "passTrigger"]
             yieldsForWeffMC = df.HistoBoost("yieldsForWeffMC", axes_WeffMC, [*cols_WeffMC, "nominal_weight"])
             results.append(yieldsForWeffMC)
+
+        if isWorZ:
+            # for vertex efficiency plot in MC
+            df = df.Define("absDiffGenRecoVtx_z", "std::abs(GenVtx_z - PV_z)")
+            df = df.Define("goodMuons_abseta0", "abs(goodMuons_eta0)")
+            axis_absDiffGenRecoVtx_z = hist.axis.Regular(100,0,2.0, name = "absDiffGenRecoVtx_z", underflow=False, overflow=True)
+            axis_prefsrWpt = hist.axis.Regular(50, 0., 100., name = "prefsrWpt", underflow=False, overflow=True)
+            axis_abseta = hist.axis.Regular(6, 0, 2.4, name = "abseta", overflow=False, underflow=False)
+            cols_vertexZstudy = ["goodMuons_abseta0", "passIso", "passMT", "absDiffGenRecoVtx_z", "ptVgen"]
+            yieldsVertexZstudy = df.HistoBoost("nominal_vertexZstudy", [axis_abseta, axis_passIso, axis_passMT, axis_absDiffGenRecoVtx_z, axis_prefsrWpt], [*cols_vertexZstudy, "nominal_weight"])
+            results.append(yieldsVertexZstudy)
 
         if not args.noRecoil and args.recoilUnc:
             df = recoilHelper.add_recoil_unc_W(df, results, dataset, cols, axes, "nominal", storage_type=storage_type)

@@ -53,17 +53,17 @@ colors_plots_ = {"Wmunu"      : ROOT.TColor.GetColor("#e42536"),
                  "EWandTop"   : ROOT.TColor.GetColor("#5790fc"),
 }
 
-legEntries_plots_ = {"Wmunu"      : "W#rightarrow#mu#nu",
-                     "Zmumu"      : "Z#rightarrow#mu#mu",
-                     "Z"          : "Z#rightarrow#mu#mu",
-                     "ZmumuVeto"  : "veto Z#rightarrow#mu#mu",
-                     "DYlowMass"  : "Z#rightarrow#mu#mu 10<m<50",
-                     "DYlowMassVeto" : "veto Z#rightarrow#mu#mu 10<m<50",
-                     "Wtau"       : "W#rightarrow#tau#nu", #backward compatibility
-                     "Wtaunu"     : "W#rightarrow#tau#nu",
-                     "WmunuOOA"   : "W#rightarrow#mu#nu OOA",
-                     "Ztautau"    : "Z#rightarrow#tau#tau",
-                     "ZtautauVeto": "veto Z#rightarrow#tau#tau",
+legEntries_plots_ = {"Wmunu"      : "W^{#pm }#rightarrow^{ }#mu#nu",
+                     "Zmumu"      : "Z^{ }#rightarrow^{ }#mu#mu",
+                     "Z"          : "Z^{ }#rightarrow^{ }#mu#mu",
+                     "ZmumuVeto"  : "veto Z^{ }#rightarrow^{ }#mu#mu",
+                     "DYlowMass"  : "Z^{ }#rightarrow^{ }#mu#mu 10<m<50",
+                     "DYlowMassVeto" : "veto Z^{ }#rightarrow^{ }#mu#mu 10<m<50",
+                     "Wtau"       : "W^{ }#rightarrow^{ }#tau#nu", #backward compatibility
+                     "Wtaunu"     : "W^{ }#rightarrow^{ }#tau#nu",
+                     "WmunuOOA"   : "W^{ }#rightarrow^{ }#mu#nu OOA",
+                     "Ztautau"    : "Z^{ }#rightarrow^{ }#tau#tau",
+                     "ZtautauVeto": "veto Z^{ }#rightarrow^{ }#tau#tau",
                      "Top"        : "Top",
                      "Diboson"    : "Diboson",
                      "PhotonInduced" : "#gamma-induced",
@@ -93,6 +93,7 @@ def common_plot_parser():
     parser.add_argument('--invertPalette', action='store_true',   help='Inverte color ordering in palette')
     parser.add_argument('--eosMount', dest="eoscp", action='store_false', help="(Deprecated!) Do not use xrdcp to copy to eos, exploit the eos mount when using an eos path for output (without this option the code will create a temporary local folder and then copy plots to eos through xrdcp at the end")
     parser.add_argument('--gatherProcesses' , default=None, type=str, choices=list(gatherProcesses_.keys()), help='Set list of processes to be gathered in the legend')
+    parser.add_argument('--CMStext', type=str, default="", choices=["Preliminary", "Simulation", "Supplementary", "Simulation Supplementary"], help='Text for label without CMS')
     return parser
 
 #########################################################################
@@ -1738,7 +1739,7 @@ def drawNTH1(hists=[],
         # ymin *= 0.9
         # ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         # if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
         ymin = 9999.9
         ymax = -9999.9
         for h in hists:
@@ -2121,7 +2122,7 @@ def drawDataAndMC(h1, h2,
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
@@ -2688,111 +2689,111 @@ def drawTH1dataMCstack(h1, thestack,
             h1.GetYaxis().SetRangeUser(max(0.0001,h1.GetMinimum()*0.8),h1.GetBinContent(h1.GetMaximumBin())*100)
         else:
             h1.GetYaxis().SetRangeUser(max(0.1,h1.GetMinimum()*0.8),h1.GetBinContent(h1.GetMaximumBin())*1000)
-            canvas.SetLogy()
-            canvas.SaveAs(outdir + canvasName + "_logY.png")
-            canvas.SaveAs(outdir + canvasName + "_logY.pdf")
-            canvas.SetLogy(0)
-            
+        canvas.SetLogy()
+        canvas.RedrawAxis("sameaxis")
+        canvas.SaveAs(outdir + canvasName + "_logY.png")
+        canvas.SaveAs(outdir + canvasName + "_logY.pdf")
+        canvas.SetLogy(0)    
 
     h1.SetTitle(titleBackup)
   
-    if "unrolled" in canvasName:
+    # if "unrolled" in canvasName:
 
-        _canvas_pull = ROOT.TCanvas("_canvas_pull","",800,800)
-        _canvas_pull.SetTickx(1)
-        _canvas_pull.SetTicky(1)
-        _canvas_pull.SetGridx(1)
-        _canvas_pull.SetGridy(1)
-        _canvas_pull.SetTopMargin(0.1)
-        _canvas_pull.SetBottomMargin(0.12)
-        _canvas_pull.SetLeftMargin(0.12)
-        _canvas_pull.SetRightMargin(0.04)
-        # make pulls
-        pulltitle = "unrolled {ch} {pf}".format(ch="plus" if "plus" in canvasName else "minus", pf="postfit" if "postfit" in canvasName else "prefit")
-        hpull = ROOT.TH1D("hpull_"+canvasName,pulltitle,51,-5,5)    
-        hpull.SetStats(1)
-        _canvas_pull.cd()
-        for i in range (1,ratio.GetNbinsX()+1):
-            errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
-            if errTotDen > 0.0:
-                hpull.Fill((ratio.GetBinContent(i)-1)/math.sqrt(errTotDen))
-        hpull.Draw("HIST")
-        hpull.GetXaxis().SetTitle("pull")
-        hpull.GetYaxis().SetTitle("Events")
-        hpull.SetLineColor(ROOT.kBlack)
-        hpull.SetLineWidth(2)
-        ROOT.gStyle.SetOptTitle(1)                
-        ROOT.gStyle.SetOptStat(111110)
-        ROOT.gStyle.SetOptFit(1102)
-        _canvas_pull.RedrawAxis("sameaxis")
-        _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".png")    
-        _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".pdf")
+    #     _canvas_pull = ROOT.TCanvas("_canvas_pull","",800,800)
+    #     _canvas_pull.SetTickx(1)
+    #     _canvas_pull.SetTicky(1)
+    #     _canvas_pull.SetGridx(1)
+    #     _canvas_pull.SetGridy(1)
+    #     _canvas_pull.SetTopMargin(0.1)
+    #     _canvas_pull.SetBottomMargin(0.12)
+    #     _canvas_pull.SetLeftMargin(0.12)
+    #     _canvas_pull.SetRightMargin(0.04)
+    #     # make pulls
+    #     pulltitle = "unrolled {ch} {pf}".format(ch="plus" if "plus" in canvasName else "minus", pf="postfit" if "postfit" in canvasName else "prefit")
+    #     hpull = ROOT.TH1D("hpull_"+canvasName,pulltitle,51,-5,5)    
+    #     hpull.SetStats(1)
+    #     _canvas_pull.cd()
+    #     for i in range (1,ratio.GetNbinsX()+1):
+    #         errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
+    #         if errTotDen > 0.0:
+    #             hpull.Fill((ratio.GetBinContent(i)-1)/math.sqrt(errTotDen))
+    #     hpull.Draw("HIST")
+    #     hpull.GetXaxis().SetTitle("pull")
+    #     hpull.GetYaxis().SetTitle("Events")
+    #     hpull.SetLineColor(ROOT.kBlack)
+    #     hpull.SetLineWidth(2)
+    #     ROOT.gStyle.SetOptTitle(1)                
+    #     ROOT.gStyle.SetOptStat(111110)
+    #     ROOT.gStyle.SetOptFit(1102)
+    #     _canvas_pull.RedrawAxis("sameaxis")
+    #     _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".png")    
+    #     _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".pdf")
 
-        if len(etaptbinning):
-            etaThreshold = 1.2
-            _canvas_pull.SetGridx(0)
-            _canvas_pull.SetGridy(0)            
-            _canvas_pull.SetRightMargin(0.16)            
-            h2pull = ROOT.TH2D("h2pull_"+canvasName, pulltitle.replace("unrolled","rolled") ,
-                               etaptbinning[0], array('d', etaptbinning[1]), etaptbinning[2], array('d', etaptbinning[3]))
-            hpull.Reset("ICESM")  # will use again for pulls in EE only
-            hpullEEp = hpull.Clone("hpullEEp")
-            hpullEEm = hpull.Clone("hpullEEm")
-            for i in range (1,ratio.GetNbinsX()+1):
-                etabin = int((i-1)%etaptbinning[0] + 1)
-                ptbin = int((i-1)/etaptbinning[0] + 1)
-                errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
-                if errTotDen > 0.0:
-                    pullVal = (ratio.GetBinContent(i)-1)/math.sqrt(errTotDen)
-                    h2pull.SetBinContent(etabin,ptbin, pullVal)
-                    if abs(etaptbinning[1][etabin]) >= etaThreshold: 
-                        hpull.Fill(pullVal)
-                        if etaptbinning[1][etabin] > 0: hpullEEp.Fill(pullVal)
-                        else:                           hpullEEm.Fill(pullVal)
-            h2pull.GetXaxis().SetTitle("%s #eta" % "muon" if "muon" in labelX else "electron")
-            h2pull.GetYaxis().SetTitle("%s p_{T}" % "muon" if "muon" in labelX else "electron")
-            h2pull.GetZaxis().SetTitle("pull")
-            h2pull.SetStats(0)
-            h2pull.GetZaxis().SetRangeUser(-3,3)
-            h2pull.Draw("COLZ")
-            _canvas_pull.RedrawAxis("sameaxis")
-            _canvas_pull.SaveAs(outdir + "pull2D_" + canvasName + ".png")
-            _canvas_pull.SaveAs(outdir + "pull2D_" + canvasName + ".pdf")
+    #     if len(etaptbinning):
+    #         etaThreshold = 1.2
+    #         _canvas_pull.SetGridx(0)
+    #         _canvas_pull.SetGridy(0)            
+    #         _canvas_pull.SetRightMargin(0.16)            
+    #         h2pull = ROOT.TH2D("h2pull_"+canvasName, pulltitle.replace("unrolled","rolled") ,
+    #                            etaptbinning[0], array('d', etaptbinning[1]), etaptbinning[2], array('d', etaptbinning[3]))
+    #         hpull.Reset("ICESM")  # will use again for pulls in EE only
+    #         hpullEEp = hpull.Clone("hpullEEp")
+    #         hpullEEm = hpull.Clone("hpullEEm")
+    #         for i in range (1,ratio.GetNbinsX()+1):
+    #             etabin = int((i-1)%etaptbinning[0] + 1)
+    #             ptbin = int((i-1)/etaptbinning[0] + 1)
+    #             errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
+    #             if errTotDen > 0.0:
+    #                 pullVal = (ratio.GetBinContent(i)-1)/math.sqrt(errTotDen)
+    #                 h2pull.SetBinContent(etabin,ptbin, pullVal)
+    #                 if abs(etaptbinning[1][etabin]) >= etaThreshold: 
+    #                     hpull.Fill(pullVal)
+    #                     if etaptbinning[1][etabin] > 0: hpullEEp.Fill(pullVal)
+    #                     else:                           hpullEEm.Fill(pullVal)
+    #         h2pull.GetXaxis().SetTitle("%s #eta" % "muon" if "muon" in labelX else "electron")
+    #         h2pull.GetYaxis().SetTitle("%s p_{T}" % "muon" if "muon" in labelX else "electron")
+    #         h2pull.GetZaxis().SetTitle("pull")
+    #         h2pull.SetStats(0)
+    #         h2pull.GetZaxis().SetRangeUser(-3,3)
+    #         h2pull.Draw("COLZ")
+    #         _canvas_pull.RedrawAxis("sameaxis")
+    #         _canvas_pull.SaveAs(outdir + "pull2D_" + canvasName + ".png")
+    #         _canvas_pull.SaveAs(outdir + "pull2D_" + canvasName + ".pdf")
 
-            # add pulls for EE only
-            _canvas_pull.SetTickx(1)
-            _canvas_pull.SetTicky(1)
-            _canvas_pull.SetGridx(1)
-            _canvas_pull.SetGridy(1)
-            _canvas_pull.SetTopMargin(0.1)
-            _canvas_pull.SetBottomMargin(0.12)
-            _canvas_pull.SetLeftMargin(0.12)
-            _canvas_pull.SetRightMargin(0.04)
-            hpull.Draw("HIST")
-            hpull.GetXaxis().SetTitle("pull (only |#eta| >= %.1f)" % etaThreshold)
-            hpull.GetYaxis().SetTitle("Events")
-            hpullEEp.SetLineWidth(2)
-            hpullEEp.SetLineColor(ROOT.kOrange+2)
-            hpullEEp.SetFillColor(ROOT.kOrange+1)
-            hpullEEp.SetFillStyle(3001)
-            hpullEEm.SetLineWidth(2)
-            hpullEEm.SetLineColor(ROOT.kBlue+2)
-            hpullEEm.SetFillColor(ROOT.kAzure+1)
-            hpullEEm.SetFillStyle(3244)    
-            hpullEEp.Draw("HIST SAME")
-            hpullEEm.Draw("HIST SAME")
-            hpull.Draw("HIST SAME")
-            legEE = ROOT.TLegend(0.15,0.5,0.45,0.8)
-            legEE.SetFillStyle(0)
-            legEE.SetFillColor(0)
-            legEE.SetBorderSize(0)
-            legEE.AddEntry(hpull,    "|#eta| > %.1f" % etaThreshold, "L")
-            legEE.AddEntry(hpullEEp, "#eta > %.1f"   % etaThreshold,  "LF")
-            legEE.AddEntry(hpullEEm, "#eta < -%.1f"  % etaThreshold, "LF")
-            legEE.Draw("same")
-            _canvas_pull.RedrawAxis("sameaxis")
-            _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".png")    
-            _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".pdf")
+    #         # add pulls for EE only
+    #         _canvas_pull.SetTickx(1)
+    #         _canvas_pull.SetTicky(1)
+    #         _canvas_pull.SetGridx(1)
+    #         _canvas_pull.SetGridy(1)
+    #         _canvas_pull.SetTopMargin(0.1)
+    #         _canvas_pull.SetBottomMargin(0.12)
+    #         _canvas_pull.SetLeftMargin(0.12)
+    #         _canvas_pull.SetRightMargin(0.04)
+    #         hpull.Draw("HIST")
+    #         hpull.GetXaxis().SetTitle("pull (only |#eta| >= %.1f)" % etaThreshold)
+    #         hpull.GetYaxis().SetTitle("Events")
+    #         hpullEEp.SetLineWidth(2)
+    #         hpullEEp.SetLineColor(ROOT.kOrange+2)
+    #         hpullEEp.SetFillColor(ROOT.kOrange+1)
+    #         hpullEEp.SetFillStyle(3001)
+    #         hpullEEm.SetLineWidth(2)
+    #         hpullEEm.SetLineColor(ROOT.kBlue+2)
+    #         hpullEEm.SetFillColor(ROOT.kAzure+1)
+    #         hpullEEm.SetFillStyle(3244)    
+    #         hpullEEp.Draw("HIST SAME")
+    #         hpullEEm.Draw("HIST SAME")
+    #         hpull.Draw("HIST SAME")
+    #         legEE = ROOT.TLegend(0.15,0.5,0.45,0.8)
+    #         legEE.SetFillStyle(0)
+    #         legEE.SetFillColor(0)
+    #         legEE.SetBorderSize(0)
+    #         legEE.AddEntry(hpull,    "|#eta| > %.1f" % etaThreshold, "L")
+    #         legEE.AddEntry(hpullEEp, "#eta > %.1f"   % etaThreshold,  "LF")
+    #         legEE.AddEntry(hpullEEm, "#eta < -%.1f"  % etaThreshold, "LF")
+    #         legEE.Draw("same")
+    #         _canvas_pull.RedrawAxis("sameaxis")
+    #         _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".png")    
+    #         _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".pdf")
                       
 ################################################################
 
@@ -2879,7 +2880,7 @@ def drawCheckTheoryBand(h1, h2, h3,
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
@@ -3305,7 +3306,7 @@ def drawXsecAndTheoryband(h1, h2,  # h1 is data, h2 is total uncertainty band
         ymin *= 0.9
         ymax *= (1.1 if leftMargin > 0.1 else 2.0)
         if ymin < 0: ymin = 0
-        #print "drawSingleTH1() >>> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
+        #print "drawSingleTH1() --> Histo: %s     minY,maxY = %.2f, %.2f" % (h1.GetName(),ymin,ymax)
 
     # print "#### WARNING ####"
     # print "Hardcoding ymin = 0 in function drawDataAndMC(): change it if it is not what you need"
@@ -3845,7 +3846,9 @@ def drawGraphCMS(grList,
                  legEntryStyle="LF",
                  useOriginalGraphStyle=False, # if True use style from original graph
                  skipLumi=False,
-                 solidLegend=False
+                 drawLumiLatex=False,
+                 solidLegend=False,
+                 cmsText="Preliminary"
              ):
     adjustSettings_CMS_lumi()
     xAxisName = ""
@@ -3867,8 +3870,11 @@ def drawGraphCMS(grList,
     canvas.cd()
     canvas.SetFillColor(0)
     canvas.SetGrid()
-    canvas.SetLeftMargin(0.14)
-    canvas.SetRightMargin(0.06)
+    leftMargin = 0.16
+    canvas.SetLeftMargin(leftMargin)
+    canvas.SetRightMargin(0.04)
+    canvas.SetTopMargin(0.06)
+    canvas.SetBottomMargin(0.125)
     canvas.cd()
 
     nColumnsLeg = 1
@@ -3905,9 +3911,10 @@ def drawGraphCMS(grList,
 
     canvas.RedrawAxis("sameaxis")
 
+    grList[0].GetXaxis().SetTitleOffset(1.2)
     grList[0].GetXaxis().SetTitleSize(0.05)
     grList[0].GetXaxis().SetLabelSize(0.04)
-    grList[0].GetYaxis().SetTitleOffset(1.3)
+    grList[0].GetYaxis().SetTitleOffset(1.4)
     grList[0].GetYaxis().SetTitleSize(0.05)
     grList[0].GetYaxis().SetLabelSize(0.04)
     grList[0].GetXaxis().SetTitle(xAxisName)
@@ -3919,11 +3926,18 @@ def drawGraphCMS(grList,
 
     setTDRStyle() # check if it doesn't screw things up
     if not skipLumi: 
-        if lumi != None: 
-            CMS_lumi(canvas,lumi,True,False)
-        else:   
-            CMS_lumi(canvas,"",True,False)
-        
+        if not drawLumiLatex:
+            if lumi != None: CMS_lumi(canvas,lumi,True,False)
+            else:            CMS_lumi(canvas,"",True,False)
+        else:
+            latCMS = ROOT.TLatex()
+            latCMS.SetNDC();
+            latCMS.SetTextFont(42)
+            latCMS.SetTextSize(0.035 if lumi != None else 0.04)
+            latCMS.DrawLatex(leftMargin, 0.95, '#bf{CMS} #it{%s}' % cmsText)
+            if lumi != None: latCMS.DrawLatex(0.745, 0.95, '%s fb^{-1} (13 TeV)' % lumi)
+            else:            latCMS.DrawLatex(0.845, 0.95, '(13 TeV)')
+
     etabin = ROOT.TLatex()
     etabin.SetNDC() # not sure it is needed
     etabin.SetTextSize(0.05)

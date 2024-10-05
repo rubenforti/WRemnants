@@ -437,6 +437,17 @@ def build_graph(df, dataset):
         df = df.Define("deltaPhiMuonMet", "std::abs(wrem::deltaPhi(trigMuons_phi0,met_wlike_TV2.Phi()))")
         df = df.Filter(f"deltaPhiMuonMet > {args.dphiMuonMetCut*np.pi}")
 
+    if isZ:
+        # for vertex efficiency plot in MC
+        df = df.Define("absDiffGenRecoVtx_z", "std::abs(GenVtx_z - PV_z)")
+        df = df.Define("trigMuons_abseta0", "abs(trigMuons_eta0)")
+        axis_absDiffGenRecoVtx_z = hist.axis.Regular(100,0,2.0, name = "absDiffGenRecoVtx_z", underflow=False, overflow=True)
+        axis_prefsrWpt = hist.axis.Regular(50, 0., 100., name = "prefsrWpt", underflow=False, overflow=True)
+        axis_abseta = hist.axis.Regular(6, 0, 2.4, name = "abseta", overflow=False, underflow=False)
+        cols_vertexZstudy = ["trigMuons_eta0", "trigMuons_passIso0", "passWlikeMT", "absDiffGenRecoVtx_z", "ptVgen"]
+        yieldsVertexZstudy = df.HistoBoost("nominal_vertexZstudy", [axis_abseta, common.axis_passIso, common.axis_passMT, axis_absDiffGenRecoVtx_z, axis_prefsrWpt], [*cols_vertexZstudy, "nominal_weight"])
+        results.append(yieldsVertexZstudy)
+
     if not args.addIsoMtAxes:
         df = df.Filter("passWlikeMT")
 
@@ -449,6 +460,7 @@ def build_graph(df, dataset):
         else:
             df = df.Define("nominal_weight_noPUandVtx", "nominal_weight/(weight_pu*weight_vtx)")
             df = df.Define("nominal_weight_noVtx", "nominal_weight/weight_vtx")
+
         axis_nRecoVtx = hist.axis.Regular(50, 0.5, 50.5, name="PV_npvsGood")
         axis_fixedGridRhoFastjetAll = hist.axis.Regular(50, 0, 50, name="fixedGridRhoFastjetAll")
         results.append(df.HistoBoost("PV_npvsGood_uncorr", [axis_nRecoVtx], ["PV_npvsGood", "nominal_weight_noPUandVtx"]))
