@@ -26,6 +26,7 @@ hep.style.use(hep.style.ROOT)
 
 parser = common.plot_parser()
 parser.add_argument("infile", type=str, help="hdf5 file from combinetf2 or root file from combinetf1")
+parser.add_argument("--uncFile", type=str, default=None, help="Take the uncertainties from a second file")
 parser.add_argument("--logy", action='store_true', help="Make the yscale logarithmic")
 parser.add_argument("--noLowerPanel", action='store_true', help="Don't plot the lower panel in the plot")
 parser.add_argument("--logTransform", action='store_true', help="Log transform the events")
@@ -48,14 +49,15 @@ parser.add_argument("--extraTextLoc", type=float, nargs=2, default=None, help="L
 parser.add_argument("--varNames", type=str, nargs='*', default=None, help="Name of variation hist")
 parser.add_argument("--varLabels", type=str, nargs='*', default=None, help="Label(s) of variation hist for plotting")
 parser.add_argument("--varColors", type=str, nargs='*', default=None, help="Color(s) of variation hist for plotting")
-parser.add_argument("--varOneSided",  type=int, nargs='*', help="Only plot one sided variation (1) or two default two-sided (0)")
+parser.add_argument("--varOneSided",  type=int, nargs='*', default=[], help="Only plot one sided variation (1) or two default two-sided (0)")
+parser.add_argument("--scaleVariation", nargs='*', type=float, default=[], help="Scale a variation by this factor")
+parser.add_argument("--subplotSizes", nargs=2, type=int, default=[4,2], help="Relative sizes for upper and lower panels")
 
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
-
 
 varNames = args.varNames
 if varNames is not None:
@@ -71,6 +73,7 @@ if varNames is not None:
         varColors = [colormaps["tab10" if len(varNames) < 10 else "tab20"](i) for i in range(len(varNames))]
 
     varOneSided = [args.varOneSided[i] if i < len(args.varOneSided) else 0 for i in range(len(varNames))]
+    scaleVariation = [args.scaleVariation[i] if i < len(args.scaleVariation) else 1 for i in range(len(varNames))]
 
 fittype = "prefit" if args.prefit else "postfit"
 ratio = not args.noLowerPanel and not args.logTransform
@@ -79,6 +82,10 @@ data = not args.noData
 
 # load .hdf5 file first, must exist in combinetf and combinetf2
 fitresult_h5py = combinetf_input.get_fitresult(args.infile.replace(".root",".hdf5"))
+
+if args.uncFile is not None:
+    fitresult_h5py_unc = combinetf_input.get_fitresult(args.uncFile.replace(".root",".hdf5"))
+    fitresult_unc = ioutils.pickle_load_h5py(fitresult_h5py_unc["results"])
 
 if "results" in fitresult_h5py.keys():
     fitresult = ioutils.pickle_load_h5py(fitresult_h5py["results"])
@@ -156,8 +163,8 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
             rlabel = f"${args.dataName}"+('-' if diff else '\,/\,')+"Pred.$"
 
         fig, ax1, ax2 = plot_tools.figureWithRatio(h_data, xlabel, ylabel, args.ylim, 
-            rlabel, 
-            args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1)
+            rlabel, args.rrange, width_scale=1.25 if len(axes_names) == 1 else 1, 
+            subplotsizes=args.subplotSizes)
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -286,12 +293,24 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         if hup is not None:
             linewidth = 2
             for i, (hu, hd) in enumerate(zip(hup, hdown)):
+
+                if scaleVariation[i] != 1:
+                    hdiff = hh.addHists(hu, h_inclusive, scale2=-1)
+                    hdiff = hh.scaleHist(hdiff, scaleVariation[i])
+                    hu = hh.addHists(hdiff, h_inclusive)
+
+                    if not varOneSided[i]:
+                        hdiff = hh.addHists(hd, h_inclusive, scale2=-1)
+                        hdiff = hh.scaleHist(hdiff, scaleVariation[i])
+                        hd = hh.addHists(hdiff, h_inclusive)
+
                 if varOneSided[i]:
                     hvars = hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True)
                     linestyle="-"
                 else:
                     hvars = [hh.divideHists(hu, h_inclusive, cutoff=0.01, rel_unc=True), hh.divideHists(hd, h_inclusive, cutoff=0.01, rel_unc=True)]
                     linestyle=["-","--"]
+                
                 hep.histplot(
                     hvars,
                     histtype="step",
@@ -331,7 +350,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, hup=
         else:
             text_pieces.append(f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$")
     
-    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
+    plot_tools.add_cms_decor(ax1, args.cmsDecor, data=data or "Nonprompt" in labels, lumi=lumi if args.dataName=="Data" and not args.noData else None, loc=args.logoPos)
 
     if len(h_stack) < 10:
         plot_tools.addLegend(ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize, extra_text=text_pieces, extra_text_loc=args.extraTextLoc)
@@ -372,9 +391,20 @@ def make_plots(hist_data, hist_inclusive, hist_stack, axes, procs, labels, color
     if args.processGrouping is not None:
         hist_stack, labels, colors, procs = styles.process_grouping(args.processGrouping, hist_stack, procs)
 
+    # temporary fix to take uncertainties from second file
+    if args.uncFile:
+        hist_unc = fitresult_unc[f"hist_{fittype}_inclusive"][channel].get()
+        axes = hist_unc.axes
+
+        hist_data = hist_data.project(*axes.name)
+        hist_inclusive = hist_inclusive.project(*axes.name)
+        hist_stack = [h.project(*axes.name) for h in hist_stack]
+
+        hist_inclusive.variances(flow=True)[...] = hist_unc.variances(flow=True)
+
     if hist_var is not None:
-        hists_down = [hist_var[{"downUpVar":0, "vars":n}] for n in varNames]
-        hists_up = [hist_var[{"downUpVar":1, "vars":n}] for n in varNames]
+        hists_down = [hist_var[{"downUpVar":0, "vars":n}].project(*[a.name for a in axes]) for n in varNames]
+        hists_up = [hist_var[{"downUpVar":1, "vars":n}].project(*[a.name for a in axes]) for n in varNames]
     else:
         hists_down = None
         hists_up = None
@@ -447,6 +477,7 @@ if combinetf2:
             hist_var = fitresult[f"hist_{fittype}_inclusive_variations"][channel].get()
         else:
             hist_var = None
+
 
         if args.logTransform:
             hist_data.variances(flow=True)[...] = hist_data.variances(flow=True)[...]/hist_data.values(flow=True)[...]**2

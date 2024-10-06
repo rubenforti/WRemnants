@@ -1,8 +1,14 @@
-
 import narf
 
 # load lowPU specific libs
-#ROOT.gInterpreter.AddIncludePath(f"{pathlib.Path(__file__).parent}/include/")
+
+# this is needed (at least) by lowpu_efficiencies.h
+narf.clingutils.Load("libPhysics")
+narf.clingutils.Load("libROOTVecOps")
+
+# this is needed by lowpu_rochester.h
+narf.clingutils.Load("libROOTDataFrame")
+
 narf.clingutils.Declare('#include "lowpu_utils.h"')
 narf.clingutils.Declare('#include "lowpu_efficiencies.h"')
 narf.clingutils.Declare('#include "lowpu_prefire.h"')

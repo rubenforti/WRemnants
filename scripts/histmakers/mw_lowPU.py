@@ -6,7 +6,7 @@ import os
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)
-parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
+parser.add_argument("--lumiUncertainty", type=float, help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7%)", default=1.017)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
 

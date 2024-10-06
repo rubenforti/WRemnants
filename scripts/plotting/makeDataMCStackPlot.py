@@ -50,6 +50,7 @@ parser.add_argument("--fakeSmoothingPolynomial", type=str, default="chebyshev", 
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 parser.add_argument("--subplotSizes", nargs=2, type=int, default=[4,2], help="Relative sizes for upper and lower panels")
+parser.add_argument("--scaleRatioUnstacked", nargs='*', type=float, default=[], help="Scale a variation by this factor")
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser("variation", help="Arguments for adding variation hists")
 variation.add_argument("--varName", type=str, nargs='+', required=True, help="Name of variation hist")
@@ -59,6 +60,7 @@ variation.add_argument("--selectEntries", type=str, nargs='+', help="entries to 
 variation.add_argument("--colors", type=str, nargs='+', help="Variation colors")
 variation.add_argument("--linestyle", type=str, default=[], nargs='+', help="Linestyle for variations")
 variation.add_argument("--doubleColors", action='store_true', help="Auto generate colors in pairs (useful for systematics)")
+variation.add_argument("--doubleLines", action='store_true', help="Auto generate colors in pairs (useful for systematics)")
 variation.add_argument("--fillBetween", type=int, help="Fill between first n variation hists in ratio")
 variation.add_argument("--lowerPanelVariations", type=int, default=0, help="Plot n first variations in lower panel only")
 
@@ -183,7 +185,7 @@ if addVariation:
     # If none matplotlib will pick a random color
     ncols = len(args.varName) if not args.doubleColors else int(len(args.varName)/2)
     colors = args.colors if args.colors else [colormaps["tab10" if ncols < 10 else "tab20"](int(i/2) if args.doubleColors else i) for i in range(len(args.varName))]
-    for i, (label,name,color) in enumerate(zip(varLabels,args.varName,colors)):
+    for i, (label,name,color) in enumerate(zip(varLabels, args.varName,colors)):
         entry = entries[i] if entries else None
         do_transform = entry in transforms
         name = name if name != "" else nominalName
@@ -242,7 +244,7 @@ def collapseSyst(h):
 
 overflow_ax = ["ptll", "chargeVgen", "massVgen", "ptVgen", "absEtaGen", "ptGen", "ptVGen", "absYVGen", "iso", "dxy", "met","mt"]
 for h in args.hists:
-    if any(x in h.split("-") for x in ["ptll", "mll", "ptVgen", "ptVGen"]):
+    if any(x in h.split("-") for x in ["pt", "ptll", "mll", "ptVgen", "ptVGen", "ptWgen", "ptZgen"]):
         # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
         ylabel="$Events\,/\,GeV$"
@@ -251,39 +253,51 @@ for h in args.hists:
         ylabel="$Events\,/\,bin$"
 
     if args.rlabel is None:
-        rlabel = "$Pred.\,/\,Data$" if args.ratioToData else "$Data\,/\,Pred.$"
+        if args.noData:
+            rlabel = "Ratio to nominal"
+        elif args.ratioToData:
+            rlabel = "$Pred.\,/\,Data$"
+        else:
+            rlabel = "$Data\,/\,Pred.$"
     else:
         rlabel = args.rlabel
+
     if len(h.split("-")) > 1:
         sp = h.split("-")
         action = lambda x: hh.unrolledHist(collapseSyst(x[select]), binwnorm=binwnorm, obs=sp)
         xlabel=f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
-        xlabel=styles.xlabels.get(h,h)
+        print(prednames)
+        href = h if h != "ptVgen" else ("ptWgen" if "Wmunu" in prednames else "ptZgen")
+        xlabel=styles.xlabels.get(href,href)
+
+
     fig = plot_tools.makeStackPlotWithRatio(histInfo, prednames, histName=args.baseName, ylim=args.ylim, yscale=args.yscale, logy=args.logy,
             fill_between=args.fillBetween if hasattr(args, "fillBetween") else None, 
             lower_panel_variations=args.lowerPanelVariations if hasattr(args, "lowerPanelVariations") else 0,
+            scaleRatioUnstacked=args.scaleRatioUnstacked,
             action=action, unstacked=unstack, 
             fitresult=args.fitresult, prefit=args.prefit,
             xlabel=xlabel, ylabel=ylabel, rrange=args.rrange, binwnorm=binwnorm, lumi=groups.lumi,
             ratio_to_data=args.ratioToData, rlabel=rlabel,
             xlim=args.xlim, no_fill=args.noFill, no_stack=args.noStack, no_ratio=args.noRatio, density=args.density, flow=args.flow,
-            cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols, unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [],
+            cms_decor=args.cmsDecor, legtext_size=args.legSize, nlegcols=args.legCols, 
+            unstacked_linestyles=args.linestyle if hasattr(args, "linestyle") else [], double_lines=args.doubleLines if hasattr(args, "doubleLines") else False,
             ratio_error=args.ratioError, normalize_to_data=args.normToData, noSci=args.noSciy, logoPos=args.logoPos, 
             width_scale=1.25 if len(h.split("-")) == 1 else 1, lowerLegCols=args.lowerLegCols, lowerLegPos=args.lowerLegPos,
             subplotsizes=args.subplotSizes,
             )
 
-    fitresultstring=""
-    if args.fitresult:
-        fitresultstring = "prefit" if args.prefit else "postfit"
-    var_arg = None
+    to_join = [f"{h.replace('-','_')}"]
     if "varName" in args and args.varName:
         var_arg = args.varName[0]
         if "selectEntries" in args and args.selectEntries:
             var_arg = args.selectEntries[0] if not args.selectEntries[0].isdigit() else (var_arg+args.selectEntries[0])
-    to_join = [f"{h.replace('-','_')}"]+[var_arg]+[fitresultstring, args.postfix]+[args.channel.replace("all", "")]
+        to_join.append(var_arg)
+    if args.fitresult:
+        to_join.append("prefit" if args.prefit else "postfit")
+    to_join.extend([args.postfix, args.channel.replace("all", "")])
     outfile = "_".join(filter(lambda x: x, to_join))
     if args.cmsDecor == "Preliminary":
         outfile += "_preliminary"

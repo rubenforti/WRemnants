@@ -36,12 +36,13 @@ def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
     singlelep = mode[0] == "w" or "wlike" in mode
 
     if gen_level == "preFSR":
-        df = theory_tools.define_prefsr_vars(df, mode=mode)
+        df = theory_tools.define_prefsr_vars(df)
 
         # needed for fiducial phase space definition
         df = df.Alias("massVGen", "massVgen")
         df = df.Alias("ptVGen", "ptVgen")
         df = df.Alias("absYVGen", "absYVgen")
+        df = df.Alias("chargeVGen", "chargeVgen")
 
         if singlelep:
             df = df.Alias("mTVGen", "mTVgen")   
@@ -72,13 +73,13 @@ def define_gen_level(df, gen_level, dataset_name, mode="w_mass"):
             df = df.Define("absYVGen", "postfsrabsYV")  
 
         df = df.Alias("ptVGen", "postfsrPTV")      
+        df = df.Alias("chargeVGen", "postfsrChargeV")
 
     if "wlike" in mode:
         df = df.Define("qGen", "event % 2 == 0 ? -1 : 1")
-    
-    df = df.Alias("chargeVGen", "postfsrChargeV")
 
     return df
+
 
 def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs):
     # Define a fiducial phase space and if select=True, either select events inside/outside
@@ -87,7 +88,7 @@ def select_fiducial_space(df, select=True, accept=True, mode="w_mass", **kwargs)
     fiducial = kwargs.get("fiducial")
     selmap = {x : None for x in ["pt_min", "pt_max", "abseta_max", "mass_min", "mass_max", "mtw_min",]}
 
-    selections = kwargs.get('selections', [])
+    selections = kwargs.get('selections', [])[:]
     if fiducial:
         logger.info(f"Using default fiducial settings for selection {fiducial} for analysis {mode}")
         if fiducial not in ["inclusive", "masswindow"]:
