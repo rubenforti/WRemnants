@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
+import re
+import os, os.path
+import argparse
+import shutil
+
 ## safe batch mode
 import sys
-
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
-
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -21,7 +24,7 @@ if __name__ == "__main__":
     parser = common_plot_parser()
     parser.add_argument("rootfile", type=str, nargs=2, help="Input root files")
     parser.add_argument("outdir",   type=str, nargs=1, help="Folder for plots")
-    parser.add_argument("-p", "--processes",    type=str, default="Wmunu", help="Comma separated list of processes to plot (full name please)")
+    parser.add_argument("-p", "--processes",    type=str, nargs='+', default=["Wmunu", "Zmumu"], help="List of processes to plot (full name please)")
     parser.add_argument("--altLeg", type=str, default="Alt.", help="Legend entry for alternate histogram")
     parser.add_argument(     '--ratioRange', default=None, type=float, nargs=2, help="Range for ratio plot (if None, use default from plotted histograms)")
     parser.add_argument('-c','--charge', default=None, choices=["plus", "minus"], type=str, help='Needs to specify the charge, since all histograms are in the same file')
@@ -66,8 +69,8 @@ if __name__ == "__main__":
     pad2.SetFillColor(0)
     pad2.SetGridy(1)
     pad2.SetFillStyle(0)
-
-    processes = args.processes.split(',')
+    
+    processes = args.processes[:]
     nominals = {p : None for p in processes}
     systsUp = {p : None for p in processes}
     systsDown = {p : None for p in processes}
@@ -76,6 +79,7 @@ if __name__ == "__main__":
     # get nominals
     rf = safeOpenFile(fname0)
     for p in processes:
+        print(f"Process {p}")
         if (rf.GetDirectory(p)):
             #print(f"Browsing file into subfolder {p}")
             f = rf.GetDirectory(p)
@@ -83,12 +87,16 @@ if __name__ == "__main__":
         nominals[p] = safeGetObject(f, f"nominal_{p}_{args.charge}")
         nominals[p].SetTitle(p)
         if args.syst:
-            systsUp[p] = safeGetObject(f, f"nominal_{p}_{args.syst}Up_{args.charge}")
+            systsUp[p] = safeGetObject(f, f"nominal_{p}_{args.syst}Up_{args.charge}", quitOnFail=False)
+            if systsUp[p] == None:
+                systsUp[p] = copy.deepcopy(nominals[p].Clone(f"nominal_{p}_{args.syst}Up_{args.charge}"))
             systsUp[p].SetTitle(f"{p} {args.syst}")
-            systsDown[p] = safeGetObject(f, f"nominal_{p}_{args.syst}Down_{args.charge}")
+            systsDown[p] = safeGetObject(f, f"nominal_{p}_{args.syst}Down_{args.charge}", quitOnFail=False)
+            if systsDown[p] == None:
+                systsDown[p] = copy.deepcopy(nominals[p].Clone(f"nominal_{p}_{args.syst}Down_{args.charge}"))
             systsDown[p].SetTitle(f"{p} {args.syst}")
     rf.Close()
-
+        
     rf1 = safeOpenFile(fname1)
     for p in processes:
         if (rf1.GetDirectory(p)):
@@ -100,9 +108,9 @@ if __name__ == "__main__":
     rf1.Close()
 
     chargetext = "Positive" if args.charge == "plus" else "Negative"
-
-    p = processes[0] # temporary
-    canvasName = f"compareShape_{p}_{args.syst}_{args.charge}_projPt"
+    
+    pString = "And".join(processes)
+    canvasName = f"compareShape_{pString}_{args.syst}_{args.charge}_projPt"
     if "Supplementary" in args.CMStext:
         canvasName += "_supplementary"
     elif "Preliminary" in args.CMStext:
@@ -110,14 +118,27 @@ if __name__ == "__main__":
     elif "Simulation" in args.CMStext:
         canvasName += "_simulation"
 
-    h1 = nominals[p].ProjectionY(f"{nominals[p].GetName()}_pt",  1, nominals[p].GetNbinsX(), "e")
-    alt1D = alts[p].ProjectionY(f"{alts[p].GetName()}_alt_pt",  1, alts[p].GetNbinsX(), "e")
-    syst1DUp = systsUp[p].ProjectionY(f"{systsUp[p].GetName()}_pt",  1, systsUp[p].GetNbinsX(), "e")
-    syst1DDown = systsDown[p].ProjectionY(f"{systsDown[p].GetName()}_pt",  1, systsDown[p].GetNbinsX(), "e")
+    for ip,p in enumerate(processes):
+        if ip:
+            h1.Add(nominals[p].ProjectionY(f"{nominals[p].GetName()}_pt",  1, nominals[p].GetNbinsX(), "e"))
+            alt1D.Add(alts[p].ProjectionY(f"{alts[p].GetName()}_alt_pt",  1, alts[p].GetNbinsX(), "e"))
+            syst1DUp.Add(systsUp[p].ProjectionY(f"{systsUp[p].GetName()}_pt",  1, systsUp[p].GetNbinsX(), "e"))
+            syst1DDown.Add(systsDown[p].ProjectionY(f"{systsDown[p].GetName()}_pt",  1, systsDown[p].GetNbinsX(), "e"))
+        else:
+            h1 = nominals[p].ProjectionY(f"{nominals[p].GetName()}_pt",  1, nominals[p].GetNbinsX(), "e")
+            alt1D = alts[p].ProjectionY(f"{alts[p].GetName()}_alt_pt",  1, alts[p].GetNbinsX(), "e")
+            syst1DUp = systsUp[p].ProjectionY(f"{systsUp[p].GetName()}_pt",  1, systsUp[p].GetNbinsX(), "e")
+            syst1DDown = systsDown[p].ProjectionY(f"{systsDown[p].GetName()}_pt",  1, systsDown[p].GetNbinsX(), "e")
 
+    pZ = processes[1]
+    h1Z = nominals[pZ].ProjectionY(f"{nominals[pZ].GetName()}_pt",  1, nominals[pZ].GetNbinsX(), "e")
+
+    p = processes[0]
     h1.SetFillColor(colors_plots_[p])
     h1.SetLineColor(colors_plots_[p])
-    alt1D.SetLineColor(ROOT.TColor.GetColor("#5790fc"))
+    h1Z.SetFillColor(colors_plots_[pZ])
+    h1Z.SetLineColor(colors_plots_[pZ])
+    alt1D.SetLineColor(ROOT.TColor.GetColor("#f89c20")) # ROOT.TColor.GetColor("#5790fc")
     alt1D.SetLineWidth(3)
     syst1DUp.SetLineStyle(1)
     syst1DUp.SetLineWidth(3)
@@ -126,45 +147,55 @@ if __name__ == "__main__":
     syst1DDown.SetLineWidth(3)
     syst1DDown.SetLineColor(ROOT.TColor.GetColor("#964A8B"))
 
-    procLegend = legEntries_plots_[p]
-    if p == "Wmunu":
-        procLegend = "W^{+ }#rightarrow^{ }#mu^{+}#nu" if args.charge == "plus" else "W^{ - }#rightarrow^{ }#mu^{-}#nu"
+    legLabels = []
+    for p in processes:
+        tmp = legEntries_plots_[p]
+        if p == "Wmunu":
+            tmp = "W^{+ }#rightarrow^{ }#mu^{+}#nu" if args.charge == "plus" else "W^{ - }#rightarrow^{ }#mu^{-}#nu"                
+        legLabels.append(tmp)
+
+    #procLegend = " + ".join(legLabels)
+    #procLegend = "W^{ }#rightarrow^{ }#mu#nu + Z^{ }#rightarrow^{ }#mu#mu" # "W + Z"
+    procLegend = legLabels[0]
+    procLegendZ = legLabels[1]
+    procLegendShort = "W + Z"
 
     xAxisName = chargetext + " muon #it{p}_{T} (GeV)"
     yAxisName = "Events"
-    yRatioAxisName = f"Ratio to {procLegend}"
+    yRatioAxisName = f"Ratio to {procLegendShort}"
     yAxisTitleOffset = 1.58
     transparentLegend = True
     legendCoords=f"{leftMargin+0.02},{1-rightMargin-0.01},0.74,0.92;2"
     moreTextLatex = ""
     lumi = "16.8"
-
+    
     frame = h1.Clone("frame")
     frame.GetXaxis().SetLabelSize(0.04)
     frame.SetStats(0)
 
-    hlist = [h1, alt1D, syst1DUp, syst1DDown]
-    leglist = [procLegend, args.altLeg, "#it{m}_{W} + 100 MeV", "#it{m}_{W} - 100 MeV"]
+    hlist = [h1, syst1DUp, syst1DDown, alt1D, ]
+    leglist = [procLegend, "#it{m}_{W} + 100 MeV", "#it{m}_{W} - 100 MeV", args.altLeg]
     ymin, ymax = getMinMaxMultiHisto(hlist, excludeEmpty=True, sumError=False,
                                      excludeUnderflow=True, excludeOverflow=True)
     diff = ymax - ymin
     ymax = ymax + 0.7 * diff
-
+    
     h1.GetXaxis().SetLabelSize(0)
-    h1.GetXaxis().SetTitle("")
+    h1.GetXaxis().SetTitle("")  
     h1.GetYaxis().SetTitle(yAxisName)
-    h1.GetYaxis().SetTitleOffset(yAxisTitleOffset)
+    h1.GetYaxis().SetTitleOffset(yAxisTitleOffset) 
     h1.GetYaxis().SetTitleSize(0.05)
     h1.GetYaxis().SetLabelSize(0.04)
     h1.GetYaxis().SetRangeUser(0, ymax)
     h1.GetYaxis().SetTickSize(0.01)
     h1.Draw("HE")
+    h1Z.Draw("HE SAME")
     for ih,h in enumerate(hlist[1:]):
         h.Draw("HIST SAME")
 
     nColumnsLeg = 1
     legHeader = ""
-    if ";" in legendCoords:
+    if ";" in legendCoords: 
         tokens = legendCoords.split(";")
         nColumnsLeg = int(tokens[1])
         if len(tokens) > 2:
@@ -184,6 +215,9 @@ if __name__ == "__main__":
 
     for ih, h in enumerate(hlist):
         leg.AddEntry(hlist[ih], leglist[ih], "L" if ih else "F")
+        if ih == 0:
+            leg.AddEntry(h1Z, procLegendZ, "F")
+
         h.SetStats(0)
     leg.Draw("same")
     canvas.RedrawAxis("sameaxis")
@@ -192,10 +226,10 @@ if __name__ == "__main__":
         realtext = moreTextLatex.split("::")[0]
         x1,y1,ypass,textsize = 0.75,0.8,0.08,0.035
         if "::" in moreTextLatex:
-            x1,y1,ypass,textsize = (float(x) for x in (moreTextLatex.split("::")[1]).split(","))
+            x1,y1,ypass,textsize = (float(x) for x in (moreTextLatex.split("::")[1]).split(","))            
         lat = ROOT.TLatex()
         lat.SetNDC();
-        lat.SetTextFont(42)
+        lat.SetTextFont(42)        
         lat.SetTextSize(textsize)
         for itx,tx in enumerate(realtext.split(";")):
             lat.DrawLatex(x1,y1-itx*ypass,tx)
@@ -214,7 +248,7 @@ if __name__ == "__main__":
         pad2.cd()
 
         frame.Reset("ICES")
-        #else:
+        #else:                          
         #frame.GetYaxis().SetRangeUser(0.5,1.5)
         frame.GetYaxis().SetNdivisions(5)
         frame.GetYaxis().SetTitle(yRatioAxisName)
@@ -254,8 +288,8 @@ if __name__ == "__main__":
                 ratios[-1].SetMarkerStyle(0)
                 ratios[-1].SetFillColor(0)
                 ratios[-1].Draw("HIST SAME")
-
-            newymin, newymax = getMinMaxMultiHisto(ratios, excludeEmpty=True, sumError=False,
+            
+            newymin, newymax = getMinMaxMultiHisto(ratios, excludeEmpty=True, sumError=False, 
                                                    excludeUnderflow=True, excludeOverflow=True)
             if newymin == newymax:
                 newymin *= 0.99
@@ -284,17 +318,17 @@ if __name__ == "__main__":
         legRatio.SetNColumns(1)
         legRatio.AddEntry(ratio, "Stat. unc.", "F")
         legRatio.Draw("SAME")
-
+        
         pad2.RedrawAxis("sameaxis")
 
     draw_both0_noLog1_onlyLog2 = 1
-
+        
     if draw_both0_noLog1_onlyLog2 != 2:
         canvas.SaveAs(outdir + canvasName + ".png")
         canvas.SaveAs(outdir + canvasName + ".pdf")
 
-    if draw_both0_noLog1_onlyLog2 != 1:
-        if yAxisName == "a.u.":
+    if draw_both0_noLog1_onlyLog2 != 1:        
+        if yAxisName == "a.u.": 
             h1.GetYaxis().SetRangeUser(max(0.0001,h1.GetMinimum()*0.8),h1.GetMaximum()*100)
         else:
             h1.GetYaxis().SetRangeUser(max(0.001,h1.GetMinimum()*0.8),h1.GetMaximum()*100)

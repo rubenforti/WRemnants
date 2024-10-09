@@ -32,30 +32,8 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
-
-
-def plotDistribution2D(args, groups, datasets, histname, outdir, canvas2Dshapes=None,
-                       xAxisName="x axis", yAxisName="y axis", zAxisName="Events",
-                       scaleToUnitArea=False):
-
-    groups.setNominalName(histname)
-    groups.loadHistsForDatagroups(histname, syst="", procsToRead=datasets)
-    histInfo = groups.getDatagroups()
-    rootHists = {}
-
-    for d in datasets:
-        hnarf = histInfo[d].hists[histname]
-        rootHists[d] = narf.hist_to_root(hnarf)
-        rootHists[d].SetName(f"{histname}_{d}")
-        rootHists[d].SetTitle(f"{d}")
-
-        drawCorrelationPlot(rootHists[d], xAxisName, yAxisName, zAxisName,
-                            f"{rootHists[d].GetName()}", plotLabel="ForceTitle", outdir=outdir,
-                            smoothPlot=False, drawProfileX=False, scaleToUnitArea=scaleToUnitArea,
-                            draw_both0_noLog1_onlyLog2=1, passCanvas=canvas2Dshapes)
-
+from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
+        
 def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=None,
                        xAxisName="variable", plotName="variable_failIso_jetInclusive",
                        draw_both0_noLog1_onlyLog2=1, ratioPadYaxisTitle="Data/pred::0.9,1.1",
@@ -115,12 +93,13 @@ if __name__ == "__main__":
                         help='Choose what distribution to plot by name')
     parser.add_argument("-x", "--xAxisName", nargs='+', type=str, help="x axis name")
     parser.add_argument("-r", "--ratioRange", nargs=2, type=float, default=[0.9,1.1], help="Min and max of ratio range")
-    parser.add_argument(     '--plot2D', action='store_true',   help='To plot 2D histograms')
     parser.add_argument("-y", "--yAxisName", nargs='+', type=str, help="y axis name (only for 2D plots)")
     parser.add_argument("-l", "--lumi", type=float, default=None, help="Normalization for 2D plots (if the input does not have data the luminosity is set to 1/fb)")
     parser.add_argument(     '--normUnitArea', action='store_true',   help='Scale histogram to unit area')
+    parser.add_argument(     '--drawLog', type=int, default=1,  choices=[0,1,2], help='Draw independent variable axis with log scale (0=both, 1=noLog, 2=onlyLog)')
     parser.add_argument("--project1D", type=str, default=None, help="Project n-dimensional distribution into this 1D variable")
-    parser.add_argument("--selectAxis", nargs='*', default=[], type=str, help="Select axes by slicing, as axName=min,max, or just axName to integrate all range")
+    parser.add_argument("--selectAxis", nargs='*', default=[], type=str, help="Select axes by slicing, as axName=min,max, or axName=True (or =False) for boolean axis, or just axName to integrate all range")
+    parser.add_argument("--postfix", type=str, default="", help="Add postfix to output plot names to distinguish different versions (default uses the plot name passed to --plot)")
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -144,19 +123,16 @@ if __name__ == "__main__":
         datasets = list(filter(lambda x: x in args.processes, datasets))
     logger.info(f"Will plot datasets {datasets}")
 
-    if args.plot2D:
-        for ip,p in enumerate(args.plot):
-            xAxisName=args.xAxisName[ip]
-            yAxisName=args.yAxisName[ip]
-            plotDistribution2D(args, groups, datasets, p, outdir, canvas2D, xAxisName, yAxisName, scaleToUnitArea=args.normUnitArea)
-        copyOutputToEos(outdir_original, eoscp=args.eoscp)
-        quit()
-
     ratioMin = args.ratioRange[0]
     ratioMax = args.ratioRange[1]
     ratioPadYaxisTitle=f"Data/pred::{ratioMin},{ratioMax}"
 
     for ip,p in enumerate(args.plot):
+
+        if len(args.postfix):
+            pname = f"{p}_{args.postfix}"
+        else:
+            pname = p
 
         groups.setNominalName(p)
 
@@ -169,18 +145,24 @@ if __name__ == "__main__":
             for ps in args.selectAxis:
                 if "=" in ps:
                     axName,axRange = ps.split("=")
-                    axMin,axMax = map(float, axRange.split(","))
-                    logger.info(f"{axName} in [{axMin},{axMax}]")
-                    presel[axName] = s[complex(0, axMin):complex(0, axMax+epsilon):hist.sum]
+                    if "," in ps:
+                        axMin,axMax = map(float, axRange.split(","))
+                        logger.info(f"{axName} in [{axMin},{axMax}]")
+                        presel[axName] = s[complex(0, axMin):complex(0, axMax+epsilon):hist.sum]
+                    else:
+                        trueOrFalse = axRange in ["True", "true", "TRUE", "1"]
+                        logger.info(f"{axName} {trueOrFalse}")
+                        presel[axName] = trueOrFalse
                 else:
                     logger.info(f"Integrating {ps} axis")
                     presel[ps] = s[::hist.sum]
-                    groups.setGlobalAction(lambda h: h[presel])
+            groups.setGlobalAction(lambda h: h[presel])
 
         groups.loadHistsForDatagroups(p, syst="", procsToRead=datasets)
         histInfo = groups.getDatagroups()
-        rootHists = {}
 
+        rootHists = {}
+        is2Dplot = False
         for d in datasets:
             hnarf = histInfo[d].hists[p]
             if args.project1D:
@@ -191,12 +173,29 @@ if __name__ == "__main__":
                         logger.info(f"Projecting {hnarf.name} into 1D histogram versus {args.project1D}")
                         hnarf = hnarf.project(args.project1D)
             rootHists[d] = narf.hist_to_root(hnarf)
+            logger.warning(d)
             rootHists[d].SetName(f"{p}_{d}")
+            if len(hnarf.axes) == 2:
+                is2Dplot = True
+                xAxisName = args.xAxisName[ip]
+                yAxisName = args.yAxisName[ip]
+                rootHists[d].SetTitle(d)
+                pname2D = rootHists[d].GetName()
+                if len(args.postfix):
+                    pname2D += f"_{args.postfix}"
+                drawCorrelationPlot(rootHists[d], xAxisName, yAxisName, "Events",
+                                    pname2D, plotLabel="ForceTitle", outdir=outdir,
+                                    smoothPlot=False, drawProfileX=False, scaleToUnitArea=args.normUnitArea,
+                                    draw_both0_noLog1_onlyLog2=args.drawLog, passCanvas=canvas2D)
+
+        if is2Dplot:
+            continue
 
         hdata = rootHists["Data"] if "Data" in rootHists.keys() else copy.deepcopy(rootHists[datasets[0]].Clone("dummyData"))
         hmc = {d : rootHists[d] for d in datasets if d != "Data"}
         plotDistribution1D(hdata, hmc, datasets, outdir, canvas1Dshapes=canvas1D,
-                           xAxisName=args.xAxisName[ip], plotName=p, ratioPadYaxisTitle=ratioPadYaxisTitle, scaleToUnitArea=args.normUnitArea,
-                           noRatioPanel="Data" not in rootHists.keys())
+                           xAxisName=args.xAxisName[ip], plotName=pname, ratioPadYaxisTitle=ratioPadYaxisTitle,
+                           scaleToUnitArea=args.normUnitArea,
+                           noRatioPanel="Data" not in rootHists.keys(), draw_both0_noLog1_onlyLog2=args.drawLog)
 
     copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
