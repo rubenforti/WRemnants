@@ -2703,7 +2703,7 @@ def drawTH1dataMCstack(h1, thestack,
         canvas.SetLogy(0)
 
     h1.SetTitle(titleBackup)
-  
+
     # if "unrolled" in canvasName:
 
     #     _canvas_pull = ROOT.TCanvas("_canvas_pull","",800,800)
@@ -2717,11 +2717,11 @@ def drawTH1dataMCstack(h1, thestack,
     #     _canvas_pull.SetRightMargin(0.04)
     #     # make pulls
     #     pulltitle = "unrolled {ch} {pf}".format(ch="plus" if "plus" in canvasName else "minus", pf="postfit" if "postfit" in canvasName else "prefit")
-    #     hpull = ROOT.TH1D("hpull_"+canvasName,pulltitle,51,-5,5)    
+    #     hpull = ROOT.TH1D("hpull_"+canvasName,pulltitle,51,-5,5)
     #     hpull.SetStats(1)
     #     _canvas_pull.cd()
     #     for i in range (1,ratio.GetNbinsX()+1):
-    #         errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
+    #         errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)
     #         if errTotDen > 0.0:
     #             hpull.Fill((ratio.GetBinContent(i)-1)/math.sqrt(errTotDen))
     #     hpull.Draw("HIST")
@@ -2729,18 +2729,18 @@ def drawTH1dataMCstack(h1, thestack,
     #     hpull.GetYaxis().SetTitle("Events")
     #     hpull.SetLineColor(ROOT.kBlack)
     #     hpull.SetLineWidth(2)
-    #     ROOT.gStyle.SetOptTitle(1)                
+    #     ROOT.gStyle.SetOptTitle(1)
     #     ROOT.gStyle.SetOptStat(111110)
     #     ROOT.gStyle.SetOptFit(1102)
     #     _canvas_pull.RedrawAxis("sameaxis")
-    #     _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".png")    
+    #     _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".png")
     #     _canvas_pull.SaveAs(outdir + "pull_" + canvasName + ".pdf")
 
     #     if len(etaptbinning):
     #         etaThreshold = 1.2
     #         _canvas_pull.SetGridx(0)
-    #         _canvas_pull.SetGridy(0)            
-    #         _canvas_pull.SetRightMargin(0.16)            
+    #         _canvas_pull.SetGridy(0)
+    #         _canvas_pull.SetRightMargin(0.16)
     #         h2pull = ROOT.TH2D("h2pull_"+canvasName, pulltitle.replace("unrolled","rolled") ,
     #                            etaptbinning[0], array('d', etaptbinning[1]), etaptbinning[2], array('d', etaptbinning[3]))
     #         hpull.Reset("ICESM")  # will use again for pulls in EE only
@@ -2749,11 +2749,11 @@ def drawTH1dataMCstack(h1, thestack,
     #         for i in range (1,ratio.GetNbinsX()+1):
     #             etabin = int((i-1)%etaptbinning[0] + 1)
     #             ptbin = int((i-1)/etaptbinning[0] + 1)
-    #             errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)            
+    #             errTotDen = ratio.GetBinError(i)*ratio.GetBinError(i) + den.GetBinError(i)*den.GetBinError(i)
     #             if errTotDen > 0.0:
     #                 pullVal = (ratio.GetBinContent(i)-1)/math.sqrt(errTotDen)
     #                 h2pull.SetBinContent(etabin,ptbin, pullVal)
-    #                 if abs(etaptbinning[1][etabin]) >= etaThreshold: 
+    #                 if abs(etaptbinning[1][etabin]) >= etaThreshold:
     #                     hpull.Fill(pullVal)
     #                     if etaptbinning[1][etabin] > 0: hpullEEp.Fill(pullVal)
     #                     else:                           hpullEEm.Fill(pullVal)
@@ -2786,7 +2786,7 @@ def drawTH1dataMCstack(h1, thestack,
     #         hpullEEm.SetLineWidth(2)
     #         hpullEEm.SetLineColor(ROOT.kBlue+2)
     #         hpullEEm.SetFillColor(ROOT.kAzure+1)
-    #         hpullEEm.SetFillStyle(3244)    
+    #         hpullEEm.SetFillStyle(3244)
     #         hpullEEp.Draw("HIST SAME")
     #         hpullEEm.Draw("HIST SAME")
     #         hpull.Draw("HIST SAME")
@@ -2799,9 +2799,9 @@ def drawTH1dataMCstack(h1, thestack,
     #         legEE.AddEntry(hpullEEm, "#eta < -%.1f"  % etaThreshold, "LF")
     #         legEE.Draw("same")
     #         _canvas_pull.RedrawAxis("sameaxis")
-    #         _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".png")    
+    #         _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".png")
     #         _canvas_pull.SaveAs(outdir + "pull_onlyEndcap_" + canvasName + ".pdf")
-                      
+
 ################################################################
 
 def drawCheckTheoryBand(h1, h2, h3,
@@ -3932,7 +3932,7 @@ def drawGraphCMS(grList,
         grList[0].GetYaxis().SetRangeUser(ymin,ymax)
 
     setTDRStyle() # check if it doesn't screw things up
-    if not skipLumi: 
+    if not skipLumi:
         if not drawLumiLatex:
             if lumi != None: CMS_lumi(canvas,lumi,True,False)
             else:            CMS_lumi(canvas,"",True,False)

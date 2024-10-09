@@ -32,8 +32,10 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
-        
+from scripts.analysisTools.tests.cropNegativeTemplateBins import \
+    cropNegativeContent
+
+
 def plotDistribution1D(hdata, hmc, datasets, outfolder_dataMC, canvas1Dshapes=None,
                        xAxisName="variable", plotName="variable_failIso_jetInclusive",
                        draw_both0_noLog1_onlyLog2=1, ratioPadYaxisTitle="Data/pred::0.9,1.1",

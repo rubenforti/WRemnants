@@ -10,33 +10,28 @@
 #python scripts/analysisTools/w_mass_13TeV/makeVertexStudy.py /scratch/mciprian/CombineStudies/vertexStudy/mw_TEST_scetlib_dyturboCorr_ZdileptonSelection.hdf5 scripts/analysisTools/plots/fromMyWremnants/vertexStudy/testNew/Zmumu_dilepton/ -n vertexStudyHisto_noCut vertexStudyHisto_vetoMuon vertexStudyHisto_goodMuon vertexStudyHisto_fullSelNoMT --dzCut 0.1 -v 4 -p ZmumuPostVFP --Zdilepton
 
 
-from wremnants.datasets.datagroups import Datagroups
-from wremnants import histselections as sel
+import os
+## safe batch mode
+import sys
+
+import hist
+import lz4.frame
+import numpy as np
+
+import narf
+import wremnants
 #from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
+from wremnants import histselections as sel
+from wremnants import syst_tools, theory_tools
+from wremnants.datasets.datagroups import Datagroups
 
-import narf
-import wremnants
-from wremnants import theory_tools,syst_tools
-import hist
-
-import numpy as np
-
-import pickle
-import lz4.frame
-
-import argparse
-import os
-import shutil
-import re
-
-## safe batch mode
-import sys
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -44,6 +39,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
+
 
 def getVertexEfficiency(h, rebin=1, dzCut_cm=0.1, label=""):
     # h is pt vs vtxDiff_z
@@ -136,12 +132,12 @@ if __name__ == "__main__":
             else:
                 # require second lepton inside acceptance at gen level
                 pass
-            
+
             gr = getVertexEfficiency(h, rebin=1, dzCut_cm=args.dzCut, label=etaBinLabel)
             ymin = 1.0
             ymin = min(ymin, min(list(gr.GetY())))
             ymin = ymin - 0.1 * (1.0 - ymin)
-            ymin = min(ymin, 0.95)       
+            ymin = min(ymin, 0.95)
             gr_vpts[etaBinLabel] = gr
 
     wps = list(gr_vpts.keys())

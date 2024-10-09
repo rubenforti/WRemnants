@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
-import re
-import os, os.path
-import argparse
-import shutil
-
 ## safe batch mode
 import sys
+
 args = sys.argv[:]
 sys.argv = ['-b']
 import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -69,7 +66,7 @@ if __name__ == "__main__":
     pad2.SetFillColor(0)
     pad2.SetGridy(1)
     pad2.SetFillStyle(0)
-    
+
     processes = args.processes[:]
     nominals = {p : None for p in processes}
     systsUp = {p : None for p in processes}
@@ -96,7 +93,7 @@ if __name__ == "__main__":
                 systsDown[p] = copy.deepcopy(nominals[p].Clone(f"nominal_{p}_{args.syst}Down_{args.charge}"))
             systsDown[p].SetTitle(f"{p} {args.syst}")
     rf.Close()
-        
+
     rf1 = safeOpenFile(fname1)
     for p in processes:
         if (rf1.GetDirectory(p)):
@@ -108,7 +105,7 @@ if __name__ == "__main__":
     rf1.Close()
 
     chargetext = "Positive" if args.charge == "plus" else "Negative"
-    
+
     pString = "And".join(processes)
     canvasName = f"compareShape_{pString}_{args.syst}_{args.charge}_projPt"
     if "Supplementary" in args.CMStext:
@@ -151,7 +148,7 @@ if __name__ == "__main__":
     for p in processes:
         tmp = legEntries_plots_[p]
         if p == "Wmunu":
-            tmp = "W^{+ }#rightarrow^{ }#mu^{+}#nu" if args.charge == "plus" else "W^{ - }#rightarrow^{ }#mu^{-}#nu"                
+            tmp = "W^{+ }#rightarrow^{ }#mu^{+}#nu" if args.charge == "plus" else "W^{ - }#rightarrow^{ }#mu^{-}#nu"
         legLabels.append(tmp)
 
     #procLegend = " + ".join(legLabels)
@@ -168,7 +165,7 @@ if __name__ == "__main__":
     legendCoords=f"{leftMargin+0.02},{1-rightMargin-0.01},0.74,0.92;2"
     moreTextLatex = ""
     lumi = "16.8"
-    
+
     frame = h1.Clone("frame")
     frame.GetXaxis().SetLabelSize(0.04)
     frame.SetStats(0)
@@ -179,11 +176,11 @@ if __name__ == "__main__":
                                      excludeUnderflow=True, excludeOverflow=True)
     diff = ymax - ymin
     ymax = ymax + 0.7 * diff
-    
+
     h1.GetXaxis().SetLabelSize(0)
-    h1.GetXaxis().SetTitle("")  
+    h1.GetXaxis().SetTitle("")
     h1.GetYaxis().SetTitle(yAxisName)
-    h1.GetYaxis().SetTitleOffset(yAxisTitleOffset) 
+    h1.GetYaxis().SetTitleOffset(yAxisTitleOffset)
     h1.GetYaxis().SetTitleSize(0.05)
     h1.GetYaxis().SetLabelSize(0.04)
     h1.GetYaxis().SetRangeUser(0, ymax)
@@ -195,7 +192,7 @@ if __name__ == "__main__":
 
     nColumnsLeg = 1
     legHeader = ""
-    if ";" in legendCoords: 
+    if ";" in legendCoords:
         tokens = legendCoords.split(";")
         nColumnsLeg = int(tokens[1])
         if len(tokens) > 2:
@@ -226,10 +223,10 @@ if __name__ == "__main__":
         realtext = moreTextLatex.split("::")[0]
         x1,y1,ypass,textsize = 0.75,0.8,0.08,0.035
         if "::" in moreTextLatex:
-            x1,y1,ypass,textsize = (float(x) for x in (moreTextLatex.split("::")[1]).split(","))            
+            x1,y1,ypass,textsize = (float(x) for x in (moreTextLatex.split("::")[1]).split(","))
         lat = ROOT.TLatex()
         lat.SetNDC();
-        lat.SetTextFont(42)        
+        lat.SetTextFont(42)
         lat.SetTextSize(textsize)
         for itx,tx in enumerate(realtext.split(";")):
             lat.DrawLatex(x1,y1-itx*ypass,tx)
@@ -248,7 +245,7 @@ if __name__ == "__main__":
         pad2.cd()
 
         frame.Reset("ICES")
-        #else:                          
+        #else:
         #frame.GetYaxis().SetRangeUser(0.5,1.5)
         frame.GetYaxis().SetNdivisions(5)
         frame.GetYaxis().SetTitle(yRatioAxisName)
@@ -288,8 +285,8 @@ if __name__ == "__main__":
                 ratios[-1].SetMarkerStyle(0)
                 ratios[-1].SetFillColor(0)
                 ratios[-1].Draw("HIST SAME")
-            
-            newymin, newymax = getMinMaxMultiHisto(ratios, excludeEmpty=True, sumError=False, 
+
+            newymin, newymax = getMinMaxMultiHisto(ratios, excludeEmpty=True, sumError=False,
                                                    excludeUnderflow=True, excludeOverflow=True)
             if newymin == newymax:
                 newymin *= 0.99
@@ -318,17 +315,17 @@ if __name__ == "__main__":
         legRatio.SetNColumns(1)
         legRatio.AddEntry(ratio, "Stat. unc.", "F")
         legRatio.Draw("SAME")
-        
+
         pad2.RedrawAxis("sameaxis")
 
     draw_both0_noLog1_onlyLog2 = 1
-        
+
     if draw_both0_noLog1_onlyLog2 != 2:
         canvas.SaveAs(outdir + canvasName + ".png")
         canvas.SaveAs(outdir + canvasName + ".pdf")
 
-    if draw_both0_noLog1_onlyLog2 != 1:        
-        if yAxisName == "a.u.": 
+    if draw_both0_noLog1_onlyLog2 != 1:
+        if yAxisName == "a.u.":
             h1.GetYaxis().SetRangeUser(max(0.0001,h1.GetMinimum()*0.8),h1.GetMaximum()*100)
         else:
             h1.GetYaxis().SetRangeUser(max(0.001,h1.GetMinimum()*0.8),h1.GetMaximum()*100)
