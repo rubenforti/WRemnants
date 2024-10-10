@@ -10,7 +10,7 @@ import re
 import sys
 
 args = sys.argv[:]
-sys.argv = ['-b']
+sys.argv = ["-b"]
 import ROOT
 
 sys.argv = args
@@ -36,13 +36,38 @@ def isBadRootFile(fname, checkTree=True, treeName="Events"):
         return True
     return False
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("inputpath", type=str, help="Input path where files are stored")
-    parser.add_argument("-m", "--match", type=str, default=None, help="Regular expression to select only specific subpaths")
-    parser.add_argument("-v", "--verbose", type=int, default=3, choices=[0,1,2,3,4], help="Set verbosity level with logging, the larger the more verbose");
-    parser.add_argument("-s", "--save", type=str, default=None, help="Save list of bad files in a file, specifying its name")
-    parser.add_argument("-a", "--append", action="store_true", help="Whenb using -s, append list to existing file")
+    parser.add_argument(
+        "-m",
+        "--match",
+        type=str,
+        default=None,
+        help="Regular expression to select only specific subpaths",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        type=int,
+        default=3,
+        choices=[0, 1, 2, 3, 4],
+        help="Set verbosity level with logging, the larger the more verbose",
+    )
+    parser.add_argument(
+        "-s",
+        "--save",
+        type=str,
+        default=None,
+        help="Save list of bad files in a file, specifying its name",
+    )
+    parser.add_argument(
+        "-a",
+        "--append",
+        action="store_true",
+        help="Whenb using -s, append list to existing file",
+    )
     args = parser.parse_args()
 
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose)
@@ -64,10 +89,10 @@ if __name__ == "__main__":
 
     if len(badFiles):
         logger.warning("List of bad files")
-        logger.warning("-"*30)
-        for i,f in enumerate(badFiles):
+        logger.warning("-" * 30)
+        for i, f in enumerate(badFiles):
             logger.warning(f"{str(i).rjust(4)}: {f}")
-        logger.warning("-"*30)
+        logger.warning("-" * 30)
         logger.warning(f"Found {len(badFiles)} bad files")
         if args.save is not None:
             fname = args.save
@@ -82,4 +107,3 @@ if __name__ == "__main__":
         logger.info("No bad files found")
         if args.save is not None:
             logger.warning("Skipping creation of output file to store the list")
-

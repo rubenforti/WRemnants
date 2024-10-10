@@ -18,15 +18,15 @@ utilities = utilitiesCMG.util()
 import sys
 
 args = sys.argv[:]
-sys.argv = ['-b']
+sys.argv = ["-b"]
 import ROOT
 
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-#sys.path.append(os.getcwd() + "/plotUtils/")
-#from utility import *
+# sys.path.append(os.getcwd() + "/plotUtils/")
+# from utility import *
 from scripts.analysisTools.plotUtils.utility import *
 
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
@@ -34,10 +34,22 @@ from scripts.analysisTools.plotUtils.utility import *
 if __name__ == "__main__":
 
     parser = common_plot_parser()
-    parser.add_argument('inputfile',  type=str, nargs=1,   help='Input root file with TH2')
-    parser.add_argument('outputfile', type=str, nargs=1,   help='Output file absolute path')
-    parser.add_argument('mergefiles', type=str, nargs='+', help='List of files to merge to inputfile into outputfile, keys already in inputfile are overridden, unless --noOverwriteDuplicate is specified')
-    parser.add_argument('--noOverwriteDuplicate', dest='noOverwriteDuplicate', action='store_true', help='If a histogram from any of the mergefiles is already present in inputfile, keep the version in inputfile')
+    parser.add_argument("inputfile", type=str, nargs=1, help="Input root file with TH2")
+    parser.add_argument(
+        "outputfile", type=str, nargs=1, help="Output file absolute path"
+    )
+    parser.add_argument(
+        "mergefiles",
+        type=str,
+        nargs="+",
+        help="List of files to merge to inputfile into outputfile, keys already in inputfile are overridden, unless --noOverwriteDuplicate is specified",
+    )
+    parser.add_argument(
+        "--noOverwriteDuplicate",
+        dest="noOverwriteDuplicate",
+        action="store_true",
+        help="If a histogram from any of the mergefiles is already present in inputfile, keep the version in inputfile",
+    )
 
     args = parser.parse_args()
 
@@ -47,16 +59,20 @@ if __name__ == "__main__":
 
     # protection against deleting original file
     if os.path.abspath(args.outputfile[0]) == os.path.abspath(args.inputfile[0]):
-        raise ValueError(f"Invalid outputfile name {args.outputfile[0]}, it would overwrite the input file {args.inputfile[0]}")
+        raise ValueError(
+            f"Invalid outputfile name {args.outputfile[0]}, it would overwrite the input file {args.inputfile[0]}"
+        )
 
-    #allSmooth_GtoHout.root
+    # allSmooth_GtoHout.root
     outdir_original = os.path.dirname(os.path.abspath(args.outputfile[0])) + "/"
     outdir = createPlotDirAndCopyPhp(outdir_original)
 
     outfilenameLocal = outdir + "/" + os.path.basename(args.outputfile[0])
     outfile = safeOpenFile(outfilenameLocal, mode="RECREATE")
 
-    infile = safeOpenFile(args.inputfile[0]) # might not work if the input is on eos and one uses the mount
+    infile = safeOpenFile(
+        args.inputfile[0]
+    )  # might not work if the input is on eos and one uses the mount
     inputHistnames = []
     for k in infile.GetListOfKeys():
         name = k.GetName()

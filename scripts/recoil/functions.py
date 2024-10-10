@@ -1,4 +1,3 @@
-
 import array
 import json
 import math
@@ -18,16 +17,20 @@ from utilities import boostHistHelpers as hh
 
 
 def loadJSON(jsIn):
-    with open(jsIn) as f: jsDict = json.load(f)
+    with open(jsIn) as f:
+        jsDict = json.load(f)
     return jsDict
 
+
 def writeJSON(jsOut, outDict):
-    with open(jsOut, "w") as outfile: json.dump(outDict, outfile, indent=4)
+    with open(jsOut, "w") as outfile:
+        json.dump(outDict, outfile, indent=4)
+
 
 def parseBoostHist(groups, histCfg, procName, rebin=1):
 
-    axis = histCfg['axis']
-    hName = histCfg['name']
+    axis = histCfg["axis"]
+    hName = histCfg["name"]
 
     label = "%s_%s" % (hName, procName)
     groups.setHists(hName, "", label=label, procsToRead=[procName], selectSignal=False)
@@ -42,32 +45,35 @@ def parseBoostHist(groups, histCfg, procName, rebin=1):
 
 
 def prepareDir(outDir, remove=True):
-    if os.path.exists(outDir) and os.path.isdir(outDir) and remove: shutil.rmtree(outDir)
+    if os.path.exists(outDir) and os.path.isdir(outDir) and remove:
+        shutil.rmtree(outDir)
     os.system("mkdir -p %s" % outDir)
+
 
 def doOverlow(h):
     n = h.GetNbinsX()
     h.SetBinContent(1, h.GetBinContent(0) + h.GetBinContent(1))
-    h.SetBinContent(n, h.GetBinContent(n+1) + h.GetBinContent(n))
+    h.SetBinContent(n, h.GetBinContent(n + 1) + h.GetBinContent(n))
     h.SetBinError(1, math.hypot(h.GetBinError(0), h.GetBinError(1)))
-    h.SetBinError(n, math.hypot(h.GetBinError(n+1), h.GetBinError(n)))
+    h.SetBinError(n, math.hypot(h.GetBinError(n + 1), h.GetBinError(n)))
     h.SetBinContent(0, 0)
-    h.SetBinContent(n+1, 0)
+    h.SetBinContent(n + 1, 0)
     h.SetBinContent(0, 0)
-    h.SetBinContent(n+1, 0)
+    h.SetBinContent(n + 1, 0)
     return h
+
 
 def parseProc(groups, histCfg, procName, syst="", rebin=1):
 
-    axis = histCfg['axis']
-    hNames = histCfg['name'].split(",")
-
+    axis = histCfg["axis"]
+    hNames = histCfg["name"].split(",")
 
     bhist = None
     for hName in hNames:
 
         bhist = groups.readProc(hName, procName, axis=axis)
-        if bhist == None: continue
+        if bhist == None:
+            continue
         label = "%s_%s" % (hName, procName)
         break
 
@@ -80,49 +86,77 @@ def parseProc(groups, histCfg, procName, syst="", rebin=1):
     print("Get histogram %s, yield=%d" % (label, rhist.Integral()))
     return rhist
 
+
 def rebin(h, newbins, binWidth=False):
     if isinstance(newbins, int):
         h.Rebin(newbins)
-        if binWidth: h.Scale(1, "width")
+        if binWidth:
+            h.Scale(1, "width")
         return h
     else:
-        mybins = array.array('d', newbins)
-        h1 = h.Rebin(len(mybins)-1, h.GetName(), mybins)
-        if binWidth: h1.Scale(1, "width")
+        mybins = array.array("d", newbins)
+        h1 = h.Rebin(len(mybins) - 1, h.GetName(), mybins)
+        if binWidth:
+            h1.Scale(1, "width")
         return h1
 
 
 def drange(x, y, jump):
     while x < y:
         yield float(x)
-        #x += decimal.Decimal(jump)
+        # x += decimal.Decimal(jump)
         x += jump
 
-def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrateAxes=[], abcd=True, rebin=None, applySelection=True, fakes_scalefactor=1.0):
+
+def readBoostHist(
+    groups,
+    hName,
+    procs,
+    charge="combined",
+    boost=False,
+    integrateAxes=[],
+    abcd=True,
+    rebin=None,
+    applySelection=True,
+    fakes_scalefactor=1.0,
+):
 
     if abcd:
-        groups.set_histselectors(procs, hName, mode="simple", smoothen=False, simultaneousABCD=False, integrate_x=False if "mt" in hName else True, forceGlobalScaleFakes=fakes_scalefactor)
-    groups.loadHistsForDatagroups(hName, syst="", procsToRead=procs, applySelection=applySelection)
+        groups.set_histselectors(
+            procs,
+            hName,
+            mode="simple",
+            smoothen=False,
+            simultaneousABCD=False,
+            integrate_x=False if "mt" in hName else True,
+            forceGlobalScaleFakes=fakes_scalefactor,
+        )
+    groups.loadHistsForDatagroups(
+        hName, syst="", procsToRead=procs, applySelection=applySelection
+    )
     bhist = sum([groups.groups[p].hists[hName] for p in procs])
 
-    if rebin !=None:
-        bhist = hh.rebinHist(bhist, rebin['axName'], rebin['edges'])
+    if rebin != None:
+        bhist = hh.rebinHist(bhist, rebin["axName"], rebin["edges"])
 
     s = hist.tag.Slicer()
     axes = [ax.name for ax in bhist.axes]
     if "eta" in axes and "pt" in axes:
-        bhist = bhist[{"eta" : s[::hist.sum], "pt" : s[::hist.sum]}]
+        bhist = bhist[{"eta": s[:: hist.sum], "pt": s[:: hist.sum]}]
 
     for iAx in integrateAxes:
-        bhist = bhist[{iAx : s[::hist.sum]}]
+        bhist = bhist[{iAx: s[:: hist.sum]}]
 
     if "passMT" in bhist.axes.name:
         bhist = bhist[{"passMT": True}]
 
     if "charge" in bhist.axes.name:
-        if charge and charge == "combined": bhist = bhist[{"charge" : s[::hist.sum]}]
-        elif charge and charge == "plus": bhist = bhist[{"charge" : bhist.axes["charge"].index(+1)}]
-        elif charge and charge == "minus": bhist = bhist[{"charge" : bhist.axes["charge"].index(-1)}]
+        if charge and charge == "combined":
+            bhist = bhist[{"charge": s[:: hist.sum]}]
+        elif charge and charge == "plus":
+            bhist = bhist[{"charge": bhist.axes["charge"].index(+1)}]
+        elif charge and charge == "minus":
+            bhist = bhist[{"charge": bhist.axes["charge"].index(-1)}]
 
     if boost:
         return bhist
@@ -133,13 +167,14 @@ def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrat
 
 def getLumiLabel(groups):
     if groups.lumi < 1:
-        return "{:.1f} pb^{{#minus1}} (13 TeV)".format(1000.*groups.lumi)
+        return "{:.1f} pb^{{#minus1}} (13 TeV)".format(1000.0 * groups.lumi)
     else:
         return "{:.1f} fb^{{#minus1}} (13 TeV)".format(groups.lumi)
 
+
 def getMinMaxRange(h, xMin, xMax):
     yMin, yMax = 1e9, -1e9
-    for i in range(0, h.GetNbinsX()+1):
+    for i in range(0, h.GetNbinsX() + 1):
         x_ = h.GetBinLowEdge(i)
         if x_ < xMin or x_ > xMax:
             continue
@@ -156,7 +191,7 @@ def get_meta(groups):
     analysis = "lowPU" if "lowpu" in groups.mode else "highPU"
     flavor = groups.flavor
     theoryCorr = groups.getMetaInfo()["args"].get("theoryCorr", None)
-    theoryCorrCentral = theoryCorr[0] if len(theoryCorr) > 0 else ''
+    theoryCorrCentral = theoryCorr[0] if len(theoryCorr) > 0 else ""
     if flavor == None:
-        flavor = "mu" if groups.mode=="w_mass" else "mumu"
+        flavor = "mu" if groups.mode == "w_mass" else "mumu"
     return met, analysis, flavor, theoryCorrCentral

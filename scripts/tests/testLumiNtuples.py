@@ -1,8 +1,7 @@
-
 from utilities import common
 from utilities.io_tools import output_tools
 
-parser,initargs = common.common_parser()
+parser, initargs = common.common_parser()
 
 import logging
 
@@ -15,17 +14,46 @@ data_dir = common.data_dir
 
 logging.basicConfig(level=logging.INFO)
 
-parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP"], help="Data set to process", default="2016PostVFP")
-parser.add_argument("--noScaleFactors", action="store_true", help="Don't use scale factors for efficiency")
-parser.add_argument("--muonCorrMag", default=1.e-4, type=float, help="Magnitude of dummy muon momentum calibration uncertainty")
-parser.add_argument("--muonCorrEtaBins", default=1, type=int, help="Number of eta bins for dummy muon momentum calibration uncertainty")
-parser.add_argument("--lumiUncertainty", type=float, help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)", default=1.012)
+parser.add_argument(
+    "-e",
+    "--era",
+    type=str,
+    choices=["2016PreVFP", "2016PostVFP"],
+    help="Data set to process",
+    default="2016PostVFP",
+)
+parser.add_argument(
+    "--noScaleFactors",
+    action="store_true",
+    help="Don't use scale factors for efficiency",
+)
+parser.add_argument(
+    "--muonCorrMag",
+    default=1.0e-4,
+    type=float,
+    help="Magnitude of dummy muon momentum calibration uncertainty",
+)
+parser.add_argument(
+    "--muonCorrEtaBins",
+    default=1,
+    type=int,
+    help="Number of eta bins for dummy muon momentum calibration uncertainty",
+)
+parser.add_argument(
+    "--lumiUncertainty",
+    type=float,
+    help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2\%)",
+    default=1.012,
+)
 parser.add_argument("--nano", type=str, help="NanoAOD version to run on", default="tnp")
 args = parser.parse_args()
 
-filt = lambda x,filts=args.filterProcs: any([f in x.name for f in filts])
-datasets = wremnants.datasets2016.getDatasets(maxFiles=args.maxFiles, filt=filt if args.filterProcs else None,
-    nanoVersion=args.nano)
+filt = lambda x, filts=args.filterProcs: any([f in x.name for f in filts])
+datasets = wremnants.datasets2016.getDatasets(
+    maxFiles=args.maxFiles,
+    filt=filt if args.filterProcs else None,
+    nanoVersion=args.nano,
+)
 
 print("Setting option --debug to True")
 args.debug = True
@@ -43,25 +71,30 @@ template_maxpt = args.pt[2]
 print(f"Pt binning: {template_npt} bins from {template_minpt} to {template_maxpt}")
 
 # standard regular axes
-axis_eta = hist.axis.Regular(template_neta, template_mineta, template_maxeta, name = "eta")
-axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name = "pt")
+axis_eta = hist.axis.Regular(
+    template_neta, template_mineta, template_maxeta, name="eta"
+)
+axis_pt = hist.axis.Regular(template_npt, template_minpt, template_maxpt, name="pt")
 
 # categorical axes in python bindings always have an overflow bin, so use a regular
 # axis for the charge
-axis_charge = hist.axis.Regular(2, -2., 2., underflow=False, overflow=False, name = "charge")
+axis_charge = hist.axis.Regular(
+    2, -2.0, 2.0, underflow=False, overflow=False, name="charge"
+)
 
 # TODO: get from common
-axis_passIso = hist.axis.Boolean(name = "passIso")
-axis_passMT = hist.axis.Boolean(name = "passMT")
+axis_passIso = hist.axis.Boolean(name="passIso")
+axis_passMT = hist.axis.Boolean(name="passMT")
 nominal_axes = [axis_eta, axis_pt, axis_charge, axis_passIso, axis_passMT]
 
 axis_ptVgen = hist.axis.Variable(
     common.ptV_10quantiles_binning,
-    name = "ptVgen", underflow=False,
+    name="ptVgen",
+    underflow=False,
 )
 
-pileup_helper = wremnants.make_pileup_helper(era = era)
-vertex_helper = wremnants.make_vertex_helper(era = era)
+pileup_helper = wremnants.make_pileup_helper(era=era)
+vertex_helper = wremnants.make_vertex_helper(era=era)
 
 
 def build_graph(df, dataset):
@@ -100,10 +133,13 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
-        nominal = df.HistoBoost("nominal", nominal_axes, [*nominal_cols, "nominal_weight"])
+        nominal = df.HistoBoost(
+            "nominal", nominal_axes, [*nominal_cols, "nominal_weight"]
+        )
         results.append(nominal)
 
     return results, weightsum
+
 
 resultdict = narf.build_and_run(datasets, build_graph)
 output_tools.write_analysis_output(resultdict, "mw_with_mu_eta_pt.pkl.lz4", args)

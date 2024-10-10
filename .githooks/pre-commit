@@ -9,9 +9,9 @@ trap 'echo "Error on line $LINENO: $BASH_COMMAND" >&2' ERR
 
 
 # Find all staged c++ files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(c|cpp|h|hpp)$' || true)
+STAGED_FILES_CPP=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(c|cpp|h|hpp)$' || true)
 
-for FILE in $STAGED_FILES; do
+for FILE in $STAGED_FILES_CPP; do
   clang++ -I./narf/narf/include/ -I./wremnants/include/ -std=c++20 -fsyntax-only $FILE 
   if [ $? -ne 0 ]; then
     echo "Syntax error in $FILE. Commit aborted."
@@ -21,10 +21,10 @@ done
 
 
 # Find all staged YAML files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.ya?ml$' || true)
+STAGED_FILES_YAML=$(git diff --cached --name-only --diff-filter=d | grep -E '\.ya?ml$' || true)
 
 # Check syntax of each YAML file
-for FILE in $STAGED_FILES; do
+for FILE in $STAGED_FILES_YAML; do
   python -c "import yaml, sys; yaml.safe_load(open('$FILE'))"
   if [ $? -ne 0 ]; then
     echo "Syntax error in $FILE. Commit aborted."
@@ -34,10 +34,10 @@ done
 
 
 # Find all staged Python files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$' || true)
+STAGED_FILES_PY=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$' || true)
 
 # Check for syntax errors in each staged Python file
-for FILE in $STAGED_FILES; do
+for FILE in $STAGED_FILES_PY; do
   # Use python's compile command to check for syntax errors
   python -m py_compile "$FILE"
 
@@ -48,20 +48,14 @@ for FILE in $STAGED_FILES; do
   fi
 done
 
-# Loop through each staged Python file and fix whitespace issues
+
+# apply style modifications on staged files
 unset MODIFIED_FILES
-for FILE in $STAGED_FILES; do
-  # Remove trailing whitespace
-  sed -i 's/[[:space:]]\+$//' "$FILE"
 
-  # replace tabs with 4 spaces:
-  sed -i 's/\t/    /g' "$FILE"
-
-  # Run isort to organize imports
-  isort "$FILE"
-
-  # Remove unused imports
-  autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
+# Loop through each staged c/c++ files and fix style issues
+for FILE in $STAGED_FILES_CPP; do
+  # apply LLVM style
+  clang-format -i "$FILE"
 
   # Check if the file was modified compared to the staged version
   if ! git diff --quiet "$FILE"; then
@@ -71,9 +65,30 @@ for FILE in $STAGED_FILES; do
 
 done
 
-# Notify the user if any Python files were modified
+
+# Loop through each staged Python file and fix style issues
+for FILE in $STAGED_FILES_PY; do
+  # Remove trailing whitespace
+  black "$FILE"
+
+  # Remove unused imports
+  autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
+
+  # Run isort to organize imports
+  isort "$FILE"
+
+  # Check if the file was modified compared to the staged version
+  if ! git diff --quiet "$FILE"; then
+    # Track the modified files
+    MODIFIED_FILES+=("$FILE")
+  fi
+
+done
+
+
+# Notify the user if any files were modified
 if [ ${#MODIFIED_FILES[@]} -gt 0 ]; then
-  echo "The following Python files were modified and need to be re-staged:"
+  echo "The following files were modified and need to be re-staged:"
   for FILE in "${MODIFIED_FILES[@]}"; do
     echo "  $FILE"
   done
@@ -82,5 +97,3 @@ if [ ${#MODIFIED_FILES[@]} -gt 0 ]; then
 fi
 
 exit 0
-
-
