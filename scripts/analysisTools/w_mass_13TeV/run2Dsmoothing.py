@@ -4,6 +4,7 @@ import array
 import itertools
 import os
 import pickle
+
 ## safe batch mode
 import sys
 import time

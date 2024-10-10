@@ -37,8 +37,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 data_dir = common.data_dir
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
-    makeAntiSFfromSFandEffi
+from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
 
 
 def getHistWithStatUncBand(hsf):

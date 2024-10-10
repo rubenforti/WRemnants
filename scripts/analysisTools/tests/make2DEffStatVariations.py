@@ -2,6 +2,7 @@
 
 import argparse
 import os
+
 ## safe batch mode
 import sys
 
@@ -14,8 +15,15 @@ ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 sys.path.append(os.getcwd() + "/plotUtils/")
-from utility import (copy, createPlotDirAndCopyPhp, drawCorrelationPlot,
-                     fillTH3binFromTH2, np, safeGetObject, safeOpenFile)
+from utility import (
+    copy,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    fillTH3binFromTH2,
+    np,
+    safeGetObject,
+    safeOpenFile,
+)
 
 
 def effStatVariations(

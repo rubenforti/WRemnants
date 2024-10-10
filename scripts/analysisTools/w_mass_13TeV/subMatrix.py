@@ -28,10 +28,12 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import (common_plot_parser,
-                                                     copyOutputToEos,
-                                                     createPlotDirAndCopyPhp,
-                                                     d)
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    d,
+)
 
 
 def niceName(name):
@@ -78,7 +80,7 @@ def niceName(name):
             var=tmpvar, n=num[0], lepCh=leptonCharge
         )
 
-    elif re.match(".*effStatTnP\d+.*", name):
+    elif re.match(r".*effStatTnP\d+.*", name):
         num = re.findall(r"\d+", name)  # get number
         pfx = name.split("effStatTnP" + str(num[0]))[1]
         leptonCharge = ""
@@ -135,11 +137,11 @@ def niceNameHEPDATA(name):
         if len(pfx):
             if "Plus" in pfx or "Minus" in pfx:
                 leptonCharge = "{lep}^{chs}".format(
-                    lep="\mu",  # if "mu" in pfx else "e",
+                    lep=r"\mu",  # if "mu" in pfx else "e",
                     chs="+" if "Plus" in pfx else "-",
                 )
             else:
-                leptonCharge = "{lep}".format(lep="\mu")  # if "mu" in pfx else "e")
+                leptonCharge = rf"{lep}".format(lep=r"\mu")  # if "mu" in pfx else "e")
         tmpvar = ""
         FakesBins = []
         pt_or_eta = ""
@@ -147,17 +149,17 @@ def niceNameHEPDATA(name):
         FakesBins = [-2.4, -2.1, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.1, 2.4]
 
         if "FakesEtaCharge" in name:
-            tmpvar = "$\eta$-norm-chargeUncorr"
-            pt_or_eta = "\eta"
+            tmpvar = r"$\eta$-norm-chargeUncorr"
+            pt_or_eta = r"\eta"
         elif "FakesEta" in name:
-            tmpvar = "$\eta$-norm"
-            pt_or_eta = "\eta"
+            tmpvar = r"$\eta$-norm"
+            pt_or_eta = r"\eta"
         elif "FakesPtSlope" in name:
-            tmpvar = "$p_{T}$-shape"
-            pt_or_eta = "\eta"
+            tmpvar = r"$p_{T}$-shape"
+            pt_or_eta = r"\eta"
         elif "FakesPtNorm" in name:
-            tmpvar = "$p_{T}$-norm"
-            pt_or_eta = "p_{T}"
+            tmpvar = r"$p_{T}$-norm"
+            pt_or_eta = r"p_{T}"
             # for pt norm has to bin on pt
             FakesBins = (
                 [26, 33, 36, 40.5, 45, 50, 56]
@@ -173,7 +175,7 @@ def niceNameHEPDATA(name):
             var=tmpvar, l=vlow, v=pt_or_eta, h=vhigh, lepCh=leptonCharge
         )
 
-    elif re.match(".*effStatTnP\d+.*", name):
+    elif re.match(r".*effStatTnP\d+.*", name):
 
         ## utility arrays for the effstat binning
         _etaBinsEffStatMu = [round(-2.4 + 0.1 * x, 1) for x in range(0, 49)]
@@ -186,13 +188,13 @@ def niceNameHEPDATA(name):
         leptonCharge = ""
         if len(pfx):
             leptonCharge = "{lep}^{chs}".format(
-                lep="\mu",  # if "mu" in pfx else "e",
+                lep=r"\mu",  # if "mu" in pfx else "e",
                 chs="+" if "Plus" in pfx else "-" if "Minus" in pfx else "",
             )
         etaBinsEffStat = _etaBinsEffStatMu
         etalow = str(etaBinsEffStat[n1 - 1])
         etahigh = str(etaBinsEffStat[n1])
-        return "Eff.stat. ${l}<\eta<{h}$, ${lepCh}$".format(
+        return rf"Eff.stat. ${l}<\eta<{h}$, ${lepCh}$".format(
             l=etalow, h=etahigh, lepCh=leptonCharge
         )
 
@@ -221,14 +223,14 @@ def niceNameHEPDATA(name):
         ]
         low = etabinsPrefire[n]
         high = etabinsPrefire[n + 1]
-        return "L1-trigger muon eff.syst., ${l}<\eta<{h}$".format(l=low, h=high)
+        return rf"L1-trigger muon eff.syst., ${l}<\eta<{h}$".format(l=low, h=high)
 
     elif re.match("smooth(el|mu)scale.*", name):
         num = re.findall(r"\d+", name)  # get number
         n = 0
         n2 = 0
         n3 = 0
-        lep = "\mu" if "smoothmu" in name else "e"
+        lep = r"\mu" if "smoothmu" in name else "e"
         if "scaleStat" in name:
             n = int(num[0])
             return "$p_{{T}}^{{{lep}}}$ scale stat.{n}".format(lep=lep, n=n)
@@ -239,13 +241,13 @@ def niceNameHEPDATA(name):
                 [0.0, 2.1, 2.4] if "smoothmu" in name else [0.0, 1.0, 1.5, 2.1, 2.4]
             )
             # match the 'P' to select positive eta side
-            if re.match(".*etaside\d+P(plus|minus)*", name):
+            if re.match(r".*etaside\d+P(plus|minus)*", name):
                 low = str(etabinsPtSyst[n2])
                 high = str(etabinsPtSyst[n2 + 1])
             else:
                 low = "-" + str(etabinsPtSyst[n2 + 1])
                 high = "-" + str(etabinsPtSyst[n2])
-            return "$p_{{T}}^{{{lep}}}$ scale syst.{n}, ${l}<\eta<{h}${ch}".format(
+            return r"$p_{{T}}^{{{lep}}}$ scale syst.{n}, ${l}<\eta<{h}${ch}".format(
                 lep=lep,
                 n=n,
                 l=low,
@@ -266,13 +268,13 @@ def niceNameHEPDATA(name):
         )
         low = etabinsEffSyst[n]
         high = etabinsEffSyst[n + 1]
-        return "eff.syst., ${l}<|\eta|<{h}$, ${lep}$".format(
-            lep="\mu" if "mu" in name else "e", l=low, h=high
+        return r"eff.syst., ${l}<|\eta|<{h}$, ${lep}$".format(
+            lep=r"\mu" if "mu" in name else "e", l=low, h=high
         )
 
     elif "fsr" in name:
         return "QED final state radiation, ${lep}$".format(
-            lep="\mu" if any(x in name for x in ["Mu", "mu"]) else "e"
+            lep=r"\mu" if any(x in name for x in ["Mu", "mu"]) else "e"
         )
 
     elif "massShift" in name:
@@ -282,9 +284,9 @@ def niceNameHEPDATA(name):
 
     elif any(x in name for x in ["muR", "muF", "muRmuF"]):
         scale = (
-            "$\mu_{R}\mu_{F}$"
+            r"$\mu_{R}\mu_{F}$"
             if "muRmuF" in name
-            else "$\mu_{R}$" if "muR" in name else "$\mu_{F}$"
+            else r"$\mu_{R}$" if "muR" in name else r"$\mu_{F}$"
         )
         charge = "+" if "Plus" in name else "-" if "Minus" in name else ""
         if any(x == name for x in ["muR", "muF", "muRmuF"]):
@@ -326,9 +328,9 @@ def niceNameHEPDATA(name):
         elif "flips" in name:
             return "Charge flips bkg norm."
         elif "bkg_lepeff" in name:
-            return "eff.syst. bkg, ${l}$".format(l="e" if "We" in name else "\mu")
+            return "eff.syst. bkg, ${l}$".format(l="e" if "We" in name else r"\mu")
         elif "lepVeto" in name:
-            return "second lepton veto, ${l}$".format(l="e" if "We" in name else "\mu")
+            return "second lepton veto, ${l}$".format(l="e" if "We" in name else r"\mu")
         else:
             return name
 

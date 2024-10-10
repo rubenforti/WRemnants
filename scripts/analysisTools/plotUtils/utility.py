@@ -13,10 +13,13 @@ from functools import partial
 import ROOT
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
-from scripts.analysisTools.plotUtils.CMS_lumi import (CMS_lumi, h1,
-                                                      histMCpartialUnc,
-                                                      histMCpartialUncLegEntry,
-                                                      setTDRStyle)
+from scripts.analysisTools.plotUtils.CMS_lumi import (
+    CMS_lumi,
+    h1,
+    histMCpartialUnc,
+    histMCpartialUncLegEntry,
+    setTDRStyle,
+)
 from utilities import common, logging
 from utilities.io_tools import output_tools
 

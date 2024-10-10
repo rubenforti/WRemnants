@@ -4,9 +4,11 @@ import numpy as np
 
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-from utilities.io_tools.combinetf_input import (get_fitresult,
-                                                load_covariance_pois,
-                                                select_covariance_pois)
+from utilities.io_tools.combinetf_input import (
+    get_fitresult,
+    load_covariance_pois,
+    select_covariance_pois,
+)
 from wremnants import plot_tools
 
 hep.style.use(hep.style.ROOT)

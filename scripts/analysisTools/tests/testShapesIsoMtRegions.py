@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+
 ## safe batch mode
 import sys
 
 import narf
+
 # from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import common, logging
 from wremnants import histselections as sel
@@ -23,8 +25,9 @@ from copy import *
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import \
-    plotPrefitHistograms
+from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import (
+    plotPrefitHistograms,
+)
 
 sys.path.append(os.getcwd())
 

@@ -4,8 +4,7 @@ import hist
 import numpy as np
 
 from utilities import common, logging
-from wremnants import (syst_tools, theory_corrections, theory_tools,
-                       theoryAgnostic_tools)
+from wremnants import syst_tools, theory_corrections, theory_tools, theoryAgnostic_tools
 
 logger = logging.child_logger(__name__)
 

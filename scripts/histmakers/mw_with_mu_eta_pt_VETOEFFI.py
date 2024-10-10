@@ -15,8 +15,14 @@ import hist
 import ROOT
 
 import narf
-from wremnants import (muon_calibration, muon_selections, pileup,
-                       theory_corrections, theory_tools, vertex)
+from wremnants import (
+    muon_calibration,
+    muon_selections,
+    pileup,
+    theory_corrections,
+    theory_tools,
+    vertex,
+)
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 

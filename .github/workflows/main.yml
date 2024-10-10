@@ -4,14 +4,10 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 1 * * 2,4,6' # Run on Tuesday, Thursday, and Saturday morning at 1h00 UTC
-    - cron: '30 5 * * 1-5' # Run on weekdays
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Base"]
+    types:
+      - completed
 
 env: 
   MAX_FILES: 10
@@ -58,7 +54,9 @@ jobs:
   #              repo: context.repo.repo,
   #              body: ${{env.MESSAGE}}
   #            })
+
   setenv:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Only run if linting succeeded
     runs-on: [self-hosted, linux, x64]
 
     outputs:
@@ -76,38 +74,22 @@ jobs:
           submodules: 'recursive'
           lfs: 'true'
 
-      - name: setup kerberos
-        run: |
-          kinit -kt ~/private/.keytab cmsmwbot@CERN.CH
-          klist -k -t -e ~/private/.keytab
-          klist
-          echo "xrdfs root://eosuser.cern.ch// ls $EOS_DIR"
-          xrdfs root://eosuser.cern.ch// ls $EOS_DIR
-
-      - name: setup kerberos within singularity image
-        run: |
-          scripts/ci/run_with_singularity.sh kinit -kt ~/private/.keytab cmsmwbot@CERN.CH
-          scripts/ci/run_with_singularity.sh klist -k -t -e ~/private/.keytab
-          scripts/ci/run_with_singularity.sh klist
-          echo "xrdfs root://eoscms.cern.ch// ls $EOS_DATA_DIR"
-          scripts/ci/run_with_singularity.sh xrdfs root://eoscms.cern.ch// ls $EOS_DATA_DIR
-
       - name: setup unscheduled
         if: github.event_name != 'schedule'
         run: echo PLOT_DIR=PR$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')/$(date +%Y_%m_%d) >> $GITHUB_ENV
 
       - name: setup scheduled build
-        if: github.event.schedule == '0 1 * * 2,4,6'
+        if: github.event.workflow_run.outputs.run_on == 'scheduled'
         run: |
           echo PLOT_DIR=ScheduledBuilds/$(date +%Y_%m_%d)_$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_ENV
 
       - name: setup reference run
-        if: github.event.schedule == '30 5 * * 1-5'
+        if: github.event.workflow_run.outputs.run_on == 'reference'
         run: |
           echo PLOT_DIR=ReferenceRuns/$(date +%Y_%m_%d)_$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_ENV
 
       - name: setup 1:1 data:mc events
-        if: github.event_name != 'pull_request' && github.event.schedule != '30 5 * * 1-5'
+        if: github.event.workflow_run.outputs.run_on == 'dispatch' || github.event.workflow_run.outputs.run_on == 'scheduled'
         run: |
           echo "NTHREADS=64" >> $GITHUB_ENV
           echo "MAX_FILES=-2" >> $GITHUB_ENV
@@ -188,7 +170,7 @@ jobs:
           lfs: 'true'
 
       - name: wmass setup lumi scale
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
+        if: github.event.workflow_run.outputs.run_on == 'pull' || github.event.workflow_run.outputs.run_on == 'scheduled'
         run: | 
           echo "LUMI_SCALE=120" >> $GITHUB_ENV
 
@@ -765,7 +747,7 @@ jobs:
 
       # As of now the gen output isn't used for anything, so there's no point in running more files
       - name: setup nonpr
-        if: github.event_name != 'pull_request'
+        if: github.event.workflow_run.outputs.run_on != 'pull'
         run: |
           echo "NTHREADS=8" >> $GITHUB_ENV
           echo "MAX_FILES=10" >> $GITHUB_ENV
@@ -820,7 +802,7 @@ jobs:
           rm -r $WREMNANTS_OUTDIR/$LOCAL_WEB_DIR
 
       - name: save analysis files
-        if: github.event_name != 'pull_request' && github.event.schedule == '0 1 * * 2,4,6'
+        if: github.event.workflow_run.outputs.run_on == 'scheduled'
         run: |
           echo "xrdcp --parallel 4 -R -f $WREMNANTS_OUTDIR root://eosuser.cern.ch//$EOS_DIR/ScheduledBuilds/"
           xrdcp --parallel 4 -R -f $WREMNANTS_OUTDIR root://eosuser.cern.ch//$EOS_DIR/ScheduledBuilds/

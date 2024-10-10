@@ -34,7 +34,7 @@ done
 
 
 # Find all staged json files
-STAGED_FILES_JSON=$(git diff --cached --name-only --diff-filter=d | grep -E '\.ya?ml$' || true)
+STAGED_FILES_JSON=$(git diff --cached --name-only --diff-filter=d | grep -E '\.json$' || true)
 
 # Check syntax of each json file
 for FILE in $STAGED_FILES_JSON; do
@@ -81,14 +81,15 @@ done
 
 # Loop through each staged Python file and fix style issues
 for FILE in $STAGED_FILES_PY; do
-  # Remove trailing whitespace
-  black "$FILE"
 
   # Remove unused imports
   autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
 
   # Run isort to organize imports
   isort "$FILE"
+
+  # PEP 8 formatting
+  black "$FILE"
 
   # Check if the file was modified compared to the staged version
   if ! git diff --quiet "$FILE"; then

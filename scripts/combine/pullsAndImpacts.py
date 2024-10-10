@@ -14,8 +14,12 @@ from plotly.subplots import make_subplots
 
 from narf import ioutils
 from utilities import logging
-from utilities.io_tools import (combinetf_input, conversion_tools, input_tools,
-                                output_tools)
+from utilities.io_tools import (
+    combinetf_input,
+    conversion_tools,
+    input_tools,
+    output_tools,
+)
 from utilities.styles.styles import nuisance_groupings as groupings
 from wremnants import plot_tools
 

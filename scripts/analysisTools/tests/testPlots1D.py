@@ -2,12 +2,14 @@
 
 import logging
 import os
+
 ## safe batch mode
 import sys
 
 import hist
 
 import narf
+
 # from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import logging
 from wremnants.datasets.datagroups import Datagroups
@@ -25,8 +27,7 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
 
 
 def plotDistribution1D(

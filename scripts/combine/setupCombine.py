@@ -10,9 +10,15 @@ import narf.ioutils
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools
-from wremnants import (CardTool, HDF5Writer, combine_helpers,
-                       combine_theory_helper, combine_theoryAgnostic_helper,
-                       syst_tools, theory_corrections)
+from wremnants import (
+    CardTool,
+    HDF5Writer,
+    combine_helpers,
+    combine_theory_helper,
+    combine_theoryAgnostic_helper,
+    syst_tools,
+    theory_corrections,
+)
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.regression import Regressor

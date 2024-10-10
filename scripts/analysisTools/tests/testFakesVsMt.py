@@ -11,6 +11,7 @@
 import array
 import math
 import os
+
 ## safe batch mode
 import sys
 
@@ -35,9 +36,9 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
+
 # sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
 from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 
 # will use as input the histogram mTStudyForFakes with eta-pt-charge-mt-passIso-hasJet, where mt is the full distribution

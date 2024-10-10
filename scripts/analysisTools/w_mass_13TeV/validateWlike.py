@@ -14,12 +14,14 @@
 # Boolean(name='passMT')
 
 import os
+
 ## safe batch mode
 import sys
 
 import hist
 
 import narf
+
 # from wremnants import plot_tools,theory_tools,syst_tools
 from utilities import logging
 from wremnants.datasets.datagroups import Datagroups
@@ -35,8 +37,9 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import \
-    plotPrefitHistograms
+from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import (
+    plotPrefitHistograms,
+)
 
 if __name__ == "__main__":
     parser = common_plot_parser()

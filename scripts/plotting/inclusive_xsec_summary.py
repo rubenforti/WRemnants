@@ -13,8 +13,12 @@ import pandas as pd
 
 from narf import ioutils
 from utilities import common, logging
-from utilities.io_tools import (combinetf_input, conversion_tools,
-                                output_tools, tex_tools)
+from utilities.io_tools import (
+    combinetf_input,
+    conversion_tools,
+    output_tools,
+    tex_tools,
+)
 from utilities.styles.styles import nuisance_groupings
 from wremnants import plot_tools
 

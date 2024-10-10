@@ -50,9 +50,9 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
-from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
-    makeAntiSFfromSFandEffi
+from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
 
 # for a quick summary at the end
 badFitsID_data = {}

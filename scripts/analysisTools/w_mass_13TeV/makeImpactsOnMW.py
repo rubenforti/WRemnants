@@ -14,6 +14,7 @@
 
 import os
 import re
+
 ## safe batch mode
 import sys
 from array import array
@@ -101,7 +102,7 @@ def readNuisances(args, infile=None, logger=None):
         logger.info("Total m%s uncertainty: %2.2f MeV" % (boson, totalUncertainty))
     else:
         logger.info(
-            "Total m%s uncertainty: %2.3f (\% of prefit)" % (boson, totalUncertainty)
+            r"Total m%s uncertainty: %2.3f (\% of prefit)" % (boson, totalUncertainty)
         )
 
     group = "group_" if len(args.nuisgroups) else ""

@@ -36,8 +36,13 @@ import hist
 import narf
 import wremnants
 import wremnants.lowpu as lowpu
-from wremnants import (muon_selections, syst_tools, theory_corrections,
-                       theory_tools, unfolding_tools)
+from wremnants import (
+    muon_selections,
+    syst_tools,
+    theory_corrections,
+    theory_tools,
+    unfolding_tools,
+)
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 

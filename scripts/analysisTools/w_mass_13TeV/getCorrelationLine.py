@@ -4,6 +4,7 @@
 
 import re
 from array import array
+
 # from subMatrix import niceName # skip for now, have to adapt the script
 from operator import itemgetter
 
@@ -24,9 +25,11 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import (common_plot_parser,
-                                                     copyOutputToEos,
-                                                     createPlotDirAndCopyPhp)
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+)
 
 if __name__ == "__main__":
 

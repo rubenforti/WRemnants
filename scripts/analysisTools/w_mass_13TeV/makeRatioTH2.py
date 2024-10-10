@@ -36,6 +36,7 @@
 
 import array
 import math
+
 ## safe batch mode
 import sys
 from copy import *

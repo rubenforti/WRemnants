@@ -4,6 +4,7 @@
 
 import argparse
 import ctypes
+
 # take mT distributions and check S/B for different mT cuts (ideally done for low isolation region without mT cuts)
 ## safe batch mode
 import sys
@@ -23,8 +24,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
+from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
 
 if __name__ == "__main__":
 

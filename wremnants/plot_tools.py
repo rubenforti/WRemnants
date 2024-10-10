@@ -16,8 +16,9 @@ from matplotlib import patches, ticker
 from matplotlib.legend_handler import HandlerLine2D
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
-from matplotlib.ticker import \
-    StrMethodFormatter  # for setting number of decimal places on tick labels
+from matplotlib.ticker import (
+    StrMethodFormatter,
+)  # for setting number of decimal places on tick labels
 
 import narf
 from utilities import boostHistHelpers as hh
