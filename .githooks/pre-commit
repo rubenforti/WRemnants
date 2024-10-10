@@ -49,6 +49,7 @@ for FILE in $STAGED_FILES; do
 done
 
 # Loop through each staged Python file and fix whitespace issues
+unset MODIFIED_FILES
 for FILE in $STAGED_FILES; do
   # Remove trailing whitespace
   sed -i 's/[[:space:]]\+$//' "$FILE"
@@ -62,8 +63,12 @@ for FILE in $STAGED_FILES; do
   # Remove unused imports
   autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
 
-  # Track the modified files
-  MODIFIED_FILES+=("$FILE")
+  # Check if the file was modified compared to the staged version
+  if ! git diff --quiet "$FILE"; then
+    # Track the modified files
+    MODIFIED_FILES+=("$FILE")
+  fi
+
 done
 
 # Notify the user if any Python files were modified

@@ -15,10 +15,10 @@ import numpy as np
 import ROOT
 
 import narf
-import wremnants
 from utilities import common
 from wremnants import (helicity_utils, muon_calibration,
-                       muon_efficiencies_binned, muon_efficiencies_smooth,
+                       muon_efficiencies_binned, muon_efficiencies_newVeto,
+                       muon_efficiencies_smooth, muon_efficiencies_veto,
                        muon_prefiring, muon_selections, muon_validation,
                        pileup, syst_tools, theory_corrections, theory_tools,
                        theoryAgnostic_tools, unfolding_tools, vertex)
@@ -218,9 +218,9 @@ else:
     muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
     if not args.noVetoSF:
         if args.useRefinedVeto:
-            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(antiveto=True)
+            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(antiveto=True)
         else:
-            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
+            muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
 
 logger.info(f"SF file: {args.sfFile}")
 
