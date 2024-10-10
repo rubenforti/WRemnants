@@ -15,6 +15,7 @@ from wremnants.helicity_utils import axis_helicity
 logger = logging.child_logger(__name__)
 
 narf.clingutils.Declare('#include "histoScaling.hpp"')
+narf.clingutils.Declare('#include "muonCorr.hpp"')
 
 
 def syst_transform_map(base_hist, hist_name):
