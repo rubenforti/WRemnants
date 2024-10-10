@@ -1,14 +1,10 @@
 
 import h5py
 import hist
-import numpy as np
 
 import narf.ioutils
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from utilities.io_tools import input_tools
-from wremnants import syst_tools, theory_tools
-from wremnants.helicity_utils import axis_helicity_multidim
 
 logger = logging.child_logger(__name__)
 

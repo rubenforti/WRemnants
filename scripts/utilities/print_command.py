@@ -2,8 +2,6 @@ import argparse
 import os
 import pathlib
 
-import lz4.frame
-
 from utilities import logging
 from utilities.io_tools import input_tools
 from wremnants.datasets.datagroups import Datagroups

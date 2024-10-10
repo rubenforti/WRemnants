@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import array
 import os
 ## safe batch mode
 import sys
 
-import hist
-import lz4.frame
-
 import narf
-import wremnants
-from utilities import boostHistHelpers as hh
 from utilities import common
-from wremnants import histselections as sel
 from wremnants.datasets.datagroups2016 import make_datagroups_2016
 
 args = sys.argv[:]
@@ -29,8 +22,6 @@ from copy import *
 from scripts.analysisTools.plotUtils.utility import *
 
 sys.path.append(os.getcwd())
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
 from scripts.analysisTools.tests.testPlots1D import plotDistribution1D
 
 if __name__ == "__main__":

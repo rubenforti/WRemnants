@@ -7,20 +7,10 @@
 # example
 # python scripts/analysisTools/w_mass_13TeV/mergeFilesSF2D.py wremnants-data/data/muonSF/allSmooth_GtoHout.root allSmooth_GtoHout_vtxAgnIso.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isonotrig_both/smoothedSFandEffi_isonotrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_iso_both/smoothedSFandEffi_iso_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isoantitrig_both/smoothedSFandEffi_isoantitrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_plus/smoothedSFandEffi_trigger_GtoH_plus.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_minus/smoothedSFandEffi_trigger_GtoH_minus.root
 
-import array
 import os
 from copy import *
 
-import boost_histogram as bh
-import hist
-import lz4.frame
-import numpy as np
-import tensorflow as tf
 import utilitiesCMG
-from scipy.interpolate import RegularGridInterpolator
-
-import narf
-import narf.fitutils
 
 utilities = utilitiesCMG.util()
 
@@ -35,13 +25,11 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-import wremnants
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *
+
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
-from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
-    makeAntiSFfromSFandEffi
 
 if __name__ == "__main__":
 

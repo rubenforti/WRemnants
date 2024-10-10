@@ -23,7 +23,6 @@ import pickle
 from copy import *
 from functools import partial
 
-import boost_histogram as bh
 import hist
 import lz4.frame
 import numpy as np
@@ -48,7 +47,6 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-import wremnants
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
 from scripts.analysisTools.plotUtils.utility import *

@@ -4,7 +4,7 @@ import pandas as pd
 from matplotlib import ticker
 
 from utilities import common
-from utilities.io_tools import combinetf_input, input_tools, output_tools
+from utilities.io_tools import combinetf_input, output_tools
 from wremnants import plot_tools
 
 parser = common.plot_parser()

@@ -1,6 +1,5 @@
 import os
 
-from utilities import boostHistHelpers as hh
 from utilities import common, differential, logging
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
@@ -11,17 +10,15 @@ parser,initargs = common.common_parser(analysis_label)
 import math
 
 import hist
-import lz4.frame
 import numpy as np
 import ROOT
 
 import narf
-import wremnants
 from wremnants import (helicity_utils, muon_calibration,
                        muon_efficiencies_binned, muon_efficiencies_smooth,
-                       muon_prefiring, muon_selections, muon_validation,
-                       pileup, syst_tools, theory_corrections, theory_tools,
-                       theoryAgnostic_tools, unfolding_tools, vertex)
+                       muon_prefiring, muon_selections, pileup, syst_tools,
+                       theory_corrections, theory_tools, theoryAgnostic_tools,
+                       unfolding_tools, vertex)
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 

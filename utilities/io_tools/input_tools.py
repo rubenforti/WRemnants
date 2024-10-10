@@ -4,7 +4,6 @@ import pickle
 import re
 
 import h5py
-import hdf5plugin
 import hist
 import lz4.frame
 import numpy as np

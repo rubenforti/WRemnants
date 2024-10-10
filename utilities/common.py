@@ -313,8 +313,6 @@ def common_parser(analysis_label=""):
 
     import ROOT
     ROOT.ROOT.EnableImplicitMT(max(0,initargs.nThreads))
-    import narf
-    import wremnants
     from wremnants import theory_corrections, theory_tools
 
     class PDFFilterAction(argparse.Action):

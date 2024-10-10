@@ -12,11 +12,9 @@ ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
 import hist
-import numpy as np
 
 import narf
 from utilities import boostHistHelpers as hh
-from wremnants.datasets import datagroups
 
 
 def loadJSON(jsIn):

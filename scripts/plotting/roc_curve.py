@@ -7,7 +7,6 @@ from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import output_tools
 from utilities.styles import styles
-from wremnants import histselections as sel
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
 

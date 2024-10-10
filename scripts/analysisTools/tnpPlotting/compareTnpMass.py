@@ -4,7 +4,6 @@
 # example:
 # python w-mass-13TeV/compareTnpMass.py /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_data_vertexWeights1_oscharge0.root /home/m/mciprian/tnp/Steve_Marc_Raj/outputs/test_trackerMuons/tnp_tracking_mc_vertexWeights1_oscharge0.root plots/TnP/Steve_Marc_Raj/testTrackerMuons/tracking/ --zbin 1 3
 
-import array
 import os
 ## safe batch mode
 import sys

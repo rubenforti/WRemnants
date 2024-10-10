@@ -6,13 +6,11 @@ from collections import defaultdict
 import h5py
 import hist
 import numpy as np
-import pandas as pd
 
 import narf
-from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.h5pyutils import writeFlatInChunks, writeSparse
-from utilities.io_tools import combinetf_input, output_tools
+from utilities.io_tools import combinetf_input
 from wremnants.combine_helpers import projectABCD
 
 logger = logging.child_logger(__name__)

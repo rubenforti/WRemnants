@@ -9,11 +9,10 @@ import hist
 import lz4.frame
 import numpy as np
 import pandas as pd
-import ROOT
 
 import narf
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging
 from utilities.io_tools import input_tools
 from utilities.styles import styles
 from wremnants import histselections as sel

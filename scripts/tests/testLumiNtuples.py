@@ -7,11 +7,9 @@ parser,initargs = common.common_parser()
 import logging
 
 import hist
-import lz4.frame
 
 import narf
 import wremnants
-from wremnants import syst_tools, theory_corrections, theory_tools
 
 data_dir = common.data_dir
 

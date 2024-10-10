@@ -2,14 +2,12 @@ import itertools
 import re
 
 import h5py
-import hdf5plugin
 import hist
 import numpy as np
 import pandas as pd
 import ROOT
 import uproot
 
-from narf import ioutils
 from utilities import logging
 
 logger = logging.child_logger(__name__)

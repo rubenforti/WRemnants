@@ -21,7 +21,6 @@ import narf
 import narf.fitutils
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from utilities.io_tools import output_tools
 
 args = sys.argv[:]
 sys.argv = ['-b']
@@ -33,7 +32,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
-import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 
 logger = logging.setup_logger(__file__, 3, False)

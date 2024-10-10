@@ -1,8 +1,6 @@
 import argparse
 import os
 
-import matplotlib.pyplot as plt
-
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
 

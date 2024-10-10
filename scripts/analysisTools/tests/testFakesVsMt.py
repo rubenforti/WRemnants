@@ -15,14 +15,12 @@ import os
 import sys
 
 import hist
-import lz4.frame
 import numpy as np
 
 import narf
 import narf.fitutils
-import wremnants
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging
 from wremnants import legacy_functions as sel
 from wremnants.datasets.datagroups import Datagroups
 

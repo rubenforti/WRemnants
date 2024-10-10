@@ -1,4 +1,3 @@
-import ROOT
 
 from utilities import common, logging
 from wremnants import muon_calibration, theory_tools

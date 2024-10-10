@@ -2,7 +2,6 @@
 import argparse
 import math
 
-import h5py
 import hist
 import numpy as np
 

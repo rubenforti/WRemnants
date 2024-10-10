@@ -7,7 +7,6 @@ from scipy import ndimage
 import narf.clingutils
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from wremnants import theory_corrections
 
 logger = logging.child_logger(__name__)
 narf.clingutils.Declare('#include "theoryTools.h"')

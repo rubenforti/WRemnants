@@ -8,7 +8,6 @@ import os
 import os.path
 import re
 import sys
-from array import array
 
 import ROOT
 

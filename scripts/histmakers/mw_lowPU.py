@@ -21,7 +21,6 @@ isUnfolding = args.analysisMode == "unfolding"
 import math
 
 import hist
-import ROOT
 
 import narf
 import wremnants

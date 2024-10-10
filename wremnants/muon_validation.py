@@ -1,13 +1,9 @@
 
 import hist
-import numpy as np
-import ROOT
-import uproot
 
 import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from wremnants.muon_calibration import get_jpsi_scale_param_cov_mat
 
 narf.clingutils.Declare('#include "muon_validation.h"')
 

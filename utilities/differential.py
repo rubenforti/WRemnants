@@ -1,6 +1,6 @@
 import hist
 
-from utilities import common, logging
+from utilities import logging
 
 logger = logging.child_logger(__name__)
 

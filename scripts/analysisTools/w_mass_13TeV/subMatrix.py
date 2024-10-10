@@ -28,7 +28,10 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (common_plot_parser,
+                                                     copyOutputToEos,
+                                                     createPlotDirAndCopyPhp,
+                                                     d)
 
 
 def niceName(name):

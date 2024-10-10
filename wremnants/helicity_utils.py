@@ -1,16 +1,12 @@
 import pathlib
 
 import h5py
-import hdf5plugin
 import hist
-import lz4.frame
 import numpy as np
 import ROOT
-import uproot
 
 import narf
 import narf.clingutils
-from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools
 from wremnants.correctionsTensor_helper import makeCorrectionsTensor

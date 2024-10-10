@@ -22,8 +22,6 @@ from copy import *
 
 import utilitiesCMG
 
-import wremnants
-
 utilities = utilitiesCMG.util()
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *

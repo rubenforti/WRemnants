@@ -8,9 +8,7 @@ ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
 import functions
-import plotter
 
-import narf
 from wremnants.datasets import datagroups
 
 if __name__ == "__main__":

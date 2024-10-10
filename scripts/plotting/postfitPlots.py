@@ -2,8 +2,6 @@ import itertools
 import os
 
 import hist
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
 import pandas as pd
@@ -14,8 +12,7 @@ from matplotlib.lines import Line2D
 from narf import ioutils
 from utilities import boostHistHelpers as hh
 from utilities import common, differential, logging
-from utilities.io_tools import (combinetf2_input, combinetf_input, input_tools,
-                                output_tools)
+from utilities.io_tools import combinetf_input, input_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 

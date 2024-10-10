@@ -1,7 +1,4 @@
 
-import boost_histogram as bh
-import hist
-import numpy as np
 import ROOT
 
 import narf

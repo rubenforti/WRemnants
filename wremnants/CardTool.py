@@ -7,13 +7,11 @@ import re
 import hist
 import numpy as np
 import ROOT
-import uproot
 
 import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import output_tools
-from wremnants import histselections as sel
 
 logger = logging.child_logger(__name__)
 

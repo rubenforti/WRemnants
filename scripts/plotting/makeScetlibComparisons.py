@@ -5,8 +5,6 @@ import pickle
 
 import hist
 import lz4.frame
-import matplotlib.pyplot as plt
-import uproot
 from matplotlib import cm
 
 from utilities import boostHistHelpers as hh

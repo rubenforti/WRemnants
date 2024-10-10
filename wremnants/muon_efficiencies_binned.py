@@ -2,7 +2,6 @@ import logging
 
 import boost_histogram as bh
 import hist
-import lz4.frame
 import numpy as np
 import ROOT
 

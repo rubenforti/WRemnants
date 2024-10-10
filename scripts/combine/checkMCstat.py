@@ -4,14 +4,11 @@
 # currently works only after creating singularity image with cmssw-cc7, to use cmsenv from the combine fit
 
 import argparse
-import array
 import math
 import os
 import string
 ## safe batch mode
 import sys
-
-import numpy as np
 
 args = sys.argv[:]
 sys.argv = ['-b']

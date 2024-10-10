@@ -10,11 +10,13 @@ import sys
 from array import array
 from functools import partial
 
-import numpy as np
 import ROOT
 
 #sys.path.append(os.getcwd() + "/plotUtils/")
-from scripts.analysisTools.plotUtils.CMS_lumi import *
+from scripts.analysisTools.plotUtils.CMS_lumi import (CMS_lumi, h1,
+                                                      histMCpartialUnc,
+                                                      histMCpartialUncLegEntry,
+                                                      setTDRStyle)
 from utilities import common, logging
 from utilities.io_tools import output_tools
 

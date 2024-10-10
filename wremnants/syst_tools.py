@@ -7,7 +7,7 @@ import ROOT
 
 from utilities import boostHistHelpers as hh
 from utilities import common, differential, logging
-from wremnants import helicity_utils, theory_tools, theoryAgnostic_tools
+from wremnants import helicity_utils, theory_tools
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.helicity_utils import axis_helicity
 

@@ -1,7 +1,5 @@
 
 import h5py
-import hdf5plugin
-import lz4.frame
 import ROOT
 
 import narf

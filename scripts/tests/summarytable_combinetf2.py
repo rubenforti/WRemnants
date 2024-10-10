@@ -1,7 +1,5 @@
 
-import numpy as np
 import pandas as pd
-import ROOT
 from scipy.stats import chi2
 
 from utilities import common, logging

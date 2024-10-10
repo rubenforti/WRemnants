@@ -4,14 +4,11 @@ import pickle
 import shutil
 import string
 import subprocess
-import sys
 import tempfile
 import time
 
 import h5py
-import hdf5plugin
 import lz4.frame
-import numpy as np
 
 import narf
 from utilities import common, logging
@@ -139,7 +136,6 @@ def make_plot_dir(outpath, outfolder=None, eoscp=False, allowCreateLocalFolder=T
             logger.info(f"Creating folder {full_outpath}")
         except FileExistsError as e:
             logger.warning(e)
-            pass
 
     return full_outpath
 

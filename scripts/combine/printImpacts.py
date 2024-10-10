@@ -1,7 +1,5 @@
 import argparse
 
-import uproot
-
 from utilities.io_tools import combinetf_input
 
 

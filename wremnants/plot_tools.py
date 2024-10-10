@@ -21,8 +21,7 @@ from matplotlib.ticker import \
 
 import narf
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from utilities.io_tools import output_tools
+from utilities import logging
 
 hep.style.use(hep.style.ROOT)
 

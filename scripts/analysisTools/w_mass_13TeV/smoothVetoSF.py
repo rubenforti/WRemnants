@@ -4,13 +4,11 @@
 # currently: reco*tracking*idip
 # uncertainties on idip could be neglected
 
-import array
 import os
 import pickle
 import time
 from copy import *
 
-import boost_histogram as bh
 import hist
 import lz4.frame
 import numpy as np
@@ -38,7 +36,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
-import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import \
     makeAntiSFfromSFandEffi

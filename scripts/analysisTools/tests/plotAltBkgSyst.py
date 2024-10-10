@@ -2,10 +2,7 @@
 
 ## safe batch mode
 import sys
-from array import array
 from copy import *
-
-from utilities import logging
 
 args = sys.argv[:]
 sys.argv = ['-b']

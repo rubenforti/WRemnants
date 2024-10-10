@@ -1,11 +1,7 @@
 
-import hist
 import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
-import pandas as pd
-import uproot
-from matplotlib import cm
 
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools

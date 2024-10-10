@@ -5,7 +5,6 @@ import h5py
 
 import narf
 from utilities import logging
-from utilities.io_tools import input_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("infiles", type=str, nargs="+", help="Input hdf5 files")

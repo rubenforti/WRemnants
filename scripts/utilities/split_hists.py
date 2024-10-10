@@ -8,7 +8,6 @@ import h5py
 import narf
 import narf.ioutils
 from utilities import logging
-from utilities.io_tools import input_tools
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, help="Input hdf5 file")

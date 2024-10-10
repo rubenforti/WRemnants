@@ -1,7 +1,7 @@
 
 import hist
 
-from utilities import differential, logging
+from utilities import logging
 from wremnants import helicity_utils, syst_tools, theory_tools
 
 logger = logging.child_logger(__name__)

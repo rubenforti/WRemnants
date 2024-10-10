@@ -1,15 +1,13 @@
 import argparse
 
-import h5py
 import hist
 import numpy as np
 import ROOT
 
 import narf
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from utilities.io_tools import input_tools, output_tools
-from wremnants import theory_corrections, theory_tools
+from utilities import common
+from utilities.io_tools import output_tools
 
 parser = argparse.ArgumentParser()
 

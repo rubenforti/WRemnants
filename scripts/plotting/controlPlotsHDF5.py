@@ -1,7 +1,6 @@
 import itertools
 
 import hist
-import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
 

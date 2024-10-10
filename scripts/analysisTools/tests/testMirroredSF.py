@@ -16,7 +16,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 from copy import *
 
-import wremnants
 from scripts.analysisTools.plotUtils.utility import *
 
 if __name__ == "__main__":

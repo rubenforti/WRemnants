@@ -1,5 +1,5 @@
 
-from utilities import common, differential, logging, rdf_tools
+from utilities import common, logging
 from utilities.io_tools import output_tools
 
 parser,initargs = common.common_parser("w_mass")
@@ -7,17 +7,11 @@ parser,initargs = common.common_parser("w_mass")
 import os
 
 import hist
-import lz4.frame
-import numpy as np
 import ROOT
 
 import narf
-from utilities import boostHistHelpers as hh
-from wremnants import (muon_calibration, muon_selections, muon_validation,
-                       pileup, syst_tools, theory_corrections, theory_tools,
-                       unfolding_tools, vertex)
+from wremnants import muon_calibration, muon_selections, pileup, vertex
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 
 parser.add_argument("--testHelpers", action="store_true", help="Test the smearing weights helper")
 

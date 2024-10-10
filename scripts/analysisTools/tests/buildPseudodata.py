@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 
 # quick script to build a pseudodata histogram summing whatever you need for tests
-import array
 import os
 ## safe batch mode
 import sys
 
-import hist
-import lz4.frame
-
-import narf
-import wremnants
-from utilities import boostHistHelpers as hh
 from utilities import common
-from wremnants import histselections as sel
 
 args = sys.argv[:]
 sys.argv = ['-b']
@@ -26,8 +18,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from copy import *
 
 from scripts.analysisTools.plotUtils.utility import *
-from scripts.analysisTools.tests.cropNegativeTemplateBins import \
-    cropNegativeContent
 
 ## Dictionary with info to build pseudodata
 # file is the file to read from

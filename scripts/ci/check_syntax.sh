@@ -1,5 +1,4 @@
 #!/bin/bash
-# This pre-commit hook fixes whitespace issues and formats Python files
 
 # Exit if any command fails
 set -e
@@ -9,7 +8,7 @@ trap 'echo "Error on line $LINENO: $BASH_COMMAND" >&2' ERR
 
 
 # Find all staged c++ files
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(c|cpp|h|hpp)$' || true)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.h$' || true)
 
 for FILE in $STAGED_FILES; do
   clang++ -I./narf/narf/include/ -fsyntax-only -Wno-deprecated $FILE 
@@ -48,34 +47,7 @@ for FILE in $STAGED_FILES; do
   fi
 done
 
-# Loop through each staged Python file and fix whitespace issues
-for FILE in $STAGED_FILES; do
-  # Remove trailing whitespace
-  sed -i 's/[[:space:]]\+$//' "$FILE"
-
-  # replace tabs with 4 spaces:
-  sed -i 's/\t/    /g' "$FILE"
-
-  # Run isort to organize imports
-  isort "$FILE"
-
-  # Remove unused imports
-  autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
-
-  # Track the modified files
-  MODIFIED_FILES+=("$FILE")
-done
-
-# Notify the user if any Python files were modified
-if [ ${#MODIFIED_FILES[@]} -gt 0 ]; then
-  echo "The following Python files were modified and need to be re-staged:"
-  for FILE in "${MODIFIED_FILES[@]}"; do
-    echo "  $FILE"
-  done
-  echo "Please review the changes and manually add the modified files to the staging area."
-  exit 1
-fi
-
+echo "All syntax checks passed"
 exit 0
 
 

@@ -15,7 +15,13 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (adjustSettings_CMS_lumi,
+                                                     common_plot_parser,
+                                                     copyOutputToEos,
+                                                     createPlotDirAndCopyPhp,
+                                                     drawCorrelationPlot,
+                                                     drawTH1, safeGetObject,
+                                                     safeOpenFile)
 from utilities import common
 
 ROOT.gStyle.SetOptStat(0)

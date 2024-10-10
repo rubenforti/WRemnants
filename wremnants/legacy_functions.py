@@ -1,11 +1,7 @@
 import hist
-import numpy as np
-import ROOT
 
-import narf
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from utilities.io_tools.input_tools import safeGetRootObject, safeOpenRootFile
+from utilities import logging
 
 logger = logging.child_logger(__name__)
 

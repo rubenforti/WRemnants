@@ -1,13 +1,9 @@
 import argparse
 import pickle
 
-import hist
 import lz4.frame
-import numpy as np
 
-from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from utilities.io_tools import input_tools, output_tools
+from utilities import logging
 from wremnants.datasets.datagroups import Datagroups
 
 parser = argparse.ArgumentParser()

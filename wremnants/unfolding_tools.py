@@ -1,12 +1,9 @@
 from copy import deepcopy
 
-import h5py
 import hist
 import numpy as np
-import pandas as pd
-import uproot
 
-from utilities import common, differential, logging
+from utilities import common, logging
 from wremnants import (syst_tools, theory_corrections, theory_tools,
                        theoryAgnostic_tools)
 

@@ -6,13 +6,12 @@ import hist
 import lz4.frame
 import numpy as np
 import ROOT
-import scipy
 import uproot
 
 import narf
 import narf.tfliteutils
 from utilities import boostHistHelpers as hh
-from utilities import common, logging, rdf_tools
+from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 

@@ -1,7 +1,6 @@
 import os
 
-from utilities import common, differential, logging, rdf_tools
-from utilities.common import background_MCprocs as bkgMCprocs
+from utilities import common, differential, logging
 from utilities.common import data_dir
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
@@ -12,13 +11,11 @@ parser,initargs = common.common_parser(analysis_label)
 import math
 
 import hist
-import lz4.frame
 import numpy as np
 import ROOT
 
 import narf
 import wremnants
-from utilities import boostHistHelpers as hh
 from utilities import common
 from wremnants import (helicity_utils, muon_calibration,
                        muon_efficiencies_binned, muon_efficiencies_smooth,
@@ -62,11 +59,9 @@ if args.useRefinedVeto and args.useGlobalOrTrackerVeto:
     raise NotImplementedError("Options --useGlobalOrTrackerVeto and --useRefinedVeto cannot be used together at the moment.")
 
 if args.useRefinedVeto:
-    from wremnants.muon_efficiencies_newVeto import \
-        make_muon_efficiency_helpers_newVeto
+    pass
 else:
-    from wremnants.muon_efficiencies_veto import \
-        make_muon_efficiency_helpers_veto
+    pass
 
 isUnfolding = args.analysisMode == "unfolding"
 isTheoryAgnostic = args.analysisMode in ["theoryAgnosticNormVar", "theoryAgnosticPolVar"]

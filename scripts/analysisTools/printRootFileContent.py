@@ -3,7 +3,6 @@
 import argparse
 import re
 
-import numpy as np
 import ROOT
 
 parser = argparse.ArgumentParser()

@@ -1,5 +1,4 @@
 import argparse
-import itertools
 import os
 
 from utilities import logging

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import array
 import os
 ## safe batch mode
 import sys

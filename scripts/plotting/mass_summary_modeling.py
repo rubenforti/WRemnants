@@ -6,7 +6,7 @@ from matplotlib import ticker
 
 from utilities import common
 from utilities.io_tools import combinetf_input, output_tools
-from wremnants import plot_tools, theory_tools
+from wremnants import plot_tools
 
 parser = argparse.ArgumentParser()
 parser = common.plot_parser()

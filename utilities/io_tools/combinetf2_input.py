@@ -1,8 +1,6 @@
 
 
 import h5py
-import hist
-import numpy as np
 
 from narf import ioutils
 from utilities import logging

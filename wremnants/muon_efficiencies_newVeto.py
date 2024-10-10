@@ -4,13 +4,10 @@ import pickle
 import boost_histogram as bh
 import hist
 import lz4.frame
-import numpy as np
 import ROOT
 
 import narf
-from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)
 

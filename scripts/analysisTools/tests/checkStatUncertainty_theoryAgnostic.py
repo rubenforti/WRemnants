@@ -1,24 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-import logging
 import os
 ## safe batch mode
 import sys
 
-import hist
-import lz4.frame
 import numpy as np
 
-import narf
-import wremnants
 #from wremnants import plot_tools,theory_tools,syst_tools
-from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from utilities.io_tools import input_tools
-from wremnants import histselections as sel
-from wremnants import syst_tools, theory_corrections, theory_tools
-from wremnants.datasets.datagroups2016 import make_datagroups_2016
 
 args = sys.argv[:]
 sys.argv = ['-b']

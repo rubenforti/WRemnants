@@ -10,7 +10,7 @@ import pandas as pd
 
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
-from utilities.io_tools import conversion_tools, input_tools, output_tools
+from utilities.io_tools import conversion_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups

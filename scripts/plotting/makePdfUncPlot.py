@@ -2,16 +2,12 @@ import argparse
 import copy
 import os
 
-import boost_histogram as bh
 import h5py
 import hist
-import matplotlib.pyplot as plt
-import mplhep as hep
 import numpy as np
 from matplotlib import cm
 
 import narf.ioutils
-import utilities.common
 from utilities import boostHistHelpers as hh
 from utilities.differential import get_theoryAgnostic_axes
 from utilities.io_tools import input_tools, output_tools

@@ -11,7 +11,6 @@
 # python WRemnants/scripts/combine/fitManager.py -i /scratch/mciprian/CombineStudies/Wmass/abseta1p0/qcdScale_byPt/  -c "plus,minus" --fit-single-charge [--skip-fit-data]
 
 import argparse
-import array
 import os
 ## safe batch mode
 import sys

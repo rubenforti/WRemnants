@@ -14,9 +14,8 @@ ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 sys.path.append(os.getcwd() + "/plotUtils/")
-from utility import *
-
-import wremnants
+from utility import (copy, createPlotDirAndCopyPhp, drawCorrelationPlot,
+                     fillTH3binFromTH2, np, safeGetObject, safeOpenFile)
 
 
 def effStatVariations(outdir, covHisto, parHisto, nbins_pt, ptmin, ptmax,

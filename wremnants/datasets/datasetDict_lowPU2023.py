@@ -1,4 +1,3 @@
-from utilities import common
 
 # cross sections from: https://twiki.cern.ch/twiki/bin/viewauth/CMS/StandardModelCrossSectionsat13TeV
 BR_W_LEP = 3*0.1086 # PDG

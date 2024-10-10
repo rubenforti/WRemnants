@@ -3,22 +3,13 @@
 # python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_lowIso_plus/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_highIso_plus/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_lowIso_plus_1morejet/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus --invertmt;   python w-mass-13TeV/makeMtEfficiency.py plots/testNanoAOD/WmassPlots/histograms_isoChargeMtPtEta_fakeRegion_deepMET_NanoV9/checkPlots_highIso_plus_1morejet/postVFP//plots_fakerate.root --mt mt_MET mt_deepMET --mtleg PFMET deepMET --signal Wmunu_plus --invertmt
 
 import argparse
-import array
 import ctypes
 # take mT distributions and check S/B for different mT cuts (ideally done for low isolation region without mT cuts)
 ## safe batch mode
 import sys
 
 import hist
-import lz4.frame
-import numpy as np
 
-import narf
-import narf.fitutils
-import wremnants
-from utilities import boostHistHelpers as hh
-from utilities import common, logging
-from wremnants import histselections as sel
 from wremnants.datasets.datagroups2016 import make_datagroups_2016
 
 args = sys.argv[:]

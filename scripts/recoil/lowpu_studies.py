@@ -9,7 +9,6 @@ ROOT.gStyle.SetOptTitle(0)
 import functions
 import plotutils
 
-import narf
 from wremnants.datasets import datagroups
 
 if __name__ == "__main__":

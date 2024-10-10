@@ -5,7 +5,6 @@ import hist
 import numpy as np
 
 import narf
-from utilities import boostHistHelpers as hh
 
 
 def processDict():

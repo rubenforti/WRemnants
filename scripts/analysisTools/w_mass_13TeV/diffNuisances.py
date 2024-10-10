@@ -28,7 +28,9 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 #sys.path.append(os.getcwd() + "/plotUtils/")
 #from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (array, common_plot_parser,
+                                                     copyOutputToEos,
+                                                     createPlotDirAndCopyPhp)
 
 
 def sortEffSyst(name):

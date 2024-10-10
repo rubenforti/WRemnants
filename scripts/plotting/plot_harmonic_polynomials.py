@@ -2,7 +2,6 @@ import math
 
 import hist
 import matplotlib as mpl
-import mplhep as hep
 import numpy as np
 
 from utilities import common, logging

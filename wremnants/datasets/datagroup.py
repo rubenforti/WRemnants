@@ -1,9 +1,5 @@
 from copy import deepcopy
 
-import hist
-import numpy as np
-
-from narf.ioutils import H5PickleProxy
 from utilities import logging
 from utilities.styles import styles
 

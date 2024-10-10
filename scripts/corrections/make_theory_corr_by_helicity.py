@@ -1,12 +1,11 @@
 import argparse
 
-import hist
 import numpy as np
 
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 from utilities.io_tools import input_tools, output_tools
-from wremnants import plot_tools, theory_corrections, theory_tools
+from wremnants import theory_corrections
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--minnlo_file", type=str, required=True, help="MiNNLO gen file, denominator in ratio")

@@ -1,9 +1,7 @@
 import re
 
-import matplotlib as mpl
 import numpy as np
 import uproot
-from matplotlib import pyplot as plt
 from scipy.stats import chi2
 
 from narf import ioutils
