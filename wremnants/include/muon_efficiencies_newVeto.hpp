@@ -4,7 +4,7 @@
 #include <boost/histogram/axis.hpp>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <array>
-#include "defines.h"
+#include "defines.hpp"
 
 namespace wrem {
 

@@ -15,8 +15,8 @@ from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "muon_calibration.h"')
-narf.clingutils.Declare('#include "lowpu_utils.h"')
+narf.clingutils.Declare('#include "muon_calibration.hpp"')
+narf.clingutils.Declare('#include "lowpu_utils.hpp"')
 
 data_dir = common.data_dir
 

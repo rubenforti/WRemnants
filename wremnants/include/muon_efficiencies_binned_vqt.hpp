@@ -1,36 +1,24 @@
-#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_REAL_H
-#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_REAL_H
+#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_H
+#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_H
 
 #include <boost/histogram/axis.hpp>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
-#include "TFile.h"
-#include "TH3D.h"
-#include <vector>
 #include <array>
-#include <string>
+#include <TF1.h>
 
-namespace wrem_vqt_real {
+#define ETASIZE 8
+#define PTSIZE 15
+
+namespace wrem_vqt {
 
     template<typename HIST_IDIPTRIGISO, typename HIST_TRACKING, typename HIST_RECO>
     class muon_efficiency_binned_helper_base {
     public:
 
-        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::vector<std::string> filenames, std::vector<std::string> histonames, bool error, int step) :
+        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::vector<TF1> &vector) :
             sf_idip_trig_iso_(std::make_shared<const HIST_IDIPTRIGISO>(std::move(sf_idip_trig_iso))),
             sf_tracking_(std::make_shared<const HIST_TRACKING>(std::move(sf_tracking))),
-            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {
-              error_=error;
-              step_=step;
-              TFile *fileiso=new TFile(filenames[0].c_str());
-              iso3d_=(TH3D*)fileiso->Get(histonames[0].c_str())->Clone();
-              iso3d_->SetName("iso3d");
-              TFile* filetriggerminus=new TFile(filenames[1].c_str());
-              trig3dminus_=(TH3D*)filetriggerminus->Get(histonames[1].c_str())->Clone();
-              trig3dminus_->SetName("triggerminus3d");
-              TFile* filetriggerplus=new TFile(filenames[2].c_str());
-              trig3dplus_=(TH3D*)filetriggerplus->Get(histonames[2].c_str())->Clone();
-              trig3dplus_->SetName("triggerplus3d");
-            }
+            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {vector_=vector;}
 
         std::array<double,5> scale_factor_array(int pt_idx, int pt_idx_reco, int sapt_idx,
                                                 int eta_idx, int saeta_idx,
@@ -72,63 +60,21 @@ namespace wrem_vqt_real {
 
             std::array<double,5> allSF = scale_factor_array(pt_idx, pt_idx_reco, sapt_idx, eta_idx, saeta_idx, charge_idx, pass_iso, with_trigger, idx_nom_alt);
             double sf = 1.0;
-            if (step_>=0) {
-              for(int i = 0; i < (allSF.size()-2); i++) {
-                  // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
-                  sf *= allSF[i];
-              }
+            for(int i = 0; i < (allSF.size()-1); i++) {
+                // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
+                sf *= allSF[i];
             }
-            if (error_) {
-              if (step_==1) {
-                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
-                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
-                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
-                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinError(bincharge);
-                else {
-                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinError(binlowcharge);
-                  else sf *= chargehisto->GetBinError(binupcharge);
+            double Etabins[ETASIZE+1]={-2.4,-1.8,-1.2,-0.6,0.,0.6,1.2,1.8,2.4}, Ptbins[PTSIZE+1]={24.,26.,28.,30.,32.,34.,36.,38.,40.,42.,44.,47.,50.,55.,60.,65.};
+            for (unsigned int i=0; i!=PTSIZE; i++) {
+                if ((pt>=Ptbins[i])&&(pt<Ptbins[i+1])) {
+                    for (unsigned int j=0; j!=ETASIZE; j++) {
+                        if ((eta>=Etabins[j])&&(eta<Etabins[j+1])) {
+                            sf *= vector_[i*ETASIZE+j].Eval(vqt);
+                        }
+                    }
                 }
-              }
-              if (step_==2) {
-                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
-                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
-                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
-                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinContent(bincharge);
-                else {
-                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinContent(binlowcharge);
-                  else sf *= chargehisto->GetBinContent(binupcharge);
-                }
-                double binlowcenter=iso3d_->GetXaxis()->GetBinCenter(1), binupcenter=iso3d_->GetXaxis()->GetBinCenter(iso3d_->GetXaxis()->GetNbins());
-                int bin=iso3d_->FindFixBin(vqt,eta,pt), binlow=iso3d_->FindFixBin(binlowcenter,eta,pt), binup=iso3d_->FindFixBin(binupcenter,eta,pt);
-                if ((vqt>=iso3d_->GetXaxis()->GetBinLowEdge(1))&&(vqt<=iso3d_->GetXaxis()->GetBinUpEdge(iso3d_->GetXaxis()->GetNbins()))) sf *= iso3d_->GetBinError(bin);
-                else {
-                  if (vqt<iso3d_->GetXaxis()->GetBinLowEdge(1)) sf *= iso3d_->GetBinError(binlow);
-                  else sf *= iso3d_->GetBinError(binup);
-                }
-              }
             }
-            else {
-              if (step_>=1) {
-                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
-                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
-                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
-                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinContent(bincharge);
-                else {
-                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinContent(binlowcharge);
-                  else sf *= chargehisto->GetBinContent(binupcharge);
-                }
-              }
-              if (step_>=2) {
-                double binlowcenter=iso3d_->GetXaxis()->GetBinCenter(1), binupcenter=iso3d_->GetXaxis()->GetBinCenter(iso3d_->GetXaxis()->GetNbins());
-                int bin=iso3d_->FindFixBin(vqt,eta,pt), binlow=iso3d_->FindFixBin(binlowcenter,eta,pt), binup=iso3d_->FindFixBin(binupcenter,eta,pt);
-                if ((vqt>=iso3d_->GetXaxis()->GetBinLowEdge(1))&&(vqt<=iso3d_->GetXaxis()->GetBinUpEdge(iso3d_->GetXaxis()->GetNbins()))) sf *= iso3d_->GetBinContent(bin);
-                else {
-                  if (vqt<iso3d_->GetXaxis()->GetBinLowEdge(1)) sf *= iso3d_->GetBinContent(binlow);
-                  else sf *= iso3d_->GetBinContent(binup);
-                }
-              }
-            }
-            //std::cout << "Scale factor product " << sf << std::endl;
+            // std::cout << "Scale factor product " << sf << std::endl;
             return sf;
 
         }
@@ -183,11 +129,8 @@ namespace wrem_vqt_real {
         int idx_nom_ = sf_idip_trig_iso_->template axis<4>().index(0);
         int idx_alt_ = sf_idip_trig_iso_->template axis<4>().index(1);
 
-        TH3D* iso3d_;
-        TH3D* trig3dplus_;
-        TH3D* trig3dminus_;
-        int step_;
-        bool error_;
+        std::vector<TF1> vector_;
+
     };
 
     // base template for one-lepton case

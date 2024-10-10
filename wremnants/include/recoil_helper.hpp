@@ -6,9 +6,11 @@
 #include <cmath>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 
-#include "defines.h"
-#include "tfliteutils.h"
-#include "utils.h"
+#include "defines.hpp"
+#include "utils.hpp"
+
+// from narf
+#include "tfliteutils.hpp"
 
 
 namespace wrem {

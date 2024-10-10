@@ -5,7 +5,7 @@ import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, logging
 
-narf.clingutils.Declare('#include "muon_validation.h"')
+narf.clingutils.Declare('#include "muon_validation.hpp"')
 
 logger = logging.child_logger(__name__)
 

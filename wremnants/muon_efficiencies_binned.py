@@ -8,7 +8,7 @@ import ROOT
 import narf
 from utilities import common
 
-narf.clingutils.Declare('#include "muon_efficiencies_binned.h"')
+narf.clingutils.Declare('#include "muon_efficiencies_binned.hpp"')
 
 data_dir = common.data_dir
 

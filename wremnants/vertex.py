@@ -4,7 +4,7 @@ import ROOT
 import narf
 from utilities import common, logging
 
-narf.clingutils.Declare('#include "vertex.h"')
+narf.clingutils.Declare('#include "vertex.hpp"')
 
 logger = logging.child_logger(__name__)
 

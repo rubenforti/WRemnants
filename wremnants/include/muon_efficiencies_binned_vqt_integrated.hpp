@@ -1,24 +1,48 @@
-#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_H
-#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_H
+#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_INTEGRATED_H
+#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_INTEGRATED_H
 
+#include <iostream>
 #include <boost/histogram/axis.hpp>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 #include <array>
-#include "TF1.h"
+#include <TH2F.h>
+#include <TFile.h>
 
-#define ETASIZE 8
-#define PTSIZE 15
-
-namespace wrem_vqt {
+namespace wrem_vqt_int {
 
     template<typename HIST_IDIPTRIGISO, typename HIST_TRACKING, typename HIST_RECO>
     class muon_efficiency_binned_helper_base {
     public:
 
-        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::vector<TF1> &vector) :
+        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::string vqtstring) :
             sf_idip_trig_iso_(std::make_shared<const HIST_IDIPTRIGISO>(std::move(sf_idip_trig_iso))),
             sf_tracking_(std::make_shared<const HIST_TRACKING>(std::move(sf_tracking))),
-            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {vector_=vector;}
+            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {
+                inputfile_=new TFile(vqtstring.c_str());
+                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtstring.c_str()<<"\n";
+                inputfile_->ls();
+                isohisto_=(TH2F*)inputfile_->Get("SF2D_nominal");
+                includeTrigger_=false;
+            }
+
+        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::string vqtstring, std::string vqtplus, std::string vqtminus) :
+            sf_idip_trig_iso_(std::make_shared<const HIST_IDIPTRIGISO>(std::move(sf_idip_trig_iso))),
+            sf_tracking_(std::make_shared<const HIST_TRACKING>(std::move(sf_tracking))),
+            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {
+                inputfile_=new TFile(vqtstring.c_str());
+                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtstring.c_str()<<"\n";
+                isohisto_=(TH2F*)inputfile_->Get("SF2D_nominal");
+                isohisto_->SetName("SF2D_nominal_iso");
+                inputfile_=new TFile(vqtminus.c_str());
+                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtminus.c_str()<<"\n";
+                trigger_.push_back((TH2F*)inputfile_->Get("SF2D_nominal"));
+                trigger_[0]->SetName("SF2D_nominal_minus");
+                inputfile_=new TFile(vqtplus.c_str());
+                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtplus.c_str()<<"\n";
+                trigger_.push_back((TH2F*)inputfile_->Get("SF2D_nominal"));
+                trigger_[1]->SetName("SF2D_nominal_plus");
+                includeTrigger_=true;
+            }
 
         std::array<double,5> scale_factor_array(int pt_idx, int pt_idx_reco, int sapt_idx,
                                                 int eta_idx, int saeta_idx,
@@ -49,7 +73,7 @@ namespace wrem_vqt {
             
         }
 
-        double scale_factor_product(float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, bool with_trigger, float vqt, int idx_nom_alt) const {
+        double scale_factor_product(float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, bool with_trigger, int idx_nom_alt) const {
 
             auto const eta_idx = sf_idip_trig_iso_->template axis<0>().index(eta);
             auto const pt_idx  = sf_idip_trig_iso_->template axis<1>().index(pt);
@@ -60,21 +84,24 @@ namespace wrem_vqt {
 
             std::array<double,5> allSF = scale_factor_array(pt_idx, pt_idx_reco, sapt_idx, eta_idx, saeta_idx, charge_idx, pass_iso, with_trigger, idx_nom_alt);
             double sf = 1.0;
-            for(int i = 0; i < (allSF.size()-1); i++) {
-                // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
-                sf *= allSF[i];
+            if (includeTrigger_) {
+              for(int i = 0; i < (allSF.size()-2); i++) {
+                  // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
+                  sf *= allSF[i];
+              }
             }
-            double Etabins[ETASIZE+1]={-2.4,-1.8,-1.2,-0.6,0.,0.6,1.2,1.8,2.4}, Ptbins[PTSIZE+1]={24.,26.,28.,30.,32.,34.,36.,38.,40.,42.,44.,47.,50.,55.,60.,65.};
-            for (unsigned int i=0; i!=PTSIZE; i++) {
-                if ((pt>=Ptbins[i])&&(pt<Ptbins[i+1])) {
-                    for (unsigned int j=0; j!=ETASIZE; j++) {
-                        if ((eta>=Etabins[j])&&(eta<Etabins[j+1])) {
-                            sf *= vector_[i*ETASIZE+j].Eval(vqt);
-                        }
-                    }
-                }
+            else {
+              for(int i = 0; i < (allSF.size()-1); i++) {
+                  // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
+                  sf *= allSF[i];
+              }
             }
-            // std::cout << "Scale factor product " << sf << std::endl;
+            sf *= isohisto_->GetBinContent(isohisto_->FindBin(eta,pt));
+            if (includeTrigger_) {
+              unsigned int chargeidx = (1+charge)/2;
+              sf *= trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt));
+            }
+            //std::cout << "Scale factor product " << sf << std::endl;
             return sf;
 
         }
@@ -99,10 +126,14 @@ namespace wrem_vqt {
             // also the alternate comes from data efficiency variation only, so the anticorrelation in the efficiencies is preserved in the scale factors
             
             // order is reco-tracking-idip-trigger-iso
-            for(int i = 0; i < allSF_nomi.size(); i++) {
+            for(int i = 0; i < (allSF_nomi.size()-1); i++) {
                 res(i) = allSF_alt[i] / allSF_nomi[i]; 
             }
-                
+            if (isohisto_->GetBinContent(isohisto_->FindBin(eta,pt))>0.) res(allSF_nomi.size()-1) = (1.+isohisto_->GetBinError(isohisto_->FindBin(eta,pt))/isohisto_->GetBinContent(isohisto_->FindBin(eta,pt)));
+            else res(allSF_nomi.size()-1) = 1.;
+            unsigned int chargeidx = (1+charge)/2;
+            if (includeTrigger_) {if (trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt))>0) res(allSF_nomi.size()-2) = (1.+trigger_[chargeidx]->GetBinError(trigger_[chargeidx]->FindBin(eta,pt))/trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt)));
+            else res(allSF_nomi.size()-2) = 1.;}
             return res;
      
         }
@@ -129,8 +160,11 @@ namespace wrem_vqt {
         int idx_nom_ = sf_idip_trig_iso_->template axis<4>().index(0);
         int idx_alt_ = sf_idip_trig_iso_->template axis<4>().index(1);
 
-        std::vector<TF1> vector_;
+        TFile *inputfile_;
+        TH2F *isohisto_;
+        std::vector<TH2F*> trigger_;
 
+        bool includeTrigger_;
     };
 
     // base template for one-lepton case
@@ -146,9 +180,9 @@ namespace wrem_vqt {
 
         muon_efficiency_binned_helper(const base_t &other) : base_t(other) {}
         
-        double operator() (float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, float vqt) {
+        double operator() (float pt, float eta, float sapt, float saeta, int charge, bool pass_iso) {
             constexpr bool with_trigger = true;
-            return base_t::scale_factor_product(pt, eta, sapt, saeta, charge, pass_iso, with_trigger, vqt, base_t::idx_nom_);
+            return base_t::scale_factor_product(pt, eta, sapt, saeta, charge, pass_iso, with_trigger, base_t::idx_nom_);
         }
 
     };

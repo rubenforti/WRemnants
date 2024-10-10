@@ -1,10 +1,10 @@
 #ifndef WREMNANTS_HIST_HELPERS_H
 #define WREMNANTS_HIST_HELPERS_H
 
-#include "THn.h"
-#include "TH1D.h"
-#include "TH2D.h"
-#include "TH3D.h"
+#include <THn.h>
+#include <TH1D.h>
+#include <TH2D.h>
+#include <TH3D.h>
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>

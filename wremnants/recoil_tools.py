@@ -9,8 +9,8 @@ import tensorflow as tf
 from utilities import common as common
 from utilities.io_tools import input_tools
 
-ROOT.gInterpreter.Declare('#include "recoil_tools.h"')
-ROOT.gInterpreter.Declare('#include "recoil_helper.h"')
+ROOT.gInterpreter.Declare('#include "recoil_tools.hpp"')
+ROOT.gInterpreter.Declare('#include "recoil_helper.hpp"')
 logger = logging.getLogger("wremnants").getChild(__name__.split(".")[-1])
 
 

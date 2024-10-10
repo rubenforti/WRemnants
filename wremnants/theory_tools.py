@@ -9,7 +9,7 @@ from utilities import boostHistHelpers as hh
 from utilities import common, logging
 
 logger = logging.child_logger(__name__)
-narf.clingutils.Declare('#include "theoryTools.h"')
+narf.clingutils.Declare('#include "theoryTools.hpp"')
 
 # this puts the bin centers at 0.5, 1.0, 2.0
 axis_muRfact = hist.axis.Variable(

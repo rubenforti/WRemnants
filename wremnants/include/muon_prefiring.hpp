@@ -1,8 +1,8 @@
 #ifndef WREMNANTS_MUON_PREFIRING_H
 #define WREMNANTS_MUON_PREFIRING_H
 
-#include "TH2D.h"
-#include "utils.h"
+#include <TH2D.h>
+#include "utils.hpp"
 
 namespace wrem {
 

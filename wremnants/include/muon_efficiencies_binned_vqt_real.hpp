@@ -1,47 +1,35 @@
-#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_INTEGRATED_H
-#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_INTEGRATED_H
+#ifndef WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_REAL_H
+#define WREMNANTS_MUON_EFFICIENCIES_BINNED_VQT_REAL_H
 
-#include <iostream>
 #include <boost/histogram/axis.hpp>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
+#include <TFile.h>
+#include <TH3D.h>
+#include <vector>
 #include <array>
-#include "TH2F.h"
-#include "TFile.h"
+#include <string>
 
-namespace wrem_vqt_int {
+namespace wrem_vqt_real {
 
     template<typename HIST_IDIPTRIGISO, typename HIST_TRACKING, typename HIST_RECO>
     class muon_efficiency_binned_helper_base {
     public:
 
-        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::string vqtstring) :
+        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::vector<std::string> filenames, std::vector<std::string> histonames, bool error, int step) :
             sf_idip_trig_iso_(std::make_shared<const HIST_IDIPTRIGISO>(std::move(sf_idip_trig_iso))),
             sf_tracking_(std::make_shared<const HIST_TRACKING>(std::move(sf_tracking))),
             sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {
-                inputfile_=new TFile(vqtstring.c_str());
-                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtstring.c_str()<<"\n";
-                inputfile_->ls();
-                isohisto_=(TH2F*)inputfile_->Get("SF2D_nominal");
-                includeTrigger_=false;
-            }
-
-        muon_efficiency_binned_helper_base(HIST_IDIPTRIGISO &&sf_idip_trig_iso, HIST_TRACKING &&sf_tracking, HIST_RECO &&sf_reco, std::string vqtstring, std::string vqtplus, std::string vqtminus) :
-            sf_idip_trig_iso_(std::make_shared<const HIST_IDIPTRIGISO>(std::move(sf_idip_trig_iso))),
-            sf_tracking_(std::make_shared<const HIST_TRACKING>(std::move(sf_tracking))),
-            sf_reco_(std::make_shared<const HIST_RECO>(std::move(sf_reco))) {
-                inputfile_=new TFile(vqtstring.c_str());
-                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtstring.c_str()<<"\n";
-                isohisto_=(TH2F*)inputfile_->Get("SF2D_nominal");
-                isohisto_->SetName("SF2D_nominal_iso");
-                inputfile_=new TFile(vqtminus.c_str());
-                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtminus.c_str()<<"\n";
-                trigger_.push_back((TH2F*)inputfile_->Get("SF2D_nominal"));
-                trigger_[0]->SetName("SF2D_nominal_minus");
-                inputfile_=new TFile(vqtplus.c_str());
-                if ((!inputfile_->IsOpen())||(inputfile_->IsZombie())) std::cout<<"couldn't open "<<vqtplus.c_str()<<"\n";
-                trigger_.push_back((TH2F*)inputfile_->Get("SF2D_nominal"));
-                trigger_[1]->SetName("SF2D_nominal_plus");
-                includeTrigger_=true;
+              error_=error;
+              step_=step;
+              TFile *fileiso=new TFile(filenames[0].c_str());
+              iso3d_=(TH3D*)fileiso->Get(histonames[0].c_str())->Clone();
+              iso3d_->SetName("iso3d");
+              TFile* filetriggerminus=new TFile(filenames[1].c_str());
+              trig3dminus_=(TH3D*)filetriggerminus->Get(histonames[1].c_str())->Clone();
+              trig3dminus_->SetName("triggerminus3d");
+              TFile* filetriggerplus=new TFile(filenames[2].c_str());
+              trig3dplus_=(TH3D*)filetriggerplus->Get(histonames[2].c_str())->Clone();
+              trig3dplus_->SetName("triggerplus3d");
             }
 
         std::array<double,5> scale_factor_array(int pt_idx, int pt_idx_reco, int sapt_idx,
@@ -73,7 +61,7 @@ namespace wrem_vqt_int {
             
         }
 
-        double scale_factor_product(float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, bool with_trigger, int idx_nom_alt) const {
+        double scale_factor_product(float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, bool with_trigger, float vqt, int idx_nom_alt) const {
 
             auto const eta_idx = sf_idip_trig_iso_->template axis<0>().index(eta);
             auto const pt_idx  = sf_idip_trig_iso_->template axis<1>().index(pt);
@@ -84,22 +72,61 @@ namespace wrem_vqt_int {
 
             std::array<double,5> allSF = scale_factor_array(pt_idx, pt_idx_reco, sapt_idx, eta_idx, saeta_idx, charge_idx, pass_iso, with_trigger, idx_nom_alt);
             double sf = 1.0;
-            if (includeTrigger_) {
+            if (step_>=0) {
               for(int i = 0; i < (allSF.size()-2); i++) {
                   // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
                   sf *= allSF[i];
               }
             }
-            else {
-              for(int i = 0; i < (allSF.size()-1); i++) {
-                  // std::cout << "Scale factor i = " << i << " --> " << allSF[i] << std::endl;
-                  sf *= allSF[i];
+            if (error_) {
+              if (step_==1) {
+                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
+                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
+                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
+                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinError(bincharge);
+                else {
+                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinError(binlowcharge);
+                  else sf *= chargehisto->GetBinError(binupcharge);
+                }
+              }
+              if (step_==2) {
+                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
+                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
+                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
+                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinContent(bincharge);
+                else {
+                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinContent(binlowcharge);
+                  else sf *= chargehisto->GetBinContent(binupcharge);
+                }
+                double binlowcenter=iso3d_->GetXaxis()->GetBinCenter(1), binupcenter=iso3d_->GetXaxis()->GetBinCenter(iso3d_->GetXaxis()->GetNbins());
+                int bin=iso3d_->FindFixBin(vqt,eta,pt), binlow=iso3d_->FindFixBin(binlowcenter,eta,pt), binup=iso3d_->FindFixBin(binupcenter,eta,pt);
+                if ((vqt>=iso3d_->GetXaxis()->GetBinLowEdge(1))&&(vqt<=iso3d_->GetXaxis()->GetBinUpEdge(iso3d_->GetXaxis()->GetNbins()))) sf *= iso3d_->GetBinError(bin);
+                else {
+                  if (vqt<iso3d_->GetXaxis()->GetBinLowEdge(1)) sf *= iso3d_->GetBinError(binlow);
+                  else sf *= iso3d_->GetBinError(binup);
+                }
               }
             }
-            sf *= isohisto_->GetBinContent(isohisto_->FindBin(eta,pt));
-            if (includeTrigger_) {
-              unsigned int chargeidx = (1+charge)/2;
-              sf *= trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt));
+            else {
+              if (step_>=1) {
+                TH3D* chargehisto = charge > 0 ? trig3dplus_ : trig3dminus_;
+                double binlowchargecenter=chargehisto->GetXaxis()->GetBinCenter(1), binupchargecenter=chargehisto->GetXaxis()->GetBinCenter(chargehisto->GetXaxis()->GetNbins());
+                int bincharge=chargehisto->FindFixBin(vqt,eta,pt), binlowcharge=chargehisto->FindFixBin(binlowchargecenter,eta,pt), binupcharge=chargehisto->FindFixBin(binupchargecenter,eta,pt);
+                if ((vqt>=chargehisto->GetXaxis()->GetBinLowEdge(1))&&(vqt<=chargehisto->GetXaxis()->GetBinUpEdge(chargehisto->GetXaxis()->GetNbins()))) sf *= chargehisto->GetBinContent(bincharge);
+                else {
+                  if (vqt<chargehisto->GetXaxis()->GetBinLowEdge(1)) sf *= chargehisto->GetBinContent(binlowcharge);
+                  else sf *= chargehisto->GetBinContent(binupcharge);
+                }
+              }
+              if (step_>=2) {
+                double binlowcenter=iso3d_->GetXaxis()->GetBinCenter(1), binupcenter=iso3d_->GetXaxis()->GetBinCenter(iso3d_->GetXaxis()->GetNbins());
+                int bin=iso3d_->FindFixBin(vqt,eta,pt), binlow=iso3d_->FindFixBin(binlowcenter,eta,pt), binup=iso3d_->FindFixBin(binupcenter,eta,pt);
+                if ((vqt>=iso3d_->GetXaxis()->GetBinLowEdge(1))&&(vqt<=iso3d_->GetXaxis()->GetBinUpEdge(iso3d_->GetXaxis()->GetNbins()))) sf *= iso3d_->GetBinContent(bin);
+                else {
+                  if (vqt<iso3d_->GetXaxis()->GetBinLowEdge(1)) sf *= iso3d_->GetBinContent(binlow);
+                  else sf *= iso3d_->GetBinContent(binup);
+                }
+              }
             }
             //std::cout << "Scale factor product " << sf << std::endl;
             return sf;
@@ -126,14 +153,10 @@ namespace wrem_vqt_int {
             // also the alternate comes from data efficiency variation only, so the anticorrelation in the efficiencies is preserved in the scale factors
             
             // order is reco-tracking-idip-trigger-iso
-            for(int i = 0; i < (allSF_nomi.size()-1); i++) {
+            for(int i = 0; i < allSF_nomi.size(); i++) {
                 res(i) = allSF_alt[i] / allSF_nomi[i]; 
             }
-            if (isohisto_->GetBinContent(isohisto_->FindBin(eta,pt))>0.) res(allSF_nomi.size()-1) = (1.+isohisto_->GetBinError(isohisto_->FindBin(eta,pt))/isohisto_->GetBinContent(isohisto_->FindBin(eta,pt)));
-            else res(allSF_nomi.size()-1) = 1.;
-            unsigned int chargeidx = (1+charge)/2;
-            if (includeTrigger_) {if (trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt))>0) res(allSF_nomi.size()-2) = (1.+trigger_[chargeidx]->GetBinError(trigger_[chargeidx]->FindBin(eta,pt))/trigger_[chargeidx]->GetBinContent(trigger_[chargeidx]->FindBin(eta,pt)));
-            else res(allSF_nomi.size()-2) = 1.;}
+                
             return res;
      
         }
@@ -160,11 +183,11 @@ namespace wrem_vqt_int {
         int idx_nom_ = sf_idip_trig_iso_->template axis<4>().index(0);
         int idx_alt_ = sf_idip_trig_iso_->template axis<4>().index(1);
 
-        TFile *inputfile_;
-        TH2F *isohisto_;
-        std::vector<TH2F*> trigger_;
-
-        bool includeTrigger_;
+        TH3D* iso3d_;
+        TH3D* trig3dplus_;
+        TH3D* trig3dminus_;
+        int step_;
+        bool error_;
     };
 
     // base template for one-lepton case
@@ -180,9 +203,9 @@ namespace wrem_vqt_int {
 
         muon_efficiency_binned_helper(const base_t &other) : base_t(other) {}
         
-        double operator() (float pt, float eta, float sapt, float saeta, int charge, bool pass_iso) {
+        double operator() (float pt, float eta, float sapt, float saeta, int charge, bool pass_iso, float vqt) {
             constexpr bool with_trigger = true;
-            return base_t::scale_factor_product(pt, eta, sapt, saeta, charge, pass_iso, with_trigger, base_t::idx_nom_);
+            return base_t::scale_factor_product(pt, eta, sapt, saeta, charge, pass_iso, with_trigger, vqt, base_t::idx_nom_);
         }
 
     };

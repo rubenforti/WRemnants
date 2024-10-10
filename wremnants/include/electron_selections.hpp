@@ -4,7 +4,7 @@
 #include <limits>
 #include <bitset>
 
-#include "ROOT/RVec.hxx"
+#include <ROOT/RVec.hxx>
 
 namespace wrem {
         

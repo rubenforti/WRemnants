@@ -1,7 +1,7 @@
 #ifndef WREMNANTS_HISTO_SCALING_H
 #define WREMNANTS_HISTO_SCALING_H
 
-#include "utils.h"
+#include "utils.hpp"
 
 namespace wrem {
 

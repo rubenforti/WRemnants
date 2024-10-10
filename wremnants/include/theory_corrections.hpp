@@ -4,13 +4,13 @@
 #include <boost/histogram.hpp>
 #include <cmath>
 
-#include "utils.h"
-#include "csVariables.h"
-#include "theoryTools.h"
+#include "utils.hpp"
+#include "csVariables.hpp"
+#include "theoryTools.hpp"
 
 // from narf
-#include "traits.h"
-#include "histutils.h"
+#include "traits.hpp"
+#include "histutils.hpp"
 
 namespace wrem {
 

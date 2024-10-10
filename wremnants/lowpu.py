@@ -9,11 +9,11 @@ narf.clingutils.Load("libROOTVecOps")
 # this is needed by lowpu_rochester.h
 narf.clingutils.Load("libROOTDataFrame")
 
-narf.clingutils.Declare('#include "lowpu_utils.h"')
-narf.clingutils.Declare('#include "lowpu_efficiencies.h"')
-narf.clingutils.Declare('#include "lowpu_prefire.h"')
-narf.clingutils.Declare('#include "lowpu_rochester.h"')
-narf.clingutils.Declare('#include "electron_selections.h"')
+narf.clingutils.Declare('#include "lowpu_utils.hpp"')
+narf.clingutils.Declare('#include "lowpu_efficiencies.hpp"')
+narf.clingutils.Declare('#include "lowpu_prefire.hpp"')
+narf.clingutils.Declare('#include "lowpu_rochester.hpp"')
+narf.clingutils.Declare('#include "electron_selections.hpp"')
 
 
 def lepSF_systs(df, results, sName, sVars, defineExpr, baseName, baseAxes, baseCols):

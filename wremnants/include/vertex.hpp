@@ -1,10 +1,10 @@
 #ifndef WREMNANTS_VERTEX_H
 #define WREMNANTS_VERTEX_H
 
-#include "TH2D.h"
+#include <TH2D.h>
 #include <memory>
 
-#include "utils.h"
+#include "utils.hpp"
 
 namespace wrem {
 

@@ -14,7 +14,7 @@ from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "muon_efficiencies_smooth.h"')
+narf.clingutils.Declare('#include "muon_efficiencies_smooth.hpp"')
 
 data_dir = common.data_dir
 

@@ -4,10 +4,11 @@
 
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
-#include "defines.h"
-#include "ROOT/RVec.hxx"
+#include <ROOT/RVec.hxx>
 #include <Math/Vector4D.h>
-#include "TVector2.h"
+#include <TVector2.h>
+
+#include "defines.hpp"
 
 using namespace ROOT;
 

@@ -1,11 +1,12 @@
 #include <boost/histogram.hpp>
 #include <stdlib.h>
 #include <cmath>
-#include "defines.h"
-#include "muonCorr.h"
+
+#include "defines.hpp"
+#include "muonCorr.hpp"
 
 // from narf
-#include "traits.h"
+#include "traits.hpp"
 
 namespace wrem {
 

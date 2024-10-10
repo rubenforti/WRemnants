@@ -9,7 +9,7 @@ from utilities.io_tools import input_tools
 
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "muon_efficiencies_veto.h"')
+narf.clingutils.Declare('#include "muon_efficiencies_veto.hpp"')
 
 data_dir = common.data_dir
 

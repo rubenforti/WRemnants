@@ -12,7 +12,7 @@ trap 'echo "Error on line $LINENO: $BASH_COMMAND" >&2' ERR
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(c|cpp|h|hpp)$' || true)
 
 for FILE in $STAGED_FILES; do
-  clang++ -I./narf/narf/include/ -fsyntax-only -Wno-deprecated $FILE 
+  clang++ -I./narf/narf/include/ -I./wremnants/include/ -std=c++20 -fsyntax-only $FILE 
   if [ $? -ne 0 ]; then
     echo "Syntax error in $FILE. Commit aborted."
     exit 1

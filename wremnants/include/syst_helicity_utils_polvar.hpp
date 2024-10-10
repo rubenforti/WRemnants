@@ -2,9 +2,9 @@
 #define WREMNANTS_SYST_HELICITY_UTILS_POLVAR_H
 
 #include <boost/histogram/axis.hpp>
-#include "defines.h"
-#include "utils.h"
-#include "theory_corrections.h"
+#include "defines.hpp"
+#include "utils.hpp"
+#include "theory_corrections.hpp"
 
 namespace wrem {
 

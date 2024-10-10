@@ -4,8 +4,8 @@
 #include <iostream>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
-#include "defines.h"
-#include "utils.h"
+#include "defines.hpp"
+#include "utils.hpp"
 
 namespace wrem {
     

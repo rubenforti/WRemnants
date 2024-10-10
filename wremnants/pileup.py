@@ -6,7 +6,7 @@ from utilities import common, logging
 
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "pileup.h"')
+narf.clingutils.Declare('#include "pileup.hpp"')
 
 data_dir = common.data_dir
 

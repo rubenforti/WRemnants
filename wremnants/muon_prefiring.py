@@ -5,7 +5,7 @@ import ROOT
 import narf.clingutils
 from utilities import common
 
-narf.clingutils.Declare('#include "muon_prefiring.h"')
+narf.clingutils.Declare('#include "muon_prefiring.hpp"')
 
 data_dir = common.data_dir
 

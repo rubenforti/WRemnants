@@ -1,8 +1,9 @@
 #include <ROOT/RVec.hxx>
-#include "Math/GenVector/PtEtaPhiM4D.h"
-#include "TFile.h"
-#include "TTree.h"
-#include "TRandom.h"
+#include <Math/GenVector/PtEtaPhiM4D.h>
+#include <TFile.h>
+#include <TTree.h>
+#include <TRandom3.h>
+#include <TLorentzVector.h>
 #include <eigen3/Eigen/Dense>
 #include <memory>
 #include <stdlib.h>
@@ -10,8 +11,15 @@
 #include <fstream>
 #include <typeinfo>
 #include <algorithm>
-#include "defines.h"
-#include "tfliteutils.h"
+
+#include "defines.hpp"
+#include "utils.hpp"
+
+// from narf
+#include "tfliteutils.hpp"
+#include "traits.hpp"
+#include "histutils.hpp"
+
 
 namespace wrem {
 
@@ -1694,7 +1702,7 @@ public:
 
 private:
     double sigmarel_;
-    std::vector<mt19937> rng_;
+    std::vector<std::mt19937> rng_;
 
 };
 

@@ -14,7 +14,7 @@ from wremnants.theory_tools import helicity_xsec_to_angular_coeffs
 
 logger = logging.child_logger(__name__)
 
-narf.clingutils.Declare('#include "syst_helicity_utils.h"')
+narf.clingutils.Declare('#include "syst_helicity_utils.hpp"')
 
 data_dir = f"{pathlib.Path(__file__).parent}/data/"
 

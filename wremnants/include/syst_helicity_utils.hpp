@@ -1,9 +1,9 @@
 #ifndef WREMNANTS_SYST_HELICITY_UTILS_H
 #define WREMNANTS_SYST_HELICITY_UTILS_H
 
-#include "TH2D.h"
-#include "utils.h"
-#include "theory_corrections.h"
+#include <TH2D.h>
+#include "utils.hpp"
+#include "theory_corrections.hpp"
 
 namespace wrem {
  

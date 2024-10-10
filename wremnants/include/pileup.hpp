@@ -1,10 +1,10 @@
 #ifndef WREMNANTS_PILEUP_H
 #define WREMNANTS_PILEUP_H
 
-#include "TH1D.h"
+#include <TH1D.h>
 #include <memory>
 
-#include "utils.h"
+#include "utils.hpp"
 
 namespace wrem {
 
