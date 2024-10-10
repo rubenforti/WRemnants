@@ -337,7 +337,7 @@ jobs:
 
       - name: wlike analysis
         # run with a reduced binning
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5
+        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
 
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_wlike_with_mu_eta_pt.py --dataPath $DATAPATH 
@@ -480,7 +480,7 @@ jobs:
 
       - name: dilepton analysis
         # run with a reduced binning
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5
+        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH
           --analysisMode unfolding -j $((NTHREADS)) --maxFiles $((MAX_FILES)) --forceDefaultName -o $WREMNANTS_OUTDIR --axes ptll yll --postfix unfolding --genAxes ptVGen
@@ -528,7 +528,7 @@ jobs:
 
       - name: dilepton combine ptll unfolding setup
         # run with a reduced binning
-        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5
+        if: github.event_name == 'pull_request' || github.event.schedule == '30 5 * * 1-5'
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
           --analysisMode unfolding -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --sparse -o $WREMNANTS_OUTDIR --postfix unfolding
