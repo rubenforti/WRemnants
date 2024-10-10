@@ -83,10 +83,10 @@ done
 for FILE in $STAGED_FILES_PY; do
 
   # Remove unused imports
-  autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE"
+  autoflake --in-place --expand-star-imports --remove-all-unused-imports "$FILE" --exclude=narf,wremnants-data
 
   # Run isort to organize imports
-  isort "$FILE"
+  isort "$FILE" --skip narf --skip wremnants-data --profile black --line-length 88
 
   # PEP 8 formatting
   black "$FILE"
