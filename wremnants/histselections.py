@@ -491,7 +491,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         flow=True,
         use_spline=False,
     ):
-        idx_x = h.axes.name.index(self.name_x)
         if self.smoothing_mode in ["fakerate", "hybrid"]:
             h = self.transfer_variances(h, set_nominal=is_nominal)
             y_frf, y_frf_var = self.compute_fakeratefactor(
@@ -519,7 +518,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
             cval = hCNew.values(flow=flow)
             cvar = hCNew.variances(flow=flow)
-            cvar_binned = cvar
             if self.smoothing_mode in ["hybrid"]:
                 cval, cvar = self.smoothen_spectrum(
                     hC,

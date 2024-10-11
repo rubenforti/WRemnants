@@ -35,11 +35,11 @@
 
 
 import array
+import copy
 import math
 
 ## safe batch mode
 import sys
-from copy import *
 
 args = sys.argv[:]
 sys.argv = ["-b"]
@@ -51,7 +51,22 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    addStringToEnd,
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawNTH1,
+    drawTH1,
+    dressed2D,
+    getDiffXsecBinning,
+    safeGetObject,
+    safeOpenFile,
+    templateBinning,
+    unroll2Dto1D,
+)
 
 if __name__ == "__main__":
 

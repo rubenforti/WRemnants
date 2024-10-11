@@ -785,7 +785,7 @@ class Datagroups(object):
         # infer all gen axes from metadata
         try:
             args = self.getMetaInfo()["args"]
-        except ValueError as e:
+        except ValueError:
             logger.warning("No meta data found so no gen axes could be auto set")
             return
 

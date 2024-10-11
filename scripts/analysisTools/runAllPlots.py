@@ -72,7 +72,7 @@ diffNuisanceDict = {
     "effStat_trackingMinus": ".*effStat.*_tracking.*q0",
     "effSyst": ".*effSyst.*",
     "prefireL1": ".*refire.*",
-    "pdfAndAlphaS": ".*pdf(\d+|.*AlphaS)",
+    "pdfAndAlphaS": r".*pdf(\d+|.*AlphaS)",
 }
 if useSmoothSF:
     diffNuisanceDict["effStat_isoEffData"] = ".*effStat.*_iso_effData"

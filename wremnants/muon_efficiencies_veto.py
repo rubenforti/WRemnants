@@ -19,13 +19,13 @@ def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto=False, era=None):
 
     # FIXME:to be updated for when other eras are available
 
-    eradict = {
-        "2016PreVFP": "BtoF",
-        "2016PostVFP": "GtoH",
-        "2017": "GtoH",  # FIXME: update later when SF for 2018 is available
-        "2018": "GtoH",
-    }
-    eratag = eradict[era]
+    # eradict = {
+    #     "2016PreVFP": "BtoF",
+    #     "2016PostVFP": "GtoH",
+    #     "2017": "GtoH",  # FIXME: update later when SF for 2018 is available
+    #     "2018": "GtoH",
+    # }
+    # eratag = eradict[era]
 
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
     Nsyst = 1 + (

@@ -20,11 +20,21 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawSingleTH1,
+    getTH2fromTH3,
+    safeOpenFile,
+    unroll2Dto1D,
+)
 from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import (
     plotPrefitHistograms,
 )

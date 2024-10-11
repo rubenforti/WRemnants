@@ -299,7 +299,7 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
                 h if not h else hh.rebinHistMultiAx(h, binning.keys(), binning.values())
                 for h in hists
             ]
-        except ValueError as e:
+        except ValueError:
             logger.warning("Can't rebin axes to predefined binning")
         return hists
 

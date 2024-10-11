@@ -323,7 +323,6 @@ def make_muon_smearing_helpers(
     axis_data_mc = hist.axis.StrCategory(["data", "mc"], name="data_mc")
 
     neta = axis_res_eta.size
-    nparms = axis_res_parm.size
     nparmsreduced = axis_res_parm_reduced.size
 
     hnomw = hist.Hist(
@@ -346,7 +345,6 @@ def make_muon_smearing_helpers(
     def check_variances(h, cov):
         variances = np.diag(cov.values())
         variances = np.reshape(variances, (neta, -1))
-        nparmcov = variances.shape[-1]
         for iparm, parm in enumerate(axis_res_parm_reduced):
             if not np.all(
                 np.isclose(
@@ -1740,7 +1738,6 @@ def make_pixel_multiplicity_helpers(
                             "charge": icharge,
                         }
                     ].variance
-                    newval = val + np.sqrt(np.abs(var))
                     hp0var[
                         {
                             "data_mc": idatamc,

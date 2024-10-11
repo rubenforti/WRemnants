@@ -20,11 +20,23 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawNTH1,
+    getTH2morePtBins,
+    multiplyByHistoWith1ptBin,
+    multiplyByHistoWithLessPtBins,
+    safeGetObject,
+    safeOpenFile,
+    unroll2Dto1D,
+)
 
 logging.basicConfig(level=logging.INFO)
 

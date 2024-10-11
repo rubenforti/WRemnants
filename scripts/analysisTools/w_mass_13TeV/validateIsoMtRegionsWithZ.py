@@ -21,9 +21,12 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
-
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+)
 from scripts.analysisTools.w_mass_13TeV.plotPrefitTemplatesWRemnants import (
     plotPrefitHistograms,
 )

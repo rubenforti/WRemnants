@@ -11,11 +11,25 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    alt1D,
+    colors_plots_,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    getMinMaxMultiHisto,
+    h1,
+    legEntries_plots_,
+    safeGetObject,
+    safeOpenFile,
+    setTDRStyle,
+    syst1DDown,
+    syst1DUp,
+)
 
 if __name__ == "__main__":
     parser = common_plot_parser()

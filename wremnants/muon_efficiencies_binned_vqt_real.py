@@ -44,9 +44,9 @@ def make_muon_efficiency_helpers_binned_vqt_real(
     axis_charge_inclusive = hist.axis.Regular(
         1, -2.0, 2.0, underflow=False, overflow=False, name="SF charge"
     )  # for isolation and effStat only
-    isoEff_types = ["iso", "isonotrig", "antiiso", "antiisonotrig"]
-    allEff_types = ["reco", "tracking", "idip", "trigger"] + isoEff_types
-    axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
+    # isoEff_types = ["iso", "isonotrig", "antiiso", "antiisonotrig"]
+    # allEff_types = ["reco", "tracking", "idip", "trigger"] + isoEff_types
+    # axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
     axis_nom_syst = hist.axis.Integer(
         0, 2, underflow=False, overflow=False, name="nom-syst"
     )  # only one syst for now (and the nominal in the first bin)

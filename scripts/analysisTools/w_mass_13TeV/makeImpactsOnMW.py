@@ -18,7 +18,6 @@ import re
 ## safe batch mode
 import sys
 from array import array
-from copy import *
 
 from utilities import logging
 
@@ -34,7 +33,11 @@ import utilitiesCMG
 
 utilities = utilitiesCMG.util()
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+)
 
 
 def getBetterLabel(k, isWlike):
@@ -439,7 +442,6 @@ if __name__ == "__main__":
         leg.AddEntry(h2, args.legendEntries[1], "LF")
         leg.Draw("SAME")
 
-    # hval = copy.deepcopy(h1.Clone("hval"))
     hval = h1.Clone("hval")
     hval.Reset("ICESM")
     hval.GetXaxis().SetTitleOffset(1.2)

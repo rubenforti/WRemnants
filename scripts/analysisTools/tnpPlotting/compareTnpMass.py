@@ -19,11 +19,19 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    getMinMaxMultiHisto,
+    safeGetObject,
+    safeOpenFile,
+)
 
 sys.path.append(os.getcwd())
 

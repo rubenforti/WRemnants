@@ -33,9 +33,32 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    CMS_lumi,
+    addStringToEnd,
+    adjustSettings_CMS_lumi,
+    colors_plots_,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawNTH1,
+    drawSingleTH1,
+    drawTH1,
+    getAxisRangeFromUser,
+    getMinMaxHisto,
+    getTH2fromTH3,
+    partial,
+    polN_root_,
+    printLine,
+    safeOpenFile,
+    safeSystem,
+    scaleTH2byOtherTH2,
+    setTDRStyle,
+    unroll2Dto1D,
+)
 
 # sys.path.append(os.getcwd())
 from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
@@ -2078,6 +2101,7 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
 
         for d in datasetsForStudy:
             hnarfTMP = histInfo[d].hists[inputHistName]
+            s = hist.tag.Slicer()
             if charge == "inclusive":
                 # integrate but keep charge axis with 1 single bin
                 hnarfTMP = hnarfTMP[{"charge": s[:: hist.rebin(2)]}]
@@ -2086,7 +2110,6 @@ def runStudyVsDphi(fname, charges, mainOutputFolder, args):
             hnarf = hnarfTMP.copy()
             # rebin eta-pt for actual test with fakes, while collapsing other axes for the simple plots as needed,
             # this is only to avoid that THn are too big
-            s = hist.tag.Slicer()
             hnarf = hnarf[{"pt": s[0 : complex(0, 0.001 + args.maxPt)]}]
             hnarf = hnarf[{"eta": s[:: hist.rebin(args.rebinEta)]}]
             hnarf = hnarf[{"pt": s[:: hist.rebin(args.rebinPt)]}]

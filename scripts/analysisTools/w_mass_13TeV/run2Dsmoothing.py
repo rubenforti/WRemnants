@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import array
+import copy
 import itertools
 import os
 import pickle
@@ -8,7 +9,6 @@ import pickle
 ## safe batch mode
 import sys
 import time
-from copy import *
 from functools import partial
 
 import boost_histogram as bh
@@ -33,7 +33,18 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    addStringToEnd,
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawSingleTH1,
+    drawTH1,
+    safeGetObject,
+    safeOpenFile,
+)
 
 logger = logging.setup_logger(__file__, 3, False)
 

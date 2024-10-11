@@ -27,7 +27,6 @@ def readTemplate(templateFile, templateDict, filt=None):
 
 
 def fillTemplatedFile(templateFile, outFile, templateDict, append=False):
-    filled = readFromTempate(templateFile, templateDict)
     with open(outFile, "w" if not append else "a") as outFile:
         outFile.write(result)
 

@@ -231,7 +231,6 @@ def add_electroweak_uncertainty(
     all_samples = card_tool.procGroups[samples]
     z_samples = [p for p in all_samples if p[0] == "Z"]
     w_samples = [p for p in all_samples if p[0] == "W"]
-    mode = card_tool.datagroups.mode
 
     for ewUnc in ewUncs:
         if "renesanceEW" in ewUnc:

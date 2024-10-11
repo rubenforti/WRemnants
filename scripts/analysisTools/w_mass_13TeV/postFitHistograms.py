@@ -18,14 +18,32 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 import utilitiesCMG
 
 utilities = utilitiesCMG.util()
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    colors_plots_,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawNTH1,
+    drawTH1dataMCstack,
+    gatherProcesses_,
+    legEntries_plots_,
+    prepareLegend,
+    roll1Dto2D,
+    safeGetObject,
+    safeOpenFile,
+    setTDRStyle,
+    templateBinning,
+    unroll2Dto1D,
+)
 from utilities import logging
 
 

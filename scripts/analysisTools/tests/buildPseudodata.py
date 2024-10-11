@@ -16,9 +16,17 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    safeGetObject,
+    safeOpenFile,
+    scaleTH2byOtherTH2,
+)
 
 ## Dictionary with info to build pseudodata
 # file is the file to read from

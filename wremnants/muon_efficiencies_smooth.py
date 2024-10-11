@@ -96,7 +96,7 @@ def make_muon_efficiency_helpers_smooth(
     eff_types_2D = [x for x in allEff_types if x not in eff_types_3D]
     logger.info(f"SF steps in 2D (eta-pt): {eff_types_2D}")
     logger.info(f"SF steps in 3D (eta-pt-ut): {eff_types_3D}")
-    axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
+    # axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name="eff_types_2D_etapt")
     axis_eff_type_3D = hist.axis.StrCategory(eff_types_3D, name="eff_types_3D_etaptut")
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]

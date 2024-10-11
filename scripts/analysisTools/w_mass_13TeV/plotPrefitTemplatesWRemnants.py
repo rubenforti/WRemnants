@@ -23,9 +23,27 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    colors_plots_,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawSingleTH1,
+    drawTH1dataMCstack,
+    gatherProcesses_,
+    getMinMaxHisto,
+    legEntries_plots_,
+    logging,
+    prepareLegend,
+    safeGetObject,
+    safeOpenFile,
+    templateBinning,
+    unroll2Dto1D,
+)
 
 sys.path.append(os.getcwd())
 

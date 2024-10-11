@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
 import os
 
 ## safe batch mode
@@ -16,7 +17,6 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 sys.path.append(os.getcwd() + "/plotUtils/")
 from utility import (
-    copy,
     createPlotDirAndCopyPhp,
     drawCorrelationPlot,
     fillTH3binFromTH2,

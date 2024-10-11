@@ -8,7 +8,6 @@
 # python scripts/analysisTools/w_mass_13TeV/mergeFilesSF2D.py wremnants-data/data/muonSF/allSmooth_GtoHout.root allSmooth_GtoHout_vtxAgnIso.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isonotrig_both/smoothedSFandEffi_isonotrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_iso_both/smoothedSFandEffi_iso_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_isoantitrig_both/smoothedSFandEffi_isoantitrig_GtoH_both.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_plus/smoothedSFandEffi_trigger_GtoH_plus.root /eos/user/m/mciprian/www/WMassAnalysis/TnP/egm_tnp_analysis/filesFromDavide/SF_vtxAgnostic_10oct2023/GtoH/mu_trigger_minus/smoothedSFandEffi_trigger_GtoH_minus.root
 
 import os
-from copy import *
 
 import utilitiesCMG
 
@@ -27,7 +26,14 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    logging,
+    safeGetObject,
+    safeOpenFile,
+)
 
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
 

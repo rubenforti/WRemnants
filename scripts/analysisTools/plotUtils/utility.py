@@ -15,7 +15,6 @@ import ROOT
 # sys.path.append(os.getcwd() + "/plotUtils/")
 from scripts.analysisTools.plotUtils.CMS_lumi import (
     CMS_lumi,
-    h1,
     histMCpartialUnc,
     histMCpartialUncLegEntry,
     setTDRStyle,
@@ -1978,6 +1977,8 @@ def drawNTH1(
         logger.warning("In drawNTH1: #(hists) != #(legEntries). Abort")
         quit()
 
+    h1 = hists[0]
+
     if rebinFactorX:
         if isinstance(rebinFactorX, int):
             h1.Rebin(rebinFactorX)
@@ -2026,7 +2027,6 @@ def drawNTH1(
     else:
         canvas.SetBottomMargin(bottomMargin)
 
-    h1 = hists[0]
     hnums = [hists[i] for i in range(1, len(hists))]
     frame = h1.Clone("frame")
     frame.GetXaxis().SetLabelSize(0.04)

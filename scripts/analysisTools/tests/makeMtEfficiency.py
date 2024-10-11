@@ -21,9 +21,17 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawGraphCMS,
+    logger,
+    safeGetObject,
+    safeOpenFile,
+)
 from scripts.analysisTools.tests.cropNegativeTemplateBins import cropNegativeContent
 
 if __name__ == "__main__":

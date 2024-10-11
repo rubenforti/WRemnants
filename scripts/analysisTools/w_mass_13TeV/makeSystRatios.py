@@ -17,11 +17,23 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
+import copy
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    drawNTH1,
+    fillTH2fromTH2part,
+    getMinMaxHisto,
+    safeGetObject,
+    safeOpenFile,
+    setTDRStyle,
+    unroll2Dto1D,
+)
 
 
 def plotUnrolledHistogram(

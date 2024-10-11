@@ -180,9 +180,6 @@ def make_reco_over_gen_hists(df, results):
     axis_pt_reco_over_gen = hist.axis.Regular(
         1000, 0.9, 1.1, underflow=True, overflow=True, name="reco_pt_over_gen"
     )
-    axis_qop_reco_over_gen = hist.axis.Regular(
-        1000, 0.9, 1.1, underflow=True, overflow=True, name="reco_qop_over_gen"
-    )
     crctd_over_gen = df.HistoBoost(
         "crctd_over_gen",
         [axis_pt_reco_over_gen],

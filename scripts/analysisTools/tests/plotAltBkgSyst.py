@@ -2,7 +2,6 @@
 
 ## safe batch mode
 import sys
-from copy import *
 
 args = sys.argv[:]
 sys.argv = ["-b"]
@@ -12,7 +11,15 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    getTH2fromTH3,
+    safeGetObject,
+    safeOpenFile,
+    setTDRStyle,
+)
 
 step = "tracking"  # tracking
 outdir_original = f"scripts/analysisTools/plots/TESTPLOTS/{step}_altBkg/"

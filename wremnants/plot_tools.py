@@ -1165,25 +1165,6 @@ def makePlot2D(
         zrange = max((zmin - zsymmetrize), (zsymmetrize - zmax))
         zlim = [zsymmetrize - zrange, zsymmetrize + zrange]
 
-    if logz:
-        colormesh = ax.pcolormesh(
-            xedges,
-            yedges,
-            values.T,
-            cmap=getattr(mpl.cm, colormap),
-            norm=mpl.colors.LogNorm(vmin=zlim[0], vmax=zlim[1]),
-        )
-    else:
-        colormesh = ax.pcolormesh(
-            xedges,
-            yedges,
-            values.T,
-            cmap=getattr(mpl.cm, colormap),
-            vmin=zlim[0],
-            vmax=zlim[1],
-        )
-    cbar = fig.colorbar(colormesh, ax=ax)
-
     if plot_title:
         ax.text(
             1.0,

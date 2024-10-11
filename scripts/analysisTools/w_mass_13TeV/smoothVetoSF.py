@@ -7,7 +7,6 @@
 import os
 import pickle
 import time
-from copy import *
 
 import hist
 import lz4.frame
@@ -36,7 +35,20 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 data_dir = common.data_dir
 
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    addStringToEnd,
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    getMinMaxMultiHisto,
+    logging,
+    prepareLegend,
+    safeGetObject,
+    safeOpenFile,
+    setTDRStyle,
+)
 from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
 
 

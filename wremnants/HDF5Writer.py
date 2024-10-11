@@ -829,7 +829,6 @@ class HDF5Writer(object):
             logk_sparse_indices = np.concatenate(
                 [logk_sparse_normindices, logk_sparse_systindices], axis=-1
             )
-            logk_normindices = None
 
             # now straightforward sorting of logk_sparse into canonical order
             logk_sparse_dense_shape = (norm_sparse_indices.shape[0], 2 * nsyst)

@@ -18,9 +18,14 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
-
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    array,
+    createPlotDirAndCopyPhp,
+    drawGraphCMS,
+    safeOpenFile,
+    xvals,
+)
 
 sys.path.append(os.getcwd())
 

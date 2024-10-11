@@ -17,10 +17,10 @@
 #     when running multiple steps in series. For the smoothing to make sense, status and covstatus MUST be 0 for all fits
 
 import array
+import copy
 import math
 import os
 import pickle
-from copy import *
 from functools import partial
 
 import hist
@@ -49,7 +49,23 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
 # from utility import *
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    addStringToEnd,
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawCorrelationPlot,
+    getMinMaxHisto,
+    getMinMaxMultiHisto,
+    getTH2fromTH3,
+    logging,
+    polN_root_,
+    safeGetObject,
+    safeOpenFile,
+    safeSystem,
+    setTDRStyle,
+)
 
 ## TODO: move this script to scripts/analysisTools/w_mass_13TeV/
 from scripts.analysisTools.w_mass_13TeV.run2Dsmoothing import makeAntiSFfromSFandEffi
@@ -133,12 +149,13 @@ def copyHisto(h1, h2, copyError=False):
 
     if h1.GetDimension() == 1:
         for ix in range(h2.GetNbinsX() + 2):
-            if copyError:
-                h1.SetBinContent(ix, h2.GetBinContent(ix, iy))
-                h1.SetBinError(ix, h2.GetBinError(ix, iy))
-            else:
-                h1.SetBinContent(ix, h2.GetBinError(ix, iy))
-                h1.SetBinError(ix, 0.0)
+            for iy in range(h2.GetNbinsY() + 2):
+                if copyError:
+                    h1.SetBinContent(ix, h2.GetBinContent(ix, iy))
+                    h1.SetBinError(ix, h2.GetBinError(ix, iy))
+                else:
+                    h1.SetBinContent(ix, h2.GetBinError(ix, iy))
+                    h1.SetBinError(ix, 0.0)
     elif h1.GetDimension() == 2:
         for ix in range(h2.GetNbinsX() + 2):
             for iy in range(h2.GetNbinsY() + 2):

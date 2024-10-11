@@ -787,7 +787,7 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     for i, pdf in enumerate(pdfs):
         try:
             pdfInfo = pdf_info_map(dataset_name, pdf)
-        except ValueError as e:
+        except ValueError:
             return df
 
         pdfName = pdfInfo["name"]
@@ -812,9 +812,6 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
                 f"auto res = wrem::clip_tensor(wrem::vec_to_tensor_t<double, {entries}>({pdfBranch}, {start}), theory_weight_truncate); res = nominal_weight/central_pdf_weight*res; return res;",
             )
 
-        if i == 0:
-            tensorNameNominal = tensorName
-
         if pdfName == "pdfMSHT20":
             df = pdfBugfixMSHT20(df, tensorName)
 
@@ -837,13 +834,12 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
 def define_central_pdf_weight(df, dataset_name, pdf):
     try:
         pdfInfo = pdf_info_map(dataset_name, pdf)
-    except ValueError as e:
+    except ValueError:
         logger.warning(
             f"Did not find PDF {pdf} for sample {dataset_name}! Using nominal PDF in sample"
         )
         return df.DefinePerSample("central_pdf_weight", "1.0")
 
-    pdfName = pdfInfo["name"]
     pdfBranch = pdfInfo["branch"]
     if not pdfBranch in df.GetColumnNames():
         logger.warning(
@@ -1188,7 +1184,6 @@ def pdfAsymmetricShifts(hdiff, axis_name):
 
     ax = hdiff.axes[axis_name]
     underflow = hdiff.axes[axis_name].traits.underflow
-    overflow = hdiff.axes[axis_name].traits.overflow
     if type(ax) == hist.axis.StrCategory and all(
         ["Up" in x or "Down" in x for x in ax][1:]
     ):
@@ -1216,7 +1211,6 @@ def pdfAsymmetricShifts(hdiff, axis_name):
 
 
 def hessianPdfUnc(h, axis_name="pdfVar", uncType="symHessian", scale=1.0):
-    underflow = h.axes[axis_name].traits.underflow
     symmetric = uncType == "symHessian"
     diff = hh.addHists(h, -1 * h[{axis_name: 0}]) * scale
     if diff.axes[axis_name].traits.overflow:

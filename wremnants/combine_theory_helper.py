@@ -426,7 +426,6 @@ class TheoryHelper(object):
                     "renorm_fact_resum_scale_envelope_Up",
                 ]
 
-            syst_axes = [pt_ax, "vars"]
             syst_ax_labels = ["PtV", "var"]
             format_with_values = ["edges", "center"]
 
@@ -901,8 +900,6 @@ class TheoryHelper(object):
         self.card_tool.addSystematic(**as_args)
 
     def add_transition_fo_scale_uncertainties(self, transition=True, scale=True):
-        obs = self.card_tool.fit_axes[:]
-
         for sample_group in self.samples:
             if not self.card_tool.procGroups.get(sample_group, None):
                 continue

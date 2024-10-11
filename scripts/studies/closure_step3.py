@@ -151,7 +151,7 @@ for nominal, r_n in results.items():
 
 # some settings
 boson_str = "W"
-fit_str = "\P" + boson_str + " $(\pt^{\ell},\eta^{\ell})$"
+fit_str = r"\P" + boson_str + r" $(\pt^{\ell},\eta^{\ell})$"
 
 
 data = pd.DataFrame(
@@ -170,7 +170,7 @@ def plot_table_pdf(data, uncertainty="unc"):
 
     mode_str = "pdf sets"
     uncertainty_str1 = "only pdf and bin-by-bin statistical uncertainties."
-    uncertainty_str2 = "pdf uncertainty on $m_\P" + boson_str + "$"
+    uncertainty_str2 = r"pdf uncertainty on $m_\P" + boson_str + "$"
 
     for channel, df in data.groupby("channel"):
 
@@ -194,7 +194,7 @@ def plot_table_pdf(data, uncertainty="unc"):
                 + "_"
                 + uncertainty
                 + "}"
-                + "\n"
+                + r"\n"
             )
             outfile.write(
                 r""" Pulls table for different pdf sets. The fit is performed on """
@@ -206,27 +206,27 @@ def plot_table_pdf(data, uncertainty="unc"):
                 + r"""
     Entries read (pull on the $m_\P"""
                 + boson_str
-                + """$ central value) $\pm$ ("""
+                + r"""$ central value) $\pm$ ("""
                 + uncertainty_str2
                 + r""").}"""
-                + "\n"
+                + r"\n"
             )
             outfile.write(r"\centering" + "\n")
 
             columns = "l|"
             columns += "".join(["c" for c in range(len(pseudo))])
-            outfile.write(r"\begin{tabular}{" + columns + "}" + "\n")
+            outfile.write(r"\begin{tabular}{" + columns + "}" + r"\n")
 
             outfile.write(
-                "  Model + & \multicolumn{"
+                r"  Model + & \multicolumn{"
                 + str(len(pseudo))
                 + "}{c}{Pseudodata} "
                 + r" \\"
-                + "\n"
+                + r"\n"
             )
-            outfile.write("  Uncertainty & " + " & ".join(pseudo) + r" \\" + "\n")
+            outfile.write("  Uncertainty & " + " & ".join(pseudo) + r" \\" + r"\n")
 
-            outfile.write(r"  \hline " + "\n")
+            outfile.write(r"  \hline " + r"\n")
 
             for nominal, df_n in df.groupby("nominal"):
                 entries = []
@@ -237,16 +237,16 @@ def plot_table_pdf(data, uncertainty="unc"):
                         m = round(100 * m, 2)
                         u = round(100 * u, 2)
                         colorstring = (
-                            "\cellcolor{red!25}" if abs(m) > u else ""
+                            r"\cellcolor{red!25}" if abs(m) > u else ""
                         )  # highlight background color of cell if uncertainty does not cover mass shift
-                        entries.append(f"{colorstring} ${m} \pm {u}$")
+                        entries.append(rf"{colorstring} ${m} \pm {u}$")
                     else:
                         entries.append(r" \NA ")
 
-                outfile.write(f"  {nominal} & " + " & ".join(entries) + r" \\" + "\n")
+                outfile.write(f"  {nominal} & " + " & ".join(entries) + r" \\" + r"\n")
 
-            outfile.write(r"  \end{tabular}" + "\n")
-            outfile.write(r"\end{table} " + "\n")
+            outfile.write(r"  \end{tabular}" + r"\n")
+            outfile.write(r"\end{table} " + r"\n")
 
 
 def plot_table_scale(data, uncertainty="unc"):
@@ -255,11 +255,11 @@ def plot_table_scale(data, uncertainty="unc"):
         "biasCalibrationA": "bias A",
         "biasCalibrationM": "bias M",
         "biasCalibrationParameterized": "bias A,M",
-        "biasCalibrationBinned": "bias $\pt,\eta$",
+        "biasCalibrationBinned": r"bias $\pt,\eta$",
         "smearing_biasCalibrationA": "+ bias A",
         "smearing_biasCalibrationM": "+ bias M",
         "smearing_biasCalibrationParameterized": "+ bias A,M",
-        "smearing_biasCalibrationBinned": "+ bias $\pt,\eta$",
+        "smearing_biasCalibrationBinned": r"+ bias $\pt,\eta$",
         # fit types
         "reducedUncertainties": "only scale and bin-by-bin MC statistical uncertainties.",
         "fullUncertainties": "the full uncertainty model.",
@@ -267,7 +267,7 @@ def plot_table_scale(data, uncertainty="unc"):
 
     mode_str = "muon momentum scale and resoltion"
     uncertainty_str2 = "full" if uncertainty == "tot" else "momentum scale"
-    uncertainty_str2 += " uncertainty on $m_\P" + boson_str + "$"
+    uncertainty_str2 += r" uncertainty on $m_\P" + boson_str + "$"
 
     for fittype, df_fittype in data.groupby("fittype"):
 
@@ -292,14 +292,14 @@ def plot_table_scale(data, uncertainty="unc"):
             logger.info(f"write {outfile}")
             with open(outfile, "w") as outfile:
 
-                outfile.write(r"\begin{table}" + "\n")
+                outfile.write(r"\begin{table}" + r"\n")
                 outfile.write(
                     r"\topcaption{\label{table:pulls_scale_"
                     + nominal
                     + "_"
                     + uncertainty
                     + "}"
-                    + "\n"
+                    + r"\n"
                 )
                 outfile.write(
                     r""" Pulls table for """
@@ -311,7 +311,7 @@ def plot_table_scale(data, uncertainty="unc"):
                     + r"""
         Entries read (pull on the $m_\P"""
                     + boson_str
-                    + """$ central value) $\pm$ ("""
+                    + r"""$ central value) $\pm$ ("""
                     + uncertainty_str2
                     + r""").}"""
                     + "\n"
@@ -323,17 +323,17 @@ def plot_table_scale(data, uncertainty="unc"):
                 outfile.write(r"\begin{tabular}{" + columns + "}" + "\n")
 
                 outfile.write(
-                    "  Model + & \multicolumn{"
+                    r"  Model + & \multicolumn{"
                     + str(len(pseudo))
                     + "}{c}{Pseudodata} "
                     + r" \\"
-                    + "\n"
+                    + r"\n"
                 )
                 outfile.write(
                     "  Uncertainty & "
                     + " & ".join([translate.get(p, p) for p in pseudo])
                     + r" \\"
-                    + "\n"
+                    + r"\n"
                 )
 
                 outfile.write(r"  \hline " + "\n")
@@ -347,9 +347,9 @@ def plot_table_scale(data, uncertainty="unc"):
                             m = round(100 * m, 2)
                             u = round(100 * u, 2)
                             colorstring = (
-                                "\cellcolor{red!25}" if abs(m) > u else ""
+                                r"\cellcolor{red!25}" if abs(m) > u else ""
                             )  # highlight background color of cell if uncertainty does not cover mass shift
-                            entries.append(f"{colorstring} ${m} \pm {u}$")
+                            entries.append(rf"{colorstring} ${m} \pm {u}$")
                         else:
                             entries.append(r" \NA ")
 
@@ -360,8 +360,8 @@ def plot_table_scale(data, uncertainty="unc"):
                         + "\n"
                     )
 
-                outfile.write(r"  \end{tabular}" + "\n")
-                outfile.write(r"\end{table} " + "\n")
+                outfile.write(r"  \end{tabular}" + r"\n")
+                outfile.write(r"\end{table} " + r"\n")
 
 
 data["fittype"] = data["pseudo"].apply(lambda x: x.split("_")[-1])

@@ -31,9 +31,14 @@ sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
-from copy import *
-
-from scripts.analysisTools.plotUtils.utility import *
+from scripts.analysisTools.plotUtils.utility import (
+    adjustSettings_CMS_lumi,
+    common_plot_parser,
+    copyOutputToEos,
+    createPlotDirAndCopyPhp,
+    drawGraphCMS,
+    legEntries_plots_,
+)
 
 
 def getVertexEfficiency(h, rebin=1, dzCut_cm=0.1, label=""):

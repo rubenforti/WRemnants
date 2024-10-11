@@ -1386,7 +1386,6 @@ def add_widthweights_hist(
 
 
 def widthWeightNames(matches=None, proc=""):
-    central = 3
     if proc[0] == "Z":
         widths = (2.49333, 2.49493, 2.4929, 2.4952, 2.4975)
     elif proc[0] == "W":
@@ -2262,7 +2261,7 @@ def add_muonscale_smeared_hist(
     *kwargs,
 ):
     # add_muonscale_hist has to be called first such that "muonScaleDummy{netabins}Bins{muon_eta}" is defined
-    nweights = 21 if isW else 23
+    # nweights = 21 if isW else 23
 
     scale_etabins_axis = hist.axis.Regular(
         netabins, -2.4, 2.4, name="scaleEtaSlice", underflow=False, overflow=False

@@ -137,7 +137,6 @@ def read_scetlib_hist(path, nonsing="none", flip_y_sign=False, charge=None):
         y_axis = hist.axis.Variable(f["bins"][2], name="Y", flow=False)
 
         # Use 0.1 here rather than 0, because the nonsingular behaves much better with a "cut" at > 0.1
-        pt_underflow = f["bins"][3][0] > 0.1
         pt_axis = hist.axis.Variable(f["bins"][3], name="qT", flow=False)
 
         h = f["hist"]

@@ -77,7 +77,7 @@ jobs:
 
       - name: run Flake8
         run: |
-          scripts/ci/run_with_singularity.sh flake8 . --select=F401 --exclude=narf,wremnants-data --max-line-length 88
+          scripts/ci/run_with_singularity.sh flake8 . --select=F401,F403 --exclude=narf,wremnants-data --max-line-length 88
 
       - name: run Black
         run: |
