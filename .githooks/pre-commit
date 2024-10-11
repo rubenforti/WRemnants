@@ -99,6 +99,14 @@ for FILE in $STAGED_FILES_PY; do
 
 done
 
+flake8 . --select=F401,F402,F403,631,634,F823 --exclude=narf,wremnants-data --max-line-length 88
+
+# Check the exit status of flake8
+if [ $? -ne 0 ]; then
+  echo "flake8 found issues. Commit aborted."
+  exit 1  # Abort the commit
+fi
+
 
 # Notify the user if any files were modified
 if [ ${#MODIFIED_FILES[@]} -gt 0 ]; then
