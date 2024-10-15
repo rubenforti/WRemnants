@@ -12,11 +12,11 @@ Activate git Large File Storage (only need to do this once for a given user/home
 git lfs install
 ```
 
-Activate git pre-commit hooks (only need to do this once for a given repository)
+Activate git pre-commit hooks (only need to do this once when checking out)
 ``` bash
-git config core.hooksPath .githooks
+git config --local include.path ../.gitconfig
 ```
-If the pre-commit hook is doing something undesired, it can be by passed by adding “--no-verify” when doing “git commit”
+If the pre-commit hook is doing something undesired, it can be by passed by adding “--no-verify” when doing “git commit”.
 
 Get the code (after forking from the central WMass repository)
 ```bash
