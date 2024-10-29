@@ -646,7 +646,7 @@ def producePlots(
 
     if poi and poi.startswith("massShift"):
         label = poi.replace("massShift", "")[0]
-        impact_title = f"Impact on {label} mass (MeV)"
+        impact_title = f"Impact on <i>m</i><sub>{label}</sub> (MeV)"
     elif poi and poi.startswith("massDiff"):
         if poi.startswith("massDiffCharge"):
             impact_title = "Impact on mass diff. (charge) (MeV)"
