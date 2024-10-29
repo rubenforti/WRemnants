@@ -4,15 +4,15 @@ lumicsv = f"{common.data_dir}/bylsoutput_2018.csv"
 lumijson = f"{common.data_dir}/Cert_314472-325175_13TeV_UL2018_Collisions18_HLT_IsoMu24_v_CustomJSON.txt"
 
 # NOTES
-# BASE_PATH is /scratchnvme/wmass/NANOV9/postVFP (so 2018 BASE path is {BASE_PATH}/../y2018/) have to update at some point
+# BASE_PATH is /scratchnvme/wmass/NANOV9/postVFP (so 2018 BASE path is {BASE_PATH}/../y2018v6/) have to update at some point
 # ZtautauPostVFP sample is one available from centrl production, so
 dataDictV9_2018 = {
     "dataPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018A_{NANO_PROD_TAG}",
-            "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018B_{NANO_PROD_TAG}",
-            "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018C_{NANO_PROD_TAG}",
-            "{BASE_PATH}/../y2018/SingleMuon/NanoV9Run2018D_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018A_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018B_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018C_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018D_{NANO_PROD_TAG}",
         ],
         "group": "Data",
         "lumicsv": lumicsv,
@@ -21,7 +21,7 @@ dataDictV9_2018 = {
     },
     "ZmumuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": common.xsec_ZmmPostVFP,
         "group": "Zmumu",
@@ -29,7 +29,7 @@ dataDictV9_2018 = {
     },
     "DYJetsToMuMuMass10to50PostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": common.xsec_ZmmMass10to50PostVFP,
         "group": "DYlowMass",
@@ -37,7 +37,7 @@ dataDictV9_2018 = {
     },
     "ZtautauPostVFP": {  # this sample needs to be produced using old Mass fix one
         "filepaths": [
-            "{BASE_PATH}/../y2018//DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6//DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         # At least one tau->e or mu decay, so everything that's not all other decays
         "xsec": common.xsec_ZmmPostVFP * common.Z_TAU_TO_LEP_RATIO,
@@ -46,7 +46,7 @@ dataDictV9_2018 = {
     },
     "WplusmunuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": common.xsec_WpmunuPostVFP,
         "group": "Wmunu",
@@ -54,7 +54,7 @@ dataDictV9_2018 = {
     },
     "WminusmunuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": common.xsec_WmmunuPostVFP,
         "group": "Wmunu",
@@ -62,7 +62,7 @@ dataDictV9_2018 = {
     },
     "WplustaunuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
         ],
         "xsec": common.BR_TAUToMU * common.xsec_WpmunuPostVFP,
         "group": "Wtaunu",
@@ -70,7 +70,7 @@ dataDictV9_2018 = {
     },
     "WminustaunuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": common.BR_TAUToMU * common.xsec_WmmunuPostVFP,
         "group": "Wtaunu",
@@ -78,7 +78,7 @@ dataDictV9_2018 = {
     },
     "TTLeptonicPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 88.29,
         "group": "Top",
@@ -86,7 +86,7 @@ dataDictV9_2018 = {
     },
     "TTSemileptonicPostVFP": {  ##could not copy full stat of this sample due to lack of storage
         "filepaths": [
-            "{BASE_PATH}/../y2018/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 366.34,
         "group": "Top",
@@ -94,7 +94,7 @@ dataDictV9_2018 = {
     },
     "SingleTschanLepDecaysPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 3.609,
         "group": "Top",
@@ -102,7 +102,7 @@ dataDictV9_2018 = {
     },
     "SingleTtWAntitopPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 19.55,  # 35.85 * (1.0-((1-0.1086*3)*(1-0.1086*3))) = 19.5 pb
         "group": "Top",
@@ -110,7 +110,7 @@ dataDictV9_2018 = {
     },
     "SingleTtWTopPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ST_tW_top_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ST_tW_top_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 19.55,
         "group": "Top",
@@ -118,7 +118,7 @@ dataDictV9_2018 = {
     },
     "SingleTtchanAntitopPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ST_t-channel_antitop_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ST_t-channel_antitop_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 80.0,
         "group": "Top",
@@ -126,7 +126,7 @@ dataDictV9_2018 = {
     },
     "SingleTtchanTopPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 134.2,
         "group": "Top",
@@ -148,7 +148,7 @@ dataDictV9_2018 = {
     ##
     "WWTo2L2NuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 12.6,  # 118.7*0.1086*0.1086*9
         "group": "Diboson",
@@ -156,7 +156,7 @@ dataDictV9_2018 = {
     },
     "WWTo1L1Nu2QPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 52.146,  # 118.7*[(3*0.1086)*(1-3*0.1086)]*2 (2 is because one W or the other can go to Q)
         "group": "Diboson",
@@ -164,7 +164,7 @@ dataDictV9_2018 = {
     },
     "WZTo3LNuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 4.91,  # 4.42965*1.109, 1.109 is the NLO to NNLO kfactor, for this one would need to make sure about the NLO XS, depends a lot on the dilepton mass cut
         "group": "Diboson",
@@ -172,7 +172,7 @@ dataDictV9_2018 = {
     },
     "WZTo2Q2LPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 5.4341,  # 4.9*1.109
         "group": "Diboson",
@@ -180,7 +180,7 @@ dataDictV9_2018 = {
     },
     "WZTo1L1Nu2QPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 11.781,  # 10.71*1.10
         "group": "Diboson",
@@ -188,7 +188,7 @@ dataDictV9_2018 = {
     },
     "ZZTo2L2NuPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 0.60,
         "group": "Diboson",
@@ -196,7 +196,7 @@ dataDictV9_2018 = {
     },
     "ZZTo2Q2LPostVFP": {
         "filepaths": [
-            "{BASE_PATH}/../y2018/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+            "{BASE_PATH}/../y2018v6/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
         ],
         "xsec": 5.1,
         "group": "Diboson",
@@ -204,7 +204,7 @@ dataDictV9_2018 = {
     },
     "QCDmuEnrichPt15PostVFP": {  # Not copied
         "filepaths": [
-            "{BASE_PATH}/../y2018/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"
+            "{BASE_PATH}/../y2018v6/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"
         ],
         "xsec": 238800,
         "group": "QCD",
