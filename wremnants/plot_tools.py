@@ -1111,6 +1111,7 @@ def makePlot2D(
     zlim=None,
     zsymmetrize=None,
     logz=False,  # logy=False, logx=False, #TODO implement
+    logoPos=2,
     cms_label="Work in progress",
     has_data=False,
     scaleleg=1.0,

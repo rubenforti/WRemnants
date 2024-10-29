@@ -370,7 +370,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         hQCD_rebin = (
             hh.rebinHist(hQCD, self.smoothing_axis_name, self.rebin_smoothing_axis)
             if self.rebin_smoothing_axis is not None
-            else h
+            else hQCD
         )
 
         s = hist.tag.Slicer()
@@ -1230,14 +1230,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 maxs_x.append(self.smoothing_axis_max)
                 orders.append(smoothing_order_shapecorrection)
 
-            if len(order) > 1:
+            if len(smoothing_order_shapecorrection) > 1:
                 self.shapecorrection_regressor = Regressor2D(
                     "bernstein",
                     orders,
                     min_x=mins_x,
                     max_x=maxs_x,
                 )
-            elif len(order) == 1:
+            elif len(smoothing_order_shapecorrection) == 1:
                 self.shapecorrection_regressor = Regressor(
                     "bernstein",
                     orders[0],
@@ -1481,18 +1481,18 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                     w = np.moveaxis(w, (idx_ax_smoothing, idx_ax_interpol), (-2, -1))
 
                 x_smoothing = self.get_bin_centers_smoothing(hNew, flow=True)
-                shapecorrection_regressor.solve(
+                self.shapecorrection_regressor.solve(
                     x_interpol, x_smoothing, y, w, flatten=True
                 )
 
                 x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
-                y_smooth_orig = shapecorrection_regressor.evaluate(
+                y_smooth_orig = self.shapecorrection_regressor.evaluate(
                     x_interpol_orig, x_smooth_orig
                 )
 
                 if syst_variations:
                     y_smooth_var_orig = (
-                        shapecorrection_regressor.get_eigenvector_predictions(
+                        self.shapecorrection_regressor.get_eigenvector_predictions(
                             x_interpol_orig, x_smooth_orig
                         )
                     )
@@ -1523,13 +1523,13 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                     y = np.moveaxis(y, idx_ax_interpol, -1)
                     w = np.moveaxis(w, idx_ax_interpol, -1)
 
-                shapecorrection_regressor.solve(x_interpol, y, w)
+                self.shapecorrection_regressor.solve(x_interpol, y, w)
 
-                y_smooth_orig = shapecorrection_regressor.evaluate(x_interpol_orig)
+                y_smooth_orig = self.shapecorrection_regressor.evaluate(x_interpol_orig)
 
                 if syst_variations:
                     y_smooth_var_orig = (
-                        shapecorrection_regressor.get_eigenvector_predictions(
+                        self.shapecorrection_regressor.get_eigenvector_predictions(
                             x_interpol_orig
                         )
                     )
@@ -1574,15 +1574,17 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             # smooth scf (e.g. in pT)
             x_smoothing = self.get_bin_centers_smoothing(hNew, flow=True)
-            shapecorrection_regressor.solve(x_smoothing, y, w)
+            self.shapecorrection_regressor.solve(x_smoothing, y, w)
 
             # evaluate in range of original histogram
             x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
-            y_smooth_orig = shapecorrection_regressor.evaluate(x_smooth_orig)
+            y_smooth_orig = self.shapecorrection_regressor.evaluate(x_smooth_orig)
 
             if syst_variations:
                 y_smooth_var_orig = (
-                    shapecorrection_regressor.get_eigenvector_predictions(x_smooth_orig)
+                    self.shapecorrection_regressor.get_eigenvector_predictions(
+                        x_smooth_orig
+                    )
                 )
             else:
                 y_smooth_var_orig = None

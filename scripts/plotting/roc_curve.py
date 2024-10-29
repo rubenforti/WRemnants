@@ -207,7 +207,6 @@ if __name__ == "__main__":
     plot_tools.addLegend(
         ax1, ncols=args.legCols, text_size=args.legSize, loc=args.legPos
     )
-    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     outfile = "roc"
     if args.postfix:

@@ -57,7 +57,7 @@ class DeepCopyOverride:
 
     def __exit__(self, exc_type, exc_val, traceback):
         if self.oldfn:
-            self.target_class.__deepcopy__ = oldfn
+            self.target_class.__deepcopy__ = self.oldfn
         else:
             del self.target_class.__deepcopy__
 

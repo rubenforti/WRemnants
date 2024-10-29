@@ -91,10 +91,7 @@ def plot_harmonic_polynomials(outdir, args):
         else:
             idx = str(i - 1)
 
-        if moments:
-            outfile = "moment"
-        else:
-            outfile = "polynomial"
+        outfile = "polynomial"
         outfile += f"_{idx}_cosTheta_phi"
         if args.postfix:
             outfile += f"_{args.postfix}"
@@ -130,11 +127,7 @@ def plot_harmonic_polynomials(outdir, args):
                 idx = r"\mathrm{UL}"
             else:
                 idx = str(i - 1)
-            if moments:
-                val_y = val_y * scales[i] + offsets[i]
-                label = rf"$\mathrm{{M}}_{idx}$"
-            else:
-                label = rf"$\mathrm{{P}}_{idx}$"
+            label = rf"$\mathrm{{P}}_{idx}$"
 
             ax1.plot(
                 val_x, val_y, color=colors(i), linestyle=linestyles[j], label=label
@@ -147,7 +140,6 @@ def plot_harmonic_polynomials(outdir, args):
         plot_tools.addLegend(
             ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize
         )
-        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
         outfile = "harmonic_polynomial"
         outfile += f"_{axis_name}"

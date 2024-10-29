@@ -35,7 +35,7 @@ class util:
             for pol in polarizations:
                 cp = "{ch}_{pol}".format(ch=charge, pol=pol)
                 xsecs = []
-                for iv in xrange(len(ybins[cp][:-1])):
+                for iv in range(len(ybins[cp][:-1])):
                     if any(iv == x for x in excludeYbins):
                         continue
                     xsecs.append(0.0)
@@ -86,7 +86,7 @@ class util:
                 else [
                     pol + qcdscale + str(ptbin) + charge + direction
                     for qcdscale in ["muR", "muF", "muRmuF"]
-                    for ptbin in xrange(1, 11)
+                    for ptbin in range(1, 11)
                     for direction in ["Up", "Down"]
                 ]
             )
@@ -191,7 +191,7 @@ class util:
                     if not halphaStmp:
                         print(
                             "Error in getPDFbandFromXsec(): I couldn't find histogram "
-                            + alphaSdvar
+                            + alphaSvar
                         )
                         quit()
                     # 1.5 is because weight corresponds to 0.001, but should be 0.0015
@@ -362,7 +362,7 @@ class util:
                     if not halphaStmp:
                         print(
                             "Error in getPDFbandFromXsec(): I couldn't find histogram "
-                            + alphaSdvar
+                            + alphaSvar
                         )
                         quit()
                     tmpval = halphaStmp.Integral(0, 1 + halphaStmp.GetNbinsX())
@@ -1424,7 +1424,7 @@ class util:
         if nrms > nb / 10:
             nrms = int(nb / 10)  # Could be tuned...
         widmin = 9999999.0
-        for iscan in xrange(-nrms, nrms + 1):  # // Scan window centre
+        for iscan in range(-nrms, nrms + 1):  # // Scan window centre
             ibm = int((ave - xmin) / bwid) + 1 + iscan
             x = (ibm - 0.5) * bwid + xmin
             xj = x
@@ -1433,7 +1433,7 @@ class util:
             kbm = ibm
             bin = histo.GetBinContent(ibm)
             total = bin
-            for j in xrange(1, nb):
+            for j in range(1, nb):
                 if jbm < nb:
                     jbm += 1
                     xj += bwid
@@ -1467,7 +1467,7 @@ class util:
         xaxis = h.GetXaxis()
         points = []
         errors = []
-        for i in xrange(h.GetNbinsX()):
+        for i in range(h.GetNbinsX()):
             N = h.GetBinContent(i + 1)
             dN = h.GetBinError(i + 1)
             if N == 0 and dN == 0:
@@ -1527,7 +1527,7 @@ class util:
         histos["a0"].SetStatOverflows(1)
         histos["a4"].SetStatOverflows(1)
         # print("getCoeffs: ",toyEvents," toyMC running...")
-        for i in xrange(toyEvents):
+        for i in range(toyEvents):
             ixL = np.random.normal(xL, err_xL)
             ixR = np.random.normal(xR, err_xR)
             ix0 = np.random.normal(x0, err_x0)
@@ -1543,7 +1543,7 @@ class util:
 
     def getChargeAsy(self, xplus, xminus, err_xplus, err_xminus, toyEvents=10000):
         histo = ROOT.TH1F("hasy", "", 100, -0.05, 0.5)
-        for i in xrange(toyEvents):
+        for i in range(toyEvents):
             ixplus = np.random.normal(xplus, err_xplus)
             ixminus = np.random.normal(xminus, err_xminus)
             histo.Fill((ixplus - ixminus) / (ixplus + ixminus))
@@ -1560,7 +1560,7 @@ class util:
         histotmp = ROOT.TH1D(name + "tmp", "", 200, -1.0, 1.0)
         for i in range(1, 1 + h1.GetNbinsX()):
             histotmp.Reset("ICESM")
-            for j in xrange(toyEvents):
+            for j in range(toyEvents):
                 ixplus = np.random.normal(h1.GetBinContent(i), h1.GetBinError(i))
                 ixminus = np.random.normal(h2.GetBinContent(i), h2.GetBinError(i))
                 histotmp.Fill((ixplus - ixminus) / (ixplus + ixminus))

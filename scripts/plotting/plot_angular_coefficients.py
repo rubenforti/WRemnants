@@ -223,7 +223,6 @@ if __name__ == "__main__":
             plot_tools.addLegend(
                 ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize
             )
-            plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
             if args.plotXsecs:
                 outfile = f"helicity_xsec_" + ("UL" if i == -1 else str(i))

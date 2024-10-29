@@ -1,6 +1,7 @@
 import argparse
 import os
 
+from utilities import boostHistHelpers as hh
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
 

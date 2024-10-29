@@ -183,7 +183,7 @@ def plot(
         elif stack:
             ylim = (0, 1.1 * max(max(hist_data.values()), max(hist_pred.values())))
         else:
-            ylim = (0, 1.1 * max([max(p.values(flow=False)) for p in processes]))
+            ylim = (0, 1.1 * max([max(p.values(flow=False)) for p in procs]))
     else:
         ylim = args.ylim
 

@@ -798,6 +798,7 @@ def plot_uncertainties_with_ratio(
     lumi=None,
     channel="ch0",
     normalize=False,
+    error_threshold=0.001,
     flow=False,
 ):
     logger.info(

@@ -757,7 +757,7 @@ def build_graph(df, dataset):
                     50, 20, 70, name="postfsrLep_pt", overflow=True, underflow=True
                 )
                 results.append(
-                    df_fiducial.HistoBoost(
+                    df.HistoBoost(
                         "nominal_postfsr",
                         [axis_eta, axis_pt],
                         ["postfsrLep_absEta", "postfsrLep_pt", "nominal_weight"],

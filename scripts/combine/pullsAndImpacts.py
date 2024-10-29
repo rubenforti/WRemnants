@@ -446,10 +446,6 @@ def readFitInfoFromFile(
                     df["label"].str.contains(poi.replace("_noi", ""), regex=True)
                 ].index
             )
-    colors = np.full(len(df), "#377eb8")
-    if not group:
-        colors[df["impact"] > 0.0] = "#e41a1c"
-    df["impact_color"] = colors
 
     return df
 
@@ -719,11 +715,6 @@ def producePlots(
             grouping=grouping,
         )
         df = df.merge(df_ref, how="outer", on="label", suffixes=("", "_ref"))
-
-        # Set default values for missing entries in respective columns
-        default_values = {"impact_color": "#377eb8", "impact_color_ref": "#377eb8"}
-        for col in df.columns:
-            df[col] = df[col].fillna(default_values.get(col, 0))
 
     if args.sort:
         logger.debug("Sort impacts")
