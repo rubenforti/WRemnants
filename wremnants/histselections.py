@@ -331,8 +331,11 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
                 min_x=self.smoothing_axis_min,
                 max_x=self.smoothing_axis_max,
             )
+            # swap the A and C regions for better numerical behaviour (only makes sense for fakerate and hybrid smoothing)
+            self.swap_regions = True
         else:
             self.fakerate_regressor = None
+            self.swap_regions = False
 
         if self.smoothing_mode in ["fakerate", "hybrid", "full"]:
             self.spectrum_regressor = Regressor(
@@ -346,8 +349,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             self.spectrum_regressor = None
 
-        # rebinning doesn't make sense for binned estimation
         if self.smoothing_mode in ["binned"]:
+            # rebinning doesn't make sense for binned estimation
             self.rebin_smoothing_axis = None
 
         if hasattr(self, "fakerate_integration_axes"):
@@ -360,9 +363,6 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # histogram with nonclosure corrections
         self.hCorr = None
-
-        # swap the A and C regions for better numerical behaviour (only implemented for fakerate and hybrid smoothing)
-        self.swap_regions = True
 
     def set_correction(self, hQCD, axes_names=False, mirror_axes=["eta"], flow=True):
         # hQCD is QCD MC histogram before selection (should contain variances)
