@@ -987,6 +987,12 @@ def build_graph(df, dataset):
                 f"vetoMuons_charge0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
+    if isQCDMC:
+        df = theory_tools.define_postfsr_vars(df)
+        df = df.Filter(
+            "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09) == 0"
+        )
+
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
