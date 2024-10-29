@@ -1065,7 +1065,14 @@ def plot_parser():
         default="Preliminary",
         nargs="?",
         type=str,
-        choices=[None, " ", "Preliminary", "Work in progress", "Internal"],
+        choices=[
+            None,
+            " ",
+            "Preliminary",
+            "Work in progress",
+            "Internal",
+            "Supplementary",
+        ],
         help="CMS label",
     )
     parser.add_argument("--logoPos", type=int, default=2, help="CMS logo position")

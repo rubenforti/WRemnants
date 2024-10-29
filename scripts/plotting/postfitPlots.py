@@ -426,8 +426,8 @@ def make_plot(
             if diff:
                 ax2.fill_between(
                     edges,
-                    np.append((nom + std) - nom, ((nom + std) - nom)[-1]),
-                    np.append((nom - std) - nom, ((nom - std) - nom)[-1]),
+                    np.append((+std), ((+std))[-1]),
+                    np.append((-std), ((-std))[-1]),
                     step="post",
                     facecolor=facecolor,
                     zorder=0,
