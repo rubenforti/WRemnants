@@ -431,6 +431,20 @@ systematics_labels_idxs = {
 systematics_labels_idxs["virtual_ew_wlike"] = systematics_labels_idxs["virtual_ew"]
 
 
+def translate_html_to_latex(n):
+    # transform html style formatting into latex style
+    if "</" in n:
+        n = (
+            f"${n}$".replace("<i>", r"\mathit{")
+            .replace("<sub>", "_{")
+            .replace("<sup>", "^{")
+            .replace("</i>", "}")
+            .replace("</sub>", "}")
+            .replace("</sup>", "}")
+        )
+    return n
+
+
 def get_systematics_label(key, idx=0):
     if key in systematics_labels:
         return systematics_labels[key]

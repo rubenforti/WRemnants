@@ -116,7 +116,7 @@ def plotImpacts(
             x=0.0,
             y=0.0,
         )
-    elif legend_pos == "left":
+    elif legend_pos == "right":
         legend = dict(
             orientation="v",
             xanchor="left",
@@ -138,7 +138,7 @@ def plotImpacts(
         legend=legend,
         legend_itemsizing="constant",
         height=100 * (ndisplay < 100) + ndisplay * 20.5,
-        width=640 if show_legend and legend_pos == "bottom" else 1000,
+        width=800 if show_legend and legend_pos == "right" else 640,
         font=dict(
             color="black",
         ),
@@ -387,6 +387,8 @@ def plotImpacts(
             pullrange = 0.5 * np.ceil(max_pull) + 1.1
         # Keep it a factor of 0.5, but no bigger than 1
         spacing = min(1, np.ceil(pullrange) / 2.0)
+        if spacing > 0.5 * pullrange:  # make sure to have at least two ticks
+            spacing /= 2.0
         xaxis_title = "Nuisance parameter"
         #  (
         #     "θ - θ<sub>0</sub> <span style='color:blue'>θ - θ<sub>0</sub> / √(σ<sup>2</sup>-σ<sub>0</sub><sup>2</sup>) </span>"
@@ -870,7 +872,7 @@ def producePlots(
         if args.num and args.num < df.size:
             # in case multiple extensions are given including html, don't do the skimming on html but all other formats
             if "html" in extensions and len(extensions) > 1:
-                fig = plotImpacts(df, legend_pos="left", **kwargs)
+                fig = plotImpacts(df, legend_pos="right", **kwargs)
                 outfile_html = outfile.replace(outfile.split(".")[-1], "html")
                 writeOutput(fig, outfile_html, postfix=postfix)
                 extensions = [e for e in extensions if e != "html"]

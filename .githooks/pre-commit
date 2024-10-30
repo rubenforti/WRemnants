@@ -109,8 +109,10 @@ if [ $? -ne 0 ]; then
 fi
 
 
-# give a code rating
-pylint $STAGED_FILES_PY | grep 'Your code has been rated at'
+if [ -n "$STAGED_FILES_PY" ]; then
+  # give a code rating of python files
+  pylint $STAGED_FILES_PY | grep 'Your code has been rated at'
+fi
 
 
 # Notify the user if any files were modified

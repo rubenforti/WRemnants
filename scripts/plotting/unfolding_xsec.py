@@ -199,6 +199,9 @@ translate_label = {}
 if args.translate:
     with open(args.translate) as f:
         translate_label = json.load(f)
+    translate = lambda x: styles.translate_html_to_latex(translate_label.get(x, x))
+else:
+    translate = lambda x: x
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
@@ -649,7 +652,7 @@ def plot_uncertainties_unfolded(
         yerr=False,
         histtype="step",
         color="grey",
-        label=translate_label.get("stat", "stat"),
+        label=translate("stat"),
         ax=ax1,
         alpha=1.0,
         # zorder=2,
@@ -691,7 +694,7 @@ def plot_uncertainties_unfolded(
                 f"Systematic {syst} smaller than threshold of {error_threshold}"
             )
             continue
-        name = translate_label.get(syst, syst)
+        name = translate(syst)
         logger.debug(f"Plot systematic {syst} = {name}")
 
         if syst == "err_stat":
@@ -944,8 +947,8 @@ def plot_uncertainties_with_ratio(
             color=["grey", "grey"],
             linestyle=["solid", "dashed"],
             label=[
-                f"{translate_label.get('stat', 'stat')} ({args.name})",
-                f"{translate_label.get('stat', 'stat')} ({args.refName})",
+                f"{translate('stat')} ({args.name})",
+                f"{translate('stat')} ({args.refName})",
             ],
             ax=ax1,
             alpha=1.0,
@@ -996,7 +999,7 @@ def plot_uncertainties_with_ratio(
                     f"Systematic {syst} smaller than threshold of {error_threshold}"
                 )
                 continue
-            name = translate_label.get(syst, syst)
+            name = translate(syst)
             logger.debug(f"Plot systematic {syst} = {name}")
 
             if syst == "err_stat":
