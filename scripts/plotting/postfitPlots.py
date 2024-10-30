@@ -11,14 +11,14 @@ from matplotlib.lines import Line2D
 
 from narf import ioutils
 from utilities import boostHistHelpers as hh
-from utilities import common, differential, logging
+from utilities import common, differential, logging, parsing
 from utilities.io_tools import combinetf_input, input_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 
 hep.style.use(hep.style.ROOT)
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "infile", type=str, help="hdf5 file from combinetf2 or root file from combinetf1"
 )

@@ -5,7 +5,7 @@ import numpy as np
 
 import narf
 from utilities import boostHistHelpers as hh
-from utilities import common, differential, logging
+from utilities import common, differential, logging, parsing
 from utilities.io_tools import output_tools
 from wremnants import (
     helicity_utils,
@@ -18,7 +18,7 @@ from wremnants.datasets.datagroups import Datagroups
 from wremnants.datasets.dataset_tools import getDatasets
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
-parser, initargs = common.common_parser(analysis_label)
+parser, initargs = parsing.common_parser(analysis_label)
 
 parser.add_argument(
     "--skipHelicityXsecs",
@@ -77,12 +77,12 @@ parser.add_argument(
     "--theoryCorrections", action="store_true", help="Apply default theory corrections"
 )
 
-parser = common.set_parser_default(parser, "filterProcs", common.vprocs)
+parser = parsing.set_parser_default(parser, "filterProcs", common.vprocs)
 args = parser.parse_args()
 
 if not args.theoryCorrections:
-    parser = common.set_parser_default(parser, "theoryCorr", [])
-    parser = common.set_parser_default(parser, "ewTheoryCorr", [])
+    parser = parsing.set_parser_default(parser, "theoryCorr", [])
+    parser = parsing.set_parser_default(parser, "ewTheoryCorr", [])
 args = parser.parse_args()
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)

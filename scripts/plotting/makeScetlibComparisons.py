@@ -6,7 +6,7 @@ import lz4.frame
 from matplotlib import cm
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import input_tools
 from wremnants import plot_tools, theory_tools
 
@@ -113,7 +113,7 @@ lookup = {
     },
 }
 
-parser = common.base_parser()
+parser = parsing.base_parser()
 parser.add_argument(
     "-s",
     "--scetlib_files",

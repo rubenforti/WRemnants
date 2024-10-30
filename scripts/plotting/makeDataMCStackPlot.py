@@ -2,7 +2,7 @@ import hist
 from matplotlib import colormaps
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools, syst_tools
@@ -10,7 +10,7 @@ from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.regression import Regressor
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "infile", help="Output file of the analysis stage, containing ND boost histograms"
 )

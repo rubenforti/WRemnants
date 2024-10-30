@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import conversion_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
@@ -30,7 +30,7 @@ poi_type_choices = [
     "helmetapois",
 ]
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")
 parser.add_argument(
     "--name", type=str, default="Unfolded data", help="Name for main source"

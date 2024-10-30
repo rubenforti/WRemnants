@@ -19,7 +19,7 @@ from scripts.analysisTools.plotUtils.CMS_lumi import (
     histMCpartialUncLegEntry,
     setTDRStyle,
 )
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 
 logger = logging.child_logger(__name__)
@@ -115,7 +115,7 @@ gatherProcesses_ = {
 
 
 def common_plot_parser():
-    parser = common.base_parser()
+    parser = parsing.base_parser()
     parser.add_argument(
         "--nContours",
         default=51,

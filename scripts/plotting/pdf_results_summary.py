@@ -1,13 +1,10 @@
-import argparse
-
 import numpy as np
 
-from utilities import common
+from utilities import parsing
 from utilities.io_tools import combinetf_input
 from wremnants import plot_tools, theory_tools
 
-parser = argparse.ArgumentParser()
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "-r",
     "--reffile",

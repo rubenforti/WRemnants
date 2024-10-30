@@ -6,13 +6,13 @@ import numpy as np
 from scipy.stats import chi2
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import input_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools, theory_tools
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     parser.add_argument(
         "helicities",
         nargs="+",

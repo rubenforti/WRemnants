@@ -4,7 +4,7 @@ import hist
 import matplotlib as mpl
 import numpy as np
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
@@ -150,7 +150,7 @@ def plot_harmonic_polynomials(outdir, args):
 
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 

@@ -7,12 +7,12 @@ from matplotlib import cm
 from matplotlib.colors import LogNorm
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import common, logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools, theory_corrections
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "--theoryCorr",
     nargs="*",

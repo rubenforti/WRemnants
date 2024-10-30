@@ -101,11 +101,16 @@ for FILE in $STAGED_FILES_PY; do
 
 done
 
+
 # Check the exit status of flake8
 if [ $? -ne 0 ]; then
   echo "flake8 found issues. Commit aborted."
   exit 1  # Abort the commit
 fi
+
+
+# give a code rating
+pylint $STAGED_FILES_PY | grep 'Your code has been rated at'
 
 
 # Notify the user if any files were modified

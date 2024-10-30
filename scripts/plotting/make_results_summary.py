@@ -2,11 +2,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-from utilities import common
+from utilities import parsing
 from utilities.io_tools import combinetf_input, output_tools
 from wremnants import plot_tools
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "-i", "--fitresult", type=str, required=True, help="fitresults file from combinetf"
 )

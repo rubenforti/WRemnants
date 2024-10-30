@@ -3,7 +3,7 @@ import mplhep as hep
 import numpy as np
 import pandas as pd
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.io_tools.combinetf_input import get_fitresult
 from wremnants import plot_tools
@@ -20,7 +20,7 @@ def get_mass_obs(filename):
 
 hep.style.use(hep.style.ROOT)
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("inputs", nargs="+", type=str, help="Paths to fitresult files")
 args = parser.parse_args()
 
