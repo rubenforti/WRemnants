@@ -599,6 +599,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py
           -r $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789.hdf5 -f $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.hdf5
+          --showNumbers --diffPullAsym --refName asimov --pullrange '2.1'
           --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json output
           --outFolder $WEB_DIR/$PLOT_DIR -o impactsWlike.html --otherExtensions pdf png -n 50
 
