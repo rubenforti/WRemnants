@@ -61,7 +61,7 @@ process_supergroups = {
         "Other": ["Other", "PhotonInduced"],
     },
     "w_lowpu": {
-        "Z": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
+        "Zll": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
 }
@@ -72,7 +72,7 @@ process_labels = {
     "Data": "Data",
     "Zmumu": r"Z/$\gamma^{\star}\to\mu\mu$",
     "Zee": r"Z/$\gamma^{\star}\to ee$",
-    "Zll": r"Z/$\gamma^{\star}\to\mu\mu$",
+    "Zll": r"Z/$\gamma^{\star}\to\ell\ell$",
     "Z": r"Z/$\gamma^{\star}\to\mu\mu/\tau\tau$",
     "Ztautau": r"Z/$\gamma^{\star}\to\tau\tau$",
     "Wmunu": r"W$^{\pm}\to\mu\nu$",
@@ -86,14 +86,14 @@ process_labels = {
     "Other": "Other",
     "Fake": "Nonprompt",
     "Fake_e": "Nonprompt (e)",
-    "Fake_mu": r"Nonprompt (\mu)",
+    "Fake_mu": r"Nonprompt ($\mu$)",
     "Prompt": "Prompt",
 }
 
 xlabels = {
     "pt": r"$\mathit{p}_{T}^{\mu}$ (GeV)",
     "ptGen": r"$\mathit{p}_{T}^{\mu}$ (GeV)",
-    "ptW": r"$\mathit{p}_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
+    "ptW": r"$\mathit{p}_{T}^{\mu+MET}$ (GeV)",
     "ptVGen": r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
     "ptVgen": r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
     "ptWgen": r"$\mathit{p}_{T}^\mathrm{W}$ (GeV)",
@@ -117,7 +117,7 @@ xlabels = {
     "MET_pt": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
     "MET": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
     "met": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
-    "mt": r"$\mathit{m}_{T}^{\mu\nu}$ (GeV)",
+    "mt": r"$\mathit{m}_{T}^{\mu,MET}$ (GeV)",
     "mtfix": r"$\mathit{m}_{T}^\mathrm{fix}$ (GeV)",
     "etaPlus": r"$\mathit{\eta}^{\mu(+)}$",
     "etaMinus": r"$\mathit{\eta}^{\mu(-)}$",

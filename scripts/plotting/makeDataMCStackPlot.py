@@ -495,7 +495,7 @@ overflow_ax = [
 for h in args.hists:
     if any(
         x in h.split("-")
-        for x in ["pt", "ptll", "mll", "ptVgen", "ptVGen", "ptWgen", "ptZgen"]
+        for x in ["pt", "ptll", "mll", "ptW", "ptVgen", "ptVGen", "ptWgen", "ptZgen"]
     ):
         # in case of variable bin width normalize to unit (which is GeV for all of these...)
         binwnorm = 1.0
@@ -522,9 +522,11 @@ for h in args.hists:
         xlabel = f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
         action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
-        print(prednames)
         href = h if h != "ptVgen" else ("ptWgen" if "Wmunu" in prednames else "ptZgen")
         xlabel = styles.xlabels.get(href, href)
+
+    if groups.flavor in ["e", "ee"]:
+        xlabel = xlabel.replace(r"\mu", "e")
 
     fig = plot_tools.makeStackPlotWithRatio(
         histInfo,
@@ -565,6 +567,7 @@ for h in args.hists:
         noSci=args.noSciy,
         logoPos=args.logoPos,
         width_scale=1.25 if len(h.split("-")) == 1 else 1,
+        legPos=args.legPos,
         lowerLegCols=args.lowerLegCols,
         lowerLegPos=args.lowerLegPos,
         subplotsizes=args.subplotSizes,
