@@ -2,14 +2,14 @@ import mplhep as hep
 import numpy as np
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import combinetf_input, output_tools
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
 
 hep.style.use(hep.style.ROOT)
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "infile",
     type=str,
@@ -183,7 +183,7 @@ def plot(
         elif stack:
             ylim = (0, 1.1 * max(max(hist_data.values()), max(hist_pred.values())))
         else:
-            ylim = (0, 1.1 * max([max(p.values(flow=False)) for p in processes]))
+            ylim = (0, 1.1 * max([max(p.values(flow=False)) for p in procs]))
     else:
         ylim = args.ylim
 

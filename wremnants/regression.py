@@ -303,7 +303,7 @@ def transform_bernstein(x, min_x, max_x, cap_x=False):
             x[x > 1] = 1
         else:
             raise RuntimeError(
-                f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 ({x[x < 0]}) and {np.sum(x > 1)} larger 1 ({x[x > 1]}) found after transformation with xmin={xmin} and xmax={xmax}"
+                f"All values need to be within [0,1] but {np.sum(x < 0)} values smaller 0 ({x[x < 0]}) and {np.sum(x > 1)} larger 1 ({x[x > 1]}) found after transformation with xmin={min_x} and xmax={max_x}"
             )
     return x
 

@@ -48,9 +48,9 @@ class Datagroups(object):
             analysis_script = os.path.basename(self.getScriptCommand().split()[0])
             self.mode = Datagroups.analysisLabel(analysis_script)
         else:
-            if mode not in self.mode_map.values():
+            if mode not in Datagroups.mode_map.values():
                 raise ValueError(
-                    f"Unrecognized mode '{mode}.' Must be one of {set(mode_map.values())}"
+                    f"Unrecognized mode '{mode}.' Must be one of {set(Datagroups.mode_map.values())}"
                 )
             self.mode = mode
         logger.info(f"Set mode to {self.mode}")

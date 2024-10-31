@@ -307,14 +307,27 @@ def addLegend(
 
     handles.extend(extra_handles)
     labels.extend(extra_labels)
-    # TODO: The goal is to leave the data in order, but it should be less hacky
-    # handles[:] = reversed(handles)
-    # labels[:] = reversed(labels)
-    if len(handles) % 2 and ncols == 2:
-        handles.insert(
-            math.floor(len(handles) / 2), patches.Patch(color="none", label=" ")
-        )
-        labels.insert(math.floor(len(labels) / 2), " ")
+    if len(labels) == 0:
+        return
+    if len(labels) % ncols:
+        # if not all legend places are filled, add empty legend entries towards the center of the figure
+        rest = ncols - len(labels) % ncols
+        nrows = int(np.ceil(len(labels) / ncols))
+        for i in range(rest):
+            if loc == "lower left":
+                # add empty entry to the upper right
+                idx = (i + 1) * nrows - 1
+            elif loc == "upper left":
+                # add empty entry to the lower right
+                idx = i * nrows
+            elif loc == "lower right":
+                # add empty entry to the upper left
+                idx = len(labels) - i * nrows
+            elif loc == "upper right":
+                # add empty entry to the lower left
+                idx = len(labels) - (i + 1) * nrows + 1
+            handles.insert(idx, patches.Patch(color="none", label=" "))
+            labels.insert(idx, " ")
 
     text_size = get_textsize(ax, text_size)
     handler_map = get_custom_handler_map(custom_handlers)
@@ -489,6 +502,7 @@ def makeStackPlotWithRatio(
     width_scale=1.0,
     linewidth=2,
     alpha=0.7,
+    legPos="upper right",
     lowerLegCols=2,
     lowerLegPos="upper right",
     lower_panel_variations=0,
@@ -830,6 +844,7 @@ def makeStackPlotWithRatio(
     addLegend(
         ax1,
         nlegcols,
+        loc=legPos,
         extra_text=extra_text,
         extra_text_loc=extra_text_loc,
         text_size=legtext_size,
@@ -1111,6 +1126,7 @@ def makePlot2D(
     zlim=None,
     zsymmetrize=None,
     logz=False,  # logy=False, logx=False, #TODO implement
+    logoPos=2,
     cms_label="Work in progress",
     has_data=False,
     scaleleg=1.0,

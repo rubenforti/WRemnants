@@ -3,10 +3,10 @@ import os
 import h5py
 
 import narf
-from utilities import common, logging
+from utilities import common, logging, parsing
 from utilities.io_tools.conversion_tools import fitresult_pois_to_hist
 
-parser = common.base_parser()
+parser = parsing.base_parser()
 parser.add_argument(
     "--observed", type=str, default=None, help="fitresult file with observed results"
 )

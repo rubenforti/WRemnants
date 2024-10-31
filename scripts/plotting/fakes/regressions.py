@@ -5,7 +5,7 @@ from scipy import stats
 from scipy.optimize import nnls
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import histselections as sel
@@ -848,7 +848,7 @@ def plot_diagnostics_extendedABCD(
 
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     parser.add_argument(
         "infile",
         help="Output file of the analysis stage, containing ND boost histograms",

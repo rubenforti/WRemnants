@@ -15,6 +15,10 @@ args = sys.argv[:]
 sys.argv = ["-b"]
 import ROOT
 
+from utilities import logging
+
+logger = logging.child_logger(__name__)
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True

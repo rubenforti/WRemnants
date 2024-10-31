@@ -8,7 +8,9 @@ import ROOT
 import narf
 from utilities import boostHistHelpers as hh
 from utilities import common, differential, logging
-from wremnants import helicity_utils, theory_tools
+from wremnants import helicity_utils
+from wremnants import histselections as sel
+from wremnants import theory_tools
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.helicity_utils import axis_helicity
 
@@ -765,7 +767,7 @@ def syst_transform_map(base_hist, hist_name):
 
 
 def gen_scale_helicity_hist_to_variations(
-    scale_hist,
+    hist_in,
     gen_obs,
     sum_axes=[],
     pt_ax="ptVgen",
@@ -893,7 +895,7 @@ def decorrelateByAxes(
         newDecorrAxesNames = [f"{n}_decorr" for n in axesToDecorrNames]
     elif len(axesToDecorrNames) != len(newDecorrAxesNames):
         raise ValueError(
-            f"If newDecorrAxisName are specified, they must have the same length than axisToDecorrName, but they are {newDecorrAxisName} and {axisToDecorrName}."
+            f"If newDecorrAxisName are specified, they must have the same length than axisToDecorrName, but they are {newDecorrAxesNames} and {axesToDecorrNames}."
         )
 
     # subtract nominal hist to get variation only
@@ -2282,6 +2284,7 @@ def add_muonscale_smeared_hist(
 
 
 def scetlib_scale_unc_hist(h, obs, syst_ax="vars"):
+    scetlib_scale_vars = None
     hnew = hist.Hist(
         *h.axes[:-1],
         hist.axis.StrCategory(["central"] + scetlib_scale_vars(), name=syst_ax),

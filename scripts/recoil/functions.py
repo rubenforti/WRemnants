@@ -36,7 +36,7 @@ def parseBoostHist(groups, histCfg, procName, rebin=1):
     groups.setHists(hName, "", label=label, procsToRead=[procName], selectSignal=False)
     bhist = groups.groups[procName][label]
     rhist = narf.hist_to_root(bhist)
-    rhist = Rebin(rhist, rebin)
+    # rhist = Rebin(rhist, rebin) #FIXME
     rhist.SetName(label)
     rhist = doOverlow(rhist)
 

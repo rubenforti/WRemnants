@@ -1,12 +1,12 @@
 import os
 
-from utilities import common, differential, logging
+from utilities import common, differential, logging, parsing
 from utilities.common import data_dir
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
-parser, initargs = common.common_parser(analysis_label)
+parser, initargs = parsing.common_parser(analysis_label)
 
 import math
 
@@ -173,7 +173,7 @@ if isUnfolding or isTheoryAgnostic:
         logger.warning(
             "Running theory agnostic with only nominal and mass weight histograms for now."
         )
-        parser = common.set_parser_default(parser, "onlyMainHistograms", True)
+        parser = parsing.set_parser_default(parser, "onlyMainHistograms", True)
 
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [
@@ -200,7 +200,7 @@ axis_pt_eff = hist.axis.Variable(
 if args.makeMCefficiency:
     # override the pt cuts (the binning is irrelevant since a different pt axis is used)
     nbinsPtEff = axis_pt_eff_list[-1] - axis_pt_eff_list[0]
-    parser = common.set_parser_default(
+    parser = parsing.set_parser_default(
         parser, "pt", [nbinsPtEff, axis_pt_eff_list[0], axis_pt_eff_list[-1]]
     )
 
@@ -987,6 +987,12 @@ def build_graph(df, dataset):
                 f"vetoMuons_charge0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
+    if isQCDMC:
+        df = theory_tools.define_postfsr_vars(df)
+        df = df.Filter(
+            "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09) == 0"
+        )
+
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:

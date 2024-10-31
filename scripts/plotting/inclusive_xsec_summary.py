@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from narf import ioutils
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import (
     combinetf_input,
     conversion_tools,
@@ -22,7 +22,7 @@ from utilities.io_tools import (
 from utilities.styles.styles import nuisance_groupings
 from wremnants import plot_tools
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("infile", type=str, help="Combine fitresult file")
 parser.add_argument(
     "-t",

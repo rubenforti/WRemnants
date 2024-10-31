@@ -821,7 +821,7 @@ def make_Z_non_closure_binned_helper(
     correlated=False,
     scale_var_method="smearingWeightsSplines",
 ):
-    f = uproot.open(filepath)
+    f = uproot.open(filepath_correction)
 
     # TODO: convert variable axis to regular if the bin width is uniform
     hist_non_closure = f["closure"].to_hist()

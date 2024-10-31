@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import input_tools, output_tools
 from utilities.io_tools.combinetf_input import (
     get_fitresult,
@@ -13,7 +13,7 @@ from wremnants import plot_tools
 
 hep.style.use(hep.style.ROOT)
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("infile", help="Combine fitresult .root or .hdf5 file")
 parser.add_argument("--flow", action="store_true", help="Show overflow/underflow pois")
 parser.add_argument(

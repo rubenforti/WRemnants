@@ -400,7 +400,7 @@ def addGenChargeAxis(h, idx):
 
 def addSystAxis(h, size=1, offset=0, axname="systIdx"):
     return addGenericAxis(
-        h, hist.axis.Regular(size, offset, size + offset, name=axName)
+        h, hist.axis.Regular(size, offset, size + offset, name=axname)
     )
 
 

@@ -2,18 +2,17 @@ from itertools import combinations
 
 import hist
 import matplotlib as mpl
-import mplhep as hep
 import numpy as np
 from matplotlib import cm
 from matplotlib.colors import LogNorm
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import common, logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools, theory_corrections
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "--theoryCorr",
     nargs="*",
@@ -347,9 +346,12 @@ def make_plot_1d(
     )
     plot_tools.addLegend(ax, ncols=1 + int(len(names) / 7), text_size=12)
 
-    scale = max(1, np.divide(*ax.get_figure().get_size_inches()) * 0.3)
-    hep.cms.label(
-        ax=ax, lumi=None, fontsize=legsize * scale, label=args.cmsDecor, data=False
+    plot_tools.add_cms_decor(
+        ax,
+        args.cmsDecor,
+        data=False,
+        lumi=None,
+        loc=args.logoPos,
     )
 
     outfile = f"hist_{axis}_{proc}"

@@ -469,7 +469,7 @@ def plot_systs(
             hUp = narf.hist_to_root(hUp)
             hUp = functions.rebin(hUp, rebin)
             hDw = functions.rebin(hDw, rebin)
-            addUnc(h_syst, hNom, hUp, hDw)
+            # addUnc(h_syst, hNom, hUp, hDw) #FIXME
     else:
         for i in range(int(len(ax_entries))):
             hUp = hist_unc[{"recoil_unc": i * 1.0j}]
