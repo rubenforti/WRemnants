@@ -196,8 +196,8 @@ def add_explicit_BinByBinStat(
             ),
         )
     else:
-        if args.fitresult:
-            info["group"] = "binByBinStat"
+        # if args.fitresult: # FIXME
+        #     info["group"] = "binByBinStat"
         cardTool.addSystematic(
             **info,
             name=cardTool.nominalName,

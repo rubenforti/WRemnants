@@ -8,6 +8,9 @@ import dash_daq as daq
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+
+# prevent MathJax from bein loaded
+import plotly.io as pio
 from dash import dcc, html
 from dash.dependencies import Input, Output
 from plotly.subplots import make_subplots
@@ -22,6 +25,8 @@ from utilities.io_tools import (
 )
 from utilities.styles.styles import nuisance_groupings as groupings
 from wremnants import plot_tools
+
+pio.kaleido.scope.mathjax = None
 
 logger = logging.child_logger(__name__)
 
@@ -38,9 +43,9 @@ def writeOutput(fig, outfile, extensions=[], postfix=None, args=None, meta_info=
         if ext[0] != ".":
             ext = "." + ext
         output = name + ext
-        logger.debug(f"Write output file {output}")
+        logger.info(f"Write output file {output}")
         if ext == ".html":
-            fig.write_html(output, include_mathjax="cdn")
+            fig.write_html(output, include_mathjax=False)
         else:
             fig.write_image(output)
 
@@ -77,92 +82,147 @@ def get_marker(filled=True, color="#377eb8", opacity=1.0):
 
 
 def plotImpacts(
-    df, impact_title="", pulls=False, normalize=False, oneSidedImpacts=False
+    df,
+    impact_title="",
+    pulls=False,
+    normalize=False,
+    oneSidedImpacts=False,
+    pullrange=None,
+    cmsDecor=None,
+    impacts=True,
+    asym_pulls=False,
+    include_ref=False,
+    ref_name="ref.",
+    show_numbers=False,
+    show_legend=True,
+    legend_pos="bottom",
 ):
-    impacts = bool(np.count_nonzero(df["absimpact"])) and not args.noImpacts
+    impacts = bool(np.count_nonzero(df["absimpact"])) and impacts
     ncols = pulls + impacts
-    fig = make_subplots(
-        rows=1, cols=ncols, horizontal_spacing=0.1, shared_yaxes=True
-    )  # ncols > 1)
+    fig = make_subplots(rows=1, cols=ncols, horizontal_spacing=0.1, shared_yaxes=True)
+
+    if cmsDecor == "Supplementary":
+        loffset = 140
+    elif cmsDecor == "Preliminary":
+        loffset = 110
+    else:
+        loffset = 50
+
+    if legend_pos == "bottom":
+        legend = dict(
+            orientation="h",
+            xanchor="left",
+            yanchor="top",
+            x=0.0,
+            y=0.0,
+        )
+    elif legend_pos == "right":
+        legend = dict(
+            orientation="v",
+            xanchor="left",
+            yanchor="top",
+            x=1.0,
+            y=1.0,
+        )
+    else:
+        raise NotImplementedError("Supported legend positions are ['bottom', 'left']")
 
     ndisplay = len(df)
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis_title=impact_title if impacts else "Pull",
-        margin=dict(l=20, r=20, t=50, b=20),
+        margin=dict(l=loffset, r=20, t=50, b=20),
         yaxis=dict(range=[-1, ndisplay]),
-        showlegend=False,
+        showlegend=show_legend,
+        legend=legend,
+        legend_itemsizing="constant",
         height=100 * (ndisplay < 100) + ndisplay * 20.5,
-        width=800,
+        width=800 if show_legend and legend_pos == "right" else 640,
+        font=dict(
+            color="black",
+        ),
     )
 
-    include_ref = "impact_ref" in df.keys() or "constraint_ref" in df.keys()
-    impact_str = "impact" if not oneSidedImpacts else "absimpact"
+    gridargs = dict(
+        showgrid=True,
+        gridwidth=1,
+        gridcolor="Gray",
+        griddash="dash",
+        zeroline=True,
+        zerolinewidth=2,
+        zerolinecolor="Gray",
+    )
+    tickargs = dict(
+        tick0=0.0,
+        tickmode="linear",
+        tickangle=0,
+        side="top",
+    )
+    textargs = dict()
 
-    if impacts and include_ref:
+    labels = df["label"]
+    if impacts and include_ref and show_numbers:
         # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
         frmt = (
             "{:0"
             + str(
                 int(
-                    np.log10(max(df[impact_str]))
-                    if max(df[f"{impact_str}_ref"]) > 0
+                    np.log10(max(df["absimpact"]))
+                    if max(df[f"absimpact_ref"]) > 0
                     else 0
                 )
                 + 2
             )
             + ".2f}"
         )
-        nval = df[impact_str].apply(lambda x, frmt=frmt: frmt.format(x))  # .astype(str)
-        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " " * (n - len(x)))
+        nval = df["absimpact"].apply(
+            lambda x, frmt=frmt: frmt.format(x)
+        )  # .astype(str)
+        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " " * (n - len(x) + 1))
         if include_ref:
             frmt_ref = (
                 "{:0"
                 + str(
                     int(
-                        np.log10(max(df[f"{impact_str}_ref"]))
-                        if max(df[f"{impact_str}_ref"]) > 0
+                        np.log10(max(df[f"absimpact_ref"]))
+                        if max(df[f"absimpact_ref"]) > 0
                         else 0
                     )
                     + 2
                 )
                 + ".2f}"
             )
-            nval_ref = df[f"{impact_str}_ref"].apply(
+            nval_ref = df[f"absimpact_ref"].apply(
                 lambda x, frmt=frmt_ref: " (" + frmt.format(x) + ")"
-            )  # .round(2).astype(str)
+            )
             nspace_ref = nval_ref.apply(
                 lambda x, n=nval_ref.apply(len).max(): " " * (n - len(x))
             )
             nval = nval + nspace_ref + nval_ref
-        labels = df["label"].apply(
-            lambda x: x[:-1] if x.endswith("$") else r"$\text{" + x + "}"
-        )
-        labels = labels + r"\ \ \text{" + nspace + nval + "}$"
-        textargs = dict()
-    else:
-        labels = df["label"]
+        labels = labels[:-1] + nspace + nval
+    elif show_numbers:
         textargs = dict(
             texttemplate="%{x:0.2f}",
             textposition="outside",
-            textfont_size=12,
             textangle=0,
         )
 
     if impacts:
         fig.add_trace(
             go.Bar(
-                x=df[impact_str],
+                x=(
+                    np.where(df["impact"] < 0, None, df["impact"])
+                    if oneSidedImpacts
+                    else df["impact"]
+                ),
                 y=labels,
-                width=0.2 if include_ref else None,
                 orientation="h",
                 **get_marker(
-                    filled=True,
-                    color=df["impact_color"] if oneSidedImpacts else "#377eb8",
+                    filled=True, color="#377eb8", opacity=0.5 if include_ref else 1
                 ),
+                name="+1σ impact",
                 **textargs,
-                name="impacts_down",
             ),
             row=1,
             col=1,
@@ -170,50 +230,67 @@ def plotImpacts(
         if include_ref:
             fig.add_trace(
                 go.Bar(
-                    x=df[f"{impact_str}_ref"],
-                    y=labels,
-                    orientation="h",
-                    **get_marker(
-                        filled=True,
-                        color=df["impact_color"] if oneSidedImpacts else "#377eb8",
-                        opacity=0.5,
+                    x=(
+                        np.where(df["impact_ref"] < 0, None, df["impact_ref"])
+                        if oneSidedImpacts
+                        else df["impact_ref"]
                     ),
+                    y=labels,
+                    # width=0.2,
+                    orientation="h",
+                    **get_marker(filled=False, color="#377eb8"),
+                    name=f"+1σ impact ({ref_name})",
                 ),
                 row=1,
                 col=1,
             )
-        if not oneSidedImpacts:
+
+        fig.add_trace(
+            go.Bar(
+                x=(
+                    np.where(df["impact"] > 0, None, -df["impact"])
+                    if oneSidedImpacts
+                    else -df["impact"]
+                ),
+                y=labels,
+                orientation="h",
+                **get_marker(
+                    filled=True, color="#e41a1c", opacity=0.5 if include_ref else 1
+                ),
+                name="-1σ impact",
+            ),
+            row=1,
+            col=1,
+        )
+        if include_ref:
             fig.add_trace(
                 go.Bar(
-                    x=-1 * df["impact"],
+                    x=(
+                        np.where(df["impact_ref"] > 0, None, -df["impact_ref"])
+                        if oneSidedImpacts
+                        else -df["impact_ref"]
+                    ),
                     y=labels,
-                    width=0.2 if include_ref else None,
+                    # width=0.2,
                     orientation="h",
-                    **get_marker(filled=True, color="#e41a1c"),
-                    name="impacts_up",
+                    **get_marker(filled=False, color="#e41a1c"),
+                    name=f"-1σ impact ({ref_name})",
                 ),
                 row=1,
                 col=1,
             )
-            if include_ref:
-                fig.add_trace(
-                    go.Bar(
-                        x=-1 * df["impact_ref"],
-                        y=labels,
-                        orientation="h",
-                        **get_marker(filled=True, color="#e41a1c", opacity=0.5),
-                    ),
-                    row=1,
-                    col=1,
-                )
-        impact_range = np.ceil(df[impact_str].max())
+
+        # impact range in steps of 0.5
+        impact_range = np.ceil(df["impact"].max() * 2) / 2
         if include_ref:
-            impact_range = max(impact_range, np.ceil(df[f"{impact_str}_ref"].max()))
+            impact_range = max(impact_range, np.ceil(df[f"impact_ref"].max() * 2) / 2)
         impact_spacing = min(impact_range, 2 if pulls else 3)
         if impact_range % impact_spacing:
             impact_range += impact_spacing - (impact_range % impact_spacing)
         tick_spacing = impact_range / impact_spacing
         if pulls and oneSidedImpacts:
+            tick_spacing /= 2.0
+        if tick_spacing > 0.5 * impact_range:  # make sure to have at least two ticks
             tick_spacing /= 2.0
         fig.update_layout(barmode="overlay")
         fig.update_layout(
@@ -222,18 +299,9 @@ def plotImpacts(
                     -impact_range * 1.1 if not oneSidedImpacts else -impact_range / 20,
                     impact_range * 1.1,
                 ],
-                showgrid=True,
-                gridwidth=1,
-                gridcolor="Gray",
-                griddash="dash",
-                zeroline=True,
-                zerolinewidth=2,
-                zerolinecolor="Gray",
-                tickmode="linear",
-                tickangle=0,
-                tick0=0.0,
-                side="top",
                 dtick=tick_spacing,
+                **gridargs,
+                **tickargs,
             ),
         )
 
@@ -253,77 +321,83 @@ def plotImpacts(
                     thickness=1.5,
                     width=5,
                 ),
-                name="pulls",
+                name="Pulls ± Constraints",
+                showlegend=include_ref,
             ),
             row=1,
             col=ncols,
         )
-        if args.diffPullAsym:
+        if include_ref:
+            fig.add_trace(
+                go.Bar(
+                    base=df["pull_ref"] - df["constraint_ref"],
+                    x=2 * df["constraint_ref"],
+                    y=labels,
+                    orientation="h",
+                    **get_marker(filled=False, color="black"),
+                    name=f"Pulls ± Constraints ({ref_name})",
+                    showlegend=True,
+                ),
+                row=1,
+                col=ncols,
+            )
+
+        if asym_pulls:
             fig.add_trace(
                 go.Scatter(
                     x=df["newpull"],
                     y=labels,
                     mode="markers",
                     marker=dict(
-                        color="blue",
+                        color="green",
                         symbol="x",
                         size=8,
-                        line=dict(width=1),  # Adjust the thickness of the marker lines
+                        # line=dict(width=1),  # Adjust the thickness of the marker lines
                     ),
-                    name="newpulls",
+                    name="Asym. pulls",
+                    showlegend=include_ref,
                 ),
                 row=1,
                 col=ncols,
             )
 
-        if include_ref:
-            fig.add_trace(
-                go.Bar(
-                    base=df["pull_ref"],
-                    x=df["constraint_ref"],
-                    y=labels,
-                    orientation="h",
-                    **get_marker(filled=True, color="grey", opacity=0.5),
-                    name="constraint_ref",
-                ),
-                row=1,
-                col=ncols,
-            )
-            fig.add_trace(
-                go.Bar(
-                    base=df["pull_ref"],
-                    x=-1 * df["constraint_ref"],
-                    y=labels,
-                    orientation="h",
-                    **get_marker(filled=True, color="grey", opacity=0.5),
-                    name="constraint_ref",
-                ),
-                row=1,
-                col=ncols,
-            )
+            if include_ref:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df["newpull_ref"],
+                        y=labels,
+                        mode="markers",
+                        marker=dict(
+                            color="green",
+                            symbol="circle-open",
+                            size=8,
+                            line=dict(
+                                width=1
+                            ),  # Adjust the thickness of the marker lines
+                        ),
+                        name=f"Asym. pulls ({ref_name})",
+                        showlegend=include_ref,
+                    ),
+                    row=1,
+                    col=ncols,
+                )
         max_pull = np.max(df["abspull"])
-        # Round up to nearest 0.25, add 1.1 for display
-        pullrange = 0.5 * np.ceil(max_pull / 0.5) + 1.1
-        # Keep it a factor of 0.25, but no bigger than 1
-        spacing = min(1, np.ceil(pullrange) / 4.0)
-        xaxis_title = (
-            r"$\Theta - \Theta_0 \ \color{blue}{(\Theta - \Theta_0) / \sqrt{\sigma^2 -\sigma_0^2}}$"
-            if args.diffPullAsym
-            else r"$\Theta - \Theta_0$"
-        )
+        if pullrange is None:
+            # Round up to nearest 0.5, add 1.1 for display
+            pullrange = 0.5 * np.ceil(max_pull) + 1.1
+        # Keep it a factor of 0.5, but no bigger than 1
+        spacing = min(1, np.ceil(pullrange) / 2.0)
+        if spacing > 0.5 * pullrange:  # make sure to have at least two ticks
+            spacing /= 2.0
+        xaxis_title = "Nuisance parameter"
+        #  (
+        #     "θ - θ<sub>0</sub> <span style='color:blue'>θ - θ<sub>0</sub> / √(σ<sup>2</sup>-σ<sub>0</sub><sup>2</sup>) </span>"
+        #     if asym_pulls
+        #     else "Nuisance parameter"  # "θ - θ<sub>0</sub>"
+        # )
         info = dict(
             xaxis=dict(
-                range=[-pullrange, pullrange],
-                showgrid=True,
-                gridwidth=2,
-                gridcolor="LightBlue",
-                zeroline=True,
-                zerolinewidth=4,
-                zerolinecolor="Gray",
-                tickmode="linear",
-                tick0=0.0,
-                dtick=spacing,
-                side="top",
+                range=[-pullrange, pullrange], dtick=spacing, **gridargs, **tickargs
             ),
             xaxis_title=xaxis_title,
             yaxis=dict(range=[-1, ndisplay]),
@@ -335,6 +409,36 @@ def plotImpacts(
                 new_info[k.replace("axis", "axis2")] = info[k]
             info = new_info
         fig.update_layout(barmode="overlay", **info)
+
+    if cmsDecor is not None:
+        # add CMS decor
+        fig.add_annotation(
+            x=0,
+            y=1,
+            xshift=-loffset,
+            yshift=50,
+            xref="paper",
+            yref="paper",
+            showarrow=False,
+            text="CMS",
+            font=dict(size=24, color="black", family="Arial", weight="bold"),
+        )
+        if cmsDecor != "":
+            fig.add_annotation(
+                x=0,
+                y=1,
+                xshift=-loffset,
+                yshift=25,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                text=f"<i>{cmsDecor}</i>",
+                font=dict(
+                    size=20,
+                    color="black",
+                    family="Arial",
+                ),
+            )
 
     return fig
 
@@ -361,7 +465,7 @@ def readFitInfoFromFile(
         for impact, label in zip(impacts, labels):
             if group and grouping and label not in grouping:
                 continue
-            if filters and not any(re.match(f, label) for f in filters):
+            if filters and not any(re.search(f, label) for f in filters):
                 continue
             filtimpacts.append(impact)
             filtlabels.append(label)
@@ -385,10 +489,6 @@ def readFitInfoFromFile(
                     df["label"].str.contains(poi.replace("_noi", ""), regex=True)
                 ].index
             )
-    colors = np.full(len(df), "#377eb8")
-    if not group:
-        colors[df["impact"] > 0.0] = "#e41a1c"
-    df["impact_color"] = colors
 
     return df
 
@@ -418,6 +518,11 @@ def parseArgs():
         "--referenceFile",
         type=str,
         help="fitresults output ROOT/hdf5 file from combinetf for reference",
+    )
+    parser.add_argument(
+        "--refName",
+        type=str,
+        help="Name of reference input for legend",
     )
     parser.add_argument(
         "-s",
@@ -481,7 +586,25 @@ def parseArgs():
         default=None,
         help="Specify .json file to translate labels",
     )
+    parser.add_argument(
+        "--cmsDecor",
+        default="Preliminary",
+        nargs="?",
+        type=str,
+        choices=[
+            None,
+            "",
+            "Preliminary",
+            "Work in progress",
+            "Internal",
+            "Supplementary",
+        ],
+        help="CMS label",
+    )
     parser.add_argument("--noImpacts", action="store_true", help="Don't show impacts")
+    parser.add_argument(
+        "--showNumbers", action="store_true", help="Show values of impacts"
+    )
     parser.add_argument(
         "--poi",
         type=str,
@@ -490,6 +613,9 @@ def parseArgs():
     )
     parser.add_argument(
         "--poiType", type=str, default=None, help="POI type to make impacts for"
+    )
+    parser.add_argument(
+        "--pullrange", type=float, default=None, help="POI type to make impacts for"
     )
     parsers = parser.add_subparsers(dest="output_mode")
     interactive = parsers.add_parser(
@@ -558,6 +684,7 @@ def producePlots(
     normalize=False,
     fitresult_ref=None,
     grouping=None,
+    pullrange=None,
 ):
     poi_type = poi.split("_")[-1] if poi else None
 
@@ -569,14 +696,13 @@ def producePlots(
         scale = 1
 
     if poi and poi.startswith("massShift"):
-        impact_title = "Impact on mass (MeV)"
+        label = poi.replace("massShift", "")[0]
+        impact_title = f"Impact on <i>m</i><sub>{label}</sub> (MeV)"
     elif poi and poi.startswith("massDiff"):
         if poi.startswith("massDiffCharge"):
             impact_title = "Impact on mass diff. (charge) (MeV)"
         elif poi.startswith("massDiffEta"):
-            impact_title = (
-                "$\\mathrm{Impact\\ on\\ mass\\ diff. }(\\eta)\\ (\\mathrm{MeV})$"
-            )
+            impact_title = "Impact on mass diff. η (MeV)"
         else:
             impact_title = "Impact on mass diff. (MeV)"
     elif poi and poi.startswith("width"):
@@ -593,9 +719,9 @@ def producePlots(
                 )
             scale = 1.0 / (lumi * 1000)
             poi_name = "_".join(poi.split("_")[:-1])
-            impact_title = "$\\sigma_\\mathrm{fid}(" + poi_name + ") [\\mathrm{pb}]$"
+            impact_title = "σ<sub>fid</sub>(" + poi_name + ") (pb)"
         else:
-            impact_title = "$1/\\sigma_\\mathrm{fid} \\mathrm{d}\\sigma$"
+            impact_title = "1/σ<sub>fid</sub> dσ"
     elif poi_type in ["ratiometaratio"]:
         poi_name = "_".join(poi.split("_")[:-1]).replace("r_", "")
         impact_title = f"Impact on ratio {poi_name} *1000"
@@ -609,6 +735,7 @@ def producePlots(
             args.inputFile,
             poi,
             False,
+            filters=args.filters,
             stat=args.stat / 100.0,
             normalize=normalize,
             scale=scale,
@@ -619,6 +746,7 @@ def producePlots(
             args.inputFile,
             poi,
             True,
+            filters=args.filters,
             stat=args.stat / 100.0,
             normalize=normalize,
             scale=scale,
@@ -631,17 +759,13 @@ def producePlots(
             args.referenceFile,
             poi,
             group,
+            filters=args.filters,
             stat=args.stat / 100.0,
             normalize=normalize,
             scale=scale,
             grouping=grouping,
         )
         df = df.merge(df_ref, how="outer", on="label", suffixes=("", "_ref"))
-
-        # Set default values for missing entries in respective columns
-        default_values = {"impact_color": "#377eb8", "impact_color_ref": "#377eb8"}
-        for col in df.columns:
-            df[col] = df[col].fillna(default_values.get(col, 0))
 
     if args.sort:
         logger.debug("Sort impacts")
@@ -659,6 +783,7 @@ def producePlots(
         df = df.sort_values(by=args.sort, ascending=args.ascending)
 
     df = df.fillna(0)
+
     logger.debug("Make plots")
     if args.output_mode == "interactive":
         app.layout = html.Div(
@@ -726,29 +851,36 @@ def producePlots(
             outfile = args.outputFile
         outfile = os.path.join(outdir, outfile)
         extensions = [outfile.split(".")[-1], *args.otherExtensions]
+
+        include_ref = "impact_ref" in df.keys() or "constraint_ref" in df.keys()
+
+        kwargs = dict(
+            pulls=not args.noPulls and not group,
+            impact_title=impact_title,
+            normalize=not args.absolute,
+            oneSidedImpacts=args.oneSidedImpacts,
+            pullrange=pullrange,
+            cmsDecor=args.cmsDecor,
+            impacts=not args.noImpacts,
+            asym_pulls=args.diffPullAsym,
+            include_ref=include_ref,
+            ref_name=args.refName,
+            show_numbers=args.showNumbers,
+            show_legend=not group and not args.noImpacts,
+        )
+
         if args.num and args.num < df.size:
             # in case multiple extensions are given including html, don't do the skimming on html but all other formats
             if "html" in extensions and len(extensions) > 1:
-                fig = plotImpacts(
-                    df,
-                    pulls=not args.noPulls and not group,
-                    impact_title=impact_title,
-                    normalize=not args.absolute,
-                    oneSidedImpacts=args.oneSidedImpacts,
-                )
+                fig = plotImpacts(df, legend_pos="right", **kwargs)
                 outfile_html = outfile.replace(outfile.split(".")[-1], "html")
                 writeOutput(fig, outfile_html, postfix=postfix)
                 extensions = [e for e in extensions if e != "html"]
                 outfile = outfile.replace(outfile.split(".")[-1], extensions[0])
             df = df[-args.num :]
 
-        fig = plotImpacts(
-            df,
-            pulls=not args.noPulls and not group,
-            impact_title=impact_title,
-            normalize=not args.absolute,
-            oneSidedImpacts=args.oneSidedImpacts,
-        )
+        fig = plotImpacts(df, **kwargs)
+
         writeOutput(
             fig, outfile, extensions[0:], postfix=postfix, args=args, meta_info=meta
         )
@@ -779,7 +911,9 @@ if __name__ == "__main__":
 
     if args.noImpacts:
         # do one pulls plot, ungrouped
-        producePlots(fitresult, args, None, fitresult_ref=fitresult_ref)
+        producePlots(
+            fitresult, args, None, fitresult_ref=fitresult_ref, pullrange=args.pullrange
+        )
         exit()
 
     if args.poi:
@@ -791,7 +925,13 @@ if __name__ == "__main__":
         logger.debug(f"Now at {poi}")
         if args.mode in ["both", "ungrouped"]:
             logger.debug(f"Make impact per nuisance")
-            producePlots(fitresult, args, poi, fitresult_ref=fitresult_ref)
+            producePlots(
+                fitresult,
+                args,
+                poi,
+                fitresult_ref=fitresult_ref,
+                pullrange=args.pullrange,
+            )
         if args.mode in ["both", "group"]:
             logger.debug(f"Make impact my group")
             producePlots(
@@ -801,4 +941,5 @@ if __name__ == "__main__":
                 group=True,
                 fitresult_ref=fitresult_ref,
                 grouping=grouping,
+                pullrange=args.pullrange,
             )

@@ -9,13 +9,13 @@ import numpy as np
 import uproot
 from scipy.stats import chi2
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from wremnants import plot_tools
 
 hep.style.use(hep.style.ROOT)
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("-i", "--input", type=str, help="fitresult root file with toys")
 parser.add_argument(
     "-t",

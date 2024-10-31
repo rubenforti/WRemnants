@@ -3,7 +3,7 @@ import matplotlib as mpl
 import numpy as np
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
@@ -39,7 +39,7 @@ def select_max_distance_points(p1, p2, points, pnew="both"):
 
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     parser.add_argument(
         "infile",
         help="Output file of the analysis stage, containing ND boost histograms",
@@ -207,7 +207,6 @@ if __name__ == "__main__":
     plot_tools.addLegend(
         ax1, ncols=args.legCols, text_size=args.legSize, loc=args.legPos
     )
-    plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
     outfile = "roc"
     if args.postfix:

@@ -48,9 +48,9 @@ class HDF5Writer(object):
         self.clipSystVariations = False
         self.clipSystVariationsSignal = False
         if self.clipSystVariations > 0.0:
-            self.clip = np.abs(np.log(clipSystVariations))
+            self.clip = np.abs(np.log(self.clipSystVariations))
         if self.clipSystVariationsSignal > 0.0:
-            self.clipSig = np.abs(np.log(clipSystVariationsSignal))
+            self.clipSig = np.abs(np.log(self.clipSystVariationsSignal))
 
         self.sparse = sparse
 

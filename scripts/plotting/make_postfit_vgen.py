@@ -4,11 +4,11 @@ import hist
 import numpy as np
 
 from utilities import boostHistHelpers as hh
-from utilities import common
+from utilities import parsing
 from utilities.io_tools import combinetf2_input, input_tools, output_tools
 from wremnants import plot_tools, syst_tools
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("--unfolded", type=str, required=False)
 parser.add_argument("--gen", type=str, default=None)
 parser.add_argument("-w", action="store_true")

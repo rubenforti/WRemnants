@@ -5,13 +5,13 @@ import uproot
 from scipy.stats import chi2
 
 from narf import ioutils
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import combinetf_input, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     parser.add_argument(
         "infile", help="Fitresult file from combinetf with decorrelated fit"
     )
@@ -55,8 +55,8 @@ if __name__ == "__main__":
         help="Scale the width of the figure with this factor",
     )
 
-    parser = common.set_parser_default(parser, "legCols", 1)
-    parser = common.set_parser_default(parser, "legPos", None)
+    parser = parsing.set_parser_default(parser, "legCols", 1)
+    parser = parsing.set_parser_default(parser, "legPos", None)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)

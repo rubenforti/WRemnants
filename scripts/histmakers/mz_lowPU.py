@@ -1,11 +1,11 @@
 import os
 
-from utilities import common, differential, logging
+from utilities import common, differential, logging, parsing
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
-parser, initargs = common.common_parser(analysis_label)
+parser, initargs = parsing.common_parser(analysis_label)
 parser.add_argument(
     "--flavor",
     type=str,
@@ -13,11 +13,11 @@ parser.add_argument(
     help="Flavor (ee or mumu)",
     default="mumu",
 )
-parser = common.set_parser_default(parser, "met", "RawPFMET")
-parser = common.set_parser_default(
+parser = parsing.set_parser_default(parser, "met", "RawPFMET")
+parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu", "Wenu"]
 )
-parser = common.set_parser_default(parser, "era", "2017H")
+parser = parsing.set_parser_default(parser, "era", "2017H")
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 

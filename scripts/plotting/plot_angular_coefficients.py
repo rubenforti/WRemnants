@@ -6,13 +6,13 @@ import numpy as np
 from scipy.stats import chi2
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import input_tools, output_tools
 from utilities.styles import styles
 from wremnants import plot_tools, theory_tools
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     parser.add_argument(
         "helicities",
         nargs="+",
@@ -223,7 +223,6 @@ if __name__ == "__main__":
             plot_tools.addLegend(
                 ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize
             )
-            plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
             if args.plotXsecs:
                 outfile = f"helicity_xsec_" + ("UL" if i == -1 else str(i))

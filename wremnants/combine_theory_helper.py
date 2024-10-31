@@ -598,7 +598,7 @@ class TheoryHelper(object):
             rename="scetlibNP",
         )
 
-    def add_resum_scale_uncertainty():
+    def add_resum_scale_uncertainty(self, name_append):
         obs = self.card_tool.fit_axes[:]
         if not obs:
             raise ValueError(
@@ -606,10 +606,10 @@ class TheoryHelper(object):
             )
 
         theory_hist = self.card_tool.getHistsForProcAndSyst(
-            self.samples[0], theory_hist_name
+            self.samples[0],  # theory_hist_name #FIXME
         )
-        resumscale_nuisances = match_str_axis_entries(
-            h.axes[syst_ax],
+        resumscale_nuisances = self.card_tool.match_str_axis_entries(
+            theory_hist.axes[self.syst_ax],
             [
                 "^nuB.*",
                 "nuS.*",
@@ -618,16 +618,16 @@ class TheoryHelper(object):
             ],
         )
 
-        expanded_samples = card_tool.datagroups.getProcNames(self.samples)
-        syst_ax = "vars"
+        expanded_samples = self.card_tool.datagroups.getProcNames(self.samples)
+        # syst_ax = "vars" # FIXME
 
-        card_tool.addSystematic(
+        self.card_tool.addSystematic(
             name=theory_hist,
             processes=self.samples,
             group="resumScale",
             splitGroup={"resum": ".*", "pTModeling": ".*", "theory": ".*"},
-            passToFakes=to_fakes,
-            skipEntries=[{syst_ax: x} for x in both_exclude + tnp_nuisances],
+            passToFakes=self.propagate_to_fakes,
+            # skipEntries=[{syst_ax: x} for x in both_exclude + tnp_nuisances], # FIXME
             systAxes=["downUpVar"],  # Is added by the preOpMap
             preOpMap={
                 s: lambda h: hh.syst_min_and_max_env_hist(
@@ -643,12 +643,12 @@ class TheoryHelper(object):
             systNamePrepend=f"resumScale{name_append}_",
         )
         # TODO: check if this is actually the proper treatment of these uncertainties
-        card_tool.addSystematic(
+        self.card_tool.addSystematic(
             name=theory_hist,
             processes=self.samples,
             group="resumScale",
             splitGroup={"resum": ".*", "pTModeling": ".*", "theory": ".*"},
-            passToFakes=to_fakes,
+            passToFakes=self.propagate_to_fakes,
             systAxes=["vars"],
             preOpMap={
                 s: lambda h: h[

@@ -1,11 +1,11 @@
 import os
 
-from utilities import common, differential, logging
+from utilities import common, differential, logging, parsing
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
-parser, initargs = common.common_parser(analysis_label)
+parser, initargs = parsing.common_parser(analysis_label)
 
 
 import hist
@@ -95,12 +95,12 @@ if isFloatingPOIsTheoryAgnostic:
         "Theory agnostic fit with floating POIs is not currently implemented"
     )
 
-parser = common.set_parser_default(
+parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
 )
-parser = common.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = parsing.set_parser_default(parser, "excludeProcs", ["QCD"])
 if args.addIsoMtAxes:
-    parser = common.set_parser_default(parser, "muonIsolation", [0, 1])
+    parser = parsing.set_parser_default(parser, "muonIsolation", [0, 1])
 
 if isTheoryAgnostic:
     if args.genAbsYVbinEdges and any(x < 0.0 for x in args.genAbsYVbinEdges):

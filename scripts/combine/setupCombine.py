@@ -8,7 +8,7 @@ import numpy as np
 import narf.combineutils
 import narf.ioutils
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import common, logging, parsing
 from utilities.io_tools import input_tools
 from wremnants import (
     CardTool,
@@ -97,8 +97,8 @@ def make_subparsers(parser):
                 help="Symmetrize up/Down variations in CardTool (using average)",
             )
     elif "unfolding" in subparserName:
-        parser = common.set_parser_default(parser, "massVariation", 10)
-        parser = common.set_parser_default(parser, "hdf5", True)
+        parser = parsing.set_parser_default(parser, "massVariation", 10)
+        parser = parsing.set_parser_default(parser, "hdf5", True)
 
     return parser
 
