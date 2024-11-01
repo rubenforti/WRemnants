@@ -162,30 +162,14 @@ def plotImpacts(
     textargs = dict()
 
     labels = df["label"]
-    if impacts and include_ref and show_numbers:
-        # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
-        frmt = (
-            "{:0"
-            + str(
-                int(
-                    np.log10(max(df["absimpact"]))
-                    if max(df[f"absimpact_ref"]) > 0
-                    else 0
-                )
-                + 2
-            )
-            + ".2f}"
-        )
-        nval = df["absimpact"].apply(
-            lambda x, frmt=frmt: frmt.format(x)
-        )  # .astype(str)
-        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " " * (n - len(x) + 1))
+    if impacts and show_numbers:
         if include_ref:
-            frmt_ref = (
+            # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
+            frmt = (
                 "{:0"
                 + str(
                     int(
-                        np.log10(max(df[f"absimpact_ref"]))
+                        np.log10(max(df["absimpact"]))
                         if max(df[f"absimpact_ref"]) > 0
                         else 0
                     )
@@ -193,20 +177,39 @@ def plotImpacts(
                 )
                 + ".2f}"
             )
-            nval_ref = df[f"absimpact_ref"].apply(
-                lambda x, frmt=frmt_ref: " (" + frmt.format(x) + ")"
+            nval = df["absimpact"].apply(
+                lambda x, frmt=frmt: frmt.format(x)
+            )  # .astype(str)
+            nspace = nval.apply(
+                lambda x, n=nval.apply(len).max(): " " * (n - len(x) + 1)
             )
-            nspace_ref = nval_ref.apply(
-                lambda x, n=nval_ref.apply(len).max(): " " * (n - len(x))
+            if include_ref:
+                frmt_ref = (
+                    "{:0"
+                    + str(
+                        int(
+                            np.log10(max(df[f"absimpact_ref"]))
+                            if max(df[f"absimpact_ref"]) > 0
+                            else 0
+                        )
+                        + 2
+                    )
+                    + ".2f}"
+                )
+                nval_ref = df[f"absimpact_ref"].apply(
+                    lambda x, frmt=frmt_ref: " (" + frmt.format(x) + ")"
+                )
+                nspace_ref = nval_ref.apply(
+                    lambda x, n=nval_ref.apply(len).max(): " " * (n - len(x))
+                )
+                nval = nval + nspace_ref + nval_ref
+            labels = labels + nspace + nval
+        else:
+            textargs = dict(
+                texttemplate="%{x:0.2f}",
+                textposition="outside",
+                textangle=0,
             )
-            nval = nval + nspace_ref + nval_ref
-        labels = labels[:-1] + nspace + nval
-    elif show_numbers:
-        textargs = dict(
-            texttemplate="%{x:0.2f}",
-            textposition="outside",
-            textangle=0,
-        )
 
     if impacts:
         fig.add_trace(
@@ -258,6 +261,7 @@ def plotImpacts(
                     filled=True, color="#e41a1c", opacity=0.5 if include_ref else 1
                 ),
                 name="-1σ impact",
+                **textargs,
             ),
             row=1,
             col=1,
@@ -726,6 +730,9 @@ def producePlots(
         poi_name = "_".join(poi.split("_")[:-1]).replace("r_", "")
         impact_title = f"Impact on ratio {poi_name} *1000"
         scale = 1000
+    elif poi in ["pdfAlphaS_noi"]:
+        scale = 1.5
+        impact_title = "Impact on <i>α</i><sub>S</sub> in 10<sup>-3</sup>"
     else:
         impact_title = poi
 
