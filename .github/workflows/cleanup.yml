@@ -15,6 +15,7 @@ jobs:
     steps:
       - name: setup kerberos
         run: |
+          kdestroy
           kinit -kt ~/private/.keytab cmsmwbot@CERN.CH
           klist -k -t -e ~/private/.keytab
           klist
