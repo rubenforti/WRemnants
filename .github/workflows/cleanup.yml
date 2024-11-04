@@ -13,9 +13,18 @@ jobs:
 
     # delete old folders, keep the 5 newest ones
     steps:
+      - name: delete old kerberos credentials
+        run: |
+          FILE_PATH="/tmp/krb5cc_158524"
+          if [ -f "$FILE_PATH" ]; then
+            echo "Delete $FILE_PATH and create new one"
+            rm "$FILE_PATH"
+          else
+            echo "File $FILE_PATH does not yet exist, create it."
+          fi
+
       - name: setup kerberos
         run: |
-          kdestroy
           kinit -kt ~/private/.keytab cmsmwbot@CERN.CH
           klist -k -t -e ~/private/.keytab
           klist
