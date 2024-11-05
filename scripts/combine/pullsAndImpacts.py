@@ -32,9 +32,7 @@ logger = logging.child_logger(__name__)
 
 
 def writeOutput(fig, outfile, extensions=[], postfix=None, args=None, meta_info=None):
-    name, ext = os.path.splitext(outfile)
-    if ext not in extensions:
-        extensions.append(ext)
+    name, _ = os.path.splitext(outfile)
 
     if postfix:
         name += f"_{postfix}"
@@ -159,33 +157,17 @@ def plotImpacts(
         tickangle=0,
         side="top",
     )
-    textargs = dict()
 
+    text_on_bars = False
     labels = df["label"]
-    if impacts and include_ref and show_numbers:
-        # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
-        frmt = (
-            "{:0"
-            + str(
-                int(
-                    np.log10(max(df["absimpact"]))
-                    if max(df[f"absimpact_ref"]) > 0
-                    else 0
-                )
-                + 2
-            )
-            + ".2f}"
-        )
-        nval = df["absimpact"].apply(
-            lambda x, frmt=frmt: frmt.format(x)
-        )  # .astype(str)
-        nspace = nval.apply(lambda x, n=nval.apply(len).max(): " " * (n - len(x) + 1))
+    if impacts and show_numbers:
         if include_ref:
-            frmt_ref = (
+            # append numerical values of impacts on nuisance name; fill up empty room with spaces to align numbers
+            frmt = (
                 "{:0"
                 + str(
                     int(
-                        np.log10(max(df[f"absimpact_ref"]))
+                        np.log10(max(df["absimpact"]))
                         if max(df[f"absimpact_ref"]) > 0
                         else 0
                     )
@@ -193,88 +175,101 @@ def plotImpacts(
                 )
                 + ".2f}"
             )
-            nval_ref = df[f"absimpact_ref"].apply(
-                lambda x, frmt=frmt_ref: " (" + frmt.format(x) + ")"
+            nval = df["absimpact"].apply(
+                lambda x, frmt=frmt: frmt.format(x)
+            )  # .astype(str)
+            nspace = nval.apply(
+                lambda x, n=nval.apply(len).max(): " " * (n - len(x) + 1)
             )
-            nspace_ref = nval_ref.apply(
-                lambda x, n=nval_ref.apply(len).max(): " " * (n - len(x))
-            )
-            nval = nval + nspace_ref + nval_ref
-        labels = labels[:-1] + nspace + nval
-    elif show_numbers:
-        textargs = dict(
-            texttemplate="%{x:0.2f}",
-            textposition="outside",
-            textangle=0,
-        )
+            if include_ref:
+                frmt_ref = (
+                    "{:0"
+                    + str(
+                        int(
+                            np.log10(max(df[f"absimpact_ref"]))
+                            if max(df[f"absimpact_ref"]) > 0
+                            else 0
+                        )
+                        + 2
+                    )
+                    + ".2f}"
+                )
+                nval_ref = df[f"absimpact_ref"].apply(
+                    lambda x, frmt=frmt_ref: " (" + frmt.format(x) + ")"
+                )
+                nspace_ref = nval_ref.apply(
+                    lambda x, n=nval_ref.apply(len).max(): " " * (n - len(x))
+                )
+                nval = nval + nspace_ref + nval_ref
+            labels = labels + nspace + nval
+        else:
+            text_on_bars = True
 
     if impacts:
-        fig.add_trace(
-            go.Bar(
-                x=(
-                    np.where(df["impact"] < 0, None, df["impact"])
-                    if oneSidedImpacts
-                    else df["impact"]
-                ),
-                y=labels,
+
+        def make_bar(
+            key="impact",
+            sign=1,
+            color="#377eb8",
+            name="+1σ impact",
+            text_on_bars=False,
+            filled=True,
+            opacity=1,
+        ):
+            x = (
+                np.where(sign * df[key] < 0, np.nan, sign * df[key])
+                if oneSidedImpacts
+                else sign * df[key]
+            )
+
+            if text_on_bars:
+                text = np.where(np.isnan(x), None, [f"{value:.2f}" for value in x])
+            else:
+                text = None
+
+            return go.Bar(
                 orientation="h",
-                **get_marker(
-                    filled=True, color="#377eb8", opacity=0.5 if include_ref else 1
-                ),
-                name="+1σ impact",
-                **textargs,
-            ),
+                x=x,
+                y=labels,
+                text=text,
+                textposition="outside",
+                **get_marker(filled=filled, color=color, opacity=opacity),
+                name=name,
+            )
+
+        fig.add_trace(
+            make_bar(text_on_bars=text_on_bars, opacity=0.5 if include_ref else 1),
             row=1,
             col=1,
         )
         if include_ref:
             fig.add_trace(
-                go.Bar(
-                    x=(
-                        np.where(df["impact_ref"] < 0, None, df["impact_ref"])
-                        if oneSidedImpacts
-                        else df["impact_ref"]
-                    ),
-                    y=labels,
-                    # width=0.2,
-                    orientation="h",
-                    **get_marker(filled=False, color="#377eb8"),
-                    name=f"+1σ impact ({ref_name})",
+                make_bar(
+                    key="impact_ref", name=f"+1σ impact ({ref_name})", filled=False
                 ),
                 row=1,
                 col=1,
             )
 
         fig.add_trace(
-            go.Bar(
-                x=(
-                    np.where(df["impact"] > 0, None, -df["impact"])
-                    if oneSidedImpacts
-                    else -df["impact"]
-                ),
-                y=labels,
-                orientation="h",
-                **get_marker(
-                    filled=True, color="#e41a1c", opacity=0.5 if include_ref else 1
-                ),
+            make_bar(
                 name="-1σ impact",
+                sign=-1,
+                color="#e41a1c",
+                text_on_bars=text_on_bars,
+                opacity=0.5 if include_ref else 1,
             ),
             row=1,
             col=1,
         )
         if include_ref:
             fig.add_trace(
-                go.Bar(
-                    x=(
-                        np.where(df["impact_ref"] > 0, None, -df["impact_ref"])
-                        if oneSidedImpacts
-                        else -df["impact_ref"]
-                    ),
-                    y=labels,
-                    # width=0.2,
-                    orientation="h",
-                    **get_marker(filled=False, color="#e41a1c"),
+                make_bar(
+                    key="impact_ref",
                     name=f"-1σ impact ({ref_name})",
+                    sign=-1,
+                    color="#e41a1c",
+                    filled=False,
                 ),
                 row=1,
                 col=1,
@@ -726,6 +721,9 @@ def producePlots(
         poi_name = "_".join(poi.split("_")[:-1]).replace("r_", "")
         impact_title = f"Impact on ratio {poi_name} *1000"
         scale = 1000
+    elif poi in ["pdfAlphaS_noi"]:
+        scale = 1.5
+        impact_title = "Impact on <i>α</i><sub>S</sub> in 10<sup>-3</sup>"
     else:
         impact_title = poi
 
@@ -874,7 +872,7 @@ def producePlots(
             if "html" in extensions and len(extensions) > 1:
                 fig = plotImpacts(df, legend_pos="right", **kwargs)
                 outfile_html = outfile.replace(outfile.split(".")[-1], "html")
-                writeOutput(fig, outfile_html, postfix=postfix)
+                writeOutput(fig, outfile_html, [".html"], postfix=postfix)
                 extensions = [e for e in extensions if e != "html"]
                 outfile = outfile.replace(outfile.split(".")[-1], extensions[0])
             df = df[-args.num :]
@@ -882,7 +880,7 @@ def producePlots(
         fig = plotImpacts(df, **kwargs)
 
         writeOutput(
-            fig, outfile, extensions[0:], postfix=postfix, args=args, meta_info=meta
+            fig, outfile, extensions, postfix=postfix, args=args, meta_info=meta
         )
         if args.eoscp and output_tools.is_eosuser_path(args.outFolder):
             output_tools.copy_to_eos(outdir, args.outFolder, "")

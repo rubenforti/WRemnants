@@ -250,6 +250,12 @@ def make_parser(parser=None):
     )
     parser.add_argument("--fitWidth", action="store_true", help="Fit boson width")
     parser.add_argument(
+        "--fitSin2ThetaW", action="store_true", help="Fit EW mixing angle"
+    )
+    parser.add_argument(
+        "--fitAlphaS", action="store_true", help="Fit strong coupling constant"
+    )
+    parser.add_argument(
         "--fitMassDiffW",
         type=str,
         default=None,
@@ -1426,6 +1432,101 @@ def setup(
             label=label,
         )
 
+    if (args.fitWidth and not wmass) or (not args.doStatOnly and not args.noTheoryUnc):
+        # Experimental range
+        # widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
+        # Variation from EW fit (mostly driven by alphas unc.)
+        cardTool.addSystematic(
+            "widthWeightZ",
+            rename="WidthZ0p8MeV",
+            processes=["single_v_nonsig_samples"] if wmass else signal_samples_forMass,
+            action=lambda h: h[{"width": ["widthZ2p49333GeV", "widthZ2p49493GeV"]}],
+            group="ZmassAndWidth" if wmass else "widthZ",
+            splitGroup={"theory": ".*"},
+            mirror=False,
+            noi=args.fitWidth if not wmass else False,
+            noConstraint=args.fitWidth if not wmass else False,
+            systAxes=["width"],
+            outNames=["widthZDown", "widthZUp"],
+            passToFakes=passSystToFakes,
+        )
+
+    if wmass and (args.fitWidth or (not args.doStatOnly and not args.noTheoryUnc)):
+        cardTool.addSystematic(
+            "widthWeightW",
+            rename="WidthW0p6MeV",
+            processes=signal_samples_forMass,
+            action=lambda h: h[{"width": ["widthW2p09053GeV", "widthW2p09173GeV"]}],
+            group="widthW",
+            splitGroup={"theory": ".*"},
+            mirror=False,
+            noi=args.fitWidth,
+            noConstraint=args.fitWidth,
+            systAxes=["width"],
+            outNames=["widthWDown", "widthWUp"],
+            passToFakes=passSystToFakes,
+        )
+
+    if args.fitSin2ThetaW or (not args.doStatOnly and not args.noTheoryUnc):
+        cardTool.addSystematic(
+            "sin2thetaWeightZ",
+            rename=f"Sin2thetaZ0p00003",
+            processes=["z_samples"],
+            action=lambda h: h[
+                {"sin2theta": ["sin2thetaZ0p23151", "sin2thetaZ0p23157"]}
+            ],
+            group=f"sin2thetaZ",
+            mirror=False,
+            noi=args.fitSin2ThetaW,
+            noConstraint=args.fitSin2ThetaW,
+            systAxes=["sin2theta"],
+            outNames=[f"sin2thetaZDown", f"sin2thetaZUp"],
+            passToFakes=passSystToFakes,
+        )
+
+    if args.fitAlphaS or (not args.doStatOnly and not args.noTheoryUnc):
+        theorySystSamples = ["signal_samples_inctau"]
+        if wmass:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = ["wtau_samples"]
+            theorySystSamples.append("single_v_nonsig_samples")
+        elif wlike:
+            if args.noPDFandQCDtheorySystOnSignal:
+                theorySystSamples = []
+            theorySystSamples.append("single_v_nonsig_samples")
+        if xnorm:
+            theorySystSamples = ["signal_samples"]
+
+        theory_helper = combine_theory_helper.TheoryHelper(
+            label, cardTool, args, hasNonsigSamples=(wmass and not xnorm)
+        )
+        theory_helper.configure(
+            resumUnc=args.resumUnc,
+            transitionUnc=not args.noTransitionUnc,
+            propagate_to_fakes=passSystToFakes
+            and not args.noQCDscaleFakes
+            and not xnorm,
+            np_model=args.npUnc,
+            tnp_scale=args.scaleTNP,
+            mirror_tnp=False,
+            pdf_from_corr=args.pdfUncFromCorr,
+            scale_pdf_unc=args.scalePdf,
+            samples=theorySystSamples,
+            minnlo_unc=args.minnloScaleUnc,
+            minnlo_scale=args.scaleMinnloScale,
+            minnlo_symmetrize=args.symmetrizeMinnloScale,
+        )
+
+        theory_helper.add_pdf_alphas_variation(
+            noi=args.fitAlphaS,
+            scale=args.scalePdf if not args.fitAlphaS else 1.0,
+        )
+
+        if not args.doStatOnly and not args.noTheoryUnc:
+            theory_helper.add_all_theory_unc(
+                skipFromSignal=args.noPDFandQCDtheorySystOnSignal,
+            )
+
     if args.doStatOnly:
         # print a card with only mass weights
         logger.info(
@@ -1471,94 +1572,12 @@ def setup(
                     passSystToFakes=passSystToFakes,
                 )
 
-        # Experimental range
-        # widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
-        # Variation from EW fit (mostly driven by alphas unc.)
-        cardTool.addSystematic(
-            "widthWeightZ",
-            rename="WidthZ0p8MeV",
-            processes=["single_v_nonsig_samples"] if wmass else signal_samples_forMass,
-            action=lambda h: h[{"width": ["widthZ2p49333GeV", "widthZ2p49493GeV"]}],
-            group="ZmassAndWidth" if wmass else "widthZ",
-            splitGroup={"theory": ".*"},
-            mirror=False,
-            noi=args.fitWidth if not wmass else False,
-            noConstraint=args.fitWidth if not wmass else False,
-            systAxes=["width"],
-            outNames=["widthZDown", "widthZUp"],
-            passToFakes=passSystToFakes,
-        )
-        if wmass:
-            cardTool.addSystematic(
-                "widthWeightW",
-                rename="WidthW0p6MeV",
-                processes=signal_samples_forMass,
-                action=lambda h: h[{"width": ["widthW2p09053GeV", "widthW2p09173GeV"]}],
-                group="widthW",
-                splitGroup={"theory": ".*"},
-                mirror=False,
-                noi=args.fitWidth,
-                noConstraint=args.fitWidth,
-                systAxes=["width"],
-                outNames=["widthWDown", "widthWUp"],
-                passToFakes=passSystToFakes,
-            )
-
-        cardTool.addSystematic(
-            f"sin2thetaWeightZ",
-            rename=f"Sin2thetaZ0p00003",
-            processes=["z_samples"],
-            action=lambda h: h[
-                {"sin2theta": ["sin2thetaZ0p23151", "sin2thetaZ0p23157"]}
-            ],
-            group=f"sin2thetaZ",
-            mirror=False,
-            systAxes=["sin2theta"],
-            outNames=[f"sin2thetaZDown", f"sin2thetaZUp"],
-            passToFakes=passSystToFakes,
-        )
-
         combine_helpers.add_electroweak_uncertainty(
             cardTool,
             [*args.ewUnc, *args.fsrUnc, *args.isrUnc],
             samples="single_v_samples",
             flavor=datagroups.flavor,
             passSystToFakes=passSystToFakes,
-        )
-
-        to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
-
-        theory_helper = combine_theory_helper.TheoryHelper(
-            label, cardTool, args, hasNonsigSamples=(wmass and not xnorm)
-        )
-        theory_helper.configure(
-            resumUnc=args.resumUnc,
-            transitionUnc=not args.noTransitionUnc,
-            propagate_to_fakes=to_fakes,
-            np_model=args.npUnc,
-            tnp_scale=args.scaleTNP,
-            mirror_tnp=False,
-            pdf_from_corr=args.pdfUncFromCorr,
-            scale_pdf_unc=args.scalePdf,
-            minnlo_unc=args.minnloScaleUnc,
-            minnlo_scale=args.scaleMinnloScale,
-            minnlo_symmetrize=args.symmetrizeMinnloScale,
-        )
-
-        theorySystSamples = ["signal_samples_inctau"]
-        if wmass:
-            if args.noPDFandQCDtheorySystOnSignal:
-                theorySystSamples = ["wtau_samples"]
-            theorySystSamples.append("single_v_nonsig_samples")
-        elif wlike:
-            if args.noPDFandQCDtheorySystOnSignal:
-                theorySystSamples = []
-            theorySystSamples.append("single_v_nonsig_samples")
-        if xnorm:
-            theorySystSamples = ["signal_samples"]
-
-        theory_helper.add_all_theory_unc(
-            theorySystSamples, skipFromSignal=args.noPDFandQCDtheorySystOnSignal
         )
 
     if xnorm or genfit:
