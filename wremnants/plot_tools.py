@@ -120,7 +120,7 @@ def figureWithRatio(
 
     ratio_axes = []
 
-    if subplotsizes == 2 and len(rrange) == 2 and len(rlabel) == 2:
+    if len(subplotsizes) == 2 and len(rrange) == 2 and isinstance(rlabel, str):
         rrange = [rrange]
         rlabel = [rlabel]
 
@@ -578,7 +578,7 @@ def makeStackPlotWithRatio(
             data_hist = h
 
     if add_ratio:
-        fig, ratio_axes = figureWithRatio(
+        fig, ax1, ratio_axes = figureWithRatio(
             stack[0],
             xlabel,
             ylabel,
@@ -902,7 +902,7 @@ def makeStackPlotWithRatio(
             padding_loc=lower_leg_padding,
         )
 
-    fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
+    fix_axes(ax1, ratio_axes, fig, yscale=yscale, logy=logy, noSci=noSci)
 
     lumi = float(f"{lumi:.3g}") if not density else None
     if cms_decor:
@@ -1354,7 +1354,15 @@ def fix_axes(
         ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0, 0))
 
     if ratio_axes is not None:
+        if not isinstance(ratio_axes, (list, tuple, np.ndarray)):
+            ratio_axes = [ratio_axes]
+
         ax1.set_xticklabels([])
+        for i, ax in enumerate(ratio_axes):
+            if i == len(ratio_axes) - 1:
+                redo_axis_ticks(ax, "x")
+            else:
+                ax.set_xticklabels([])
 
         # Function to get the position of the ylabel in axes coordinates
         def get_ylabel_position(ax):
@@ -1373,11 +1381,6 @@ def fix_axes(
         for i, ax in enumerate(ratio_axes):
             ax.tick_params(axis="y", pad=5)  # Set distance to axis for y-axis numbers
             ax.yaxis.set_label_coords(y_label_pos * 0.7, 1.0)
-
-            if i == len(ratio_axes) - 1:
-                redo_axis_ticks(ax, "x")
-            else:
-                ax.set_xticklabels([])
 
         if x_ticks_ndp:
             ax.xaxis.set_major_formatter(

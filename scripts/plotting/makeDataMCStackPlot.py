@@ -516,12 +516,14 @@ for h in args.hists:
 
     if len(h.split("-")) > 1:
         sp = h.split("-")
-        action = lambda x: hh.unrolledHist(
-            collapseSyst(x[select]), binwnorm=binwnorm, obs=sp
-        )
+        base_action = lambda x: collapseSyst(x[select])
+        action = lambda x: hh.unrolledHist(base_action(x), binwnorm=binwnorm, obs=sp)
         xlabel = f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
-        action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
+        base_action = lambda x: hh.projectNoFlow(
+            collapseSyst(x[select]), h, overflow_ax
+        )
+        action = base_action
         href = h if h != "ptVgen" else ("ptWgen" if "Wmunu" in prednames else "ptZgen")
         xlabel = styles.xlabels.get(href, href)
 
@@ -599,10 +601,10 @@ for h in args.hists:
         action = lambda x: x
 
     stack_yields = groups.make_yields_df(
-        args.baseName, prednames, norm_proc="Data", action=action
+        args.baseName, prednames, norm_proc="Data", action=base_action
     )
     unstacked_yields = groups.make_yields_df(
-        args.baseName, unstack, norm_proc="Data", action=action
+        args.baseName, unstack, norm_proc="Data", action=base_action
     )
     plot_tools.write_index_and_log(
         outdir,

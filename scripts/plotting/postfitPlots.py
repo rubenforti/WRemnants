@@ -243,6 +243,32 @@ def make_plot(
     if args.ylabel is not None:
         ylabel = args.ylabel
 
+    # compute event yield table before dividing by bin width
+    yield_tables = {
+        "Stacked processes": pd.DataFrame(
+            [
+                (
+                    k,
+                    np.sum(h.project(*axes_names).values()),
+                    np.sum(h.project(*axes_names).variances()) ** 0.5,
+                )
+                for k, h in zip(labels, h_stack)
+            ],
+            columns=["Process", "Yield", "Uncertainty"],
+        ),
+        "Unstacked processes": pd.DataFrame(
+            [
+                (
+                    k,
+                    np.sum(h.project(*axes_names).values()),
+                    np.sum(h.project(*axes_names).variances()) ** 0.5,
+                )
+                for k, h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])
+            ],
+            columns=["Process", "Yield", "Uncertainty"],
+        ),
+    }
+
     histtype_data = "errorbar"
     histtype_mc = "fill"
 
@@ -280,7 +306,7 @@ def make_plot(
         else:
             rlabel = f"${args.dataName}" + ("-" if diff else r"\,/\,") + "Pred.$"
 
-        fig, ax1, ax2 = plot_tools.figureWithRatio(
+        fig, ax1, ratio_axes = plot_tools.figureWithRatio(
             h_data,
             xlabel,
             ylabel,
@@ -295,6 +321,7 @@ def make_plot(
             automatic_scale=args.customFigureWidth is None,
             subplotsizes=args.subplotSizes,
         )
+        ax2 = ratio_axes[-1]
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -547,7 +574,7 @@ def make_plot(
             text_size=args.legSize,
             extra_text=text_pieces,
             extra_text_loc=args.extraTextLoc,
-            leg_padding=args.legPadding,
+            padding_loc=args.legPadding,
         )
 
     if ratio or diff:
@@ -559,7 +586,7 @@ def make_plot(
             extra_handles=extra_handles,
             extra_labels=extra_labels,
             custom_handlers=["stacked"],
-            leg_padding=args.lowerLegPadding,
+            padding_loc=args.lowerLegPadding,
         )
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
@@ -589,22 +616,7 @@ def make_plot(
     plot_tools.write_index_and_log(
         outdir,
         outfile,
-        yield_tables={
-            "Stacked processes": pd.DataFrame(
-                [
-                    (k, sum(h.values()), sum(h.variances()) ** 0.5)
-                    for k, h in zip(labels, h_stack)
-                ],
-                columns=["Process", "Yield", "Uncertainty"],
-            ),
-            "Unstacked processes": pd.DataFrame(
-                [
-                    (k, sum(h.values()), sum(h.variances()) ** 0.5)
-                    for k, h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])
-                ],
-                columns=["Process", "Yield", "Uncertainty"],
-            ),
-        },
+        yield_tables=yield_tables,
         args=args,
         **kwargs,
     )
