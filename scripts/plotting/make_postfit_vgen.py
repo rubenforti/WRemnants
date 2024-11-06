@@ -211,13 +211,14 @@ else:
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nom,
     hists_ratio=hists,
+    midratio_idxs=[3,1,2,6,7,8,9,],
     labels=labels,
     colors=colors,
     linestyles=linestyles,
     xlabel=xlabel,
     ylabel=ylabel,
-    rlabel="Ratio to prefit",
-    rrange=args.rrange,
+    rlabel=["$p_{T}^{\\ell\\ell}$ fit", "prefit"],
+    rrange=[[0.9, 1.1], args.rrange],
     nlegcols=args.legCols,
     lowerLegCols=args.lowerLegCols,
     lowerLegPos=args.lowerLegPos,
@@ -232,6 +233,7 @@ fig = plot_tools.makePlotWithRatioToRef(
     legtext_size=args.legSize,
     dataIdx=idx_unfolded,
     width_scale=1.25,
+    subplotsizes=[2,1,1],
 )
 eoscp = output_tools.is_eosuser_path(args.outpath)
 
