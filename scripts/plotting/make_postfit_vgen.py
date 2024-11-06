@@ -191,14 +191,14 @@ if args.xlim:
 
 hists = hists_nom + hists_err
 
-xlabels = {"absYVgen": r"\mathit{y}", "ptVgen": r"\mathit{p}_{T}"}
+xlabels = {"absYVgen": r"|\mathit{y}^{V}|", "ptVgen": r"\mathit{p}_{T}^{V}"}
 xlabel = xlabels[args.obs]
 
 if args.w:
-    xlabel = r"$" + xlabel + "^{W}$"
+    xlabel = r"$" + xlabel.replace("^{V}", "^{W}") + "$"
     ylabel = r"$W"
 else:
-    xlabel = r"$" + xlabel + "^{Z}$"
+    xlabel = r"$" + xlabel.replace("^{V}", "^{Z}") + "$"
     ylabel = r"$Z"
 ylabel += r"\ cross\ section\ "
 
@@ -219,8 +219,10 @@ fig = plot_tools.makePlotWithRatioToRef(
     rlabel="Ratio to prefit",
     rrange=args.rrange,
     nlegcols=args.legCols,
+    leg_padding=args.legPadding,
     lowerLegCols=args.lowerLegCols,
     lowerLegPos=args.lowerLegPos,
+    lower_leg_padding=args.lowerLegPadding,
     yscale=args.yscale,
     ylim=args.ylim,
     xlim=None,

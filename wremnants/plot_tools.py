@@ -288,6 +288,27 @@ def update_prop(handle, orig):
     handle.set_data([np.mean(x)] * 2, [0, 2 * y[0]])
 
 
+def padding(ncols, labels, handles, loc="auto"):
+    if len(labels) % ncols:
+        # if not all legend places are filled, add empty legend entries towards the center of the figure
+        rest = ncols - len(labels) % ncols
+        nrows = int(np.ceil(len(labels) / ncols))
+        for i in range(rest):
+            if loc == "upper right":
+                idx = (i + 1) * nrows - 1
+            elif loc == "lower right":
+                idx = i * nrows
+            elif loc == "upper left":
+                idx = len(labels) - i * nrows
+            elif loc == "lower left":
+                idx = len(labels) - (i + 1) * nrows + 1
+            else:
+                raise ValueError(f"Invalid option {loc} for legend padding location")
+            handles.insert(idx, patches.Patch(color="none", label=" "))
+            labels.insert(idx, " ")
+    return labels, handles
+
+
 def addLegend(
     ax,
     ncols=2,
@@ -302,6 +323,7 @@ def addLegend(
     markerfirst=True,
     reverse=True,
     labelcolor=None,
+    padding_loc="auto",
 ):
     handles, labels = ax.get_legend_handles_labels()
 
@@ -309,25 +331,17 @@ def addLegend(
     labels.extend(extra_labels)
     if len(labels) == 0:
         return
-    if len(labels) % ncols:
-        # if not all legend places are filled, add empty legend entries towards the center of the figure
-        rest = ncols - len(labels) % ncols
-        nrows = int(np.ceil(len(labels) / ncols))
-        for i in range(rest):
-            if loc == "lower left":
-                # add empty entry to the upper right
-                idx = (i + 1) * nrows - 1
-            elif loc == "upper left":
-                # add empty entry to the lower right
-                idx = i * nrows
-            elif loc == "lower right":
-                # add empty entry to the upper left
-                idx = len(labels) - i * nrows
-            elif loc == "upper right":
-                # add empty entry to the lower left
-                idx = len(labels) - (i + 1) * nrows + 1
-            handles.insert(idx, patches.Patch(color="none", label=" "))
-            labels.insert(idx, " ")
+
+    if padding_loc == "auto":
+        legend_to_padding_loc = {
+            "lower left": "upper right",
+            "upper left": "lower right",
+            "lower right": "upper left",
+            "upper right": "lower left",
+        }
+        padding_loc = legend_to_padding_loc.get(loc, "lower right")
+
+    labels, handles = padding(ncols, labels, handles, padding_loc)
 
     text_size = get_textsize(ax, text_size)
     handler_map = get_custom_handler_map(custom_handlers)
@@ -503,9 +517,11 @@ def makeStackPlotWithRatio(
     linewidth=2,
     alpha=0.7,
     legPos="upper right",
+    leg_padding="auto",
     lowerLegCols=2,
     lowerLegPos="upper right",
     lower_panel_variations=0,
+    lower_leg_padding="auto",
     scaleRatioUnstacked=[],
     subplotsizes=[4, 2],
 ):
@@ -848,6 +864,7 @@ def makeStackPlotWithRatio(
         extra_text=extra_text,
         extra_text_loc=extra_text_loc,
         text_size=legtext_size,
+        padding_loc=leg_padding,
     )
     if add_ratio:
         addLegend(
@@ -862,6 +879,7 @@ def makeStackPlotWithRatio(
                 if fill_between is not None
                 else ["stacked"] if double_lines else []
             ),
+            padding_loc=lower_leg_padding,
         )
 
     fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
@@ -912,6 +930,8 @@ def makePlotWithRatioToRef(
     only_ratio=False,
     width_scale=1,
     linewidth=2,
+    leg_padding="auto",
+    lower_leg_padding="auto",
 ):
     if len(hists_ratio) != len(labels) or len(hists_ratio) != len(colors):
         raise ValueError(
@@ -1071,6 +1091,7 @@ def makePlotWithRatioToRef(
             extra_text=extra_text,
             extra_text_loc=extra_text_loc,
             text_size=legtext_size,
+            padding_loc=lower_leg_padding,
         )
         addLegend(
             ax2,
@@ -1080,6 +1101,7 @@ def makePlotWithRatioToRef(
             extra_handles=extra_handles,
             extra_labels=extra_labels,
             custom_handlers=["stackfilled"],
+            padding_loc=lower_leg_padding,
         )
 
         # This seems like a bug, but it's needed
@@ -1375,6 +1397,7 @@ def make_summary_plot(
     point_center_colors=None,
     cms_label="Preliminary",
     logoPos=0,
+    leg_padding="auto",
 ):
     nentries = len(df) + (bottom_offset - top_offset)
 
@@ -1491,6 +1514,7 @@ def make_summary_plot(
             labelcolor=center_color,
             extra_handles=extra_handles,
             custom_handlers=["verticleline"],
+            padding_loc=leg_padding,
         )
 
     ax1.minorticks_off()

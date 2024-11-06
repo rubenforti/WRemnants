@@ -28,7 +28,8 @@ dfw = pd.DataFrame.from_dict(
         "err_total": [6, 33, 23, 9.4, 32, 15.9, 13.3],
         "err_stat": [6, 25, 11, 6.4, 23, 9.8, 13.3],
         "Reference": [
-            "Phys. Rev. D 110, 030001",
+            # "Phys. Rev. D 110, 030001",
+            "PRD 110 (2024) 030001",
             "Phys. Rep. 532 (2013) 119",
             # "Phys. Rev. Lett. 108 (2012) 151804",
             "PRL 108 (2012) 151804",

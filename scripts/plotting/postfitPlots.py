@@ -94,6 +94,12 @@ parser.add_argument(
     help="Location in (x,y) for additional text, aligned to upper left",
 )
 parser.add_argument(
+    "--customFigureWidth",
+    type=float,
+    default=None,
+    help="Use a custom figure width, otherwise chosen automatic",
+)
+parser.add_argument(
     "--varNames", type=str, nargs="*", default=None, help="Name of variation hist"
 )
 parser.add_argument(
@@ -281,7 +287,12 @@ def make_plot(
             args.ylim,
             rlabel,
             args.rrange,
-            width_scale=1.25 if len(axes_names) == 1 else 1,
+            width_scale=(
+                args.customFigureWidth
+                if args.customFigureWidth is not None
+                else 1.25 if len(axes_names) == 1 else 1
+            ),
+            automatic_scale=args.customFigureWidth is None,
             subplotsizes=args.subplotSizes,
         )
     else:
@@ -536,6 +547,7 @@ def make_plot(
             text_size=args.legSize,
             extra_text=text_pieces,
             extra_text_loc=args.extraTextLoc,
+            leg_padding=args.legPadding,
         )
 
     if ratio or diff:
@@ -547,6 +559,7 @@ def make_plot(
             extra_handles=extra_handles,
             extra_labels=extra_labels,
             custom_handlers=["stacked"],
+            leg_padding=args.lowerLegPadding,
         )
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
@@ -807,7 +820,10 @@ else:
     procs = [
         k.replace("expproc_", "").replace(f"_{fittype};1", "")
         for k in fitresult.keys()
-        if fittype in k and k.startswith("expproc_") and "hybrid" not in k
+        if fittype in k
+        and k.startswith("expproc_")
+        and "hybrid" not in k
+        and "masked" not in k
     ]
     if args.filterProcs is not None:
         procs = [p for p in procs if p in args.filterProcs]

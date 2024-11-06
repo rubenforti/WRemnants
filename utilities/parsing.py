@@ -3,6 +3,9 @@ import os
 
 from utilities import common, logging
 
+# choices for legend padding
+choices_padding = ["auto", "lower left", "lower right", "upper left", "upper right"]
+
 
 def set_parser_default(parser, argument, newDefault):
     # change the default argument of the parser, must be called before parse_arguments
@@ -735,10 +738,27 @@ def plot_parser():
         "--legCols", type=int, default=2, help="Number of columns in legend"
     )
     parser.add_argument(
-        "--lowerLegPos", type=str, default="upper left", help="Set legend position"
+        "--legPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in legend",
     )
     parser.add_argument(
-        "--lowerLegCols", type=int, default=2, help="Number of columns in legend"
+        "--lowerLegPos",
+        type=str,
+        default="upper left",
+        help="Set lower legend position",
+    )
+    parser.add_argument(
+        "--lowerLegCols", type=int, default=2, help="Number of columns in lower legend"
+    )
+    parser.add_argument(
+        "--lowerLegPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in lower legend",
     )
     parser.add_argument(
         "--noSciy",
