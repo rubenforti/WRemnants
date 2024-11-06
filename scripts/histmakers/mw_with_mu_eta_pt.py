@@ -1284,9 +1284,6 @@ def build_graph(df, dataset):
                 ],
             )
             results.append(postfsrMuonsGenMatchStatus1)
-            df = df.Define("goodMuons_genPartPt0", "Muon_genPartIdx[goodMuons][0] >= 0 ? GenPart_pt[Muon_genPartIdx[goodMuons][0]] : -1")
-            genVsRecoPt = df.HistoBoost("genVsRecoPt", [axis_genPt, axis_prompt, axis_pt, axis_genPartFlav, axis_passIso], ["goodMuons_genPartPt0", "goodMuons_pt0", "goodMuons_genPartFlav0", "passIso", "nominal_weight"])
-            results.append(genVsRecoPt)
             #
             df = df.Define(
                 "postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && GenPart_isPrompt"
