@@ -768,8 +768,12 @@ def producePlots(
     if df.empty:
         logger.warning("Empty dataframe")
         if group and grouping:
-            logger.warning(f"This can happen if no group is found that belongs to {grouping}")
-            logger.warning("Try a different mode for --grouping or use '--mode ungrouped' to skip making impacts for groups")
+            logger.warning(
+                f"This can happen if no group is found that belongs to {grouping}"
+            )
+            logger.warning(
+                "Try a different mode for --grouping or use '--mode ungrouped' to skip making impacts for groups"
+            )
         logger.warning("Skipping this part")
         return
 
