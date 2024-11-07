@@ -3320,6 +3320,8 @@ def drawCheckTheoryBand(
     useDifferenceInLowerPanel=False,
     noLegendLowerPanel=False,
     legendEntries=[],
+    histMCpartialUnc=None,
+    histMCpartialUncLegEntry="",
 ):
 
     # moreText is used to pass some text to write somewhere (TPaveText is used)
