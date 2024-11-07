@@ -765,7 +765,6 @@ def producePlots(
         )
         df = df.merge(df_ref, how="outer", on="label", suffixes=("", "_ref"))
 
-
     if df.empty:
         logger.warning("Empty dataframe")
         if group and grouping:
@@ -773,7 +772,7 @@ def producePlots(
             logger.warning("Try a different mode for --grouping or use '--mode ungrouped' to skip making impacts for groups")
         logger.warning("Skipping this part")
         return
-        
+
     if args.sort:
         logger.debug("Sort impacts")
         if args.sort.endswith("diff"):
