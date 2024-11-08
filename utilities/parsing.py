@@ -7,16 +7,26 @@ from utilities import common, logging
 choices_padding = ["auto", "lower left", "lower right", "upper left", "upper right"]
 
 
-def set_parser_default(parser, argument, newDefault):
-    # change the default argument of the parser, must be called before parse_arguments
+def set_parser_attribute(parser, argument, attribute, newValue):
+    # change an argument of the parser, must be called before parse_arguments
     logger = logging.child_logger(__name__)
     f = next((x for x in parser._actions if x.dest == argument), None)
     if f:
-        logger.info(f" Modifying default of {f.dest} from {f.default} to {newDefault}")
-        f.default = newDefault
+        if hasattr(f, attribute):
+            logger.info(
+                f" Modifying {attribute} of {f.dest} from {getattr(f, attribute)} to {newValue}"
+            )
+            setattr(f, attribute, newValue)
+        else:
+            logger.warning(f" Parser argument {argument} has no attribute {attribute}!")
     else:
         logger.warning(f" Parser argument {argument} not found!")
     return parser
+
+
+def set_parser_default(parser, argument, newDefault):
+    # change the default argument of the parser, must be called before parse_arguments
+    return set_parser_attribute(parser, argument, "deault", newDefault)
 
 
 def set_subparsers(subparser, name, analysis_label):

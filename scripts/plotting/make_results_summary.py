@@ -73,8 +73,8 @@ text_size = 15  #
 fig = plot_tools.make_summary_plot(
     80353,
     6,
+    None,  # Don't plot stat error separately
     r"80353 $\pm$ 6",
-    # Don't plot stat error separately
     dfw_cms[["Name", "value", "err_total"]].iloc[1:, :],
     center_color="#666666",
     colors=list(dfw_cms["color"][1:]),
