@@ -18,17 +18,14 @@ dataDictV9_2018 = {
         "lumijson":lumijson,
         "das_name" : "private"
     },
-    'ZmumuPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : common.xsec_ZmmPostVFP,
-        'group': "Zmumu",
-        "das_name" : "private"
-    },    
-    'DYJetsToMuMuMass10to50PostVFP' : {
-        'filepaths' : ["{BASE_PATH}/../y2018v6/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : common.xsec_ZmmMass10to50PostVFP,
-        'group': "DYlowMass",
-        "das_name" : "/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1*v1/NANOAODSIM"
+    "ZmumuPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+        ],
+        "xsec": common.xsec_ZmmPostVFP,
+        "group": "Zmumu",
+        "das_name": "private",
     },
     'ZtautauPostVFP' : { #this sample needs to be produced using old Mass fix one
         'filepaths' : ["{BASE_PATH}/../y2018v6//DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
@@ -37,44 +34,50 @@ dataDictV9_2018 = {
        'group': "Ztautau",
       "das_name" : "/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
     },
-    'WplusmunuPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : common.xsec_WpmunuPostVFP,
-        'group': "Wmunu",
-        "das_name" : "private"
+    "ZtautauPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6//DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"
+        ],
+        # At least one tau->e or mu decay, so everything that's not all other decays
+        "xsec": common.xsec_ZmmPostVFP * common.Z_TAU_TO_LEP_RATIO,
+        "group": "Ztautau",
+        "das_name": "/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_massWgtFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM",
     },
-    'WminusmunuPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : common.xsec_WmmunuPostVFP,
-        'group': "Wmunu",
-        "das_name" : "private"
+    "WplusmunuPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/WplusJetsToMuNu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+        ],
+        "xsec": common.xsec_WpmunuPostVFP,
+        "group": "Wmunu",
+        "das_name": "private",
     },
-    'WplustaunuPostVFP' : { 
-                         'filepaths' : 
-                         ["{BASE_PATH}/../y2018v6/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",],
-                         'xsec' : common.BR_TAUToMU*common.xsec_WpmunuPostVFP,
-                         'group': "Wtaunu",
-                         "das_name" : "private"
-    },    
-    'WminustaunuPostVFP' : { 
-                         'filepaths' : 
-                         ["{BASE_PATH}/../y2018v6/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}"],
-                         'xsec' : common.BR_TAUToMU*common.xsec_WmmunuPostVFP,
-                         'group': "Wtaunu",
-                         "das_name" : "private"
+    "WminusmunuPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/WminusJetsToMuNu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+        ],
+        "xsec": common.xsec_WmmunuPostVFP,
+        "group": "Wmunu",
+        "das_name": "private",
     },
-    'TTLeptonicPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : 88.29,
-        'group' : "Top",
-        "das_name" : "/TTTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
+    "WplustaunuPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/WplusJetsToTauNu_TauToMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+        ],
+        "xsec": common.BR_TAUToMU * common.xsec_WpmunuPostVFP,
+        "group": "Wtaunu",
+        "das_name": "private",
     },
-
-    'TTSemileptonicPostVFP' : { ##could not copy full stat of this sample due to lack of storage 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : 366.34,
-        'group' : "Top",
-        "das_name" : "/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
+    "WminustaunuPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+            "{BASE_PATH}/../y2018v6/WminusJetsToTauNu_TauToMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2018_{NANO_PROD_TAG}",
+        ],
+        "xsec": common.BR_TAUToMU * common.xsec_WmmunuPostVFP,
+        "group": "Wtaunu",
+        "das_name": "private",
     },
     'SingleTschanLepDecaysPostVFP' : { 
         'filepaths' : ["{BASE_PATH}/../y2018v6/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
@@ -82,11 +85,13 @@ dataDictV9_2018 = {
         'group' : "Top",
         "das_name" : "/ST_s-channel_4f_leptonDecays_TuneCP5_13TeV-amcatnlo-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
     },
-    'SingleTtWAntitopPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : 19.55, # 35.85 * (1.0-((1-0.1086*3)*(1-0.1086*3))) = 19.5 pb
-        'group' : "Top",
-        "das_name" : "/ST_tW_antitop_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
+    "TTSemileptonicPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+        ],
+        "xsec": 366.34,
+        "group": "Top",
+        "das_name": "/TTToSemiLeptonic_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM",
     },
     'SingleTtWTopPostVFP' : { 
         'filepaths' : ["{BASE_PATH}/../y2018v6/ST_tW_top_5f_NoFullyHadronicDecays_TuneCP5_13TeV-powheg-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
@@ -156,16 +161,20 @@ dataDictV9_2018 = {
         'group' : "Diboson",
         "das_name" : "/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
     },
-    'ZZTo2Q2LPostVFP' : { 
-        'filepaths' : ["{BASE_PATH}/../y2018v6/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"],
-        'xsec' : 5.1,
-        'group' : "Diboson",
-        "das_name" : "/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM"
+    "ZZTo2Q2LPostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MC2018_{NANO_PROD_TAG}"
+        ],
+        "xsec": 5.1,
+        "group": "Diboson",
+        "das_name": "/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM",
     },
-    'QCDmuEnrichPt15PostVFP' : { #Not copied
-        'filepaths' : ["{BASE_PATH}/../y2018v6/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"],
-        'xsec' : 238800,
-        'group' : "QCD",
-        "das_name" : "/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM"
-    }
+    "QCDmuEnrichPt15PostVFP": {
+        "filepaths": [
+            "{BASE_PATH}/../y2018v6/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/NanoV9MC2018_{NANO_PROD_TAG}/"
+        ],
+        "xsec": 238800,
+        "group": "QCD",
+        "das_name": "/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v2/NANOAODSIM",
+    },
 }
