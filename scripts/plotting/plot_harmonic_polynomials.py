@@ -4,7 +4,7 @@ import hist
 import matplotlib as mpl
 import numpy as np
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
@@ -91,10 +91,7 @@ def plot_harmonic_polynomials(outdir, args):
         else:
             idx = str(i - 1)
 
-        if moments:
-            outfile = "moment"
-        else:
-            outfile = "polynomial"
+        outfile = "polynomial"
         outfile += f"_{idx}_cosTheta_phi"
         if args.postfix:
             outfile += f"_{args.postfix}"
@@ -130,11 +127,7 @@ def plot_harmonic_polynomials(outdir, args):
                 idx = r"\mathrm{UL}"
             else:
                 idx = str(i - 1)
-            if moments:
-                val_y = val_y * scales[i] + offsets[i]
-                label = rf"$\mathrm{{M}}_{idx}$"
-            else:
-                label = rf"$\mathrm{{P}}_{idx}$"
+            label = rf"$\mathrm{{P}}_{idx}$"
 
             ax1.plot(
                 val_x, val_y, color=colors(i), linestyle=linestyles[j], label=label
@@ -147,7 +140,6 @@ def plot_harmonic_polynomials(outdir, args):
         plot_tools.addLegend(
             ax1, ncols=args.legCols, loc=args.legPos, text_size=args.legSize
         )
-        plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
 
         outfile = "harmonic_polynomial"
         outfile += f"_{axis_name}"
@@ -158,7 +150,7 @@ def plot_harmonic_polynomials(outdir, args):
 
 
 if __name__ == "__main__":
-    parser = common.plot_parser()
+    parser = parsing.plot_parser()
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 

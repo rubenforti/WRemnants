@@ -1,15 +1,12 @@
-import argparse
-
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
-from utilities import common
+from utilities import parsing
 from utilities.io_tools import combinetf_input, output_tools
 from wremnants import plot_tools
 
-parser = argparse.ArgumentParser()
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "-r",
     "--reffile",

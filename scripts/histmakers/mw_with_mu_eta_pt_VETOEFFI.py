@@ -1,13 +1,13 @@
 import os
 
-from utilities import common, logging
+from utilities import common, logging, parsing
 from utilities.io_tools import output_tools
 from wremnants.datasets.datagroups import Datagroups
 
 analysis_label = Datagroups.analysisLabel(
     os.path.basename(__file__).replace("_VETOEFFI", "")
 )
-parser, initargs = common.common_parser(analysis_label)
+parser, initargs = parsing.common_parser(analysis_label)
 
 import os
 

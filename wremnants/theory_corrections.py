@@ -598,11 +598,11 @@ def read_corr(generator, corr_files, charge, axes=[]):
             )
         else:
             corrh = input_tools.read_scetlib_hist(
-                corr_files[0], charge=charge, nonsing=nons, flip_y_sign=coeff == "a4"
+                corr_files[0], charge=charge, nonsing=None, flip_y_sign=coeff == "a4"
             )
     else:
         if generator == "matrix_radish":
-            h = input_tools.read_matrixRadish_hist(corr_file[0], axes[0])
+            h = input_tools.read_matrixRadish_hist(corr_files[0], axes[0])
         elif generator == "dyturbo":
             h = input_tools.read_dyturbo_hist(corr_files, axes=axes, charge=charge)
 

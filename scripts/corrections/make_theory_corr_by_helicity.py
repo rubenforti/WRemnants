@@ -125,7 +125,7 @@ sigma4h = theory_corrections.read_combined_corrs(
 )
 if sigma4h:
     sigma4h = theory_corrections.flip_hist_y_sign(
-        sigma4h, "y" if "y" in h.axes.name else "Y"
+        sigma4h, "y" if "y" in sigma4h.axes.name else "Y"
     )
 
 dyturbo_coeffs = None

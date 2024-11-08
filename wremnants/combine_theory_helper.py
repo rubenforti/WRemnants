@@ -70,6 +70,7 @@ class TheoryHelper(object):
         as_from_corr=True,
         pdf_from_corr=False,
         pdf_operation=None,
+        samples=[],
         scale_pdf_unc=-1.0,
         minnlo_unc="byHelicityPt",
         minnlo_scale=1.0,
@@ -88,15 +89,14 @@ class TheoryHelper(object):
         self.as_from_corr = pdf_from_corr or as_from_corr
         self.pdf_operation = pdf_operation
         self.scale_pdf_unc = scale_pdf_unc
-        self.samples = []
+        self.samples = samples
         self.skipFromSignal = False
         self.minnlo_scale = minnlo_scale
         self.minnlo_symmetrize = (
             None if minnlo_symmetrize.lower() == "none" else minnlo_symmetrize
         )
 
-    def add_all_theory_unc(self, samples, skipFromSignal=False):
-        self.samples = samples
+    def add_all_theory_unc(self, skipFromSignal=False):
         self.skipFromSignal = skipFromSignal
         self.add_nonpert_unc(model=self.np_model)
         self.add_resum_unc(scale=self.tnp_scale)
@@ -598,7 +598,7 @@ class TheoryHelper(object):
             rename="scetlibNP",
         )
 
-    def add_resum_scale_uncertainty():
+    def add_resum_scale_uncertainty(self, name_append):
         obs = self.card_tool.fit_axes[:]
         if not obs:
             raise ValueError(
@@ -606,10 +606,10 @@ class TheoryHelper(object):
             )
 
         theory_hist = self.card_tool.getHistsForProcAndSyst(
-            self.samples[0], theory_hist_name
+            self.samples[0],  # theory_hist_name #FIXME
         )
-        resumscale_nuisances = match_str_axis_entries(
-            h.axes[syst_ax],
+        resumscale_nuisances = self.card_tool.match_str_axis_entries(
+            theory_hist.axes[self.syst_ax],
             [
                 "^nuB.*",
                 "nuS.*",
@@ -618,16 +618,16 @@ class TheoryHelper(object):
             ],
         )
 
-        expanded_samples = card_tool.datagroups.getProcNames(self.samples)
-        syst_ax = "vars"
+        expanded_samples = self.card_tool.datagroups.getProcNames(self.samples)
+        # syst_ax = "vars" # FIXME
 
-        card_tool.addSystematic(
+        self.card_tool.addSystematic(
             name=theory_hist,
             processes=self.samples,
             group="resumScale",
             splitGroup={"resum": ".*", "pTModeling": ".*", "theory": ".*"},
-            passToFakes=to_fakes,
-            skipEntries=[{syst_ax: x} for x in both_exclude + tnp_nuisances],
+            passToFakes=self.propagate_to_fakes,
+            # skipEntries=[{syst_ax: x} for x in both_exclude + tnp_nuisances], # FIXME
             systAxes=["downUpVar"],  # Is added by the preOpMap
             preOpMap={
                 s: lambda h: hh.syst_min_and_max_env_hist(
@@ -643,12 +643,12 @@ class TheoryHelper(object):
             systNamePrepend=f"resumScale{name_append}_",
         )
         # TODO: check if this is actually the proper treatment of these uncertainties
-        card_tool.addSystematic(
+        self.card_tool.addSystematic(
             name=theory_hist,
             processes=self.samples,
             group="resumScale",
             splitGroup={"resum": ".*", "pTModeling": ".*", "theory": ".*"},
-            passToFakes=to_fakes,
+            passToFakes=self.propagate_to_fakes,
             systAxes=["vars"],
             preOpMap={
                 s: lambda h: h[
@@ -870,6 +870,16 @@ class TheoryHelper(object):
                     systAxes=[pdf_ax],
                 )
 
+    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
+        pdf = input_tools.args_from_metadata(self.card_tool, "pdfs")[0]
+        pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
+        pdfName = pdfInfo["name"]
+        scale = scale if scale != -1.0 else pdfInfo["inflationFactor"]
+        pdf_hist = pdfName
+        pdf_corr_hist = (
+            f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
+        )
+        symmetrize = "average" if noi else "quadratic"
         asRange = pdfInfo["alphasRange"]
         asname = (
             f"{pdfName}alphaS{asRange}"
@@ -883,15 +893,18 @@ class TheoryHelper(object):
         )
         as_args = dict(
             name=asname,
-            processes=processes,
+            processes=["single_v_samples"],
             mirror=False,
+            noi=noi,
+            noConstraint=noi,
             group=pdfName,
-            splitGroup={f"{pdfName}AlphaS": ".*", "theory": ".*"},
             systAxes=["vars" if self.as_from_corr else "alphasVar"],
             scale=(0.75 if asRange == "002" else 1.5) * scale,
             symmetrize=symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
+        if not noi:
+            as_args["splitGroup"] = {f"{pdfName}AlphaS": ".*", "theory": ".*"}
         if self.as_from_corr:
             as_args["outNames"] = ["", "pdfAlphaSDown", "pdfAlphaSUp"]
         else:

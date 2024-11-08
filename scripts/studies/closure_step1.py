@@ -131,7 +131,8 @@ def make_appendix(name):
 
     return "_".join(parts)
 
-    file_sep_impact = ""
+
+file_sep_impact = ""
 
 
 for nominal, pseudodata in datasets:

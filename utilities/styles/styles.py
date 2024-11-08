@@ -61,7 +61,7 @@ process_supergroups = {
         "Other": ["Other", "PhotonInduced"],
     },
     "w_lowpu": {
-        "Z": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
+        "Zll": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
 }
@@ -72,7 +72,7 @@ process_labels = {
     "Data": "Data",
     "Zmumu": r"Z/$\gamma^{\star}\to\mu\mu$",
     "Zee": r"Z/$\gamma^{\star}\to ee$",
-    "Zll": r"Z/$\gamma^{\star}\to\mu\mu$",
+    "Zll": r"Z/$\gamma^{\star}\to\ell\ell$",
     "Z": r"Z/$\gamma^{\star}\to\mu\mu/\tau\tau$",
     "Ztautau": r"Z/$\gamma^{\star}\to\tau\tau$",
     "Wmunu": r"W$^{\pm}\to\mu\nu$",
@@ -86,14 +86,14 @@ process_labels = {
     "Other": "Other",
     "Fake": "Nonprompt",
     "Fake_e": "Nonprompt (e)",
-    "Fake_mu": r"Nonprompt (\mu)",
+    "Fake_mu": r"Nonprompt ($\mu$)",
     "Prompt": "Prompt",
 }
 
 xlabels = {
     "pt": r"$\mathit{p}_{T}^{\mu}$ (GeV)",
     "ptGen": r"$\mathit{p}_{T}^{\mu}$ (GeV)",
-    "ptW": r"$\mathit{p}_{T}^{\mu+p_{\mathrm{T}}^{miss}}$ (GeV)",
+    "ptW": r"$\mathit{p}_{T}^{\mu+MET}$ (GeV)",
     "ptVGen": r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
     "ptVgen": r"$\mathit{p}_{T}^\mathrm{V}$ (GeV)",
     "ptWgen": r"$\mathit{p}_{T}^\mathrm{W}$ (GeV)",
@@ -109,6 +109,7 @@ xlabels = {
     "absYVGen": r"|$\mathit{Y}^\mathrm{V}$|",
     "mll": r"$\mathit{m}_{\mu\mu}$ (GeV)",
     "ewMll": r"$\mathit{m}^{\mathrm{EW}}_{\mu\mu}$ (GeV)",
+    "ewMlly": r"$\mathit{m}^{\mathrm{EW}}_{\mu\mu\gamma}$ (GeV)",
     "costhetastarll": r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
     "cosThetaStarll": r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
     "phistarll": r"$\mathit{\phi}^{\star}_{\mu\mu}$",
@@ -116,7 +117,7 @@ xlabels = {
     "MET_pt": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
     "MET": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
     "met": r"$\mathit{p}_{\mathrm{T}}^{miss}$ (GeV)",
-    "mt": r"$\mathit{m}_{T}^{\mu\nu}$ (GeV)",
+    "mt": r"$\mathit{m}_{T}^{\mu,MET}$ (GeV)",
     "mtfix": r"$\mathit{m}_{T}^\mathrm{fix}$ (GeV)",
     "etaPlus": r"$\mathit{\eta}^{\mu(+)}$",
     "etaMinus": r"$\mathit{\eta}^{\mu(-)}$",
@@ -126,8 +127,6 @@ xlabels = {
     "etaDiff": r"$\mathit{\eta}^{\mu(+)} - \mathit{\eta}^{\mu(-)}$",
     "etaDiff": r"$\mathit{\eta}^{\mu(+)} - \mathit{\eta}^{\mu(-)}$",
     "etaAbsEta": r"$\mathit{\eta}^{\mu[\mathrm{argmax(|\mathit{\eta}^{\mu}|)}]}$",
-    "ewMll": "ewMll",
-    "ewMlly": "ewMlly",
     "ewLogDeltaM": "ewLogDeltaM",
     "dxy": r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": r"$I$ (GeV)",
@@ -373,7 +372,6 @@ systematics_labels = {
     # powhegFOEW variations
     "weak_no_ew": "no EW",
     "weak_no_ho": "no HO",
-    "weak_default": "nominal",
     "weak_ps": "PS",
     "weak_mt_dn": r"$m_\mathrm{t}^\mathrm{down}$",
     "weak_mt_up": r"$m_\mathrm{t}^\mathrm{up}$",
@@ -431,6 +429,20 @@ systematics_labels_idxs = {
     },
 }
 systematics_labels_idxs["virtual_ew_wlike"] = systematics_labels_idxs["virtual_ew"]
+
+
+def translate_html_to_latex(n):
+    # transform html style formatting into latex style
+    if "</" in n:
+        n = (
+            f"${n}$".replace("<i>", r"\mathit{")
+            .replace("<sub>", "_{")
+            .replace("<sup>", "^{")
+            .replace("</i>", "}")
+            .replace("</sub>", "}")
+            .replace("</sup>", "}")
+        )
+    return n
 
 
 def get_systematics_label(key, idx=0):

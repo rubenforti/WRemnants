@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.stats import chi2
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools, tex_tools
 from utilities.io_tools.combinetf2_input import get_fitresult
 
@@ -33,7 +33,7 @@ def read_fitresult(filename):
     return chi2_postfit, chi2_postfit, p_prefit, p_postft, ndf
 
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "inputs", nargs="+", type=str, help="Paths to fitresult .hdf5 files"
 )

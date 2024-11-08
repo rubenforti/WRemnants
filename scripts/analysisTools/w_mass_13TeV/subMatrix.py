@@ -141,7 +141,7 @@ def niceNameHEPDATA(name):
                     chs="+" if "Plus" in pfx else "-",
                 )
             else:
-                leptonCharge = rf"{lep}".format(lep=r"\mu")  # if "mu" in pfx else "e")
+                leptonCharge = r"\mu"  # if "mu" in pfx else "e")
         tmpvar = ""
         FakesBins = []
         pt_or_eta = ""
@@ -194,9 +194,7 @@ def niceNameHEPDATA(name):
         etaBinsEffStat = _etaBinsEffStatMu
         etalow = str(etaBinsEffStat[n1 - 1])
         etahigh = str(etaBinsEffStat[n1])
-        return rf"Eff.stat. ${l}<\eta<{h}$, ${lepCh}$".format(
-            l=etalow, h=etahigh, lepCh=leptonCharge
-        )
+        return rf"Eff.stat. ${etalow}<\eta<{etahigh}$, ${leptonCharge}$"
 
     elif "muonL1Prefire" in name:
         num = re.findall(r"\d+", name)  # get number

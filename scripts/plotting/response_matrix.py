@@ -4,12 +4,12 @@ import mplhep as hep
 import numpy as np
 
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument(
     "infile", help="Output file of the analysis stage, containing ND boost histogrdams"
 )

@@ -1,7 +1,7 @@
-from utilities import common
+from utilities import common, parsing
 from utilities.io_tools import output_tools
 
-parser, initargs = common.common_parser()
+parser, initargs = parsing.common_parser()
 
 import logging
 

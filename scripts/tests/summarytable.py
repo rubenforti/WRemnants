@@ -2,7 +2,7 @@ import pandas as pd
 import ROOT
 from scipy.stats import chi2
 
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools, tex_tools
 
 translate = {
@@ -45,7 +45,7 @@ def read_fitresult(filename):
     return val, ndf, p, status, errstatus, edmval, m, merr
 
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("inputs", nargs="+", type=str, help="Paths to fitresult files")
 args = parser.parse_args()
 

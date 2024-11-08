@@ -76,8 +76,9 @@ jobs:
           scripts/ci/run_with_singularity.sh isort . --check-only --diff --skip narf --skip wremnants-data --profile black --line-length 88
 
       - name: run Flake8
-        run: |
-          scripts/ci/run_with_singularity.sh flake8 . --select=F401,F402,F403,631,634,F823 --exclude=narf,wremnants-data --max-line-length 88
+        run: >-
+          scripts/ci/run_with_singularity.sh flake8 . --exclude=narf,wremnants-data --max-line-length 88
+          --select=F401,F402,F403,F404,F405,F406,F407,F601,F602,F621,F622,F631,F632,F633,F634,F701,F702,F704,F706,F707,F721,F722,F723,F821,F822,F823,F831,F901
 
       - name: run Black
         run: |
@@ -598,6 +599,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/pullsAndImpacts.py
           -r $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789.hdf5 -f $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.hdf5
+          --showNumbers --diffPullAsym --refName asimov --pullrange '2.1'
           --oneSidedImpacts --grouping max -t utilities/styles/nuisance_translate.json output
           --outFolder $WEB_DIR/$PLOT_DIR -o impactsWlike.html --otherExtensions pdf png -n 50
 
@@ -718,11 +720,15 @@ jobs:
           WREMNANTS_OUTDIR: ${{ needs.setenv.outputs.WREMNANTS_OUTDIR }}
           NTHREADS: ${{ needs.setenv.outputs.NTHREADS }}
           MAX_FILES: ${{ needs.setenv.outputs.MAX_FILES }}
+          WEB_DIR: ${{ needs.setenv.outputs.WEB_DIR }}
+          PLOT_DIR: ${{ needs.setenv.outputs.PLOT_DIR }}
           LUMI_SCALE: ${{ needs.setenv.outputs.LUMI_SCALE }}
         run: |
           echo "WREMNANTS_OUTDIR=${WREMNANTS_OUTDIR}" >> $GITHUB_ENV
           echo "NTHREADS=${NTHREADS}" >> $GITHUB_ENV
           echo "MAX_FILES=${MAX_FILES}" >> $GITHUB_ENV
+          echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
+          echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
           echo "LUMI_SCALE=$LUMI_SCALE" >> $GITHUB_ENV
           echo "HIST_FILE=${WREMNANTS_OUTDIR}/${OUTFILE_DILEPTON}" >> $GITHUB_ENV
 
@@ -732,20 +738,25 @@ jobs:
           submodules: 'recursive'
           lfs: 'true'
 
-      - name: dilepton analysis
+      - name: dilepton ptll-yll analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH 
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName
 
-      - name: dilepton combine ptll setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR
+      - name: dilepton combine alphaS setup
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
+          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR --fitAlphaS
 
-      - name: dilepton combine ptll fit
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ dilepton $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5
+      - name: dilepton combine alphaS fit
+        run: >-
+          cmssw-cc7 --command-to-run scripts/ci/setup_and_run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5 -t -1 --binByBinStat --doImpacts --saveHists --computeHistErrors
 
-      # TODO: Needs a pending PR I think
-      # - name: dilepton combine impacts
-      #   run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresults_123456789.root $WEB_DIR/$PLOT_DIR pullsPtll.html
+      - name: dilepton combine alphaS impacts
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults_123456789.hdf5 
+          $WEB_DIR/$PLOT_DIR impactsZ.html
 
   dilepton-plotting:
     # The type of runner that the job will run on

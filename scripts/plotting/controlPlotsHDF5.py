@@ -6,12 +6,12 @@ import numpy as np
 
 from narf import combineutils
 from utilities import boostHistHelpers as hh
-from utilities import common, logging
+from utilities import logging, parsing
 from utilities.io_tools import output_tools
 from utilities.styles import styles
 from wremnants import plot_tools
 
-parser = common.plot_parser()
+parser = parsing.plot_parser()
 parser.add_argument("infile", help="Output h5py file of the setupCombine.py")
 parser.add_argument("--logx", action="store_true", help="Enable log scale for x axis")
 parser.add_argument("--logy", action="store_true", help="Enable log scale for y axis")
