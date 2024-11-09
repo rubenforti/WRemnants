@@ -26,7 +26,7 @@ def set_parser_attribute(parser, argument, attribute, newValue):
 
 def set_parser_default(parser, argument, newDefault):
     # change the default argument of the parser, must be called before parse_arguments
-    return set_parser_attribute(parser, argument, "deault", newDefault)
+    return set_parser_attribute(parser, argument, "default", newDefault)
 
 
 def set_subparsers(subparser, name, analysis_label):

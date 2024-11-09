@@ -468,6 +468,17 @@ prednames = list(
 )
 logger.info(f"Stacked processes are {prednames}")
 
+text_pieces = []
+if args.normToData:
+    text_pieces.append("Prefit" + " (normalized)")
+else:
+    text_pieces.append("Prefit")
+
+if args.channel != "all":
+    text_pieces.append(
+        r"$\mathit{q}^\mu$ = " + ("+1" if args.channel == "plus" else "-1")
+    )
+
 
 def collapseSyst(h):
     if type(h.axes[-1]) == hist.axis.StrCategory:
@@ -557,6 +568,8 @@ for h in args.hists:
         no_fill=args.noFill,
         no_stack=args.noStack,
         no_ratio=args.noRatio,
+        extra_text=text_pieces,
+        extra_text_loc=(0.05, 0.8),
         density=args.density,
         flow=args.flow,
         cms_decor=args.cmsDecor,

@@ -1596,8 +1596,10 @@ def make_summary_plot(
         cmap = mpl.cm.get_cmap("tab10")
         colors = [cmap(i) for i in range(len(df))]
 
-    if len(colors) != len(df):
-        raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
+    if len(colors) < len(df):
+        raise ValueError(
+            f"Length of values ({nentries}) must be equal or smaller than colors!"
+        )
     if ylim is None:
         ylim = [0.2, nentries + 1.5]
 

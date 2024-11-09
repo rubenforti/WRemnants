@@ -60,10 +60,6 @@ if isW:
     )
     dfs = pd.concat((dfs, combdf), ignore_index=True)
 
-outname = f"{'Wmass' if isW else 'Wlike'}_modeling_summary"
-if args.postfix:
-    outname += f"_{args.postfix}"
-
 if isW:
     xlim = [80331, 80372]
 else:
@@ -74,9 +70,6 @@ if args.print:
         print(v.iloc[0], round(v.iloc[1], 1), round(v.iloc[3], 1), round(v.iloc[2], 2))
 
 central = dfs.iloc[0, :]
-
-eoscp = output_tools.is_eosuser_path(args.outpath)
-outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
 
 xlabel = r"$\mathit{m}_{" + ("W" if isW else "Z") + "}$ (MeV)"
 
@@ -109,6 +102,14 @@ ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(5))
 ax.xaxis.grid(False, which="both")
 ax.yaxis.grid(False, which="both")
+
+eoscp = output_tools.is_eosuser_path(args.outpath)
+outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
+
+outname = f"{'Wmass' if isW else 'Wlike'}_modeling_summary"
+if args.postfix:
+    outname += f"_{args.postfix}"
+
 plot_tools.save_pdf_and_png(outdir, outname, fig)
 plot_tools.write_index_and_log(outdir, outname)
 if eoscp:
