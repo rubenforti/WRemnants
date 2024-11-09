@@ -75,7 +75,8 @@ def figure(
     ax1 = fig.add_subplot()
 
     ax1.set_xlabel(xlabel)
-    ax1.set_ylabel(ylabel, labelpad=40, va="center", multialignment="center")
+    if ylabel is not None:
+        ax1.set_ylabel(ylabel, labelpad=40, va="center", multialignment="center")
     ax1.set_xlim(xlim)
 
     if ylim is not None:
@@ -280,7 +281,7 @@ class BandFilledHandler:
         return [line1, line2, fill]
 
 
-class MultiBandHandler(HandlerPatch):
+class DoubleBandHandler(HandlerPatch):
     def create_artists(
         self,
         legend,
@@ -304,7 +305,6 @@ class MultiBandHandler(HandlerPatch):
             color=orig_handle.get_facecolor(),
             alpha=orig_handle.get_alpha(),
         )
-
         # Create the inner polygon (narrower)
         margin = 0.25 * width
         polygon_inner = Polygon(
@@ -320,7 +320,7 @@ class MultiBandHandler(HandlerPatch):
         line = Line2D(
             [xdescent + width / 2, xdescent + width / 2],
             [ydescent, ydescent + height],
-            color=orig_handle.get_edgecolor(),
+            color="black",
             lw=linewidth_scale * orig_handle.get_linewidth(),
             linestyle=orig_handle.get_linestyle(),
         )
@@ -331,6 +331,71 @@ class MultiBandHandler(HandlerPatch):
         line.set_transform(trans)
 
         return [polygon_outer, polygon_inner, line]
+
+
+class TripleBandHandler(HandlerPatch):
+    def create_artists(
+        self,
+        legend,
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,
+        trans,
+        linewidth_scale=1.0,
+    ):
+        # Create the outer polygon
+        polygon_outer = Polygon(
+            [
+                [xdescent, ydescent],
+                [xdescent + width, ydescent],
+                [xdescent + width, ydescent + height],
+                [xdescent, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        # Create the inner polygon (narrower)
+        margin = 0.15 * width
+        polygon_inner = Polygon(
+            [
+                [xdescent + margin, ydescent],
+                [xdescent + width - margin, ydescent],
+                [xdescent + width - margin, ydescent + height],
+                [xdescent + margin, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        # Create the inner polygon (narrower)
+        margin = 0.3 * width
+        polygon_inner2 = Polygon(
+            [
+                [xdescent + margin, ydescent],
+                [xdescent + width - margin, ydescent],
+                [xdescent + width - margin, ydescent + height],
+                [xdescent + margin, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        line = Line2D(
+            [xdescent + width / 2, xdescent + width / 2],
+            [ydescent, ydescent + height],
+            color="black",
+            lw=linewidth_scale * orig_handle.get_linewidth(),
+            linestyle=orig_handle.get_linestyle(),
+        )
+
+        # Set the transformations
+        polygon_outer.set_transform(trans)
+        polygon_inner.set_transform(trans)
+        polygon_inner2.set_transform(trans)
+        line.set_transform(trans)
+
+        return [polygon_outer, polygon_inner, polygon_inner2, line]
 
 
 def get_custom_handler_map(keys):
@@ -346,9 +411,10 @@ def get_custom_handler_map(keys):
             handler_map[Polygon] = BandFilledHandler()
         elif key == "verticleline":
             handler_map[Line2D] = HandlerLine2D(update_func=update_prop)
-        elif key == "multiband":
-            handler_map[Polygon] = MultiBandHandler()
-
+        elif key == "doubleband":
+            handler_map[Polygon] = DoubleBandHandler()
+        elif key == "tripleband":
+            handler_map[Polygon] = TripleBandHandler()
     return handler_map
 
 
@@ -1493,7 +1559,7 @@ def save_pdf_and_png(outdir, basename, fig=None):
     else:
         plt.savefig(fname, bbox_inches="tight")
         plt.savefig(fname.replace(".pdf", ".png"), bbox_inches="tight")
-    print(f"Wrote file(s) {fname}(.png)")
+    logger.info(f"Wrote file(s) {fname}(.png)")
     logger.info(f"Wrote file(s) {fname}(.png)")
 
 
@@ -1574,7 +1640,6 @@ def make_summary_plot(
     capsize=10,
     width_scale=1.5,
     center_color="black",
-    cms_loc=2,
     label_points=True,
     legtext_size=None,
     lumi=None,
@@ -1742,7 +1807,7 @@ def make_summary_plot(
             extra_labels=extra_labels,
             extra_entries_first=False,
             custom_handlers=(
-                ["verticleline"] if center_unc_part is None else ["multiband"]
+                ["verticleline"] if center_unc_part is None else ["doubleband"]
             ),
             padding_loc=leg_padding,
         )
