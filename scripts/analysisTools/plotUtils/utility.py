@@ -13,12 +13,7 @@ from functools import partial
 import ROOT
 
 # sys.path.append(os.getcwd() + "/plotUtils/")
-from scripts.analysisTools.plotUtils.CMS_lumi import (
-    CMS_lumi,
-    histMCpartialUnc,
-    histMCpartialUncLegEntry,
-    setTDRStyle,
-)
+from scripts.analysisTools.plotUtils.CMS_lumi import CMS_lumi, setTDRStyle
 from utilities import logging, parsing
 from utilities.io_tools import output_tools
 
@@ -3325,6 +3320,8 @@ def drawCheckTheoryBand(
     useDifferenceInLowerPanel=False,
     noLegendLowerPanel=False,
     legendEntries=[],
+    histMCpartialUnc=None,
+    histMCpartialUncLegEntry="",
 ):
 
     # moreText is used to pass some text to write somewhere (TPaveText is used)
