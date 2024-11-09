@@ -765,6 +765,18 @@ def producePlots(
         )
         df = df.merge(df_ref, how="outer", on="label", suffixes=("", "_ref"))
 
+    if df.empty:
+        logger.warning("Empty dataframe")
+        if group and grouping:
+            logger.warning(
+                f"This can happen if no group is found that belongs to {grouping}"
+            )
+            logger.warning(
+                "Try a different mode for --grouping or use '--mode ungrouped' to skip making impacts for groups"
+            )
+        logger.warning("Skipping this part")
+        return
+
     if args.sort:
         logger.debug("Sort impacts")
         if args.sort.endswith("diff"):
@@ -931,7 +943,7 @@ if __name__ == "__main__":
                 pullrange=args.pullrange,
             )
         if args.mode in ["both", "group"]:
-            logger.debug(f"Make impact my group")
+            logger.debug(f"Make impact by group")
             producePlots(
                 fitresult,
                 args,
