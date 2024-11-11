@@ -737,6 +737,7 @@ def makeStackPlotWithRatio(
             bin_density=bin_density,
             width_scale=width_scale,
         )
+        ratio_axes = None
         ax2 = None
 
     if fitresult:
@@ -1085,6 +1086,7 @@ def makePlotWithRatioToRef(
     no_sci=False,
     lumi=None,
     center_rlabels=False,
+    swap_ratio_panels=False,
 ):
     if hists_ratio is None:
         hists_ratio = hists
@@ -1105,6 +1107,8 @@ def makePlotWithRatioToRef(
         for h in hists_ratio[not baseline :]
     ]
 
+    ratio_axes_idx = -1
+    midratio_axes_idx = 0
     midratio_hists = None
     if len(subplotsizes) == 3:
         if midratio_idxs is None:
@@ -1112,8 +1116,8 @@ def makePlotWithRatioToRef(
 
         midratio_hists = [
             hh.divideHists(
-                hists_ratio[midratio_idxs[0]],
                 hists_ratio[i],
+                hists_ratio[midratio_idxs[0]],
                 cutoff=cutoff,
                 flow=False,
                 rel_unc=True,
@@ -1121,6 +1125,12 @@ def makePlotWithRatioToRef(
             )
             for i in midratio_idxs
         ]
+
+        if swap_ratio_panels:
+            rlabel = rlabel[::-1]
+            rrange = rrange[::-1]
+            ratio_axes_idx = 0
+            midratio_axes_idx = -1
 
     if not only_ratio:
         fig, ax1, ratio_axes = figureWithRatio(
@@ -1141,7 +1151,7 @@ def makePlotWithRatioToRef(
             width_scale=width_scale,
             subplotsizes=subplotsizes,
         )
-        ax2 = ratio_axes[-1]
+        ax2 = ratio_axes[ratio_axes_idx]
     else:
         fig, ax2 = figureWithRatio(
             hists[0],
@@ -1205,9 +1215,10 @@ def makePlotWithRatioToRef(
             colors=colors,
             linestyles=linestyles,
             linewidth=linewidth,
-            lowerLegPos=lowerLegCols,
+            lowerLegPos=lowerLegPos,
             lowerLegCols=lowerLegCols,
-            legtext_size=None,
+            legtext_size=legtext_size,
+            lower_leg_padding=lower_leg_padding,
             alpha=alpha,
             yerr=False,
             fill_between=fill_between,
@@ -1217,7 +1228,7 @@ def makePlotWithRatioToRef(
         )
         if midratio_hists:
             plotRatio(
-                ratio_axes[0],
+                ratio_axes[midratio_axes_idx],
                 ratio_hists=midratio_hists,
                 labels=[labels[i] for i in midratio_idxs],
                 colors=[colors[i] for i in midratio_idxs],
@@ -1225,7 +1236,8 @@ def makePlotWithRatioToRef(
                 linewidth=linewidth,
                 lowerLegPos=lowerLegCols,
                 lowerLegCols=lowerLegCols,
-                legtext_size=None,
+                legtext_size=legtext_size,
+                lower_leg_padding=lower_leg_padding,
                 alpha=alpha,
                 yerr=False,
                 fill_between=fill_between,
@@ -1233,7 +1245,7 @@ def makePlotWithRatioToRef(
                     midratio_idxs.index(dataIdx) if dataIdx in midratio_idxs else None
                 ),
                 baseline=baseline,
-                add_legend=not only_ratio,
+                add_legend=False,
             )
 
     if not only_ratio:
@@ -1243,7 +1255,7 @@ def makePlotWithRatioToRef(
             extra_text=extra_text,
             extra_text_loc=extra_text_loc,
             text_size=legtext_size,
-            padding_loc=lower_leg_padding,
+            padding_loc=leg_padding,
         )
 
         fix_axes(
@@ -1333,9 +1345,7 @@ def plotRatio(
         )
         for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])
     ]
-    # extra_handles = [Line2D([0], [0], color=c, linestyle=l, linewidth=linewidth) for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])]
-    extra_handles = []
-    extra_labels = exclude_data(labels)
+    extra_labels = exclude_data(labels)[: len(extra_handles)]
 
     if add_legend:
         addLegend(

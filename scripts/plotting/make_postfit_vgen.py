@@ -24,6 +24,7 @@ parser.add_argument(
 parser.add_argument(
     "--ratioToData", action="store_true", help="Use data as denominator in ratio"
 )
+parser.add_argument("--twoRatios", action="store_true", help="Make two ratio panels")
 parser = parsing.set_parser_attribute(parser, "rrange", "nargs", "*")
 
 args = parser.parse_args()
@@ -225,13 +226,21 @@ if args.obs in ["ptVgen"]:
 else:
     ylabel += r"\ (pb)$"
 
-two_ratios = len(hists_nom) > 2
-if two_ratios:
+if args.twoRatios:
     # make two ratios
-    subplotsizes = [2, 1, 1]
+    subplotsizes = [3, 2, 2]
     rlabel = [
-        "Ratio to\n" + r" $\mathit{p}_{T}^{\ell\ell}$ fit",
-        "Ratio to\n " + ("data" if unfolded_data else "prefit"),
+        "Ratio to\n" + labels[3] + "fit",
+        "Ratio to\n " + ("data" if unfolded_data and args.ratioToData else "prefit"),
+    ]
+    midratio_idxs = [
+        3,
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
     ]
     if len(args.rrange) == 2:
         rrange = [args.rrange, args.rrange]
@@ -243,8 +252,9 @@ if two_ratios:
         )
 else:
     # just one ratio plot
-    subplotsizes = [2, 1]
+    subplotsizes = [4, 2]
     rlabel = "Ratio to data" if unfolded_data else "Ratio to prefit"
+    midratio_idxs = None
     if len(args.rrange) == 2:
         rrange = args.rrange
     else:
@@ -255,15 +265,7 @@ else:
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nom,
     hists_ratio=hists,
-    midratio_idxs=[
-        3,
-        1,
-        # 2, # exclude unfolded data in middle ratio
-        6,
-        7,
-        8,
-        9,
-    ],
+    midratio_idxs=midratio_idxs,
     labels=labels,
     colors=colors,
     linestyles=linestyles,
@@ -291,6 +293,8 @@ fig = plot_tools.makePlotWithRatioToRef(
     subplotsizes=subplotsizes,
     no_sci=args.noSciy,
     lumi=16.8,
+    center_rlabels=False,
+    swap_ratio_panels=True,
 )
 eoscp = output_tools.is_eosuser_path(args.outpath)
 

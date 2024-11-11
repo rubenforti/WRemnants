@@ -834,8 +834,7 @@ else:
         for k in fitresult.keys()
         if fittype in k
         and k.startswith("expproc_")
-        and "hybrid" not in k
-        and "masked" not in k
+        and all(x not in k for x in ["hybrid", "masked"])
     ]
     if args.filterProcs is not None:
         procs = [p for p in procs if p in args.filterProcs]
