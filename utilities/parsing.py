@@ -3,17 +3,30 @@ import os
 
 from utilities import common, logging
 
+# choices for legend padding
+choices_padding = ["auto", "lower left", "lower right", "upper left", "upper right"]
 
-def set_parser_default(parser, argument, newDefault):
-    # change the default argument of the parser, must be called before parse_arguments
+
+def set_parser_attribute(parser, argument, attribute, newValue):
+    # change an argument of the parser, must be called before parse_arguments
     logger = logging.child_logger(__name__)
     f = next((x for x in parser._actions if x.dest == argument), None)
     if f:
-        logger.info(f" Modifying default of {f.dest} from {f.default} to {newDefault}")
-        f.default = newDefault
+        if hasattr(f, attribute):
+            logger.info(
+                f" Modifying {attribute} of {f.dest} from {getattr(f, attribute)} to {newValue}"
+            )
+            setattr(f, attribute, newValue)
+        else:
+            logger.warning(f" Parser argument {argument} has no attribute {attribute}!")
     else:
         logger.warning(f" Parser argument {argument} not found!")
     return parser
+
+
+def set_parser_default(parser, argument, newDefault):
+    # change the default argument of the parser, must be called before parse_arguments
+    return set_parser_attribute(parser, argument, "default", newDefault)
 
 
 def set_subparsers(subparser, name, analysis_label):
@@ -735,10 +748,27 @@ def plot_parser():
         "--legCols", type=int, default=2, help="Number of columns in legend"
     )
     parser.add_argument(
-        "--lowerLegPos", type=str, default="upper left", help="Set legend position"
+        "--legPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in legend",
     )
     parser.add_argument(
-        "--lowerLegCols", type=int, default=2, help="Number of columns in legend"
+        "--lowerLegPos",
+        type=str,
+        default="upper left",
+        help="Set lower legend position",
+    )
+    parser.add_argument(
+        "--lowerLegCols", type=int, default=2, help="Number of columns in lower legend"
+    )
+    parser.add_argument(
+        "--lowerLegPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in lower legend",
     )
     parser.add_argument(
         "--noSciy",

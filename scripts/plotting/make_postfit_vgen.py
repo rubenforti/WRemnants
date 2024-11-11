@@ -2,6 +2,7 @@ import pickle
 
 import hist
 import numpy as np
+import pandas as pd
 
 from utilities import boostHistHelpers as hh
 from utilities import parsing
@@ -20,6 +21,11 @@ parser.add_argument("--prefit", action="store_true")
 parser.add_argument(
     "--noetapt-postfit", action="store_true", help="Only take prefit but not postfit"
 )
+parser.add_argument(
+    "--ratioToData", action="store_true", help="Use data as denominator in ratio"
+)
+parser.add_argument("--twoRatios", action="store_true", help="Make two ratio panels")
+parser = parsing.set_parser_attribute(parser, "rrange", "nargs", "*")
 
 args = parser.parse_args()
 
@@ -105,12 +111,9 @@ hists_err = [
     theory_down,
 ]
 
-labels = [
-    r"prefit",
-]
-colors = [
-    "gray",
-]
+labels = ["prefit"]
+names = ["Prefit"]
+colors = ["gray"]
 
 if not args.noetapt_postfit:
     etapth = etapt_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
@@ -122,20 +125,32 @@ if not args.noetapt_postfit:
         label = r"$\mathit{m}_{Z}$ "
     label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ "
     labels.append(label)
+    names.append("Postfit eta-pt")
     colors.append("#E42536" if args.w else "#964A8B")
 
 if unfolded_data:
     idx_unfolded = len(hists_nom)
 
-    unfoldedh = unfolded_data["results"]["xsec"]["chan_13TeV"]["Z"][
+    unfoldedh_err = unfolded_data["results"]["xsec"]["chan_13TeV"]["Z"][
         f"hist_{args.obs.replace('gen','Gen')}"
     ]
+
+    # fudging to disable pTV overflow bin |YV| distribution
+    if args.obs == "absYVgen":
+        unfoldedh = hh.disableFlow(
+            unfolded_data["results"]["xsec"]["chan_13TeV"]["Z"]["hist_ptVGen_absYVGen"],
+            "ptVGen",
+        ).project("absYVGen")
+        unfoldedh.variances()[...] = unfoldedh_err.variances()
+    else:
+        unfoldedh = unfoldedh_err
 
     # Thanks Obama (David)
     for ax in unfoldedh.axes:
         ax._ax.metadata["name"] = ax.name.replace("Gen", "gen")
     hists_nom.append(unfoldedh)
     labels.append("Unfolded asimov data" if args.prefit else "Unfolded data")
+    names.append("Unfolded data")
     colors.append("black")
 else:
     idx_unfolded = None
@@ -151,6 +166,7 @@ if args.ptll_fit:
         )
     else:
         labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ ")
+    names.append("Postfit ptll")
     colors.append("#f89c20")
 
 if args.ptll_yll_fit:
@@ -164,6 +180,7 @@ if args.ptll_yll_fit:
         )
     else:
         labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ")
+    names.append("Postfit ptll-yll")
     colors.append("#5790FC")
 
 linestyles = [
@@ -191,36 +208,76 @@ if args.xlim:
 
 hists = hists_nom + hists_err
 
-xlabels = {"absYVgen": r"\mathit{y}", "ptVgen": r"\mathit{p}_{T}"}
+xlabels = {"absYVgen": r"|\mathit{y}^{V}|", "ptVgen": r"\mathit{p}_{T}^{V}"}
 xlabel = xlabels[args.obs]
 
+ylabel = r"$d\sigma"
 if args.w:
-    xlabel = r"$" + xlabel + "^{W}$"
-    ylabel = r"$W"
+    ylabel += r"^{W}/d" + xlabel.replace("^{V}", "")
+    xlabel = r"$" + xlabel.replace("^{V}", "^{W}") + "$"
 else:
-    xlabel = r"$" + xlabel + "^{Z}$"
-    ylabel = r"$Z"
-ylabel += r"\ cross\ section\ "
+    ylabel += r"^{Z}/d" + xlabel.replace("^{V}", "")
+    xlabel = r"$" + xlabel.replace("^{V}", "^{Z}") + "$"
+# ylabel += r"\ cross\ section\ "
 
 if args.obs in ["ptVgen"]:
     xlabel += " (GeV)"
-    ylabel += r"(pb\,/\,GeV)$"
+    ylabel += r"\ (pb\,/\,GeV)$"
 else:
-    ylabel += r"(pb)$"
+    ylabel += r"\ (pb)$"
+
+if args.twoRatios:
+    # make two ratios
+    subplotsizes = [3, 2, 2]
+    rlabel = [
+        "Ratio to\n" + labels[3] + "fit",
+        "Ratio to\n " + ("data" if unfolded_data and args.ratioToData else "prefit"),
+    ]
+    midratio_idxs = [
+        3,
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+    ]
+    if len(args.rrange) == 2:
+        rrange = [args.rrange, args.rrange]
+    elif len(args.rrange) == 4:
+        rrange = [args.rrange[:2], args.rrange[2:]]
+    else:
+        raise IOError(
+            f"Number of arguments for rrange must be 2 or 4 but is {len(args.rrange)}"
+        )
+else:
+    # just one ratio plot
+    subplotsizes = [4, 2]
+    rlabel = "Ratio to data" if unfolded_data else "Ratio to prefit"
+    midratio_idxs = None
+    if len(args.rrange) == 2:
+        rrange = args.rrange
+    else:
+        raise IOError(
+            f"Number of arguments for rrange must be 2 but is {len(args.rrange)}"
+        )
 
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nom,
     hists_ratio=hists,
+    midratio_idxs=midratio_idxs,
     labels=labels,
     colors=colors,
     linestyles=linestyles,
     xlabel=xlabel,
     ylabel=ylabel,
-    rlabel="Ratio to prefit",
-    rrange=args.rrange,
+    rlabel=rlabel,
+    rrange=rrange,
     nlegcols=args.legCols,
+    leg_padding=args.legPadding,
     lowerLegCols=args.lowerLegCols,
     lowerLegPos=args.lowerLegPos,
+    lower_leg_padding=args.lowerLegPadding,
     yscale=args.yscale,
     ylim=args.ylim,
     xlim=None,
@@ -231,7 +288,13 @@ fig = plot_tools.makePlotWithRatioToRef(
     cms_label=args.cmsDecor,
     legtext_size=args.legSize,
     dataIdx=idx_unfolded,
+    ratio_to_data=args.ratioToData,
     width_scale=1.25,
+    subplotsizes=subplotsizes,
+    no_sci=args.noSciy,
+    lumi=16.8,
+    center_rlabels=False,
+    swap_ratio_panels=True,
 )
 eoscp = output_tools.is_eosuser_path(args.outpath)
 
@@ -251,7 +314,24 @@ if args.cmsDecor == "Preliminary":
     name += "_preliminary"
 
 plot_tools.save_pdf_and_png(outdir, name)
-plot_tools.write_index_and_log(outdir, name)
+
+hintegrals = [np.sum(h.values()) for h in hists_nom]
+
+df = pd.DataFrame()
+df["Name"] = names
+df["Integral in pb"] = hintegrals
+
+df[r"Ratio to prefit (%)"] = [100 * h / hintegrals[0] for h in hintegrals]
+if unfolded_data:
+    df[r"Ratio to unfolded data (%)"] = [
+        100 * h / hintegrals[idx_unfolded] for h in hintegrals
+    ]
+
+plot_tools.write_index_and_log(
+    outdir,
+    name,
+    yield_tables={"Differential cross sections": df},
+)
 
 if output_tools.is_eosuser_path(args.outpath) and eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)

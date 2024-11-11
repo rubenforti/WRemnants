@@ -94,6 +94,12 @@ parser.add_argument(
     help="Location in (x,y) for additional text, aligned to upper left",
 )
 parser.add_argument(
+    "--customFigureWidth",
+    type=float,
+    default=None,
+    help="Use a custom figure width, otherwise chosen automatic",
+)
+parser.add_argument(
     "--varNames", type=str, nargs="*", default=None, help="Name of variation hist"
 )
 parser.add_argument(
@@ -237,6 +243,32 @@ def make_plot(
     if args.ylabel is not None:
         ylabel = args.ylabel
 
+    # compute event yield table before dividing by bin width
+    yield_tables = {
+        "Stacked processes": pd.DataFrame(
+            [
+                (
+                    k,
+                    np.sum(h.project(*axes_names).values()),
+                    np.sum(h.project(*axes_names).variances()) ** 0.5,
+                )
+                for k, h in zip(labels, h_stack)
+            ],
+            columns=["Process", "Yield", "Uncertainty"],
+        ),
+        "Unstacked processes": pd.DataFrame(
+            [
+                (
+                    k,
+                    np.sum(h.project(*axes_names).values()),
+                    np.sum(h.project(*axes_names).variances()) ** 0.5,
+                )
+                for k, h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])
+            ],
+            columns=["Process", "Yield", "Uncertainty"],
+        ),
+    }
+
     histtype_data = "errorbar"
     histtype_mc = "fill"
 
@@ -274,16 +306,22 @@ def make_plot(
         else:
             rlabel = f"${args.dataName}" + ("-" if diff else r"\,/\,") + "Pred.$"
 
-        fig, ax1, ax2 = plot_tools.figureWithRatio(
+        fig, ax1, ratio_axes = plot_tools.figureWithRatio(
             h_data,
             xlabel,
             ylabel,
             args.ylim,
             rlabel,
             args.rrange,
-            width_scale=1.25 if len(axes_names) == 1 else 1,
+            width_scale=(
+                args.customFigureWidth
+                if args.customFigureWidth is not None
+                else 1.25 if len(axes_names) == 1 else 1
+            ),
+            automatic_scale=args.customFigureWidth is None,
             subplotsizes=args.subplotSizes,
         )
+        ax2 = ratio_axes[-1]
     else:
         fig, ax1 = plot_tools.figure(h_data, xlabel, ylabel, args.ylim)
 
@@ -536,6 +574,7 @@ def make_plot(
             text_size=args.legSize,
             extra_text=text_pieces,
             extra_text_loc=args.extraTextLoc,
+            padding_loc=args.legPadding,
         )
 
     if ratio or diff:
@@ -547,6 +586,7 @@ def make_plot(
             extra_handles=extra_handles,
             extra_labels=extra_labels,
             custom_handlers=["stacked"],
+            padding_loc=args.lowerLegPadding,
         )
 
     plot_tools.fix_axes(ax1, ax2, fig, yscale=args.yscale, noSci=args.noSciy)
@@ -576,22 +616,7 @@ def make_plot(
     plot_tools.write_index_and_log(
         outdir,
         outfile,
-        yield_tables={
-            "Stacked processes": pd.DataFrame(
-                [
-                    (k, sum(h.values()), sum(h.variances()) ** 0.5)
-                    for k, h in zip(labels, h_stack)
-                ],
-                columns=["Process", "Yield", "Uncertainty"],
-            ),
-            "Unstacked processes": pd.DataFrame(
-                [
-                    (k, sum(h.values()), sum(h.variances()) ** 0.5)
-                    for k, h in zip([args.dataName, "Inclusive"], [h_data, h_inclusive])
-                ],
-                columns=["Process", "Yield", "Uncertainty"],
-            ),
-        },
+        yield_tables=yield_tables,
         args=args,
         **kwargs,
     )
@@ -807,7 +832,9 @@ else:
     procs = [
         k.replace("expproc_", "").replace(f"_{fittype};1", "")
         for k in fitresult.keys()
-        if fittype in k and k.startswith("expproc_") and "hybrid" not in k
+        if fittype in k
+        and k.startswith("expproc_")
+        and all(x not in k for x in ["hybrid", "masked"])
     ]
     if args.filterProcs is not None:
         procs = [p for p in procs if p in args.filterProcs]

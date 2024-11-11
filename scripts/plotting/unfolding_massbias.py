@@ -116,9 +116,10 @@ for analysis, df_ana in df.groupby("analysis"):
                 xlabel = "True Z mass"
                 ylabel = "Measured Z mass"
 
-            fig, ax1, ax2 = plot_tools.figureWithRatio(
+            fig, ax1, ratio_axes = plot_tools.figureWithRatio(
                 xarr, xlabel, ylabel, ylim, rlabel, rrange, xlim=xlim, width_scale=1
             )
+            ax2 = ratio_axes[-1]
 
             ax1.plot(
                 [xlim[0], xlim[-1]],
