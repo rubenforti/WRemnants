@@ -1227,7 +1227,8 @@ def setup(
     )
     cardTool.addProcessGroup(
         "MCnoQCD",
-        lambda x: x not in ["QCD", "Data"] + (["Fake"] if simultaneousABCD else []),
+        lambda x: x
+        not in ["QCD", "Data", "Fake"] + (["Fake"] if simultaneousABCD else []),
     )
     # FIXME/FOLLOWUP: the following groups may actually not exclude the OOA when it is not defined as an independent process with specific name
     cardTool.addProcessGroup(
@@ -1315,7 +1316,8 @@ def setup(
             cardTool.nominalName,
             rename="dummy",
             processes=["MCnoQCD"],
-            action=lambda h: hh.scaleHist(h, 1.0001),
+            preOp=hh.scaleHist,
+            preOpArgs={"scale": 1.0001},
             mirror=True,
         )
 
@@ -1608,14 +1610,14 @@ def setup(
         splitGroup={"experiment": ".*", "expNoCalib": ".*"},
         passToFakes=passSystToFakes,
         mirror=True,
-        action=lambda h: hh.scaleHist(
-            h,
-            (
-                args.lumiUncertainty
-                if args.lumiUncertainty is not None
-                else cardTool.datagroups.lumi_uncertainty
-            ),
-        ),
+        preOp=hh.scaleHist,
+        preOpArgs={
+            "scale": (
+                cardTool.datagroups.lumi_uncertainty
+                if args.lumiUncertainty is None
+                else args.lumiUncertainty
+            )
+        },
     )
 
     if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
@@ -1627,7 +1629,8 @@ def setup(
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
-            action=lambda h: hh.scaleHist(h, 2.0),
+            preOp=hh.scaleHist,
+            preOpArgs={"scale": 2.0},
         )
     if wmass:
         if args.logNormalWmunu > 0.0:
@@ -1639,7 +1642,8 @@ def setup(
                 splitGroup={"experiment": ".*", "expNoCalib": ".*"},
                 passToFakes=passSystToFakes,
                 mirror=True,
-                action=lambda h: hh.scaleHist(h, args.logNormalWmunu),
+                preOp=hh.scaleHist,
+                preOpArgs={"scale": args.logNormalWmunu},
             )
         if args.logNormalFake > 0.0:
             cardTool.addSystematic(
@@ -1650,7 +1654,8 @@ def setup(
                 splitGroup={"experiment": ".*", "expNoCalib": ".*"},
                 passToFakes=False,
                 mirror=True,
-                action=lambda h: hh.scaleHist(h, args.logNormalFake),
+                preOp=hh.scaleHist,
+                preOpArgs={"scale": args.logNormalFake},
             )
         elif args.logNormalFake < 0.0:
             cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
@@ -1663,7 +1668,8 @@ def setup(
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
-            action=lambda h: hh.scaleHist(h, 1.06),
+            preOp=hh.scaleHist,
+            preOpArgs={"scale": 1.06},
         )
         cardTool.addSystematic(
             cardTool.nominalName,
@@ -1673,7 +1679,8 @@ def setup(
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
-            action=lambda h: hh.scaleHist(h, 1.16),
+            preOp=hh.scaleHist,
+            preOpArgs={"scale": 1.16},
         )
     else:
         cardTool.addSystematic(
@@ -1684,7 +1691,8 @@ def setup(
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
             passToFakes=passSystToFakes,
             mirror=True,
-            action=lambda h: hh.scaleHist(h, 1.15),
+            preOp=hh.scaleHist,
+            preOpArgs={"scale": 1.15},
         )
 
     if (
