@@ -487,12 +487,6 @@ def build_graph(df, dataset):
             "Eigen::TensorFixedSize<double, Eigen::Sizes<2>> res; auto w = nominal_weight*prefireCorr_syst; std::copy(std::begin(w), std::end(w), res.data()); return res;",
         )
 
-        # luminosity, done here as shape variation despite being a flat scaling so to facilitate propagating to fakes afterwards
-        df = df.Define(
-            "luminosityScaling",
-            f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})",
-        )
-
         for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mt, axes_mt)):
             results.append(
                 df.HistoBoost(

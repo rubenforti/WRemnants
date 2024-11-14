@@ -228,6 +228,12 @@ def make_parser(parser=None):
         help="Rebin before the selection operation (e.g. before fake rate computation), default if after",
     )
     parser.add_argument(
+        "--lumiUncertainty",
+        type=float,
+        help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%); automatic by default",
+        default=None,
+    )
+    parser.add_argument(
         "--lumiScale",
         type=float,
         nargs="+",
@@ -721,7 +727,13 @@ def make_parser(parser=None):
 
 
 def setup(
-    args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, xnorm=False
+    args,
+    inputFile,
+    inputBaseName,
+    inputLumiScale,
+    fitvar,
+    genvar=None,
+    xnorm=False,
 ):
 
     isUnfolding = args.analysisMode == "unfolding"
@@ -1299,8 +1311,12 @@ def setup(
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
-        cardTool.addLnNSystematic(
-            "dummy", processes=["MCnoQCD"], size=1.0001, group="dummy"
+        cardTool.addSystematic(
+            cardTool.nominalName,
+            rename="dummy",
+            processes=["MCnoQCD"],
+            action=lambda h: hh.scaleHist(h, 1.0001),
+            mirror=True,
         )
 
     decorwidth = args.decorMassWidth or args.fitWidth
@@ -1584,71 +1600,91 @@ def setup(
         return cardTool
 
     # Below: experimental uncertainties
+    cardTool.addSystematic(
+        cardTool.nominalName,
+        rename="luminosity",
+        processes=["MCnoQCD"],
+        group=f"luminosity",
+        splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+        passToFakes=passSystToFakes,
+        mirror=True,
+        action=lambda h: hh.scaleHist(
+            h,
+            (
+                args.lumiUncertainty
+                if args.lumiUncertainty is not None
+                else cardTool.datagroups.lumi_uncertainty
+            ),
+        ),
+    )
+
     if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
-        cardTool.addLnNSystematic(
-            "CMS_PhotonInduced",
+        cardTool.addSystematic(
+            cardTool.nominalName,
+            rename="CMS_PhotonInduced",
             processes=["PhotonInduced"],
-            size=2.0,
-            group="CMS_background",
+            group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+            passToFakes=passSystToFakes,
+            mirror=True,
+            action=lambda h: hh.scaleHist(h, 2.0),
         )
     if wmass:
         if args.logNormalWmunu > 0.0:
-            cardTool.addLnNSystematic(
-                f"CMS_Wmunu",
+            cardTool.addSystematic(
+                cardTool.nominalName,
+                rename="CMS_Wmunu",
                 processes=["Wmunu"],
-                size=args.logNormalWmunu,
-                group="CMS_background",
+                group=f"CMS_background",
                 splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+                passToFakes=passSystToFakes,
+                mirror=True,
+                action=lambda h: hh.scaleHist(h, args.logNormalWmunu),
             )
         if args.logNormalFake > 0.0:
-            cardTool.addLnNSystematic(
-                f"CMS_{cardTool.getFakeName()}",
+            cardTool.addSystematic(
+                cardTool.nominalName,
+                rename=f"CMS_{cardTool.getFakeName()}",
                 processes=[cardTool.getFakeName()],
-                size=args.logNormalFake,
-                group="Fake",
+                group=f"Fake",
                 splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+                passToFakes=False,
+                mirror=True,
+                action=lambda h: hh.scaleHist(h, args.logNormalFake),
             )
         elif args.logNormalFake < 0.0:
             cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
-        cardTool.addLnNSystematic(
-            "CMS_Top",
+
+        cardTool.addSystematic(
+            cardTool.nominalName,
+            rename="CMS_Top",
             processes=["Top"],
-            size=1.06,
-            group="CMS_background",
+            group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-        )
-        cardTool.addLnNSystematic(
-            "CMS_VV",
-            processes=["Diboson"],
-            size=1.16,
-            group="CMS_background",
-            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+            passToFakes=passSystToFakes,
+            mirror=True,
+            action=lambda h: hh.scaleHist(h, 1.06),
         )
         cardTool.addSystematic(
-            "luminosity",
-            processes=["MCnoQCD"],
-            outNames=["lumiDown", "lumiUp"],
-            group="luminosity",
+            cardTool.nominalName,
+            rename="CMS_VV",
+            processes=["Diboson"],
+            group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            systAxes=["downUpVar"],
-            labelsByAxis=["downUpVar"],
             passToFakes=passSystToFakes,
+            mirror=True,
+            action=lambda h: hh.scaleHist(h, 1.16),
         )
     else:
-        cardTool.addLnNSystematic(
-            "CMS_background",
+        cardTool.addSystematic(
+            cardTool.nominalName,
+            rename="CMS_background",
             processes=["Other"],
-            size=1.15,
-            group="CMS_background",
+            group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-        )
-        cardTool.addLnNSystematic(
-            "lumi",
-            processes=["MCnoQCD"],
-            size=1.017 if lowPU else 1.012,
-            group="luminosity",
-            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+            passToFakes=passSystToFakes,
+            mirror=True,
+            action=lambda h: hh.scaleHist(h, 1.15),
         )
 
     if (
