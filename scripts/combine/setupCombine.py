@@ -593,15 +593,25 @@ def make_parser(parser=None):
     )
     parser.add_argument(
         "--logNormalWmunu",
-        default=-1,
+        default=0,
         type=float,
-        help="Add lnN uncertainty for W signal (mainly for tests wifakes in control regions, where W is a subdominant background). If negative nothing is added",
+        help=r"""Add normalization uncertainty for W signal. 
+            If negative, treat as free floating with the absolute being the size of the variation (e.g. -1.01 means +/-1% of the nominal is varied). 
+            If 0 nothing is added""",
+    )
+    parser.add_argument(
+        "--logNormalWtaunu",
+        default=0,
+        type=float,
+        help=r"""Add normalization uncertainty for W->tau,nu process. 
+            If negative, treat as free floating with the absolute being the size of the variation (e.g. -1.01 means +/-1% of the nominal is varied). 
+            If 0 nothing is added""",
     )
     parser.add_argument(
         "--logNormalFake",
         default=1.05,
         type=float,
-        help="Specify lnN uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
+        help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
     # pseudodata
     parser.add_argument(
@@ -1633,18 +1643,43 @@ def setup(
             preOpArgs={"scale": 2.0},
         )
     if wmass:
-        if args.logNormalWmunu > 0.0:
+        if args.logNormalWmunu != 0:
             cardTool.addSystematic(
                 cardTool.nominalName,
                 rename="CMS_Wmunu",
                 processes=["Wmunu"],
                 group=f"CMS_background",
-                splitGroup={"experiment": ".*", "expNoCalib": ".*"},
+                splitGroup=(
+                    {"experiment": ".*", "expNoCalib": ".*"}
+                    if args.logNormalWmunu > 0
+                    else {}
+                ),
                 passToFakes=passSystToFakes,
                 mirror=True,
+                noi=args.logNormalWmunu < 0,
+                noConstraint=args.logNormalWmunu < 0,
                 preOp=hh.scaleHist,
-                preOpArgs={"scale": args.logNormalWmunu},
+                preOpArgs={"scale": abs(args.logNormalWmunu)},
             )
+        if args.logNormalWtaunu != 0:
+            cardTool.addSystematic(
+                cardTool.nominalName,
+                rename="CMS_Wtaunu",
+                processes=["Wtaunu"],
+                group=f"CMS_background",
+                splitGroup=(
+                    {"experiment": ".*", "expNoCalib": ".*"}
+                    if args.logNormalWtaunu > 0
+                    else {}
+                ),
+                passToFakes=passSystToFakes,
+                mirror=True,
+                noi=args.logNormalWtaunu < 0,
+                noConstraint=args.logNormalWtaunu < 0,
+                preOp=hh.scaleHist,
+                preOpArgs={"scale": abs(args.logNormalWtaunu)},
+            )
+
         if args.logNormalFake > 0.0:
             cardTool.addSystematic(
                 cardTool.nominalName,
