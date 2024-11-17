@@ -760,7 +760,15 @@ if combinetf2:
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
     chi2 = None
-    if f"chi2_{fittype}" in fitresult and not args.noChisq:
+    if fittype == "postfit" and fitresult["postfit_profile"]:
+        # use saturated likelihood test if relevant
+
+        nllvalfull = fitresult["nllvalfull"]
+        satnllvalfull = fitresult["satnllvalfull"]
+        satchi2 = 2.0 * (nllvalfull - satnllvalfull)
+        ndof = fitresult["ndfsat"]
+        chi2 = satchi2, ndof
+    elif f"chi2_{fittype}" in fitresult and not args.noChisq:
         chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
 
     for channel, info in meta_input["channel_info"].items():
@@ -826,6 +834,9 @@ if combinetf2:
             lumi=info["lumi"],
         )
 else:
+    raise RuntimeError(
+        "prefit/postfit plotting from combinetf1 is deprecated because of several inconsistencies which are (only) fixed in combinetf2"
+    )
     # combinetf1
     import ROOT
 
