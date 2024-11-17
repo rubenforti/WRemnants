@@ -22,12 +22,6 @@ parser = parsing.plot_parser()
 parser.add_argument(
     "infile", type=str, help="hdf5 file from combinetf2 or root file from combinetf1"
 )
-parser.add_argument(
-    "--uncFile",
-    type=str,
-    default=None,
-    help="Take the uncertainties from a second file",
-)
 parser.add_argument("--logy", action="store_true", help="Make the yscale logarithmic")
 parser.add_argument(
     "--noLowerPanel", action="store_true", help="Don't plot the lower panel in the plot"
@@ -42,6 +36,13 @@ parser.add_argument(
 parser.add_argument("--normToData", action="store_true", help="Normalize MC to data")
 parser.add_argument(
     "--prefit", action="store_true", help="Make prefit plot, else postfit"
+)
+parser.add_argument(
+    "--project",
+    nargs="+",
+    action="append",
+    default=[],
+    help='add projection for the prefit and postfit histograms, specifying the channel name followed by the axis names, e.g. "--project ch0 eta pt".  This argument can be called multiple times',
 )
 parser.add_argument(
     "--filterProcs",
@@ -89,7 +90,7 @@ parser.add_argument(
 parser.add_argument(
     "--extraTextLoc",
     type=float,
-    nargs=2,
+    nargs="*",
     default=None,
     help="Location in (x,y) for additional text, aligned to upper left",
 )
@@ -178,12 +179,6 @@ data = not args.noData
 
 # load .hdf5 file first, must exist in combinetf and combinetf2
 fitresult_h5py = combinetf_input.get_fitresult(args.infile.replace(".root", ".hdf5"))
-
-if args.uncFile is not None:
-    fitresult_h5py_unc = combinetf_input.get_fitresult(
-        args.uncFile.replace(".root", ".hdf5")
-    )
-    fitresult_unc = ioutils.pickle_load_h5py(fitresult_h5py_unc["results"])
 
 if "results" in fitresult_h5py.keys():
     fitresult = ioutils.pickle_load_h5py(fitresult_h5py["results"])
@@ -288,6 +283,12 @@ def make_plot(
         h_stack = [
             hh.unrolledHist(h, binwnorm=binwnorm, obs=axes_names) for h in h_stack
         ]
+        if hup is not None:
+            hup = [hh.unrolledHist(h, binwnorm=binwnorm, obs=axes_names) for h in hup]
+        if hdown is not None:
+            hdown = [
+                hh.unrolledHist(h, binwnorm=binwnorm, obs=axes_names) for h in hdown
+            ]
 
     if args.normToData:
         scale = h_data.values().sum() / h_inclusive.values().sum()
@@ -547,15 +548,21 @@ def make_plot(
         else:
             chi2_name = r"$\mathit{\chi}^2/\mathit{ndf}$"
 
-        if len(h_data.values()) < 100:
-            text_pieces.append(chi2_name)
-            text_pieces.append(
-                rf"$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$"
-            )
+        chi2_text = [
+            chi2_name,
+            rf"$= {round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$",
+        ]
+
+        if args.extraTextLoc is None or len(args.extraTextLoc) <= 2:
+            text_pieces.extend(chi2_text)
         else:
-            text_pieces.append(
-                chi2_name
-                + rf" = ${round(chi2[0],1)}/{chi2[1]}\ (\mathit{{p}}={p_val}\%)$"
+            plot_tools.wrap_text(
+                chi2_text,
+                ax1,
+                *args.extraTextLoc[2:],
+                text_size=args.legSize,
+                ha="left",
+                va="top",
             )
 
     plot_tools.add_cms_decor(
@@ -573,7 +580,7 @@ def make_plot(
             loc=args.legPos,
             text_size=args.legSize,
             extra_text=text_pieces,
-            extra_text_loc=args.extraTextLoc,
+            extra_text_loc=None if args.extraTextLoc is None else args.extraTextLoc[:2],
             padding_loc=args.legPadding,
         )
 
@@ -639,17 +646,6 @@ def make_plots(
         hist_stack, labels, colors, procs = styles.process_grouping(
             args.processGrouping, hist_stack, procs
         )
-
-    # temporary fix to take uncertainties from second file
-    if args.uncFile:
-        hist_unc = fitresult_unc[f"hist_{fittype}_inclusive"][channel].get()
-        axes = hist_unc.axes
-
-        hist_data = hist_data.project(*axes.name)
-        hist_inclusive = hist_inclusive.project(*axes.name)
-        hist_stack = [h.project(*axes.name) for h in hist_stack]
-
-        hist_inclusive.variances(flow=True)[...] = hist_unc.variances(flow=True)
 
     if hist_var is not None:
         hists_down = [
@@ -759,80 +755,131 @@ if combinetf2:
         procs = [p for p in procs if p in args.filterProcs]
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
-    chi2 = None
-    if fittype == "postfit" and fitresult["postfit_profile"]:
-        # use saturated likelihood test if relevant
+    if len(args.project) == 0:
 
-        nllvalfull = fitresult["nllvalfull"]
-        satnllvalfull = fitresult["satnllvalfull"]
-        satchi2 = 2.0 * (nllvalfull - satnllvalfull)
-        ndof = fitresult["ndfsat"]
-        chi2 = satchi2, ndof
-    elif f"chi2_{fittype}" in fitresult and not args.noChisq:
-        chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
+        chi2 = None
+        if fittype == "postfit" and fitresult["postfit_profile"]:
+            # use saturated likelihood test if relevant
 
-    for channel, info in meta_input["channel_info"].items():
-        if channel.endswith("masked"):
-            continue
-        hist_data = fitresult["hist_data_obs"][channel].get()
-        hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
-        hist_stack = fitresult[f"hist_{fittype}"][channel].get()
-        hist_stack = [hist_stack[{"processes": p}] for p in procs]
+            nllvalfull = fitresult["nllvalfull"]
+            satnllvalfull = fitresult["satnllvalfull"]
+            satchi2 = 2.0 * (nllvalfull - satnllvalfull)
+            ndof = fitresult["ndfsat"]
+            chi2 = satchi2, ndof
+            saturated_chi2 = True
+        elif f"chi2_{fittype}" in fitresult and not args.noChisq:
+            chi2 = fitresult[f"chi2_{fittype}"], fitresult[f"ndf_{fittype}"]
+            saturated_chi2 = False
 
-        # vary poi by postfit uncertainty
-        if varNames is not None:
-            hist_var = fitresult[f"hist_{fittype}_inclusive_variations"][channel].get()
-        else:
-            hist_var = None
+        for channel, info in meta_input["channel_info"].items():
+            if channel.endswith("masked"):
+                continue
 
-        if args.logTransform:
-            hist_data.variances(flow=True)[...] = (
-                hist_data.variances(flow=True)[...]
-                / hist_data.values(flow=True)[...] ** 2
-            )
-            for h in hist_stack:
-                h.variances(flow=True)[...] = (
-                    h.variances(flow=True)[...] / h.values(flow=True)[...] ** 2
-                )
+            hist_data = fitresult["hist_data_obs"][channel].get()
+            hist_inclusive = fitresult[f"hist_{fittype}_inclusive"][channel].get()
+            hist_stack = fitresult[f"hist_{fittype}"][channel].get()
+            hist_stack = [hist_stack[{"processes": p}] for p in procs]
 
-            hist_data.values(flow=True)[...] = np.log(hist_data.values(flow=True)[...])
-            for h in hist_stack:
-                h.values(flow=True)[...] = np.log(h.values(flow=True)[...])
-
-        if any(x in hist_data.axes.name for x in ["helicity"]):
-            if asimov:
-                hist_data.values()[...] = 1e5 * np.log(hist_data.values())
-            or_vals = np.copy(hist_inclusive.values())
-            hist_inclusive.values()[...] = 1e5 * np.log(hist_inclusive.values())
-            hist_inclusive.variances()[...] = (
-                1e10 * (hist_inclusive.variances()) / np.square(or_vals)
-            )
-
+            # vary poi by postfit uncertainty
             if varNames is not None:
-                hist_var.values()[...] = 1e5 * np.log(hist_var.values())
-                hist_var.variances()[...] = (
-                    1e10 * (hist_var.variances()) / np.square(or_vals)
+                hist_var = fitresult[f"hist_{fittype}_variations"][channel].get()
+            else:
+                hist_var = None
+
+            if args.logTransform:
+                hist_data.variances(flow=True)[...] = (
+                    hist_data.variances(flow=True)[...]
+                    / hist_data.values(flow=True)[...] ** 2
+                )
+                for h in hist_stack:
+                    h.variances(flow=True)[...] = (
+                        h.variances(flow=True)[...] / h.values(flow=True)[...] ** 2
+                    )
+
+                hist_data.values(flow=True)[...] = np.log(
+                    hist_data.values(flow=True)[...]
+                )
+                for h in hist_stack:
+                    h.values(flow=True)[...] = np.log(h.values(flow=True)[...])
+
+            if any(x in hist_data.axes.name for x in ["helicity"]):
+                if asimov:
+                    hist_data.values()[...] = 1e5 * np.log(hist_data.values())
+                or_vals = np.copy(hist_inclusive.values())
+                hist_inclusive.values()[...] = 1e5 * np.log(hist_inclusive.values())
+                hist_inclusive.variances()[...] = (
+                    1e10 * (hist_inclusive.variances()) / np.square(or_vals)
                 )
 
-            for h in hist_stack:
-                or_vals = np.copy(h.values())
-                h.values()[...] = 1e5 * np.log(h.values())
-                h.variances()[...] = 1e10 * (h.variances()) / np.square(or_vals)
+                if varNames is not None:
+                    hist_var.values()[...] = 1e5 * np.log(hist_var.values())
+                    hist_var.variances()[...] = (
+                        1e10 * (hist_var.variances()) / np.square(or_vals)
+                    )
 
-        make_plots(
-            hist_data,
-            hist_inclusive,
-            hist_stack,
-            info["axes"],
-            hist_var=hist_var,
-            channel=channel,
-            procs=procs,
-            labels=labels,
-            colors=colors,
-            chi2=chi2,
-            meta=meta,
-            lumi=info["lumi"],
-        )
+                for h in hist_stack:
+                    or_vals = np.copy(h.values())
+                    h.values()[...] = 1e5 * np.log(h.values())
+                    h.variances()[...] = 1e10 * (h.variances()) / np.square(or_vals)
+
+            make_plots(
+                hist_data,
+                hist_inclusive,
+                hist_stack,
+                info["axes"],
+                hist_var=hist_var,
+                channel=channel,
+                procs=procs,
+                labels=labels,
+                colors=colors,
+                chi2=chi2,
+                saturated_chi2=saturated_chi2,
+                meta=meta,
+                lumi=info["lumi"],
+            )
+    else:
+        for result in fitresult["projections"]:
+            channel = result["channel"]
+            axes = result["axes"]
+
+            for projection in args.project:
+                if channel == projection[0] and set(axes) == set(projection[1:]):
+                    break
+            else:
+                continue
+
+            axes = [
+                a for a in meta_input["channel_info"][channel]["axes"] if a.name in axes
+            ]
+
+            chi2 = result[f"chi2_{fittype}"], result[f"ndf_{fittype}"]
+
+            hist_data = result["hist_data_obs"].get()
+            hist_inclusive = result[f"hist_{fittype}_inclusive"].get()
+            hist_stack = result[f"hist_{fittype}"].get()
+            hist_stack = [hist_stack[{"processes": p}] for p in procs]
+
+            # vary poi by postfit uncertainty
+            if varNames is not None:
+                hist_var = result[f"hist_{fittype}_variations"].get()
+            else:
+                hist_var = None
+
+            make_plots(
+                hist_data,
+                hist_inclusive,
+                hist_stack,
+                axes,
+                hist_var=hist_var,
+                channel=channel,
+                procs=procs,
+                labels=labels,
+                colors=colors,
+                chi2=chi2,
+                meta=meta,
+                lumi=meta_input["channel_info"][channel]["lumi"],
+            )
+
 else:
     raise RuntimeError(
         "prefit/postfit plotting from combinetf1 is deprecated because of several inconsistencies which are (only) fixed in combinetf2"
