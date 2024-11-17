@@ -187,6 +187,13 @@ parser.add_argument(
     default=[],
     help="Scale a variation by this factor",
 )
+parser.add_argument(
+    "--extraTextLoc",
+    type=float,
+    nargs=2,
+    default=None,  # (0.05, 0.8),
+    help="Location in (x,y) for additional text, aligned to upper left",
+)
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser(
     "variation", help="Arguments for adding variation hists"
@@ -569,7 +576,7 @@ for h in args.hists:
         no_stack=args.noStack,
         no_ratio=args.noRatio,
         extra_text=text_pieces,
-        extra_text_loc=(0.05, 0.8),
+        extra_text_loc=args.extraTextLoc,
         density=args.density,
         flow=args.flow,
         cms_decor=args.cmsDecor,
