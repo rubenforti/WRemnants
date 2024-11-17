@@ -138,6 +138,9 @@ parser.add_argument(
     default=[4, 2],
     help="Relative sizes for upper and lower panels",
 )
+parser.add_argument(
+    "--correlatedVariations", action="store_true", help="Use correlated variations"
+)
 
 args = parser.parse_args()
 
@@ -755,6 +758,9 @@ if combinetf2:
         procs = [p for p in procs if p in args.filterProcs]
     labels, colors, procs = styles.get_labels_colors_procs_sorted(procs)
 
+    if args.correlatedVariations:
+        correlated = "_correlated"
+
     if len(args.project) == 0:
 
         chi2 = None
@@ -782,7 +788,9 @@ if combinetf2:
 
             # vary poi by postfit uncertainty
             if varNames is not None:
-                hist_var = fitresult[f"hist_{fittype}_variations"][channel].get()
+                hist_var = fitresult[f"hist_{fittype}_variations{correlated}"][
+                    channel
+                ].get()
             else:
                 hist_var = None
 
@@ -861,7 +869,7 @@ if combinetf2:
 
             # vary poi by postfit uncertainty
             if varNames is not None:
-                hist_var = result[f"hist_{fittype}_variations"].get()
+                hist_var = result[f"hist_{fittype}_variations{correlated}"].get()
             else:
                 hist_var = None
 
