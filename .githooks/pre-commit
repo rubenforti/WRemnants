@@ -20,19 +20,6 @@ for FILE in $STAGED_FILES_CPP; do
 done
 
 
-# Find all staged YAML files
-STAGED_FILES_YAML=$(git diff --cached --name-only --diff-filter=d | grep -E '\.ya?ml$' || true)
-
-# Check syntax of each YAML file
-for FILE in $STAGED_FILES_YAML; do
-  python -c "import yaml, sys; yaml.safe_load(open('$FILE'))"
-  if [ $? -ne 0 ]; then
-    echo "Syntax error in $FILE. Commit aborted."
-    exit 1
-  fi
-done
-
-
 # Find all staged json files
 STAGED_FILES_JSON=$(git diff --cached --name-only --diff-filter=d | grep -E '\.json$' || true)
 
