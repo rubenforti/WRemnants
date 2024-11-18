@@ -441,6 +441,7 @@ def translate_html_to_latex(n):
             .replace("</i>", "}")
             .replace("</sub>", "}")
             .replace("</sup>", "}")
+            .replace(" ", r"\ ")
         )
     return n
 

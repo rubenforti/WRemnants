@@ -1,4 +1,5 @@
 import itertools
+import json
 import os
 
 import hist
@@ -141,6 +142,13 @@ parser.add_argument(
 parser.add_argument(
     "--correlatedVariations", action="store_true", help="Use correlated variations"
 )
+parser.add_argument(
+    "-t",
+    "--translate",
+    type=str,
+    default=None,
+    help="Specify .json file to translate labels",
+)
 
 args = parser.parse_args()
 
@@ -148,13 +156,24 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eoscp)
 
+translate_label = {}
+if args.translate:
+    with open(args.translate) as f:
+        translate_label = json.load(f)
+    translate = lambda x: styles.translate_html_to_latex(translate_label.get(x, x))
+else:
+    translate = lambda x: x
+
 varNames = args.varNames
 if varNames is not None:
     varLabels = args.varLabels
     varColors = args.varColors
     if varLabels is None:
-        # try to get labels from predefined styles
-        varLabels = [styles.legend_labels_combine.get(e, e) for e in varNames]
+        if args.translate:
+            varLabels = [translate(e).replace(r"resum.\ TNP\ ", "") for e in varNames]
+        else:
+            # try to get labels from predefined styles
+            varLabels = [styles.legend_labels_combine.get(e, e) for e in varNames]
     elif len(varLabels) != len(varNames):
         raise ValueError(
             "Must specify the same number of args for --varNames, and --varLabels"
@@ -760,11 +779,13 @@ if combinetf2:
 
     if args.correlatedVariations:
         correlated = "_correlated"
+    else:
+        correlated = ""
 
     if len(args.project) == 0:
 
         chi2 = None
-        if fittype == "postfit" and fitresult["postfit_profile"]:
+        if fittype == "postfit" and fitresult["postfit_profile"] and not args.noChisq:
             # use saturated likelihood test if relevant
 
             nllvalfull = fitresult["nllvalfull"]
@@ -860,7 +881,10 @@ if combinetf2:
                 a for a in meta_input["channel_info"][channel]["axes"] if a.name in axes
             ]
 
-            chi2 = result[f"chi2_{fittype}"], result[f"ndf_{fittype}"]
+            if f"chi2_{fittype}" in fitresult and not args.noChisq:
+                chi2 = result[f"chi2_{fittype}"], result[f"ndf_{fittype}"]
+            else:
+                chi2 = None
 
             hist_data = result["hist_data_obs"].get()
             hist_inclusive = result[f"hist_{fittype}_inclusive"].get()
