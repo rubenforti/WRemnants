@@ -757,7 +757,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
           $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/ZMassDilepton.hdf5
-          -t -0 --binByBinStat --computeHistErrors --saveHists
+          -t 0 --binByBinStat --computeHistErrors --saveHists
           -o '$WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5'
 
       - name: dilepton combine alphaS impacts

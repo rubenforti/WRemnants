@@ -191,7 +191,7 @@ parser.add_argument(
     "--extraTextLoc",
     type=float,
     nargs=2,
-    default=None,  # (0.05, 0.8),
+    default=(0.05, 0.8),
     help="Location in (x,y) for additional text, aligned to upper left",
 )
 subparsers = parser.add_subparsers(dest="variation")

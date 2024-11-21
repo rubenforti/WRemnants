@@ -51,11 +51,13 @@ def quadrature_sum_hist(hists, is_down):
     return hh.rssHists(sumh, syst_axis="vars")[is_down]
 
 
-def load_hist(filename, fittype="postfit"):
+def load_hist(filename, fittype="postfit", helicity=False):
     fitresult = combinetf2_input.get_fitresult(filename)
-
-    if "projections" in fitresult:
-        fitresult = fitresult["projections"][0]
+    obs = {args.obs, "helicity"}
+    if len(fitresult["projections"]):
+        fitresult = fitresult["projections"]
+        idx = [i for (i, a) in enumerate(fitresult) if obs == set(a["axes"])][0]
+        fitresult = fitresult[idx]
         h = fitresult[f"hist_{fittype}_inclusive"]
     else:
         h = fitresult[f"hist_{fittype}_inclusive"]["ch0"]
@@ -135,7 +137,7 @@ if not args.prefit and not args.noPrefit:
         colors.append("gray")
 
     elif args.helicity_fit is not None:
-        gen = load_hist(args.helicity_fit, "prefit")[{"helicity": -1.0j}]
+        gen = load_hist(args.helicity_fit, "prefit", helicity=True)[{"helicity": -1.0j}]
 
         theory_up, theory_down = hist_to_up_down_unc(gen)
 
@@ -146,7 +148,7 @@ if not args.prefit and not args.noPrefit:
         colors.append("gray")
 
 if args.helicity_fit:
-    helh = load_hist(args.helicity_fit)[{"helicity": -1.0j}]
+    helh = load_hist(args.helicity_fit, helicity=True)[{"helicity": -1.0j}]
 
     hists_nom.append(helh)
     hists_err.extend(hist_to_up_down_unc(helh))
