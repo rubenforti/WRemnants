@@ -57,8 +57,8 @@ process_supergroups = {
         "Rare": ["PhotonInduced", "Top", "Diboson"],
     },
     "z_dilepton": {
-        "Z": ["Zmumu", "Ztautau"],
-        "Other": ["Other", "PhotonInduced"],
+        "Zmumu": ["Zmumu"],
+        "Other": ["Other", "Ztautau", "PhotonInduced"],
     },
     "w_lowpu": {
         "Zll": ["Ztautau", "Zmumu", "Zee", "DYlowMass"],
@@ -441,6 +441,7 @@ def translate_html_to_latex(n):
             .replace("</i>", "}")
             .replace("</sub>", "}")
             .replace("</sup>", "}")
+            .replace(" ", r"\ ")
         )
     return n
 

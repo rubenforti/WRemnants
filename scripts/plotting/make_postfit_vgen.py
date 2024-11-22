@@ -13,11 +13,13 @@ parser = parsing.plot_parser()
 parser.add_argument("--unfolded", type=str, required=False)
 parser.add_argument("--gen", type=str, default=None)
 parser.add_argument("-w", action="store_true")
-parser.add_argument("--etapt-fit", type=str, required=True)
+parser.add_argument("--etapt-fit", type=str, default=None)
 parser.add_argument("--ptll-fit", type=str, default=None)
 parser.add_argument("--ptll-yll-fit", type=str, default=None)
+parser.add_argument("--helicity-fit", type=str, default=None)
 parser.add_argument("--obs", type=str, default="ptVgen")
 parser.add_argument("--prefit", action="store_true")
+parser.add_argument("--noPrefit", action="store_true")
 parser.add_argument(
     "--noetapt-postfit", action="store_true", help="Only take prefit but not postfit"
 )
@@ -49,74 +51,115 @@ def quadrature_sum_hist(hists, is_down):
     return hh.rssHists(sumh, syst_axis="vars")[is_down]
 
 
+def load_hist(filename, fittype="postfit", helicity=False):
+    fitresult = combinetf2_input.get_fitresult(filename)
+    obs = {args.obs, "helicity"}
+    if len(fitresult["projections"]):
+        fitresult = fitresult["projections"]
+        idx = [i for (i, a) in enumerate(fitresult) if obs == set(a["axes"])][0]
+        fitresult = fitresult[idx]
+        h = fitresult[f"hist_{fittype}_inclusive"]
+    else:
+        h = fitresult[f"hist_{fittype}_inclusive"]["ch0"]
+
+    return h.get() / 1000.0
+
+
 hnom = "nominal_gen"
 
 unfolded_data = pickle.load(open(args.unfolded, "rb")) if args.unfolded else None
 
 procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"] if args.w else ["ZmumuPostVFP"]
 
-etapt_fit = combinetf2_input.get_fitresult(args.etapt_fit)
+hists_nom = []
+hists_err = []
 
-if args.gen:
-    # only use subset of nuisances for prefit band
-    gen = input_tools.read_all_and_scale(args.gen, procs, [hnom])[0]
+labels = []
+names = []
+colors = []
 
-    scetlib_dyturbo = input_tools.read_all_and_scale(
-        args.gen, procs, [f"{hnom}_scetlib_dyturboCorr"]
-    )[0].project(args.obs, "vars")
-    ct18z = input_tools.read_all_and_scale(args.gen, procs, [f"{hnom}_pdfCT18Z"])[
-        0
-    ].project(args.obs, "pdfVar")
-    ct18z_as = input_tools.read_all_and_scale(
-        args.gen, procs, [f"{hnom}_pdfCT18ZalphaS002"]
-    )[0].project(args.obs, "alphasVar")
+if not args.prefit and not args.noPrefit:
+    if args.gen:
+        # only use subset of nuisances for prefit band
+        gen = input_tools.read_all_and_scale(args.gen, procs, [hnom])[0]
 
-    # Leaving out mb and mc range since they're small...
+        scetlib_dyturbo = input_tools.read_all_and_scale(
+            args.gen, procs, [f"{hnom}_scetlib_dyturboCorr"]
+        )[0].project(args.obs, "vars")
+        ct18z = input_tools.read_all_and_scale(args.gen, procs, [f"{hnom}_pdfCT18Z"])[
+            0
+        ].project(args.obs, "pdfVar")
+        ct18z_as = input_tools.read_all_and_scale(
+            args.gen, procs, [f"{hnom}_pdfCT18ZalphaS002"]
+        )[0].project(args.obs, "alphasVar")
 
-    transforms = syst_tools.syst_transform_map(hnom, f"{hnom}_scetlib_dyturboCorr")
+        # Leaving out mb and mc range since they're small...
 
-    theory_up = quadrature_sum_hist(
-        [
-            transforms["resumTNPXp0Up"]["action"](scetlib_dyturbo),
-            transforms["resumNPUp"]["action"](scetlib_dyturbo),
-            scetlib_dyturbo[{"vars": "renorm_scale_pt20_envelope_Up"}],
-            scetlib_dyturbo[{"vars": "transition_points0.2_0.35_1.0"}],
-            transforms["pdfCT18ZUp"]["action"](ct18z),
-            ct18z_as[{"alphasVar": "as0120"}],
-        ],
-        is_down=False,
-    )
+        transforms = syst_tools.syst_transform_map(hnom, f"{hnom}_scetlib_dyturboCorr")
 
-    theory_down = quadrature_sum_hist(
-        [
-            transforms["resumTNPXp0Down"]["action"](scetlib_dyturbo),
-            transforms["resumNPDown"]["action"](scetlib_dyturbo),
-            scetlib_dyturbo[{"vars": "renorm_scale_pt20_envelope_Down"}],
-            scetlib_dyturbo[{"vars": "transition_points0.2_0.75_1.0"}],
-            transforms["pdfCT18ZDown"]["action"](ct18z),
-            ct18z_as[{"alphasVar": "as0116"}],
-        ],
-        is_down=True,
-    )
-else:
-    # use all nuisances for prefit band
-    gen = etapt_fit[f"hist_prefit_inclusive"]["ch0"].get() / 1000.0
-    theory_up, theory_down = hist_to_up_down_unc(gen)
+        theory_up = quadrature_sum_hist(
+            [
+                transforms["resumTNPXp0Up"]["action"](scetlib_dyturbo),
+                transforms["resumNPUp"]["action"](scetlib_dyturbo),
+                scetlib_dyturbo[{"vars": "renorm_scale_pt20_envelope_Up"}],
+                scetlib_dyturbo[{"vars": "transition_points0.2_0.35_1.0"}],
+                transforms["pdfCT18ZUp"]["action"](ct18z),
+                ct18z_as[{"alphasVar": "as0120"}],
+            ],
+            is_down=False,
+        )
 
-hists_nom = [
-    gen,
-]
-hists_err = [
-    theory_up,
-    theory_down,
-]
+        theory_down = quadrature_sum_hist(
+            [
+                transforms["resumTNPXp0Down"]["action"](scetlib_dyturbo),
+                transforms["resumNPDown"]["action"](scetlib_dyturbo),
+                scetlib_dyturbo[{"vars": "renorm_scale_pt20_envelope_Down"}],
+                scetlib_dyturbo[{"vars": "transition_points0.2_0.75_1.0"}],
+                transforms["pdfCT18ZDown"]["action"](ct18z),
+                ct18z_as[{"alphasVar": "as0116"}],
+            ],
+            is_down=True,
+        )
+        hists_nom.append(gen)
+        hists_err.extend([theory_up, theory_down])
+        labels.append("prefit")
+        names.append("prefit")
+        colors.append("gray")
 
-labels = ["prefit"]
-names = ["Prefit"]
-colors = ["gray"]
+    elif args.etapt_fit is not None:
+        # use all nuisances for prefit band
+        gen = load_hist(args.etapt_fit, "prefit")
+        theory_up, theory_down = hist_to_up_down_unc(gen)
+        hists_nom.append(gen)
+        hists_err.extend([theory_up, theory_down])
+        labels.append("prefit")
+        names.append("prefit")
+        colors.append("gray")
+
+    elif args.helicity_fit is not None:
+        gen = load_hist(args.helicity_fit, "prefit", helicity=True)[{"helicity": -1.0j}]
+
+        theory_up, theory_down = hist_to_up_down_unc(gen)
+
+        hists_nom.append(gen)
+        hists_err.extend([theory_up, theory_down])
+        labels.append("Helicity fit prefit")
+        names.append("Helicity fit prefit")
+        colors.append("gray")
+
+if args.helicity_fit:
+    helh = load_hist(args.helicity_fit, helicity=True)[{"helicity": -1.0j}]
+
+    hists_nom.append(helh)
+    hists_err.extend(hist_to_up_down_unc(helh))
+    labels.append(f"Helicity fit {fittype}")
+    names.append(f"{fittype} helicity")
+    # colors.append("#5790FC")
+    colors.append("#E42536")
 
 if not args.noetapt_postfit:
-    etapth = etapt_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    etapth = load_hist(args.etapt_fit)
+
     hists_nom.append(etapth)
     hists_err.extend(hist_to_up_down_unc(etapth))
     if args.w:
@@ -125,7 +168,7 @@ if not args.noetapt_postfit:
         label = r"$\mathit{m}_{Z}$ "
     label += r"$(\mathit{p}_{T}^{\mu}, \mathit{\eta}^{\mu}, \mathit{q}^{\mu})$ "
     labels.append(label)
-    names.append("Postfit eta-pt")
+    names.append(f"{fittype} eta-pt")
     colors.append("#E42536" if args.w else "#964A8B")
 
 if unfolded_data:
@@ -156,8 +199,8 @@ else:
     idx_unfolded = None
 
 if args.ptll_fit:
-    ptll_fit = combinetf2_input.get_fitresult(args.ptll_fit)
-    ptllh = ptll_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    ptllh = load_hist(args.ptll_fit)
+
     hists_nom.append(ptllh)
     hists_err.extend(hist_to_up_down_unc(ptllh))
     if args.w:
@@ -166,12 +209,12 @@ if args.ptll_fit:
         )
     else:
         labels.append(r"$\mathit{p}_{T}^{\mu\mu}$ ")
-    names.append("Postfit ptll")
+    names.append(f"{fittype} ptll")
     colors.append("#f89c20")
 
 if args.ptll_yll_fit:
-    ptllyll_fit = combinetf2_input.get_fitresult(args.ptll_yll_fit)
-    ptllyllh = ptllyll_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    ptllyllh = load_hist(args.ptll_yll_fit)
+
     hists_nom.append(ptllyllh)
     hists_err.extend(hist_to_up_down_unc(ptllyllh))
     if args.w:
@@ -180,8 +223,9 @@ if args.ptll_yll_fit:
         )
     else:
         labels.append(r"$(\mathit{p}_{T}^{\mu\mu},\mathit{y}^{\mu\mu})$ ")
-    names.append("Postfit ptll-yll")
+    names.append(f"{fittype} ptll-yll")
     colors.append("#5790FC")
+
 
 linestyles = [
     "solid",
@@ -253,7 +297,9 @@ if args.twoRatios:
 else:
     # just one ratio plot
     subplotsizes = [4, 2]
-    rlabel = "Ratio to data" if unfolded_data else "Ratio to prefit"
+    rlabel = "Ratio to " + (
+        "data" if unfolded_data else f"\n{labels[0]}" if args.noPrefit else "prefit"
+    )
     midratio_idxs = None
     if len(args.rrange) == 2:
         rrange = args.rrange

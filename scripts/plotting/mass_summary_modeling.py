@@ -84,7 +84,7 @@ fig = plot_tools.make_summary_plot(
     central_val,
     central["err_total"],
     central["err_standard_pTModeling"],
-    "Main result",
+    "N$^{3{+}0}$LL+NNLO\n (nominal)",
     dfs.iloc[1:, :],
     colors="auto",
     xlim=xlim,

@@ -436,7 +436,7 @@ if __name__ == "__main__":
             loc=args.legPos,
             text_size=args.legSize,
             extra_handles=extra_handles,
-            extra_labels=["Main result"],
+            extra_labels=["Nominal"],
             custom_handlers=["tripleband"],
         )
 

@@ -86,7 +86,7 @@ central = dfs.iloc[0, :]
 
 xlabel = r"$\mathit{m}_{" + ("W" if isW else "Z") + "}$ (MeV)"
 
-xlim = [91160, 91220] if not isW else [80334, 80374]
+xlim = [91160, 91220] if not isW else [80329, 80374]
 
 central_val = central["value"]
 if args.diffToCentral:
@@ -103,7 +103,7 @@ fig = plot_tools.make_summary_plot(
     central_val,
     central["err_total"],
     central["err_pdf"],
-    "Main result",
+    "CT18Z (nominal)",
     dfs.iloc[1:, :],
     colors=args.colors[1:] if args.colors[0] != "auto" else args.colors[0],
     center_color="black",
