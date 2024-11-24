@@ -613,6 +613,11 @@ def make_parser(parser=None):
         type=float,
         help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
+    parser.add_argument(
+        "--passNormUncToFakes",
+        action="store_true",
+        help="Propagate normalization uncertainties into the fake estimation",
+    )
     # pseudodata
     parser.add_argument(
         "--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata"
@@ -1637,7 +1642,7 @@ def setup(
             processes=["PhotonInduced"],
             group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
+            passToFakes=args.passNormUncToFakes,
             mirror=True,
             preOp=hh.scaleHist,
             preOpArgs={"scale": 2.0},
@@ -1701,7 +1706,7 @@ def setup(
             processes=["Top"],
             group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
+            passToFakes=args.passNormUncToFakes,
             mirror=True,
             preOp=hh.scaleHist,
             preOpArgs={"scale": 1.06},
@@ -1712,7 +1717,7 @@ def setup(
             processes=["Diboson"],
             group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
+            passToFakes=args.passNormUncToFakes,
             mirror=True,
             preOp=hh.scaleHist,
             preOpArgs={"scale": 1.16},
@@ -1724,7 +1729,6 @@ def setup(
             processes=["Other"],
             group=f"CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
             mirror=True,
             preOp=hh.scaleHist,
             preOpArgs={"scale": 1.15},
