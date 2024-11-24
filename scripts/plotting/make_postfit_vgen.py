@@ -51,17 +51,25 @@ def quadrature_sum_hist(hists, is_down):
     return hh.rssHists(sumh, syst_axis="vars")[is_down]
 
 
+def load_hist(filename, fittype="postfit", helicity=False):
+    fitresult = combinetf2_input.get_fitresult(filename)
+    obs = {args.obs, "helicity"}
+    if len(fitresult["projections"]):
+        fitresult = fitresult["projections"]
+        idx = [i for (i, a) in enumerate(fitresult) if obs == set(a["axes"])][0]
+        fitresult = fitresult[idx]
+        h = fitresult[f"hist_{fittype}_inclusive"]
+    else:
+        h = fitresult[f"hist_{fittype}_inclusive"]["ch0"]
+
+    return h.get() / 1000.0
+
+
 hnom = "nominal_gen"
 
 unfolded_data = pickle.load(open(args.unfolded, "rb")) if args.unfolded else None
 
 procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"] if args.w else ["ZmumuPostVFP"]
-
-if args.etapt_fit is not None:
-    etapt_fit = combinetf2_input.get_fitresult(args.etapt_fit)
-
-if args.helicity_fit:
-    helicity_fit = combinetf2_input.get_fitresult(args.helicity_fit)
 
 hists_nom = []
 hists_err = []
@@ -114,25 +122,23 @@ if not args.prefit and not args.noPrefit:
         )
         hists_nom.append(gen)
         hists_err.extend([theory_up, theory_down])
-        labels.append("Prefit")
-        names.append("Prefit")
+        labels.append("prefit")
+        names.append("prefit")
         colors.append("gray")
 
     elif args.etapt_fit is not None:
         # use all nuisances for prefit band
-        gen = etapt_fit[f"hist_prefit_inclusive"]["ch0"].get() / 1000.0
+        gen = load_hist(args.etapt_fit, "prefit")
         theory_up, theory_down = hist_to_up_down_unc(gen)
         hists_nom.append(gen)
         hists_err.extend([theory_up, theory_down])
-        labels.append("Prefit")
-        names.append("Prefit")
+        labels.append("prefit")
+        names.append("prefit")
         colors.append("gray")
 
     elif args.helicity_fit is not None:
-        gen = (
-            helicity_fit[f"hist_prefit_inclusive"]["ch0"].get()[{"helicity": -1.0j}]
-            / 1000.0
-        )
+        gen = load_hist(args.helicity_fit, "prefit", helicity=True)[{"helicity": -1.0j}]
+
         theory_up, theory_down = hist_to_up_down_unc(gen)
 
         hists_nom.append(gen)
@@ -142,19 +148,18 @@ if not args.prefit and not args.noPrefit:
         colors.append("gray")
 
 if args.helicity_fit:
-    helh = (
-        helicity_fit[f"hist_{fittype}_inclusive"]["ch0"].get()[{"helicity": -1.0j}]
-        / 1000.0
-    )
+    helh = load_hist(args.helicity_fit, helicity=True)[{"helicity": -1.0j}]
+
     hists_nom.append(helh)
     hists_err.extend(hist_to_up_down_unc(helh))
     labels.append(f"Helicity fit {fittype}")
     names.append(f"{fittype} helicity")
-    colors.append("#f89c20")
-
+    # colors.append("#5790FC")
+    colors.append("#E42536")
 
 if not args.noetapt_postfit:
-    etapth = etapt_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    etapth = load_hist(args.etapt_fit)
+
     hists_nom.append(etapth)
     hists_err.extend(hist_to_up_down_unc(etapth))
     if args.w:
@@ -194,8 +199,8 @@ else:
     idx_unfolded = None
 
 if args.ptll_fit:
-    ptll_fit = combinetf2_input.get_fitresult(args.ptll_fit)
-    ptllh = ptll_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    ptllh = load_hist(args.ptll_fit)
+
     hists_nom.append(ptllh)
     hists_err.extend(hist_to_up_down_unc(ptllh))
     if args.w:
@@ -208,8 +213,8 @@ if args.ptll_fit:
     colors.append("#f89c20")
 
 if args.ptll_yll_fit:
-    ptllyll_fit = combinetf2_input.get_fitresult(args.ptll_yll_fit)
-    ptllyllh = ptllyll_fit[f"hist_{fittype}_inclusive"]["ch0"].get() / 1000.0
+    ptllyllh = load_hist(args.ptll_yll_fit)
+
     hists_nom.append(ptllyllh)
     hists_err.extend(hist_to_up_down_unc(ptllyllh))
     if args.w:
