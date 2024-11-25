@@ -54,7 +54,7 @@ def quadrature_sum_hist(hists, is_down):
 def load_hist(filename, fittype="postfit", helicity=False):
     fitresult = combinetf2_input.get_fitresult(filename)
     obs = {args.obs, "helicity"}
-    if len(fitresult["projections"]):
+    if "projections" in fitresult.keys() and len(fitresult["projections"]):
         fitresult = fitresult["projections"]
         idx = [i for (i, a) in enumerate(fitresult) if obs == set(a["axes"])][0]
         fitresult = fitresult[idx]
@@ -270,12 +270,18 @@ if args.obs in ["ptVgen"]:
 else:
     ylabel += r"\ (pb)$"
 
+rlabel = "Ratio to " + (
+    "data"
+    if unfolded_data and args.ratioToData
+    else f"\n{labels[0]}" if args.noPrefit else "prefit"
+)
+
 if args.twoRatios:
     # make two ratios
     subplotsizes = [3, 2, 2]
     rlabel = [
         "Ratio to\n" + labels[3] + "fit",
-        "Ratio to\n " + ("data" if unfolded_data and args.ratioToData else "prefit"),
+        rlabel,
     ]
     midratio_idxs = [
         3,
@@ -297,9 +303,6 @@ if args.twoRatios:
 else:
     # just one ratio plot
     subplotsizes = [4, 2]
-    rlabel = "Ratio to " + (
-        "data" if unfolded_data else f"\n{labels[0]}" if args.noPrefit else "prefit"
-    )
     midratio_idxs = None
     if len(args.rrange) == 2:
         rrange = args.rrange
