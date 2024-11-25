@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
 from matplotlib import patches, ticker
-from matplotlib.legend_handler import HandlerLine2D
+from matplotlib.legend_handler import HandlerLine2D, HandlerPatch
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 
@@ -75,7 +75,8 @@ def figure(
     ax1 = fig.add_subplot()
 
     ax1.set_xlabel(xlabel)
-    ax1.set_ylabel(ylabel)
+    if ylabel is not None:
+        ax1.set_ylabel(ylabel, labelpad=40, va="center", multialignment="center")
     ax1.set_xlim(xlim)
 
     if ylim is not None:
@@ -118,10 +119,16 @@ def figureWithRatio(
 ):
     fig, xlim = cfgFigure(href, xlim, bin_density, width_scale, automatic_scale)
 
+    ratio_axes = []
+
+    if len(subplotsizes) == 2 and len(rrange) == 2 and isinstance(rlabel, str):
+        rrange = [rrange]
+        rlabel = [rlabel]
+
     if not only_ratio:
         ax1 = fig.add_subplot(sum(subplotsizes), 1, (1, subplotsizes[0]))
         ax1.set_xlabel(" ")
-        ax1.set_ylabel(ylabel)
+        ax1.set_ylabel(ylabel, labelpad=40, va="center", multialignment="center")
         ax1.set_xlim(xlim)
 
         if ylim:
@@ -135,31 +142,40 @@ def figureWithRatio(
             ax1.grid(which="both")
         if plot_title:
             ax1.set_title(plot_title, pad=title_padding)
-    ax2 = fig.add_subplot(
-        sum(subplotsizes), 1, (subplotsizes[0] + 1, sum(subplotsizes))
-    )
 
-    ax2.set_xlabel(xlabel)
-
-    ax2.set_xlim(xlim)
-    if x_ticks_ndp:
-        ax2.xaxis.set_major_formatter(
-            StrMethodFormatter("{x:." + str(x_ticks_ndp) + "f}")
+    for i, (ax, rr, rl) in enumerate(zip(subplotsizes[1:], rrange, rlabel)):
+        xax = fig.add_subplot(
+            sum(subplotsizes),
+            1,
+            (sum(subplotsizes[: i + 1]) + 1, sum(subplotsizes[: i + 2])),
         )
-    ax2.set_ylabel(rlabel)
-    ax2.set_ylim(rrange)
+        xax.set_xlabel(" ")
+        xax.set_ylabel(rl, labelpad=40, va="center", multialignment="center")
+        xax.set_ylim(rr)
+        ratio_axes.append(xax)
 
-    if logx:
-        if not only_ratio:
-            ax1.set_xscale("log")
-        ax2.set_xscale("log")
+    for ax in ratio_axes:
+        ax.set_xlim(xlim)
 
-    if grid_on_ratio_plot:
-        ax2.grid(which="both")
+        if x_ticks_ndp:
+            ax.xaxis.set_major_formatter(
+                StrMethodFormatter("{x:." + str(x_ticks_ndp) + "f}")
+            )
+        if logx:
+            ax.set_xscale("log")
+
+        if grid_on_ratio_plot:
+            ax.grid(which="both")
+
+    ratio_axes[-1].set_xlabel(xlabel)
+
+    if logx and not only_ratio:
+        ax1.set_xscale("log")
+
     if not only_ratio:
-        return fig, ax1, ax2
+        return fig, ax1, ratio_axes
     else:
-        return fig, ax2
+        return fig, xax
 
 
 class StackedLineHandler:
@@ -265,6 +281,123 @@ class BandFilledHandler:
         return [line1, line2, fill]
 
 
+class DoubleBandHandler(HandlerPatch):
+    def create_artists(
+        self,
+        legend,
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,
+        trans,
+        linewidth_scale=1.0,
+    ):
+        # Create the outer polygon
+        polygon_outer = Polygon(
+            [
+                [xdescent, ydescent],
+                [xdescent + width, ydescent],
+                [xdescent + width, ydescent + height],
+                [xdescent, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        # Create the inner polygon (narrower)
+        margin = 0.25 * width
+        polygon_inner = Polygon(
+            [
+                [xdescent + margin, ydescent],
+                [xdescent + width - margin, ydescent],
+                [xdescent + width - margin, ydescent + height],
+                [xdescent + margin, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        line = Line2D(
+            [xdescent + width / 2, xdescent + width / 2],
+            [ydescent, ydescent + height],
+            color="black",
+            lw=linewidth_scale * orig_handle.get_linewidth(),
+            linestyle=orig_handle.get_linestyle(),
+        )
+
+        # Set the transformations
+        polygon_outer.set_transform(trans)
+        polygon_inner.set_transform(trans)
+        line.set_transform(trans)
+
+        return [polygon_outer, polygon_inner, line]
+
+
+class TripleBandHandler(HandlerPatch):
+    def create_artists(
+        self,
+        legend,
+        orig_handle,
+        xdescent,
+        ydescent,
+        width,
+        height,
+        fontsize,
+        trans,
+        linewidth_scale=1.0,
+    ):
+        # Create the outer polygon
+        polygon_outer = Polygon(
+            [
+                [xdescent, ydescent],
+                [xdescent + width, ydescent],
+                [xdescent + width, ydescent + height],
+                [xdescent, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        # Create the inner polygon (narrower)
+        margin = 0.15 * width
+        polygon_inner = Polygon(
+            [
+                [xdescent + margin, ydescent],
+                [xdescent + width - margin, ydescent],
+                [xdescent + width - margin, ydescent + height],
+                [xdescent + margin, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        # Create the inner polygon (narrower)
+        margin = 0.3 * width
+        polygon_inner2 = Polygon(
+            [
+                [xdescent + margin, ydescent],
+                [xdescent + width - margin, ydescent],
+                [xdescent + width - margin, ydescent + height],
+                [xdescent + margin, ydescent + height],
+            ],
+            color=orig_handle.get_facecolor(),
+            alpha=orig_handle.get_alpha(),
+        )
+        line = Line2D(
+            [xdescent + width / 2, xdescent + width / 2],
+            [ydescent, ydescent + height],
+            color="black",
+            lw=linewidth_scale * orig_handle.get_linewidth(),
+            linestyle=orig_handle.get_linestyle(),
+        )
+
+        # Set the transformations
+        polygon_outer.set_transform(trans)
+        polygon_inner.set_transform(trans)
+        polygon_inner2.set_transform(trans)
+        line.set_transform(trans)
+
+        return [polygon_outer, polygon_inner, polygon_inner2, line]
+
+
 def get_custom_handler_map(keys):
     if len(keys) == 0:
         return None
@@ -278,6 +411,10 @@ def get_custom_handler_map(keys):
             handler_map[Polygon] = BandFilledHandler()
         elif key == "verticleline":
             handler_map[Line2D] = HandlerLine2D(update_func=update_prop)
+        elif key == "doubleband":
+            handler_map[Polygon] = DoubleBandHandler()
+        elif key == "tripleband":
+            handler_map[Polygon] = TripleBandHandler()
     return handler_map
 
 
@@ -286,6 +423,27 @@ def update_prop(handle, orig):
     handle.update_from(orig)
     x, y = handle.get_data()
     handle.set_data([np.mean(x)] * 2, [0, 2 * y[0]])
+
+
+def padding(ncols, labels, handles, loc="auto"):
+    if len(labels) % ncols:
+        # if not all legend places are filled, add empty legend entries towards the center of the figure
+        rest = ncols - len(labels) % ncols
+        nrows = int(np.ceil(len(labels) / ncols))
+        for i in range(rest):
+            if loc == "upper right":
+                idx = (i + 1) * nrows - 1
+            elif loc == "lower right":
+                idx = i * nrows
+            elif loc == "upper left":
+                idx = len(labels) - i * nrows
+            elif loc == "lower left":
+                idx = len(labels) - (i + 1) * nrows + 1
+            else:
+                raise ValueError(f"Invalid option {loc} for legend padding location")
+            handles.insert(idx, patches.Patch(color="none", label=" "))
+            labels.insert(idx, " ")
+    return labels, handles
 
 
 def addLegend(
@@ -298,36 +456,38 @@ def addLegend(
     bbox_to_anchor=None,
     extra_handles=[],
     extra_labels=[],
+    extra_entries_first=True,
     custom_handlers=[],
     markerfirst=True,
     reverse=True,
     labelcolor=None,
+    padding_loc="auto",
 ):
     handles, labels = ax.get_legend_handles_labels()
+    if extra_entries_first:
+        handles.extend(extra_handles)
+        labels.extend(extra_labels)
+    else:
+        handles = [*extra_handles, *handles]
+        labels = [*extra_labels, *labels]
 
-    handles.extend(extra_handles)
-    labels.extend(extra_labels)
     if len(labels) == 0:
         return
-    if len(labels) % ncols:
-        # if not all legend places are filled, add empty legend entries towards the center of the figure
-        rest = ncols - len(labels) % ncols
-        nrows = int(np.ceil(len(labels) / ncols))
-        for i in range(rest):
-            if loc == "lower left":
-                # add empty entry to the upper right
-                idx = (i + 1) * nrows - 1
-            elif loc == "upper left":
-                # add empty entry to the lower right
-                idx = i * nrows
-            elif loc == "lower right":
-                # add empty entry to the upper left
-                idx = len(labels) - i * nrows
-            elif loc == "upper right":
-                # add empty entry to the lower left
-                idx = len(labels) - (i + 1) * nrows + 1
-            handles.insert(idx, patches.Patch(color="none", label=" "))
-            labels.insert(idx, " ")
+
+    if padding_loc == "auto":
+        legend_to_padding_loc = {
+            "upper right": "lower left",
+            "1": "lower left",
+            "upper left": "lower right",
+            "2": "lower right",
+            "lower left": "upper right",
+            "3": "upper right",
+            "lower right": "upper left",
+            "4": "upper left",
+        }
+        padding_loc = legend_to_padding_loc.get(str(loc), "lower right")
+
+    labels, handles = padding(ncols, labels, handles, padding_loc)
 
     text_size = get_textsize(ax, text_size)
     handler_map = get_custom_handler_map(custom_handlers)
@@ -503,9 +663,11 @@ def makeStackPlotWithRatio(
     linewidth=2,
     alpha=0.7,
     legPos="upper right",
+    leg_padding="auto",
     lowerLegCols=2,
     lowerLegPos="upper right",
     lower_panel_variations=0,
+    lower_leg_padding="auto",
     scaleRatioUnstacked=[],
     subplotsizes=[4, 2],
 ):
@@ -543,7 +705,7 @@ def makeStackPlotWithRatio(
             data_hist = h
 
     if add_ratio:
-        fig, ax1, ax2 = figureWithRatio(
+        fig, ax1, ratio_axes = figureWithRatio(
             stack[0],
             xlabel,
             ylabel,
@@ -560,6 +722,7 @@ def makeStackPlotWithRatio(
             width_scale=width_scale,
             subplotsizes=subplotsizes,
         )
+        ax2 = ratio_axes[-1]
     else:
         fig, ax1 = figure(
             stack[0],
@@ -574,6 +737,7 @@ def makeStackPlotWithRatio(
             bin_density=bin_density,
             width_scale=width_scale,
         )
+        ratio_axes = None
         ax2 = None
 
     if fitresult:
@@ -848,6 +1012,7 @@ def makeStackPlotWithRatio(
         extra_text=extra_text,
         extra_text_loc=extra_text_loc,
         text_size=legtext_size,
+        padding_loc=leg_padding,
     )
     if add_ratio:
         addLegend(
@@ -862,9 +1027,10 @@ def makeStackPlotWithRatio(
                 if fill_between is not None
                 else ["stacked"] if double_lines else []
             ),
+            padding_loc=lower_leg_padding,
         )
 
-    fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy, noSci=noSci)
+    fix_axes(ax1, ratio_axes, fig, yscale=yscale, logy=logy, noSci=noSci)
 
     lumi = float(f"{lumi:.3g}") if not density else None
     if cms_decor:
@@ -875,14 +1041,15 @@ def makeStackPlotWithRatio(
 
 def makePlotWithRatioToRef(
     hists,
-    hists_ratio,
     labels,
     colors,
+    hists_ratio=None,
+    midratio_idxs=None,
     linestyles=[],
     xlabel="",
     ylabel="Events/bin",
-    rlabel="x/nominal",
-    rrange=[0.9, 1.1],
+    rlabel=["x/nominal"],
+    rrange=[[0.9, 1.1]],
     ylim=None,
     xlim=None,
     nlegcols=2,
@@ -892,6 +1059,7 @@ def makePlotWithRatioToRef(
     alpha=1.0,
     baseline=True,
     dataIdx=None,
+    ratio_to_data=False,
     autorrange=None,
     grid=False,
     extra_text=None,
@@ -912,20 +1080,60 @@ def makePlotWithRatioToRef(
     only_ratio=False,
     width_scale=1,
     linewidth=2,
+    leg_padding="auto",
+    lower_leg_padding="auto",
+    subplotsizes=[4, 2],
+    no_sci=False,
+    lumi=None,
+    center_rlabels=False,
+    swap_ratio_panels=False,
 ):
+    if hists_ratio is None:
+        hists_ratio = hists
+
     if len(hists_ratio) != len(labels) or len(hists_ratio) != len(colors):
         raise ValueError(
             f"Number of hists ({len(hists_ratio)}), colors ({len(colors)}), and labels ({len(labels)}) must agree!"
         )
     ratio_hists = [
         hh.divideHists(
-            h, hists[0], cutoff=cutoff, flow=False, rel_unc=True, by_ax_name=False
+            h,
+            hists[dataIdx if ratio_to_data else 0],
+            cutoff=cutoff,
+            flow=False,
+            rel_unc=True,
+            by_ax_name=False,
         )
         for h in hists_ratio[not baseline :]
     ]
 
+    ratio_axes_idx = -1
+    midratio_axes_idx = 0
+    midratio_hists = None
+    if len(subplotsizes) == 3:
+        if midratio_idxs is None:
+            raise ValueError("Found two ratio axes but no midratio hist indices!")
+
+        midratio_hists = [
+            hh.divideHists(
+                hists_ratio[i],
+                hists_ratio[midratio_idxs[0]],
+                cutoff=cutoff,
+                flow=False,
+                rel_unc=True,
+                by_ax_name=False,
+            )
+            for i in midratio_idxs
+        ]
+
+        if swap_ratio_panels:
+            rlabel = rlabel[::-1]
+            rrange = rrange[::-1]
+            ratio_axes_idx = 0
+            midratio_axes_idx = -1
+
     if not only_ratio:
-        fig, ax1, ax2 = figureWithRatio(
+        fig, ax1, ratio_axes = figureWithRatio(
             hists[0],
             xlabel,
             ylabel,
@@ -941,7 +1149,9 @@ def makePlotWithRatioToRef(
             logx=logx,
             only_ratio=only_ratio,
             width_scale=width_scale,
+            subplotsizes=subplotsizes,
         )
+        ax2 = ratio_axes[ratio_axes_idx]
     else:
         fig, ax2 = figureWithRatio(
             hists[0],
@@ -978,24 +1188,6 @@ def makePlotWithRatioToRef(
             flow="none",
             zorder=4,
         )
-        hep.histplot(
-            hh.divideHists(
-                hists[dataIdx],
-                hists[0],
-                cutoff=cutoff,
-                flow=False,
-                by_ax_name=False,
-                rel_unc=True,
-            ),
-            histtype="errorbar",
-            color=colors[dataIdx],
-            xerr=False,
-            yerr=True,
-            stack=False,
-            ax=ax2,
-            alpha=alpha,
-            flow="none",
-        )
 
     hists_noData = exclude_data(hists)
     if not only_ratio:
@@ -1015,54 +1207,46 @@ def makePlotWithRatioToRef(
             zorder=3,
         )
 
-    if len(hists) > 1:
-        ratio_hists = [
-            hh.divideHists(h, hists[0], flow=False, rel_unc=True, by_ax_name=False)
-            for h in hists_ratio
-        ]
-        if fill_between != 0:
-            for upr, downr, color in zip(
-                ratio_hists[-fill_between::2],
-                ratio_hists[-fill_between + 1 :: 2],
-                colors[-fill_between::2],
-            ):
-                ax2.fill_between(
-                    upr.axes[0].edges,
-                    np.append(upr.values(), upr.values()[-1]),
-                    np.append(downr.values(), downr.values()[-1]),
-                    step="post",
-                    color=color,
-                    alpha=0.5,
-                )
-
-        hep.histplot(
-            exclude_data(ratio_hists)[not baseline :],
-            histtype="step",
-            color=exclude_data(colors)[not baseline :],
-            linestyle=exclude_data(linestyles)[not baseline :],
+    if len(ratio_hists) > 1:
+        plotRatio(
+            ax2,
+            ratio_hists=ratio_hists,
+            labels=labels,
+            colors=colors,
+            linestyles=linestyles,
             linewidth=linewidth,
-            yerr=yerr,
-            stack=False,
-            ax=ax2,
+            lowerLegPos=lowerLegPos,
+            lowerLegCols=lowerLegCols,
+            legtext_size=legtext_size,
+            lower_leg_padding=lower_leg_padding,
             alpha=alpha,
-            flow="none",
+            yerr=False,
+            fill_between=fill_between,
+            dataIdx=dataIdx,
+            baseline=baseline,
+            add_legend=not only_ratio,
         )
-
-        extra_handles = [
-            Polygon(
-                [[0, 0], [0, 0], [0, 0], [0, 0]],
-                color=c,
-                linestyle=l,
+        if midratio_hists:
+            plotRatio(
+                ratio_axes[midratio_axes_idx],
+                ratio_hists=midratio_hists,
+                labels=[labels[i] for i in midratio_idxs],
+                colors=[colors[i] for i in midratio_idxs],
+                linestyles=[linestyles[i] for i in midratio_idxs],
                 linewidth=linewidth,
+                lowerLegPos=lowerLegCols,
+                lowerLegCols=lowerLegCols,
+                legtext_size=legtext_size,
+                lower_leg_padding=lower_leg_padding,
                 alpha=alpha,
+                yerr=False,
+                fill_between=fill_between,
+                dataIdx=(
+                    midratio_idxs.index(dataIdx) if dataIdx in midratio_idxs else None
+                ),
+                baseline=baseline,
+                add_legend=False,
             )
-            for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])
-        ]
-        # extra_handles = [Line2D([0], [0], color=c, linestyle=l, linewidth=linewidth) for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])]
-        extra_labels = exclude_data(labels)[: len(hists_noData)]
-    else:
-        extra_handles = []
-        extra_labels = []
 
     if not only_ratio:
         addLegend(
@@ -1071,30 +1255,109 @@ def makePlotWithRatioToRef(
             extra_text=extra_text,
             extra_text_loc=extra_text_loc,
             text_size=legtext_size,
+            padding_loc=leg_padding,
         )
+
+        fix_axes(
+            ax1,
+            ratio_axes,
+            fig,
+            x_ticks_ndp=x_ticks_ndp,
+            yscale=yscale,
+            logy=logy,
+            noSci=no_sci,
+            center_rlabels=center_rlabels,
+        )
+
+    if cms_label:
+        add_cms_decor(ax1, cms_label, lumi=lumi, loc=logoPos)
+
+    return fig
+
+
+def plotRatio(
+    ax,
+    ratio_hists,
+    labels,
+    colors,
+    linestyles=[],
+    linewidth=2,
+    lowerLegPos="upper right",
+    lowerLegCols=2,
+    legtext_size=None,
+    alpha=1.0,
+    yerr=False,
+    fill_between=0,
+    dataIdx=-1,
+    baseline=True,
+    add_legend=True,
+    lower_leg_padding="auto",
+):
+    if fill_between != 0:
+        for upr, downr, color in zip(
+            ratio_hists[-fill_between::2],
+            ratio_hists[-fill_between + 1 :: 2],
+            colors[-fill_between::2],
+        ):
+            ax.fill_between(
+                upr.axes[0].edges,
+                np.append(upr.values(), upr.values()[-1]),
+                np.append(downr.values(), downr.values()[-1]),
+                step="post",
+                color=color,
+                alpha=0.5,
+            )
+
+    exclude_data = lambda x: [j for i, j in enumerate(x) if i != dataIdx]
+
+    hep.histplot(
+        exclude_data(ratio_hists)[not baseline :],
+        histtype="step",
+        color=exclude_data(colors)[not baseline :],
+        linestyle=exclude_data(linestyles)[not baseline :],
+        linewidth=linewidth,
+        yerr=yerr,
+        stack=False,
+        ax=ax,
+        alpha=alpha,
+        flow="none",
+    )
+    if dataIdx is not None:
+        hep.histplot(
+            ratio_hists[dataIdx],
+            histtype="errorbar",
+            color=colors[dataIdx],
+            xerr=False,
+            yerr=True,
+            stack=False,
+            ax=ax,
+            alpha=alpha,
+            flow="none",
+        )
+
+    extra_handles = [
+        Polygon(
+            [[0, 0], [0, 0], [0, 0], [0, 0]],
+            color=c,
+            linestyle=l,
+            linewidth=linewidth,
+            alpha=alpha,
+        )
+        for c, l in zip(colors[-fill_between::2], linestyles[-fill_between::2])
+    ]
+    extra_labels = exclude_data(labels)[: len(extra_handles)]
+
+    if add_legend:
         addLegend(
-            ax2,
+            ax,
             lowerLegCols,
             loc=lowerLegPos,
             text_size=legtext_size,
             extra_handles=extra_handles,
             extra_labels=extra_labels,
             custom_handlers=["stackfilled"],
+            padding_loc=lower_leg_padding,
         )
-
-        # This seems like a bug, but it's needed
-        if not xlim:
-            xlim = [hists[0].axes[0].edges[0], hists[0].axes[0].edges[-1]]
-        fix_axes(ax1, ax2, fig, yscale=yscale, logy=logy)
-        if x_ticks_ndp:
-            ax2.xaxis.set_major_formatter(
-                StrMethodFormatter("{x:." + str(x_ticks_ndp) + "f}")
-            )
-
-    if cms_label:
-        add_cms_decor(ax1, cms_label, loc=logoPos)
-
-    return fig
 
 
 def makeHistPlot2D(h2d, flow=False, **kwargs):
@@ -1222,7 +1485,16 @@ def extendEdgesByFlow(href, bin_flow_width=0.02):
         return all_edges
 
 
-def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
+def fix_axes(
+    ax1,
+    ratio_axes=None,
+    fig=None,
+    x_ticks_ndp=None,
+    yscale=None,
+    logy=False,
+    noSci=False,
+    center_rlabels=False,
+):
     if yscale:
         ymin, ymax = ax1.get_ylim()
         ax1.set_ylim(ymin, ymax * yscale)
@@ -1235,10 +1507,16 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
     elif not logy:
         ax1.ticklabel_format(style="sci", useMathText=True, axis="y", scilimits=(0, 0))
 
-    if ax2 is not None:
-        ax2.tick_params(axis="y", pad=5)  # Set distance to axis for y-axis numbers
-        redo_axis_ticks(ax2, "x")
+    if ratio_axes is not None:
+        if not isinstance(ratio_axes, (list, tuple, np.ndarray)):
+            ratio_axes = [ratio_axes]
+
         ax1.set_xticklabels([])
+        for i, ax in enumerate(ratio_axes):
+            if i == len(ratio_axes) - 1:
+                redo_axis_ticks(ax, "x")
+            else:
+                ax.set_xticklabels([])
 
         # Function to get the position of the ylabel in axes coordinates
         def get_ylabel_position(ax):
@@ -1249,11 +1527,19 @@ def fix_axes(ax1, ax2=None, fig=None, yscale=None, logy=False, noSci=False):
             )[0, 0]
 
         # Get the leftmost position of the y-axis labels
-        y_label_pos = min(get_ylabel_position(ax1), get_ylabel_position(ax2))
+        y_label_pos = min(*[get_ylabel_position(ax) for ax in [ax1, *ratio_axes]])
 
-        # Set both labels to the leftmost position
+        # Set all labels to the leftmost position
         ax1.yaxis.set_label_coords(y_label_pos * 0.7, 1.0)
-        ax2.yaxis.set_label_coords(y_label_pos * 0.7, 1.0)
+
+        for i, ax in enumerate(ratio_axes):
+            ax.tick_params(axis="y", pad=5)  # Set distance to axis for y-axis numbers
+            ax.yaxis.set_label_coords(y_label_pos * 0.7, 0.5 if center_rlabels else 1.0)
+
+        if x_ticks_ndp:
+            ax.xaxis.set_major_formatter(
+                StrMethodFormatter("{x:." + str(x_ticks_ndp) + "f}")
+            )
 
 
 def redo_axis_ticks(ax, axlabel, no_labels=False):
@@ -1283,7 +1569,7 @@ def save_pdf_and_png(outdir, basename, fig=None):
     else:
         plt.savefig(fname, bbox_inches="tight")
         plt.savefig(fname.replace(".pdf", ".png"), bbox_inches="tight")
-    print(f"Wrote file(s) {fname}(.png)")
+    logger.info(f"Wrote file(s) {fname}(.png)")
     logger.info(f"Wrote file(s) {fname}(.png)")
 
 
@@ -1296,12 +1582,13 @@ def write_index_and_log(
     args={},
     nround=2,
 ):
-    indexnamesave = "index.php"
-    if "mit.edu" in socket.gethostname():
+    indexname = "index.php"
+    if "mit.edu" in socket.gethostname() and not (
+        hasattr(args, "eoscp") and args.eoscp
+    ):
         indexname = "index_mit.php"
-    else:
-        indexname = "index.php"
-    shutil.copyfile(f"{template_dir}/{indexname}", f"{outpath}/{indexnamesave}")
+
+    shutil.copyfile(f"{template_dir}/{indexname}", f"{outpath}/index.php")
     logname = f"{outpath}/{logname}.log"
 
     with open(logname, "w") as logf:
@@ -1351,6 +1638,7 @@ def write_index_and_log(
 def make_summary_plot(
     centerline,
     center_unc,
+    center_unc_part,
     center_label,
     df,
     colors,
@@ -1362,7 +1650,6 @@ def make_summary_plot(
     capsize=10,
     width_scale=1.5,
     center_color="black",
-    cms_loc=2,
     label_points=True,
     legtext_size=None,
     lumi=None,
@@ -1375,6 +1662,7 @@ def make_summary_plot(
     point_center_colors=None,
     cms_label="Preliminary",
     logoPos=0,
+    leg_padding="auto",
 ):
     nentries = len(df) + (bottom_offset - top_offset)
 
@@ -1383,10 +1671,12 @@ def make_summary_plot(
         cmap = mpl.cm.get_cmap("tab10")
         colors = [cmap(i) for i in range(len(df))]
 
-    if len(colors) != len(df):
-        raise ValueError(f"Length of values ({nentries}) and colors must be equal!")
+    if len(colors) < len(df):
+        raise ValueError(
+            f"Length of values ({nentries}) must be equal or smaller than colors!"
+        )
     if ylim is None:
-        ylim = [0, nentries + 1]
+        ylim = [0.2, nentries + 1.5]
 
     fig, ax1 = figure(
         None,
@@ -1408,38 +1698,63 @@ def make_summary_plot(
         color=center_color,
         linewidth=2,
     )
+    if center_unc_part is not None:
+        ax1.fill_between(
+            [centerline - center_unc_part, centerline + center_unc_part],
+            *ylim,
+            color="silver",
+            alpha=0.6,
+        )
     ax1.fill_between(
         [centerline - center_unc, centerline + center_unc],
         *ylim,
         color="silver",
         alpha=0.6,
     )
-    extra_handles = [
-        (
-            Polygon(
-                [[0, 0], [0, 0], [0, 0], [0, 0]],
-                color="silver",
-                linestyle="solid",
-                alpha=0.6,
-            ),
-            Line2D([0, 0], [0, 0], color=center_color, linestyle="solid", linewidth=2),
-        )
-    ]
+
+    if center_unc_part is None:
+        extra_handles = [
+            (
+                Polygon(
+                    [[0, 0], [0, 0], [0, 0], [0, 0]],
+                    color="silver",
+                    linestyle="solid",
+                    alpha=0.6,
+                ),
+                Line2D(
+                    [0, 0], [0, 0], color=center_color, linestyle="solid", linewidth=2
+                ),
+            )
+        ]
+    else:
+        extra_handles = [
+            (
+                Polygon(
+                    [[0, 0], [0, 0], [0, 0], [0, 0]],
+                    facecolor="silver",
+                    linestyle="solid",
+                    edgecolor="black",
+                    linewidth=2,
+                    alpha=0.6,
+                ),
+            )
+        ]
+
     extra_labels = [center_label]
 
     if markers is None:
         markers = ["o"] * len(df)
 
-    print(markers)
+    textsize = get_textsize(ax1, legtext_size)
 
     for i, (x, row) in enumerate(df.iterrows()):
-        print(i)
         # Use for spacing purposes
         vals = row.iloc[1:].values
+        xpos = vals[0]
         u = vals[1:]
         pos = nentries - i - top_offset
         ax1.errorbar(
-            [vals[0]],
+            [xpos],
             [pos],
             xerr=u[0],
             linestyle="",
@@ -1447,11 +1762,11 @@ def make_summary_plot(
             marker=markers[i],
             color=colors[i],
             capsize=capsize,
-            label=row.loc["Name"] if label_points else None,
+            # label=row.loc["Name"] if label_points else None,
         )
         if len(u) > 1:
             ax1.errorbar(
-                [vals[0]],
+                [xpos],
                 [pos],
                 xerr=u[1],
                 linestyle="",
@@ -1460,6 +1775,17 @@ def make_summary_plot(
                 color=colors[i] if not point_center_colors else point_center_colors[i],
                 capsize=capsize,
             )
+        if label_points:
+            ax1.annotate(
+                row["Name"],
+                (xlim[0] + 0.01 * (xlim[1] - xlim[0]), pos),
+                fontsize=textsize,
+                ha="left",
+                va="center",
+                # color="dimgrey",
+                annotation_clip=False,
+                style=None,
+            )
 
     if cms_label:
         add_cms_decor(
@@ -1467,8 +1793,8 @@ def make_summary_plot(
             cms_label,
             loc=logoPos,
             lumi=lumi,
-            no_energy=lumi is not None,
-            text_size=get_textsize(ax1, "small"),
+            no_energy=lumi is None,
+            text_size=textsize,
         )
 
     if legend_loc is not None or bbox_to_anchor is not None:
@@ -1477,7 +1803,6 @@ def make_summary_plot(
         if bbox_to_anchor is not None and any(abs(x) > 1 for x in bbox_to_anchor):
             data_to_figure = ax1.transData + ax1.transAxes.inverted()
             bbox_to_anchor = data_to_figure.transform(bbox_to_anchor)
-            print(bbox_to_anchor)
 
         addLegend(
             ax1,
@@ -1485,12 +1810,16 @@ def make_summary_plot(
             text_size=legtext_size,
             bbox_to_anchor=bbox_to_anchor,
             loc=legend_loc,
-            reverse=True,
-            extra_labels=extra_labels,
+            reverse=False,
             markerfirst=True,
             labelcolor=center_color,
             extra_handles=extra_handles,
-            custom_handlers=["verticleline"],
+            extra_labels=extra_labels,
+            extra_entries_first=False,
+            custom_handlers=(
+                ["verticleline"] if center_unc_part is None else ["doubleband"]
+            ),
+            padding_loc=leg_padding,
         )
 
     ax1.minorticks_off()

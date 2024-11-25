@@ -2,6 +2,7 @@ import re
 
 import numpy as np
 import uproot
+from matplotlib.patches import Polygon
 from scipy.stats import chi2
 
 from narf import ioutils
@@ -56,7 +57,6 @@ if __name__ == "__main__":
     )
 
     parser = parsing.set_parser_default(parser, "legCols", 1)
-    parser = parsing.set_parser_default(parser, "legPos", None)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
                     axis=1,
                 )
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
-            ylabel = " "
+            ylabel = None
         elif "etaAbsEta" in axes:
             axis_label = styles.xlabels.get("etaAbsEta", "etaAbsEta")
             axis_ranges = [
@@ -189,7 +189,7 @@ if __name__ == "__main__":
                 .apply(lambda x: round(axis_ranges[x + 1], 1))
                 .astype(str)
             )
-            ylabel = " "
+            ylabel = None
         elif "lumi" in axes:
             axis_ranges = [
                 [278769, 278808],
@@ -214,7 +214,7 @@ if __name__ == "__main__":
                 )
                 .astype(str)
             )
-            ylabel = " "
+            ylabel = None
         elif "etaRegionRange" in axes:
             # axis_ranges = {0:"2",1:"1",2:"0"}
             axis_ranges = {
@@ -245,9 +245,9 @@ if __name__ == "__main__":
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
-        ylabel = " "
+        ylabel = None
 
-        df_p.sort_values(by=axes, ascending=False, inplace=True)
+        df_p.sort_values(by=axes, ascending=True, inplace=True)
 
         xCenter = 0
 
@@ -289,12 +289,8 @@ if __name__ == "__main__":
         else:
             xlim = args.xlim
 
-        ylim = (
-            -1 * (args.infileInclusive != None),
-            len(df_p) + (args.infileInclusive != None),
-        )
-
-        y = np.arange(0, len(df)) + 0.5 + (args.infileInclusive != None)
+        ylim = (0.0, len(df_p))
+        y = np.arange(0, len(df)) + 0.5
 
         fig, ax1 = plot_tools.figure(
             None,
@@ -309,38 +305,6 @@ if __name__ == "__main__":
         )
 
         if args.infileInclusive:
-            ax1.errorbar(
-                [c],
-                [0.0],
-                xerr=c_err_stat,
-                color="red",
-                marker="",
-                linestyle="",
-                zorder=3,
-            )
-            ax1.errorbar(
-                [c],
-                [0.0],
-                xerr=c_err_cal,
-                color="orange",
-                linewidth=5,
-                marker="",
-                linestyle="",
-                zorder=2,
-            )
-            ax1.errorbar(
-                [c],
-                [0.0],
-                xerr=c_err,
-                color="black",
-                marker="o",
-                linestyle="",
-                zorder=1,
-            )
-            ax1.plot(
-                [c], [0.0], color="black", marker="o", linestyle="", zorder=4
-            )  # point on top
-
             ndf = len(df_p) - 1
 
             logger.info(f"nll_inclusive = {nll_inclusive}; nll = {nll}")
@@ -356,14 +320,14 @@ if __name__ == "__main__":
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            if args.legPos in [None, "center left"]:
+            if args.legPos in [None, "center left", "upper left"]:
                 x_chi2 = 0.06
                 y_chi2 = 0.15
                 ha = "left"
                 va = "bottom"
             else:
                 raise NotImplementedError(
-                    "Can only plot chi2 if legend is 'center left'"
+                    "Can only plot chi2 if legend is center or upper"
                 )
 
             plot_tools.wrap_text(
@@ -394,12 +358,9 @@ if __name__ == "__main__":
                 color="gray",
                 alpha=0.3,
             )
-            ax1.plot([c, c], ylim, color="black", linestyle="--")
+            ax1.plot([c, c], ylim, color="black", linewidth=2, linestyle="-")
 
-            yticks = ["Nominal", *yticks]
-            ytickpositions = [0.0, *y]
-        else:
-            ytickpositions = y
+        ytickpositions = y
 
         ax1.set_yticks(ytickpositions, labels=yticks)
         ax1.minorticks_off()
@@ -430,21 +391,36 @@ if __name__ == "__main__":
             y,
             xerr=err,
             color="black",
-            marker="",
+            marker="o",
             linestyle="",
             label="Measurement",
             zorder=1,
+            capsize=10,
+            linewidth=3,
         )
         ax1.plot(
             val, y, color="black", marker="o", linestyle="", zorder=4
         )  # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
 
+        extra_handles = [
+            (
+                Polygon(
+                    [[0, 0], [0, 0], [0, 0], [0, 0]],
+                    facecolor="gray",
+                    linestyle="solid",
+                    edgecolor="black",
+                    linewidth=2,
+                    alpha=0.3,
+                ),
+            )
+        ]
+
         if args.showMCInput:
             ax1.plot(
                 [offset, offset],
                 ylim,
-                linestyle="--",
+                linestyle="-",
                 marker="none",
                 color="black",
                 label="MC input",
@@ -457,8 +433,11 @@ if __name__ == "__main__":
         plot_tools.addLegend(
             ax1,
             ncols=args.legCols,
-            loc=(0.02, 0.58) if args.legPos is None else args.legPos,
+            loc=args.legPos,
             text_size=args.legSize,
+            extra_handles=extra_handles,
+            extra_labels=["Nominal"],
+            custom_handlers=["tripleband"],
         )
 
         if args.title:
