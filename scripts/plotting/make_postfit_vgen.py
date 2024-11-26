@@ -29,6 +29,7 @@ parser.add_argument(
     "--ratioToData", action="store_true", help="Use data as denominator in ratio"
 )
 parser.add_argument("--twoRatios", action="store_true", help="Make two ratio panels")
+parser.add_argument("--baseSize", type=float, default=10, help="Figure size")
 parser.add_argument(
     "--saveForHepdata",
     action="store_true",
@@ -284,16 +285,15 @@ else:
 rlabel = "Ratio to " + (
     "data"
     if unfolded_data and args.ratioToData
-    else f"\n{labels[0]}" if args.noPrefit else "\nprefit"
+    else f"{labels[0]}" if args.noPrefit else "prefit"
 )
 
 if args.twoRatios:
     # make two ratios
-    base_size = 12.5
     subplotsizes = [3, 2, 2]
     rlabel = [
         "Ratio to\n" + labels[3] + "fit",
-        rlabel.replace("Ratio to", "Ratio to\n"),
+        rlabel.replace("Ratio to ", "Ratio to\n"),
     ]
     midratio_idxs = [
         3,
@@ -314,7 +314,6 @@ if args.twoRatios:
         )
 else:
     # just one ratio plot
-    base_size = 10
     subplotsizes = [4, 2]
     midratio_idxs = None
     if len(args.rrange) == 2:
@@ -353,7 +352,7 @@ fig = plot_tools.makePlotWithRatioToRef(
     ratio_to_data=args.ratioToData,
     width_scale=1.0 if args.customFigureWidth is None else args.customFigureWidth,
     automatic_scale=True if args.customFigureWidth is None else False,
-    base_size=base_size,
+    base_size=args.baseSize,
     subplotsizes=subplotsizes,
     no_sci=args.noSciy,
     lumi=16.8,
