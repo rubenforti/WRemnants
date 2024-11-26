@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import narf
 from utilities import boostHistHelpers as hh
-from utilities import parsing
+from utilities import logging, parsing
 from utilities.io_tools import combinetf2_input, input_tools, output_tools
 from wremnants import plot_tools, syst_tools
 
@@ -28,9 +29,16 @@ parser.add_argument(
     "--ratioToData", action="store_true", help="Use data as denominator in ratio"
 )
 parser.add_argument("--twoRatios", action="store_true", help="Make two ratio panels")
+parser.add_argument(
+    "--saveForHepdata",
+    action="store_true",
+    help="Save histograms as ROOT to prepare HEPData",
+)
 parser = parsing.set_parser_attribute(parser, "rrange", "nargs", "*")
 
 args = parser.parse_args()
+
+logger = logging.setup_logger("make_postfit_vgen", args.verbose)
 
 fittype = "prefit" if args.prefit else "postfit"
 
@@ -125,8 +133,8 @@ if not args.prefit and not args.noPrefit:
         )
         hists_nom.append(gen)
         hists_err.extend([theory_up, theory_down])
-        labels.append("prefit")
-        names.append("prefit")
+        labels.append("Prefit")
+        names.append("Prefit")
         colors.append("gray")
 
     elif args.etapt_fit is not None:
@@ -135,8 +143,8 @@ if not args.prefit and not args.noPrefit:
         theory_up, theory_down = hist_to_up_down_unc(gen)
         hists_nom.append(gen)
         hists_err.extend([theory_up, theory_down])
-        labels.append("prefit")
-        names.append("prefit")
+        labels.append("Prefit")
+        names.append("Prefit")
         colors.append("gray")
 
     elif args.helicity_fit is not None:
@@ -276,7 +284,7 @@ else:
 rlabel = "Ratio to " + (
     "data"
     if unfolded_data and args.ratioToData
-    else f"\n{labels[0]}" if args.noPrefit else "prefit"
+    else f"\n{labels[0]}" if args.noPrefit else "\nprefit"
 )
 
 if args.twoRatios:
@@ -368,6 +376,22 @@ if args.postfix:
     name += f"_{args.postfix}"
 if args.cmsDecor == "Preliminary":
     name += "_preliminary"
+
+if args.saveForHepdata:
+    # open root file
+    outfile_root = f"{outdir}/{name}.root"
+    rf = input_tools.safeOpenRootFile(outfile_root, mode="recreate")
+    logger.warning(f"Saving histograms for HEPData in {outfile_root}")
+    for ih, h in enumerate(hists_nom):
+        hroot = narf.hist_to_root(h)
+        hname = names[ih]
+        hroot.SetName(hname)
+        hroot.SetTitle(hname)
+        hroot.GetXaxis().SetTitle(xlabel)
+        hroot.GetYaxis().SetTitle(ylabel)
+        hroot.Write()
+        logger.info(f"Saving histogram {hname}")
+    rf.Close()
 
 plot_tools.save_pdf_and_png(outdir, name)
 
