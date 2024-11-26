@@ -1,6 +1,7 @@
 import pickle
 
 import hist
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -33,6 +34,8 @@ args = parser.parse_args()
 
 fittype = "prefit" if args.prefit else "postfit"
 
+plt.rcParams["font.size"] = plt.rcParams["font.size"] * args.scaleTextSize
+
 
 def hist_to_up_down_unc(h):
     hunc = h.copy()
@@ -53,7 +56,7 @@ def quadrature_sum_hist(hists, is_down):
 
 def load_hist(filename, fittype="postfit", helicity=False):
     fitresult = combinetf2_input.get_fitresult(filename)
-    obs = {args.obs, "helicity"}
+    obs = {args.obs, "helicity"} if helicity else {args.obs}
     if "projections" in fitresult.keys() and len(fitresult["projections"]):
         fitresult = fitresult["projections"]
         idx = [i for (i, a) in enumerate(fitresult) if obs == set(a["axes"])][0]
@@ -278,10 +281,11 @@ rlabel = "Ratio to " + (
 
 if args.twoRatios:
     # make two ratios
+    base_size = 12.5
     subplotsizes = [3, 2, 2]
     rlabel = [
         "Ratio to\n" + labels[3] + "fit",
-        rlabel,
+        rlabel.replace("Ratio to", "Ratio to\n"),
     ]
     midratio_idxs = [
         3,
@@ -302,6 +306,7 @@ if args.twoRatios:
         )
 else:
     # just one ratio plot
+    base_size = 10
     subplotsizes = [4, 2]
     midratio_idxs = None
     if len(args.rrange) == 2:
@@ -338,7 +343,9 @@ fig = plot_tools.makePlotWithRatioToRef(
     legtext_size=args.legSize,
     dataIdx=idx_unfolded,
     ratio_to_data=args.ratioToData,
-    width_scale=1.25,
+    width_scale=1.0 if args.customFigureWidth is None else args.customFigureWidth,
+    automatic_scale=True if args.customFigureWidth is None else False,
+    base_size=base_size,
     subplotsizes=subplotsizes,
     no_sci=args.noSciy,
     lumi=16.8,
