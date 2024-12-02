@@ -165,7 +165,9 @@ translate_label = {}
 if args.translate:
     with open(args.translate) as f:
         translate_label = json.load(f)
-    translate = lambda x: styles.translate_html_to_latex(translate_label.get(x, x))
+    translate = lambda x: styles.translate_html_to_latex(
+        translate_label.get(x, x).replace("resum. TNP ", "")
+    )
 else:
     translate = lambda x: x
 
@@ -175,7 +177,7 @@ if varNames is not None:
     varColors = args.varColors
     if varLabels is None:
         if args.translate:
-            varLabels = [translate(e).replace(r"resum.\ TNP\ ", "") for e in varNames]
+            varLabels = [translate(e) for e in varNames]
         else:
             # try to get labels from predefined styles
             varLabels = [styles.legend_labels_combine.get(e, e) for e in varNames]
@@ -326,7 +328,7 @@ def make_plot(
         xlabel = f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in axes_names])}) bin"
     if ratio or diff:
         if args.noData:
-            rlabel = ("Diff." if diff else "Ratio") + " to pred."
+            rlabel = ("Diff." if diff else "Ratio") + " to nominal"
         else:
             rlabel = f"${args.dataName}" + ("-" if diff else r"\,/\,") + "Pred.$"
 

@@ -796,12 +796,12 @@ jobs:
       - name: dilepton prefit plot
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --prefit
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --prefit
 
       - name: dilepton postfit plot
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2
 
       - name: dilepton plotting ptll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --legCols 1 --baseName nominal --nominalRef nominal --hists ptll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red

@@ -1809,7 +1809,7 @@ def make_summary_plot(
             loc=logoPos,
             lumi=lumi,
             no_energy=lumi is None,
-            text_size=get_textsize(ax1, "small"),
+            text_size=textsize,
         )
 
     if legend_loc is not None or bbox_to_anchor is not None:
