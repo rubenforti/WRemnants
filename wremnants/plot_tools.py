@@ -22,7 +22,7 @@ from matplotlib.ticker import StrMethodFormatter
 
 import narf
 from utilities import boostHistHelpers as hh
-from utilities import logging
+from utilities import common, logging
 
 hep.style.use(hep.style.ROOT)
 
@@ -1601,6 +1601,11 @@ def write_index_and_log(
             + "\n"
         )
         logf.write(meta_info)
+        meta_info = narf.ioutils.make_meta_info_dict(
+            "notebooks", args=args, wd=common.base_dir
+        )
+        logf.write(f"git hash: {meta_info['git_hash']}\n")
+        logf.write(f"git diff: {meta_info['git_diff']}\n")
 
         if yield_tables:
             for k, v in yield_tables.items():
@@ -1794,7 +1799,7 @@ def make_summary_plot(
             loc=logoPos,
             lumi=lumi,
             no_energy=lumi is None,
-            text_size=textsize,
+            text_size=get_textsize(ax1, "small"),
         )
 
     if legend_loc is not None or bbox_to_anchor is not None:
