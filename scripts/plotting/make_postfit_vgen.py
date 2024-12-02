@@ -319,9 +319,6 @@ else:
             f"Number of arguments for rrange must be 2 but is {len(args.rrange)}"
         )
 
-# for h in hists_nom:
-#    print(h)
-
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nom,
     hists_ratio=hists,

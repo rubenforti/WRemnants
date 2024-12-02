@@ -107,8 +107,6 @@ dfs["Name"] = dfs["Name"].replace("MSHT20an3lo", "MSHT20aN3LO")
 dfs["Name"] = dfs["Name"].replace("NNPDF31", "NNPDF3.1")
 dfs["Name"] = dfs["Name"].replace("NNPDF40", "NNPDF4.0")
 
-print(dfs)
-
 fig = plot_tools.make_summary_plot(
     central_val,
     central["err_total"],

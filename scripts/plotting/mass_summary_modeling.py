@@ -89,8 +89,6 @@ if args.diffToCentral:
     central_val = 0
     xlabel = r"$\Delta$" + xlabel
 
-print(dfs)
-
 fig = plot_tools.make_summary_plot(
     central_val,
     central["err_total"],
