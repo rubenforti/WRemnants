@@ -18,6 +18,7 @@ from wremnants import (
     combine_theoryAgnostic_helper,
     syst_tools,
     theory_corrections,
+    theory_tools,
 )
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
@@ -715,6 +716,11 @@ def make_parser(parser=None):
         action="store_true",
         help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)",
     )
+    parser.add_argument(
+        "--angularCoeffs",
+        action="store_true",
+        help="convert helicity cross sections to angular coefficients",
+    )
     parser = make_subparsers(parser)
 
     return parser
@@ -753,6 +759,13 @@ def setup(
     datagroups = Datagroups(
         inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup
     )
+
+    if args.angularCoeffs:
+        datagroups.setGlobalAction(
+            lambda h: theory_tools.helicity_xsec_to_angular_coeffs(
+                h, helicity_axis_name="helicitygen"
+            )
+        )
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(

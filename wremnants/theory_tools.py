@@ -1080,12 +1080,14 @@ def replace_by_neighbors(vals, replace):
     return vals[tuple(indices)]
 
 
-def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
+def helicity_xsec_to_angular_coeffs(
+    hist_helicity_xsec_scales, cutoff=1e-5, helicity_axis_name="helicity"
+):
     if hist_helicity_xsec_scales.empty():
         raise ValueError("Cannot make coefficients from empty hist")
     # broadcasting happens right to left, so move to rightmost then move back
-    hel_ax = hist_helicity_xsec_scales.axes["helicity"]
-    hel_idx = hist_helicity_xsec_scales.axes.name.index("helicity")
+    hel_ax = hist_helicity_xsec_scales.axes[helicity_axis_name]
+    hel_idx = hist_helicity_xsec_scales.axes.name.index(helicity_axis_name)
     vals = np.moveaxis(hist_helicity_xsec_scales.view(flow=True), hel_idx, -1)
     values = vals.value if hasattr(vals, "value") else vals
 

@@ -434,6 +434,14 @@ auto vec_to_tensor_t(const V &vec, std::size_t start = 0) {
   return res;
 }
 
+template <typename T, std::ptrdiff_t N>
+std::array<T, N>
+tensor_to_array(const Eigen::TensorFixedSize<T, Eigen::Sizes<N>> &tensor) {
+  std::array<T, N> res;
+  std::copy(tensor.data(), tensor.data() + N, res.data());
+  return res;
+}
+
 template <typename V> auto array_view(const V &vec, std::size_t start = 0) {
   return Eigen::Map<
       const Eigen::Array<typename V::value_type, Eigen::Dynamic, 1>>(
@@ -785,6 +793,12 @@ enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
 std::vector<int> seq_idxs(const int size, const int start = 0) {
   std::vector<int> res(size);
+  std::iota(res.begin(), res.end(), start);
+  return res;
+}
+
+template <int N> std::array<int, N> seq_idxs_array(const int start = 0) {
+  std::array<int, N> res;
   std::iota(res.begin(), res.end(), start);
   return res;
 }

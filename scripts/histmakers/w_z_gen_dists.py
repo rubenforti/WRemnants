@@ -76,6 +76,9 @@ parser.add_argument(
 parser.add_argument(
     "--theoryCorrections", action="store_true", help="Apply default theory corrections"
 )
+parser.add_argument(
+    "--addHelicityAxis", action="store_true", help="Add helicity to nominal axes"
+)
 
 parser = parsing.set_parser_default(parser, "filterProcs", common.vprocs)
 args = parser.parse_args()
@@ -257,6 +260,27 @@ def build_graph(df, dataset):
         "ptqVgen" if args.ptqVgen else "ptVgen",
         "chargeVgen",
     ]
+
+    if args.addHelicityAxis:
+        # add helicity axis, indices, and weights
+
+        # make a new axis here to avoid name collision with histograms which otherwise already
+        # have a helicity axis
+        axis_helicitygen = hist.axis.Integer(
+            -1, 8, name="helicitygen", overflow=False, underflow=False
+        )
+
+        # since mutliple tensor weights are not currently supported, convert the helicity tensor to a std::array which
+        # will be looped over during the filling (together with the helicity indices)
+        df = df.DefinePerSample("helicity_idxs", "wrem::seq_idxs_array<9>(-1)")
+        df = df.Define(
+            "helicity_moments",
+            "wrem::tensor_to_array(wrem::csAngularMoments(csSineCosThetaPhigen))",
+        )
+
+        nominal_axes += [axis_helicitygen]
+        nominal_cols += ["helicity_idxs", "helicity_moments"]
+
     lep_cols = ["absEtaGen", "ptGen", "chargeVgen"]
 
     mode = f'{"z" if isZ else "w"}_{analysis_label}'
@@ -796,6 +820,7 @@ def build_graph(df, dataset):
             base_name="nominal_gen",
             propagateToHelicity=args.propagatePDFstoHelicity,
         )
+
         df = syst_tools.add_helicity_hists(
             results,
             df,
@@ -806,8 +831,6 @@ def build_graph(df, dataset):
             storage=hist.storage.Weight(),
         )
 
-    nominal_cols = [col_rapidity, "ptqVgen" if args.ptqVgen else "ptVgen"]
-    nominal_axes = [axis_rapidity, axis_ptqVgen if args.ptqVgen else axis_ptVgen]
     nominal_gen = df.HistoBoost(
         "nominal_gen",
         nominal_axes,
@@ -825,7 +848,9 @@ output_tools.write_analysis_output(
     resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args
 )
 
-if not args.skipHelicityXsecs:
+# FIXME currently the addHelicityAxis functionality interferes with the prouduction
+# of these histograms, so skip them in that case
+if not args.addHelicityAxis and not args.skipHelicityXsecs:
     logger.info("Writing out helicity cross sections")
     z_helicity_xsecs = None
     w_helicity_xsecs = None
