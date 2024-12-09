@@ -149,48 +149,24 @@ if not args.prefit and not args.noPrefit:
         labels.append("Prefit")
         names.append("Prefit")
         colors.append("gray")
-
-    elif args.helicity_fit is not None:
-        if args.slice_helicity is None:
-            gen = load_hist(args.helicity_fit, "prefit", helicity=False)
-
-            theory_up, theory_down = hist_to_up_down_unc(gen)
-
-            hists_nom.append(gen)
-            hists_err.extend([theory_up, theory_down])
-            labels.append("Helicity fit prefit")
-            names.append("Helicity fit prefit")
-            colors.append("gray")
-        else:
-            gen = load_hist(args.helicity_fit, "prefit", helicity=True)[{"helicity": args.slice_helicity*1.0j, "chargeVgen":args.slice_charge*1.j}]
-
-            theory_up, theory_down = hist_to_up_down_unc(gen)
-
-            hists_nom.append(gen)
-            hists_err.extend([theory_up, theory_down])
-            labels.append("Helicity fit prefit")
-            names.append("Helicity fit prefit")
-            colors.append("gray")
+    if args.helicity_fit is not None:
+        # use all nuisances for prefit band
+        gen = load_hist(args.helicity_fit, "prefit")
+        theory_up, theory_down = hist_to_up_down_unc(gen)
+        hists_nom.append(gen)
+        hists_err.extend([theory_up, theory_down])
+        labels.append("Helicity fit prefit")
+        names.append("Helicity fit prefit")
+        colors.append("darkgray")
 
 if args.helicity_fit:
-    if args.slice_helicity is None:
-        helh = load_hist(args.helicity_fit, helicity=False)
+    helh = load_hist(args.helicity_fit, helicity=False)
 
-        hists_nom.append(helh)
-        hists_err.extend(hist_to_up_down_unc(helh))
-        labels.append(f"Helicity fit {fittype}")
-        names.append(f"{fittype} helicity")
-        # colors.append("#5790FC")
-        colors.append("#E42536")
-    else:
-        helh = load_hist(args.helicity_fit, helicity=True)[{"helicity": args.slice_helicity*1.0j, "chargeVgen":args.slice_charge*1.j}]
-
-        hists_nom.append(helh)
-        hists_err.extend(hist_to_up_down_unc(helh))
-        labels.append(f"Helicity fit {fittype}")
-        names.append(f"{fittype} helicity")
-        # colors.append("#5790FC")
-        colors.append("#E42536")
+    hists_nom.append(helh)
+    hists_err.extend(hist_to_up_down_unc(helh))
+    labels.append(f"Helicity fit {fittype}")
+    names.append(f"{fittype} helicity")
+    colors.append("#F89C20")
 
 if not args.noetapt_postfit:
     etapth = load_hist(args.etapt_fit)
@@ -346,12 +322,20 @@ else:
             f"Number of arguments for rrange must be 2 but is {len(args.rrange)}"
         )
 
+select = {}
+if args.slice_helicity is not None:
+    select["helicity"] = complex(0, args.slice_helicity)
+if args.slice_charge is not None:
+    select["chargeVgen"] = complex(0, args.slice_charge)
+
+
 fig = plot_tools.makePlotWithRatioToRef(
     hists=hists_nom,
     hists_ratio=hists,
     midratio_idxs=midratio_idxs,
     labels=labels,
     colors=colors,
+    select=select,
     linestyles=linestyles,
     xlabel=xlabel,
     ylabel=ylabel,
