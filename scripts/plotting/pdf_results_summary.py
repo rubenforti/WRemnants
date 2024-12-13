@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import ticker
 
 from utilities import parsing
-from utilities.io_tools import combinetf_input, output_tools
+from utilities.io_tools import combinetf_input, hepdata_tools, output_tools
 from wremnants import plot_tools, theory_tools
 
 parser = parsing.plot_parser()
@@ -55,7 +55,11 @@ parser.add_argument(
     ],
 )
 parser.add_argument("--print", action="store_true", help="Print results")
-
+parser.add_argument(
+    "--saveForHepdata",
+    action="store_true",
+    help="Save output as ROOT to prepare HEPData",
+)
 args = parser.parse_args()
 
 
@@ -90,6 +94,9 @@ xlim = [91160, 91220] if not isW else [80329, 80374]
 
 central_val = central["value"]
 if args.diffToCentral:
+    if args.saveForHepdata:
+        # save also the original absolute value
+        dfs["absolute_value"] = dfs["value"].values
     dfs["value"] -= central_val
     xlim = [xlim[0] - central_val, xlim[1] - central_val]
     central_val = 0
@@ -132,5 +139,15 @@ if args.postfix:
 
 plot_tools.save_pdf_and_png(outdir, outname, fig)
 plot_tools.write_index_and_log(outdir, outname)
+
+if args.saveForHepdata:
+    column_labels = [xlabel, "Total uncertainty", "PDF uncertainty"]
+    if args.diffToCentral:
+        column_labels.append(xlabel.replace(r"$\Delta$", ""))
+
+    hepdata_tools.make_mass_summary_histogram(
+        dfs, f"{outdir}/{outname}.root", column_labels
+    )
+
 if eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)
