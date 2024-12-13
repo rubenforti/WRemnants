@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 
 # prevent MathJax from bein loaded
 import plotly.io as pio
-import ROOT
 from dash import dcc, html
 from dash.dependencies import Input, Output
 from plotly.subplots import make_subplots
@@ -22,6 +21,7 @@ from utilities.common import base_dir
 from utilities.io_tools import (
     combinetf_input,
     conversion_tools,
+    hepdata_tools,
     input_tools,
     output_tools,
 )
@@ -920,38 +920,14 @@ def producePlots(
 
         # utility output to prepare hepdata
         if args.saveForHepdata and not group:
-            keysToSave = ["impact", "pull", "constraint"]
+            columns_to_save = ["impact", "pull", "constraint"]
             if args.referenceFile:
-                keysToSave.extend(["impact_ref", "pull_ref", "constraint_ref"])
-            nRows = int(df.shape[0])
+                columns_to_save.extend(["impact_ref", "pull_ref", "constraint_ref"])
             outfile_root = outfile.replace(outfile.split(".")[-1], "root")
             outfile_root = outfile_root.replace(".root", f"_{postfix}.root")
-            rf = input_tools.safeOpenRootFile(outfile_root, mode="recreate")
-            hr2 = ROOT.TH2D(
-                "nuisanceInfo",
-                "",
-                nRows,
-                0.0,
-                float(nRows),
-                len(keysToSave),
-                0.0,
-                float(len(keysToSave)),
+            hepdata_tools.make_postfit_pulls_and_impacts(
+                df, outfile_root, columns_to_save
             )
-            logger.warning(f"Preparing histogram {hr2.GetName()} for HEPData")
-            for ix in range(nRows):
-                latexLabel = df.at[df.index[ix], "label_hepdata"]
-                if "mass" in latexLabel:
-                    logger.warning(f"{ix+1} {latexLabel}")
-                hr2.GetXaxis().SetBinLabel(ix + 1, latexLabel)
-                logger.debug(f"{ix+1} {latexLabel}")
-                for iy, y in enumerate(keysToSave):
-                    hr2.GetYaxis().SetBinLabel(iy + 1, y)
-                    hr2.SetBinContent(ix + 1, iy + 1, df.at[df.index[ix], y])
-            logger.warning(
-                f"Saving histogram {hr2.GetName()} for HEPData in {outfile_root}"
-            )
-            hr2.Write()
-            rf.Close()
 
         fig = plotImpacts(df, **kwargs)
 

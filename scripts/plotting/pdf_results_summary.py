@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import ROOT
 from matplotlib import ticker
 
 from utilities import parsing
-from utilities.io_tools import combinetf_input, input_tools, output_tools
+from utilities.io_tools import combinetf_input, hepdata_tools, output_tools
 from wremnants import plot_tools, theory_tools
 
 parser = parsing.plot_parser()
@@ -142,25 +141,13 @@ plot_tools.save_pdf_and_png(outdir, outname, fig)
 plot_tools.write_index_and_log(outdir, outname)
 
 if args.saveForHepdata:
-    outfile_root = f"{outdir}/{outname}.root"
-    nRows = dfs.shape[0]
-    rf = input_tools.safeOpenRootFile(outfile_root, mode="recreate")
-    nCols = 4 if args.diffToCentral else 3
-    hr2 = ROOT.TH2D(
-        "mass_summary", "", nRows, 0.0, float(nRows), nCols, -0.5, float(nCols) - 0.5
-    )
-    hr2.GetYaxis().SetBinLabel(1, xlabel)
-    hr2.GetYaxis().SetBinLabel(2, "Total uncertainty")
-    hr2.GetYaxis().SetBinLabel(3, "PDF uncertainty")
+    column_labels = [xlabel, "Total uncertainty", "PDF uncertainty"]
     if args.diffToCentral:
-        hr2.GetYaxis().SetBinLabel(4, xlabel.replace(r"$\Delta$", ""))
-    for ix, (k, v) in enumerate(dfs.iterrows()):
-        hr2.GetXaxis().SetBinLabel(ix + 1, v.iloc[0])
-        for iy in range(nCols):
-            hr2.SetBinContent(ix + 1, iy + 1, v.iloc[iy + 1])
-    print(f"Saving histogram {hr2.GetName()} for HEPData in {outfile_root}")
-    hr2.Write()
-    rf.Close()
+        column_labels.append(xlabel.replace(r"$\Delta$", ""))
+
+    hepdata_tools.make_mass_summary_histogram(
+        dfs, f"{outdir}/{outname}.root", column_labels
+    )
 
 if eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)

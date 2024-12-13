@@ -5,10 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import narf
 from utilities import boostHistHelpers as hh
 from utilities import logging, parsing
-from utilities.io_tools import combinetf2_input, input_tools, output_tools
+from utilities.io_tools import (
+    combinetf2_input,
+    hepdata_tools,
+    input_tools,
+    output_tools,
+)
 from wremnants import plot_tools, syst_tools
 
 parser = parsing.plot_parser()
@@ -396,21 +400,9 @@ if args.cmsDecor == "Preliminary":
 if args.saveForHepdata:
     # open root file
     outfile_root = f"{outdir}/{name}.root"
-    rf = input_tools.safeOpenRootFile(outfile_root, mode="recreate")
-    logger.warning(f"Saving histograms for HEPData in {outfile_root}")
-    for ih, h in enumerate(hists_nom):
-        hroot = narf.hist_to_root(h)
-        htitle = labels[ih]
-        hname = names[ih].replace(" ", "_").replace("-", "_")
-        hroot.SetName(hname)
-        hroot.SetTitle(htitle)
-        # divide by bin width
-        hroot.Scale(1.0, "width")
-        hroot.GetXaxis().SetTitle(xlabel)
-        hroot.GetYaxis().SetTitle(ylabel)
-        hroot.Write()
-        logger.info(f"Saving histogram {hname}")
-    rf.Close()
+    hepdata_tools.save_histograms_to_root(
+        hists_nom, names, labels, outfile_root, xlabel, ylabel
+    )
 
 plot_tools.save_pdf_and_png(outdir, name)
 
