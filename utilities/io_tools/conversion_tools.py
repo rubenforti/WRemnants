@@ -49,6 +49,62 @@ def get_hepdata_label(name, input_dict=None):
     elif "Resolution_correction_smearing_variation" in name:
         parID = get_number_from_string(name, choose_index=0)
         newname = "$\\mathit{p}_{T}^{μ}$ calib. resolution. " + f"({parID})"
+    elif name.startswith("norm"):
+        # normWminus_PtV1YVBin3Helicity4, but can be PtVO instead of 0
+        prefix_split, postfix_split = name.split("_")
+        # binning is hardcoded for now, it is defined in utilities/differential.py: get_theoryAgnostic_axes(...)
+        # unless it is passed as command line option
+        boson = "W"
+        ptVbins = [0.0, 3.0, 6.0, 9.7, 12.4, 16.0, 21.4, 29.5, 60.0]
+        yVbins = [0.0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 3.0]
+        if "W" not in prefix_split:
+            boson = "Z"
+            ptVbins = [0.0, 3.0, 4.8, 6.7, 9.0, 12.0, 16.01, 23.6, 60]
+            yVbins = [0.0, 0.4, 0.8, 1.2, 1.6, 2.0]
+        charge_text = "+" if "plus" in prefix_split else "-" if "minus" in name else ""
+        pt_text = "\\mathit{p}_{T}^{" + boson + "}"
+        rap_text = "|\\mathit{y}^{" + boson + "}|"
+        ptBin = ""
+        yBin = ""
+        bin_ids = get_number_from_string(name, return_list=True)
+        if "CorrAllQ" in name:  # a bit hardcoded for now
+            newname = f"Norm. ${boson}$ correlated in {pt_text}-{rap_text} and charge"
+        else:
+            if "PtVO" in name or "YVBinO" in name:
+                offset = 0
+                if "PtVO" in name:
+                    pt_text = f"${pt_text} > {ptVbins[-1]}$ GeV"
+                    offset += 1
+                else:
+                    ptBin = bin_ids[0]
+                    pt_text = (
+                        f"${ptVbins[ptBin]} < {pt_text} < {ptVbins[ptBin + 1]}$ GeV"
+                    )
+                if "YVBinO" in name:
+                    rap_text = f"${rap_text} > {yVbins[-1]}$"
+                else:
+                    yBin = bin_ids[1 - offset]
+                    rap_text = f"${yVbins[yBin]} < {rap_text} < {yVbins[yBin + 1]}$"
+                helBin = bin_ids[-1] if "Helicity" in name else ""
+                if helBin < 0:
+                    helBin = " $\\sigma_{UL}$"
+                else:
+                    helBin = f" $\\sigma_{{{helBin}}}$"
+            else:
+                if "Helicity" in name:
+                    ptBin, yBin, helBin = bin_ids
+                    if helBin < 0:
+                        helBin = " $\\sigma_{UL}$"
+                    else:
+                        helBin = f" $\\sigma_{{{helBin}}}$"
+                else:
+                    ptBin, yBin = bin_ids
+                    helBin = ""
+                pt_text = f"${ptVbins[ptBin]} < {pt_text} < {ptVbins[ptBin + 1]}$ GeV"
+                rap_text = f"${yVbins[yBin]} < {rap_text} < {yVbins[yBin + 1]}$"
+            newname = (
+                f"Norm. ${boson}^{{{charge_text}}}${helBin}, {pt_text}, {rap_text}"
+            )
     elif re.match("QCDscale(W|Z)", name):
         # QCDscaleZinclusive_PtV0_13000helicity_2_SymDiff
         # QCDscaleZfine_PtV3_5helicity_1_SymAvg
@@ -74,23 +130,21 @@ def get_hepdata_label(name, input_dict=None):
             step = f"veto {tokens[2]}" if "effSyst" in name else "veto"
         else:
             step = tokens[1]
-        eta_text = "$\\eta^{\\mu}$"
-        pt_text = "$\\mathit{p}_{T}^{\\mu}$"
+        eta_text = r"$\eta^{\mu}$"
+        pt_text = r"$\mathit{p}_{T}^{\mu}$"
         syst_stat = ""
         eta_pt_charge_bin_ids = get_number_from_string(name, return_list=True)
         if "effStat" in name:
             syst_stat = "stat"
             eta_bin = eta_pt_charge_bin_ids[0]
             pt_bin = eta_pt_charge_bin_ids[1]
-            if name.endswith("qall"):
-                charge_text = ""
-            elif name.endswith("q0"):
-                charge_text = "$\\mathit{q}^{μ}$ +1"
-            else:
-                charge_text = "$\\mathit{q}^{μ}$ -1"
-            eta_pt_charge_bin = (
-                f"{eta_text} {eta_bin}, {pt_text} {pt_bin}, {charge_text}"
-            )
+            eta_pt_charge_bin = f"{eta_text} ({eta_bin}), {pt_text} ({pt_bin})"
+            if not name.endswith("qall"):
+                if name.endswith("q0"):
+                    charge_text = r"$\mathit{q}^{μ}$ +1"
+                else:
+                    charge_text = r"$\mathit{q}^{μ}$ -1"
+                eta_pt_charge_bin = f"{eta_pt_charge_bin}, {charge_text}"
         else:
             syst_stat = "syst"
             if "altBkg" in name:
@@ -99,10 +153,10 @@ def get_hepdata_label(name, input_dict=None):
                 eta_bin = (
                     eta_pt_charge_bin_ids[0] - 1
                 )  # subtract 1 since otherwise this index starts from 1
-                eta_pt_charge_bin = f"{eta_text} {eta_bin}"
+                eta_pt_charge_bin = f"{eta_text} ({eta_bin})"
             elif "fullyCorr" in name:
                 eta_pt_charge_bin = f"{eta_text} correlated"
-        newname = "$ε_{" + syst_stat + "}^{μ}$ " + f"{step} {eta_pt_charge_bin}"
+        newname = "$ε_{" + syst_stat + "}^{μ}$ " + f"{step}, {eta_pt_charge_bin}"
     elif "pdf" in name:
         base = name.split("Sym")[0]
         pdfEigen = get_number_from_string(base, choose_index=0)
@@ -113,17 +167,18 @@ def get_hepdata_label(name, input_dict=None):
     elif name.startswith("FakeSmoothing"):
         # FakeSmoothing_eta17_charge0_param3
         tokens = re.findall(r"\d+", name)
-        pt_text = "$\\mathit{p}_{T}^{\\mu}$"
-        eta_text = "$\\eta^{\\mu}$"
+        pt_text = r"$\mathit{p}_{T}^{\mu}$"
+        eta_text = r"$\eta^{\mu}$"
         if tokens[1] == 1:
-            charge_text = "$\\mathit{q}^{μ}$ +1"
+            charge_text = r"$\mathit{q}^{μ}$ +1"
         else:
-            charge_text = "$\\mathit{q}^{μ}$ -1"
-        newname = f"Nonprompt {pt_text} smoothing, {eta_text} {tokens[0]}, {charge_text}, param. {tokens[2]}"
+            charge_text = r"$\mathit{q}^{μ}$ -1"
+        newname = f"Nonprompt {pt_text} smoothing, {eta_text} ({tokens[0]}), {charge_text}, param. ({tokens[2]})"
     else:
         newname = name
 
     newname += postfix
+    logger.debug(f"{name} --> {newname}")
     return newname
 
 
