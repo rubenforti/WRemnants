@@ -1631,16 +1631,16 @@ def setup(
                 storage=hist.storage.Weight(),
             )
             hVar.values(flow=True)[...] = np.stack(
-                [hUp.values(flow=True), hDown.values(flow=True)], axis=-1
+                [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
             )
             hVar.variances(flow=True)[...] = np.stack(
-                [hUp.variances(flow=True), hDown.variances(flow=True)], axis=-1
+                [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
             )
             return hVar
 
         cardTool.addSystematic(
             cardTool.nominalName,
-            rename="luminosity",
+            rename="lumi",
             processes=["MCnoQCD"],
             group=f"luminosity",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
@@ -1660,7 +1660,7 @@ def setup(
     else:
         cardTool.addSystematic(
             cardTool.nominalName,
-            rename="luminosity",
+            rename="lumi",
             processes=["MCnoQCD"],
             group=f"luminosity",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
