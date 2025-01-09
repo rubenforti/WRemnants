@@ -182,10 +182,14 @@ def make_pulls_and_constraints(sub, logger=None, verbose=4):
         table.keywords["cmenergies"] = [centerOfMassEnergy]
         table.keywords["reactions"] = [f"P P --> {boson} X"]
         # Remember to update the links
-        logger.warning("Adding dummy link to covariance matrix. Remember to update it")
+        linkPublicPage = "https://cms-results.web.cern.ch/cms-results/public-results/publications/SMP-23-002/covMat/"
+        tag = m.lower()
+        linkCovMatrix = f"{linkPublicPage}covariance_{tag}.root"
+
+        logger.warning("Adding a link to the covariance matrix.")
         table.add_additional_resource(
-            "Covariance matrix for measured mass parameter(s) of interest (POI) and nuisance parameters (NP). The variance of the POI is given with respect to a 100 MeV prefit uncertainty. Therefore, the square root of the corresponding element in the diagonal should be multiplied by 100 to get the actual uncertainty of the measurement in MeV (similarly, covariance cells between the POI and any given NP should be multiplied by 100)",
-            "https://cms-results.web.cern.ch/cms-results/public-results/publications/SMP-23-002/index.html",
+            "Covariance matrix for the measured mass parameter(s) of interest (POI) and nuisance parameters (NP). The variance of the POI is given with respect to a 100 MeV prefit uncertainty. Therefore, the square root of the corresponding element in the diagonal should be multiplied by 100 to get the actual uncertainty of the measurement in MeV (similarly, covariance cells between the POI and any given NP should be multiplied by 100)",
+            linkCovMatrix,
             copy_file=False,
         )
 
