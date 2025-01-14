@@ -474,7 +474,7 @@ logger.info(f"SF file: {args.sfFile}")
 muon_efficiency_helper_syst_altBkg = {}
 if not args.noScaleFactors:
     for es in common.muonEfficiency_altBkgSyst_effSteps:
-        altSFfile = args.sfFile.replace(".root", "_vtxAgnIso_altBkg.root")
+        altSFfile = args.sfFile.replace(".root", "_altBkg.root")
         logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
         muon_efficiency_helper_syst_altBkg[es] = (
             muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth_altSyst(
