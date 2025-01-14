@@ -225,7 +225,7 @@ logger.info(f"SF file: {args.sfFile}")
 muon_efficiency_helper_syst_altBkg = {}
 if not args.noScaleFactors:
     for es in common.muonEfficiency_altBkgSyst_effSteps:
-        altSFfile = args.sfFile.replace(".root", "_altBkg.root")
+        altSFfile = args.sfFile.replace(".root", "_vtxAgnIso_altBkg.root")
         logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
         muon_efficiency_helper_syst_altBkg[es] = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
                                                                                                                       what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
@@ -572,8 +572,8 @@ def build_graph(df, dataset):
         df = df.Alias("MET_corr_rec_pt", f"{met}_pt")
         df = df.Alias("MET_corr_rec_phi", f"{met}_phi")
 
-    if args.addAxisSignUt:
-        df = df.Define("goodMuons_angleSignUt0", "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+    #if args.addAxisSignUt:
+    df = df.Define("goodMuons_angleSignUt0", "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
 
     df = df.Define("ptW", "wrem::pt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
     df = df.Define("transverseMass", "wrem::mt_2(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
@@ -619,7 +619,7 @@ def build_graph(df, dataset):
             postfsrMuonsGenMatchStatus1 = df.HistoBoost("postfsrMuonsGenMatchStatus1", [axis_genPt, axis_prompt, axis_pt, axis_genPartFlav, axis_passIso], ["postfsrMuonsStatus1_pt", "postfsrMuonsStatus1_isPrompt", "goodMuons_pt0", "goodMuons_genPartFlav0", "passIso", "nominal_weight"])
             results.append(postfsrMuonsGenMatchStatus1)
             df = df.Define("goodMuons_genPartPt0", "Muon_genPartIdx[goodMuons][0] >= 0 ? GenPart_pt[Muon_genPartIdx[goodMuons][0]] : -1")
-            genVsRecoPt = df.HistoBoost("genVsRecoPt", [axis_genPt, axis_prompt, axis_pt, axis_genPartFlav, axis_passIso], ["goodMuons_genPartPt0", "goodMuons_pt0", "goodMuons_genPartFlav0", "passIso", "nominal_weight"])
+            genVsRecoPt = df.HistoBoost("genVsRecoPt", [axis_genPt, axis_pt, axis_genPartFlav, axis_passIso], ["goodMuons_genPartPt0", "goodMuons_pt0", "goodMuons_genPartFlav0", "passIso", "nominal_weight"])
             results.append(genVsRecoPt)
             #
             df = df.Define("postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && GenPart_isPrompt")
@@ -664,8 +664,20 @@ def build_graph(df, dataset):
         dphiMuonMetCut = args.dphiMuonMetCut * np.pi
         df = df.Filter(f"deltaPhiMuonMet > {dphiMuonMetCut}") # pi/4 was found to be a good threshold for signal with mT > 40 GeV
 
-    df = df.Define("passMT", f"transverseMass >= {mtw_min}")    
+    df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
+    # more tests with fakes
+    axis_ptMinusMet = hist.axis.Regular(100, -50, 50, name = "ptMinusMet", overflow=True, underflow=True)
+    axis_mt_coarse = hist.axis.Regular(24, 0., 120., name = "mt", underflow=False, overflow=True)
+    axis_eta_coarse = hist.axis.Regular(12, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+
+    df = df.Define("ptMinusMet", "goodMuons_pt0 - MET_corr_rec_pt")
+    results.append(df.HistoBoost("testFakesMultiVar", [axis_eta_coarse, axis_pt, axis_charge, axis_mt_coarse, axis_passIso, axis_dphi_fakes, axis_ut_analysis, axis_ptMinusMet], ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "deltaPhiMuonMet", "goodMuons_angleSignUt0", "ptMinusMet", "nominal_weight"]))
+
+    axis_ut = hist.axis.Regular(70, -40., 100., name = "ut", underflow=True, overflow=True)
+    df = df.Define("goodMuons_utReco", "wrem::zqtproj0(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)")
+    results.append(df.HistoBoost("uTforPlots", [axis_eta_coarse, axis_pt, axis_charge, axis_mt_coarse, axis_passIso, axis_ut], ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "transverseMass", "passIso", "goodMuons_utReco", "nominal_weight"]))
+    
     if auxiliary_histograms:
         # control plots, lepton, met, to plot them later (need eta-pt to make fakes)
         results.append(df.HistoBoost("leptonPhi", [axis_phi, *axes_fakerate], ["goodMuons_phi0", *columns_fakerate, "nominal_weight"]))

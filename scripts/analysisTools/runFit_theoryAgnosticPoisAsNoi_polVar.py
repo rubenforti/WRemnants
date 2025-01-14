@@ -25,15 +25,17 @@ onlySignalAndOOA = False # (requires onlySignal=True to be effective) signal onl
 doStatOnly = False
 noFake = False # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False # irrelevant when doStatOnly=True
-tag = "x0p30_y3p00_V9"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
-oneMCfileEveryN = 1
+tag = "x0p50_y3p00_THAGNV0"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
+oneMCfileEveryN = 2
 testFolder = f"oneMCfileEvery{oneMCfileEveryN}" if oneMCfileEveryN > 1 else "fullStat"
+testFolder += "_utSignAxis"
 projectToNewLumi = -1.0 # set negative to skip it.
 lumiScaleVarianceLinearly = ["Data"] # [], ["Data", "MC"], use in conjunction with projectToNewLumi when it is not negative
 
 splitOOAtag = ""
 setupLumiOption = ""
-setupFakeOption = " --fakeEstimation simple --fakeSmoothingMode binned"
+#setupFakeOption = " --fakeEstimation simple --fakeSmoothingMode binned"
+setupFakeOption = " --rebinBeforeSelection --noPolVarOnFake  --fakeSmoothingMode fakerate "
 if splitOOA:
     splitOOAtag = "_splitOOA"
     testFolder = f"{testFolder}{splitOOAtag}"
@@ -56,12 +58,13 @@ else:
                    }
 
 #baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/fromTanmay_09Apr2024/{tag}/"
-baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
+#baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
+baseOutdir = f"/scratch/ciprianm/CombineStudies/theoryAgnostic_pol/{tag}/"
 basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/pdfCT18Z_April2024/"
 
-inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}.hdf5"
+inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_utSignAxis.hdf5"
 if oneMCfileEveryN > 1:
-    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
+    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_utSignAxis_oneMCfileEvery{oneMCfileEveryN}.hdf5"
 
 if noPDFandQCDtheorySystOnSignal and not doStatOnly:
     testFolder += "/noPDFandQCDtheorySystOnSignal/"
@@ -87,7 +90,7 @@ if onlySignal:
 elif noFake:
     setupCombineOptions += " --excludeProcGroups Fake"
 
-setupCombineOptionsTraditional = setupCombineOptions
+setupCombineOptionsTraditional = setupCombineOptions.replace("--noPolVarOnFake", "")
 setupCombineOptions += f" {theoryAgnosticOptions}"
 
 baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]

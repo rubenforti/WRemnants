@@ -266,8 +266,9 @@ def set_subparsers(subparser, name, analysis_label):
         if name == "theoryAgnosticPolVar":
             subparser.add_argument("--theoryAgnosticFilePath", type=str, default=".",
                                    help="Path where input files are stored")
-            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p30_y3p00_V10", choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6", "x0p30_y3p00_V7", "x0p30_y3p00_V8", "x0p30_y3p00_V9", "x0p30_y3p00_V10"],
+            subparser.add_argument("--theoryAgnosticFileTag", type=str, default="x0p50_y3p00_THAGNV0",
                                    help="Tag for input files")
+            # choices=["x0p30_y3p00_V4", "x0p30_y3p00_V5", "x0p40_y3p50_V6", "x0p30_y3p00_V7", "x0p30_y3p00_V8", "x0p30_y3p00_V9", "x0p30_y3p00_V10"],
             subparser.add_argument("--theoryAgnosticSplitOOA", action='store_true',
                                    help="Define out-of-acceptance signal template as an independent process")
 

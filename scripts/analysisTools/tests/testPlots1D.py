@@ -92,6 +92,8 @@ if __name__ == "__main__":
     parser.add_argument("outputfolder",   type=str, nargs=1)
     parser.add_argument('-p','--processes', default=None, nargs='*', type=str,
                         help='Choose what processes to plot, otherwise all are done')
+    parser.add_argument('--excludeProcesses', default=None, nargs='*', type=str,
+                        help='Choose what processes to exclude from plot, otherwise all are done')
     parser.add_argument('--plot', nargs='+', type=str,
                         help='Choose what distribution to plot by name')
     parser.add_argument("-x", "--xAxisName", nargs='+', type=str, help="x axis name")
@@ -122,6 +124,8 @@ if __name__ == "__main__":
         groups.lumi = args.lumi
         logger.warning(f"Renormalizing MC to {args.lumi}/fb")
     datasets = groups.getNames()
+    if args.excludeProcesses is not None and len(args.excludeProcesses):
+        datasets = list(filter(lambda x: x not in args.excludeProcesses, datasets))
     if args.processes is not None and len(args.processes):
         datasets = list(filter(lambda x: x in args.processes, datasets))
     logger.info(f"Will plot datasets {datasets}")
