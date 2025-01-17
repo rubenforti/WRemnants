@@ -40,7 +40,7 @@ def cloneAxis(ax, overflow=False, underflow=False, newName=None):
         )
         quit()
     return newax
-
+  
 
 def make_muon_efficiency_helpers_smooth(
     filename=data_dir + "/muonSF/allSmooth_GtoHout_vtxAgnIso.root",
@@ -157,6 +157,9 @@ def make_muon_efficiency_helpers_smooth(
             )
             chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
             hist_name = f"SF_{nameTag}_{eratag}_{eff_type}_{chargeTag}"
+            
+            if isAltBkg is True: hist_name = hist_name+"_altBkg"
+            
             ## temporary patch for some missing SF histograms relevant only for dilepton (no warning needed otherwise)
             if isoDefinition != "iso04vtxAgn" or era != "2016PostVFP":
                 if eff_type == "antitrigger":
@@ -174,12 +177,13 @@ def make_muon_efficiency_helpers_smooth(
             hist_root = input_tools.safeGetRootObject(fin, hist_name)
             # logger.debug(f"syst: {eff_type} -> {hist_name}")
 
+
             hist_hist = narf.root_to_hist(
                 hist_root, axis_names=["SF eta", "SF pt", "nomi-statUpDown-syst"]
             )
             # the following axis might change for different histograms, because of a different number of effStat variations
             axis_nomiAlt_eff = hist_hist.axes[2]
-            if eff_type not in axis_eff_type_2D:
+            if (eff_type not in axis_eff_type_2D):
                 key = f"{eff_type}_{chargeTag}"
                 if key not in sf_syst_from2D_for3D.keys():
                     # take syst/nomi histogram ratio in 2D (eta-pt)
@@ -305,6 +309,7 @@ def make_muon_efficiency_helpers_smooth(
                     0,
                     :,
                 ] = nominalLayer  # hist_hist.view(flow=False)[:,:,:,0]
+
                 # take syst/nomi histogram ratio in 2D (eta-pt), and broadcast into eta-pt-ut)
                 chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
                 syst_view_etaPt = sf_syst_from2D_for3D[
@@ -504,6 +509,7 @@ def make_muon_efficiency_helpers_smooth(
         }
 
     for effStatKey in effStat_manager.keys():
+        if isAltBkg is True: continue
         nom_up_effStat_axis = None
         axis_eff_type = None
         axis_charge_def = None
@@ -555,6 +561,7 @@ def make_muon_efficiency_helpers_smooth(
                                 logger.warning(
                                     f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'"
                                 )
+
                     hist_root = input_tools.safeGetRootObject(fin, hist_name)
 
                     # logger.info(f"stat: {effStatKey}|{eff_type} -> {hist_name}")
