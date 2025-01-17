@@ -157,9 +157,6 @@ def make_muon_efficiency_helpers_smooth(
             )
             chargeTag = charge_tag if eff_type in chargeDependentSteps else "both"
             hist_name = f"SF_{nameTag}_{eratag}_{eff_type}_{chargeTag}"
-            
-            if isAltBkg is True: hist_name = hist_name+"_altBkg"
-            
             ## temporary patch for some missing SF histograms relevant only for dilepton (no warning needed otherwise)
             if isoDefinition != "iso04vtxAgn" or era != "2016PostVFP":
                 if eff_type == "antitrigger":
@@ -182,7 +179,7 @@ def make_muon_efficiency_helpers_smooth(
             )
             # the following axis might change for different histograms, because of a different number of effStat variations
             axis_nomiAlt_eff = hist_hist.axes[2]
-            if (eff_type not in axis_eff_type_2D):
+            if eff_type not in axis_eff_type_2D:
                 key = f"{eff_type}_{chargeTag}"
                 if key not in sf_syst_from2D_for3D.keys():
                     # take syst/nomi histogram ratio in 2D (eta-pt)
@@ -507,7 +504,6 @@ def make_muon_efficiency_helpers_smooth(
         }
 
     for effStatKey in effStat_manager.keys():
-        if isAltBkg is True: continue
         nom_up_effStat_axis = None
         axis_eff_type = None
         axis_charge_def = None
