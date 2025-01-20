@@ -17,38 +17,27 @@ def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto=False, era=None):
 
     logger.debug(f"Make efficiency helper veto")
 
-    # FIXME:to be updated for when other eras are available
-
-    # eradict = {
-    #     "2016PreVFP": "BtoF",
-    #     "2016PostVFP": "GtoH",
-    #     "2017": "GtoH",  # FIXME: update later when SF for 2018 is available
-    #     "2018": "GtoH",
-    # }
-    # eratag = eradict[era]
-
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
     Nsyst = 1 + (
         len(effSyst_decorrEtaEdges) - 1
     )  # 1 inclusive variation + all decorrelated bins
 
-    if (
-        useGlobalOrTrackerVeto
-    ):  # in this way we are hardcoding the file names for the veto SFs, but I don't think we are going to change them in the helpers anyways
+    eradir = f"{era}" if era in ["2017", "2018"] else ""
+
+    if useGlobalOrTrackerVeto: 
+        # in this way we are hardcoding the file names for the veto SFs, but I don't think we are going to change them in the helpers anyways
         filename_plus = (
-            data_dir
-            + "/muonSF/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_plus.root"
+            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_plus.root"
         )
         filename_minus = (
-            data_dir
-            + "/muonSF/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_minus.root"
+            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_minus.root"
         )
     else:
         filename_plus = (
-            data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_plus.root"
+            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_plus.root"
         )
         filename_minus = (
-            data_dir + "/muonSF/smoothedSFandEffi_newveto_regular_GtoH_minus.root"
+            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_minus.root"
         )
 
     if not useGlobalOrTrackerVeto:

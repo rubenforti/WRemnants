@@ -210,9 +210,31 @@ def is_zombie(file_path):
     file.Close()
     return False
 
-def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_path=None, nanoVersion="v9",
-                data_tags=["TrackFitV722_NanoProdv6", "TrackFitV722_NanoProdv5", "TrackFitV722_NanoProdv3"],
-                mc_tags=["TrackFitV722_NanoProdv6", "TrackFitV722_NanoProdv5", "TrackFitV722_NanoProdv4", "TrackFitV722_NanoProdv3"], oneMCfileEveryN=None, checkFileForZombie=False, era="2016PostVFP", extended=True):
+
+def getDatasets(
+    maxFiles=default_nfiles,
+    filt=None,
+    excl=None,
+    mode=None,
+    base_path=None,
+    nanoVersion="v9",
+    data_tags=[
+        "TrackFitV722_NanoProdv6",
+        "TrackFitV722_NanoProdv5",
+        "TrackFitV722_NanoProdv3",
+    ],
+    mc_tags=[
+        "TrackFitV722_NanoProdv6",
+        "TrackFitV722_NanoProdv5",
+        "TrackFitV722_NanoProdv4",
+        "TrackFitV722_NanoProdv3",
+    ],
+    oneMCfileEveryN=None,
+    checkFileForZombie=False,
+    era="2016PostVFP",
+    eraDataSel=None, #select specific eras for data
+    extended=True,
+):
 
     if maxFiles is None or (isinstance(maxFiles, int) and maxFiles < -1):
         maxFiles = default_nfiles
@@ -263,6 +285,10 @@ def getDatasets(maxFiles=default_nfiles, filt=None, excl=None, mode=None, base_p
             base_path = base_path.replace("NanoAOD", "NanoGen")
 
         is_data = info.get("group", "") == "Data"
+
+        if is_data and eraDataSel:
+            all_filepaths = info["filepaths"]
+            info["filepaths"] = [f for f in all_filepaths if any(f"Run{era}{e_sel}" in f for e_sel in eraDataSel)]
 
         prod_tags = data_tags if is_data else mc_tags
         nfiles = maxFiles
