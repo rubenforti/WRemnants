@@ -171,9 +171,16 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
 if __name__ == "__main__":
 
     parser = common_plot_parser()
-    # parser.add_argument('inputfile',  type=str, nargs=1, help='input root file with TH2')
+
     parser.add_argument(
-        "outdir", type=str, nargs=1, help="output directory to save things"
+        "-i",
+        "--indir",
+        help="Directory containing the smoothed scale factors"
+    )
+    parser.add_argument(
+        "-o",
+        "--outdir", 
+        help="Output directory to save things"
     )
     parser.add_argument(
         "--vetoType",
@@ -189,6 +196,13 @@ if __name__ == "__main__":
         choices=["plus", "minus", "both"],
         help="Charge for veto SF",
     )
+    parser.add_argument(
+        "--era", 
+        type=str,
+        default="2016PostVFP",
+        choices=["2016PreVFP", "2016PostVFP", "2017", "2018"]
+    )
+
     args = parser.parse_args()
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose, True)
 
@@ -198,14 +212,21 @@ if __name__ == "__main__":
 
     charge = args.charge
     vetoType = args.vetoType
-    outdir_original = f"{args.outdir[0]}/{vetoType}_{charge}/"
+    outdir_original = f"{args.outdir}/{vetoType}_{charge}/"
     addStringToEnd(outdir_original, "/", notAddIfEndswithMatch=True)
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
     hists = {}
     # TODO: move these files and folder to wremnants-data
-    inputfolder = f"{data_dir}/muonSF/veto_{vetoType}_SF/"
-    steps = ["vetoreco", "vetotracking", "vetoidip"]
+    if args.era=="2016PreVFP":
+        raise NotImplementedError("")
+    elif args.era=="2016PostVFP":
+        inputfolder = f"{data_dir}/muonSF/veto_{vetoType}_SF/"
+    else:
+        inputfolder = f"{data_dir}/muonSF/{args.era}/veto_{vetoType}_SF/"
+        
+
+    steps = ["vetoreco", "vetotracking", "vetoidip"] if args.era not in ["2017", "2018"] else ["reco", "tracking", "veto"]
 
     s = hist.tag.Slicer()
     nomiHists = {}
