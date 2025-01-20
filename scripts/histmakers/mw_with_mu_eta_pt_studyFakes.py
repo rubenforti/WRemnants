@@ -208,18 +208,8 @@ args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
-era = args.era
 
-if "2018" in era and era!="2018":
-    e_sel_list = era.split(",")
-    erasToRun = []
-    for e_sel in e_sel_list:
-        if e_sel not in ["2018A", "2018B", "2018C", "2018D"]:
-            raise ValueError(f"Invalid era selection {era}")
-        erasToRun.append(e_sel.replace("2018", ""))
-    era = "2018"
-else:
-    erasToRun = None
+era = args.era
 
 datasets = getDatasets(
     maxFiles=args.maxFiles,
@@ -230,7 +220,6 @@ datasets = getDatasets(
     oneMCfileEveryN=args.oneMCfileEveryN,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
-    eraDataSel=erasToRun
 )
 
 # transverse boson mass cut
@@ -282,6 +271,7 @@ axis_mt = hist.axis.Variable(
     overflow=True,
 )
 axis_met = hist.axis.Regular(25, 0.0, 100.0, name="met", underflow=False, overflow=True)
+axis_dxy = hist.axis.Regular(50, -0.05, 0.05, name="dxy", underflow=True, overflow=True)
 
 # for mt, met, ptW plots, to compute the fakes properly (but FR pretty stable vs pt and also vs eta)
 # may not exactly reproduce the same pt range as analysis, though
@@ -475,7 +465,7 @@ else:
                 muon_efficiency_veto_helper_syst,
                 muon_efficiency_veto_helper_stat,
             ) = muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(
-                antiveto=True, era=era
+                antiveto=True
             )
         else:
             (
@@ -1171,6 +1161,8 @@ def build_graph(df, dataset):
         "deltaPhiMuonMet", "std::abs(wrem::deltaPhi(goodMuons_phi0,MET_corr_rec_phi))"
     )
 
+    df = df.Define("goodMuons_dxy", "Muon_dxybs[goodMuons][0]")
+
     if auxiliary_histograms:
         # would move the following in a function but there are too many dependencies on axes defined in the main loop
         if isQCDMC:
@@ -1225,6 +1217,7 @@ def build_graph(df, dataset):
                         axis_charge,
                         axis_mt_coarse_fakes,
                         axis_passIso,
+                        axis_dxy,
                     ],
                     [
                         "goodMuons_genPartFlav0",
@@ -1233,6 +1226,7 @@ def build_graph(df, dataset):
                         "goodMuons_charge0",
                         "transverseMass",
                         "passIso",
+                        "goodMuons_dxy",
                         "nominal_weight",
                     ],
                 )
@@ -1419,13 +1413,23 @@ def build_graph(df, dataset):
         # df = df.Define("passIsoAlt", "(Muon_vtxAgnPfRelIso04_chg[goodMuons][0] * Muon_pt[goodMuons][0]) < 5.0")
         mTStudyForFakes = df.HistoBoost(
             "mTStudyForFakes",
-            mTStudyForFakes_axes,
+            [
+                axis_eta,
+                axis_pt,
+                axis_charge,
+                axis_mt_fakes,
+                axis_passIso,
+                axis_dxy,
+                axis_hasjet_fakes,
+                axis_dphi_fakes,
+            ],
             [
                 "goodMuons_eta0",
                 "goodMuons_pt0",
                 "goodMuons_charge0",
                 "transverseMass",
                 "passIso",
+                "goodMuons_dxy",
                 "hasCleanJet",
                 "deltaPhiMuonMet",
                 "nominal_weight",
