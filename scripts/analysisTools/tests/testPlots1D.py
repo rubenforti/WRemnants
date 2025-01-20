@@ -31,7 +31,7 @@ from scripts.analysisTools.plotUtils.utility import (
     createPlotDirAndCopyPhp,
     drawCorrelationPlot,
     drawTH1dataMCstack,
-    h,
+    #h,
     legEntries_plots_,
 )
 
@@ -244,7 +244,7 @@ if __name__ == "__main__":
             if args.project1D:
                 if args.project1D not in hnarf.axes.name:
                     raise ValueError(
-                        f"Histogram has axes {h.axes.name} but requested axis for projection is {args.project1D}"
+                        f"Histogram has axes {hnarf.axes.name} but requested axis for projection is {args.project1D}"
                     )
                 else:
                     if any(ax != args.project1D for ax in hnarf.axes.name):

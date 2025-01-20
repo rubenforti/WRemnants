@@ -2864,6 +2864,19 @@ def drawDataAndMC(
 
 #########################################################################
 
+def eval_hole_central_eta(hratio):
+    mean_sides, mean_hole = 0, 0
+    for ibin in range(1, hratio.GetNbinsX() + 1):
+        if hratio.GetBinLowEdge(ibin)+0.001 > 0.2 and hratio.GetBinLowEdge(ibin)+hratio.GetBinWidth(ibin)-0.001 < 0.5:
+            mean_hole += hratio.GetBinContent(ibin)
+        else:
+            mean_sides += hratio.GetBinContent(ibin)
+    
+    mean_sides /= 45
+    mean_hole /= 3
+    print(mean_sides, mean_hole)
+
+
 
 def drawTH1dataMCstack(
     h1,
@@ -3137,6 +3150,7 @@ def drawTH1dataMCstack(
             den_noerr.SetBinError(iBin, 0.0)
 
         ratio.Divide(den_noerr)
+        eval_hole_central_eta(ratio)
         den.Divide(den_noerr)
         den.SetFillColor(ROOT.TColor.GetColor("#9c9ca1"))
         den.SetFillStyle(1001)  # make it solid again
