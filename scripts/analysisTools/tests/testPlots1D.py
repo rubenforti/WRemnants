@@ -31,7 +31,6 @@ from scripts.analysisTools.plotUtils.utility import (
     createPlotDirAndCopyPhp,
     drawCorrelationPlot,
     drawTH1dataMCstack,
-    #h,
     legEntries_plots_,
 )
 
