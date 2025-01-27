@@ -287,8 +287,7 @@ def getDatasets(
         is_data = info.get("group", "") == "Data"
 
         if is_data and eraDataSel:
-            all_filepaths = info["filepaths"]
-            info["filepaths"] = [f for f in all_filepaths if any(f"Run{era}{e_sel}" in f for e_sel in eraDataSel)]
+            info["filepaths"] = [f for f in info["filepaths"] if any(f"Run{era}{e_sel}" in f for e_sel in eraDataSel)]
 
         prod_tags = data_tags if is_data else mc_tags
         nfiles = maxFiles
