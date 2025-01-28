@@ -184,6 +184,9 @@ def make1Dhist(namePrefix, h2D, ptbins, step):
         "isonotrig" : "Isolation w/o trigger",
         "antiiso" : "Failed isolation",
         "veto": "Veto",
+        "vetoreco" : "Reconstruction (veto)",
+        "vetotracking" : "Tracking (veto)",
+        "vetoidip" : "ID + impact parameter (veto)",
     }
     stepStr = stepDict[
         step.replace("plus", "").replace("minus", "").replace("both", "")
