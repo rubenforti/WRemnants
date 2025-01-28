@@ -106,7 +106,7 @@ def polN_2d(
     return ret
 
 
-def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
+def runSmoothing(inputfile, histname, outdir, step, args, effHist=None, era="2016PostVFP"):
 
     outdirNew = outdir
     addStringToEnd(outdirNew, "/", notAddIfEndswithMatch=True)
@@ -135,27 +135,35 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
     canvas.SetRightMargin(rightMargin)
     canvas.cd()
 
-    sfhistname = histname  # "SF3D_nominal_isolation" # eta - pt - uT
+    sfhistname = histname  # "SF3D_nominal_isolation" # uT - eta - pt
     tfile = safeOpenFile(inputfile)
     hsf = safeGetObject(tfile, sfhistname)
-    etaEdges = [
-        round(hsf.GetXaxis().GetBinLowEdge(i), 1) for i in range(1, 2 + hsf.GetNbinsX())
-    ]
-    ptEdges = [
-        round(hsf.GetYaxis().GetBinLowEdge(i), 1) for i in range(1, 2 + hsf.GetNbinsY())
-    ]
+
+    if era != "2016PostVFP":
+        hsf_narf = narf.root_to_hist(hsf, axis_names=["eta","pt","uT"])
+        print(type(hsf_narf))
+        hsf_narf = hsf_narf.project("uT", "eta", "pt")
+        print(hsf_narf.axes)
+        hsf = narf.hist_to_root(hsf_narf)
+        hsf.SetName(sfhistname)
+
     uT_binOffset = 1  # 1 to exclude first bin, use 0 to use all
     uT_binOffset_high = uT_binOffset
     if args.utHigh is not None:
         lastUtBinToFit = (
-            hsf.GetZaxis().FindFixBin(args.utHigh + 0.001) - 1
+            hsf.GetXaxis().FindFixBin(args.utHigh + 0.001) - 1
         )  # -1 because if we choose uT = 70 then the last bin is the one with 70 as upper edge
         uT_binOffset_high = hsf.GetNbinsX() - lastUtBinToFit
     utEdges = [
-        round(hsf.GetZaxis().GetBinLowEdge(i), 1)
-        for i in range(1 + uT_binOffset, 2 + hsf.GetNbinsZ() - uT_binOffset_high)
+        round(hsf.GetXaxis().GetBinLowEdge(i), 1)
+        for i in range(1 + uT_binOffset, 2 + hsf.GetNbinsX() - uT_binOffset_high)
     ]  # remove extreme bins for now
-
+    etaEdges = [
+        round(hsf.GetYaxis().GetBinLowEdge(i), 1) for i in range(1, 2 + hsf.GetNbinsY())
+    ]
+    ptEdges = [
+        round(hsf.GetZaxis().GetBinLowEdge(i), 1) for i in range(1, 2 + hsf.GetNbinsZ())
+    ]
     if uT_binOffset == 0:
         # redefine last uT bins with a sensible range (twice the width of the second to last bin)
         stretch = 2.0
@@ -166,12 +174,12 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
         hsfTmp = ROOT.TH3D(
             name,
             hsf.GetTitle(),
+            len(utEdges) - 1,
+            array("d", utEdges),
             len(etaEdges) - 1,
             array("d", etaEdges),
             len(ptEdges) - 1,
             array("d", ptEdges),
-            len(utEdges) - 1,
-            array("d", utEdges)
         )
         ROOT.wrem.fillTH3fromTH3part(
             hsfTmp, hsf
@@ -181,8 +189,8 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
             f"Setting first and last uT edges to {utEdges[0]} and {utEdges[-1]}"
         )
 
-    hsf.GetZaxis().SetRange(
-        1 + uT_binOffset, hsf.GetNbinsZ() - uT_binOffset_high
+    hsf.GetXaxis().SetRange(
+        1 + uT_binOffset, hsf.GetNbinsX() - uT_binOffset_high
     )  # remove extreme bins for now, they extend up to infinity
 
     #
@@ -191,11 +199,15 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
 
     # for consistency with how tensorflow reads the histogram to fit, it is better to use bin centers to define the range.
     # It is then fine even if the fit function extends outside this range
-    ptLow = hsf.GetYaxis().GetBinCenter(1)
-    ptHigh = hsf.GetYaxis().GetBinCenter(hsf.GetNbinsY())
+    ptLow = hsf.GetZaxis().GetBinCenter(1)
+    ptHigh = hsf.GetZaxis().GetBinCenter(hsf.GetNbinsZ())
     ptRange = ptHigh - ptLow
-    utLow = hsf.GetZaxis().GetBinCenter( 1 + uT_binOffset )  # remove first bin, whose range is too extreme
-    utHigh = hsf.GetZaxis().GetBinCenter(hsf.GetNbinsZ() - uT_binOffset_high)  # remove last bin, whose range is too extreme
+    utLow = hsf.GetXaxis().GetBinCenter(
+        1 + uT_binOffset
+    )  # remove first bin, whose range is too extreme
+    utHigh = hsf.GetXaxis().GetBinCenter(
+        hsf.GetNbinsX() - uT_binOffset_high
+    )  # remove last bin, whose range is too extreme
     utRange = utHigh - utLow
     polN_2d_scaled = partial(
         polN_2d,
@@ -206,55 +218,56 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
         yFitRange=ptRange,
         degreeY=polny,
     )
-    
     ## save actual histogram edges
-    ptEdgeLow = hsf.GetYaxis().GetBinLowEdge(1)
-    ptEdgeHigh = hsf.GetYaxis().GetBinLowEdge(1 + hsf.GetNbinsY())
-    utEdgeLow = hsf.GetZaxis().GetBinLowEdge( 1 + uT_binOffset)  # remove first bin, whose range is too extreme
-    utEdgeHigh = hsf.GetZaxis().GetBinLowEdge( hsf.GetNbinsZ() + 1 - uT_binOffset_high )  # remove last bin, whose range is too extreme
+    ptEdgeLow = hsf.GetZaxis().GetBinLowEdge(1)
+    ptEdgeHigh = hsf.GetZaxis().GetBinLowEdge(1 + hsf.GetNbinsZ())
+    utEdgeLow = hsf.GetXaxis().GetBinLowEdge(
+        1 + uT_binOffset
+    )  # remove first bin, whose range is too extreme
+    utEdgeHigh = hsf.GetXaxis().GetBinLowEdge(
+        hsf.GetNbinsX() + 1 - uT_binOffset_high
+    )  # remove last bin, whose range is too extreme
     # set number of bins for ut and pt after smoothing
     utBinWidth = 2
-    utNbins = int( (utEdgeHigh - utEdgeLow + 0.001) / utBinWidth )  # multiple of 1 GeV width
+    utNbins = int(
+        (utEdgeHigh - utEdgeLow + 0.001) / utBinWidth
+    )  # multiple of 1 GeV width
     ptNbins = 5 * int(ptEdgeHigh - ptEdgeLow + 0.001)  # 0.2 GeV width
 
-    nEtaBins = hsf.GetNbinsX()
+    nEtaBins = hsf.GetNbinsY()
     etaBinsToRun = args.eta if len(args.eta) else range(1, 1 + nEtaBins)
 
     iptFitLow = 1
-    iptFitHigh = hsf.GetNbinsY()
+    iptFitHigh = hsf.GetNbinsZ()
     ptFitRangeLow = args.ptFitRange[0]
     ptFitRangeHigh = args.ptFitRange[1]
-
     ## TODO: be less hardcoded here
     if step == "isoantitrig":
         ptFitRangeLow = 26.0
 
     if ptFitRangeLow > 0:
         iptFitLow = sorted(
-            (1, hsf.GetYaxis().FindFixBin(ptFitRangeLow + 0.0001), hsf.GetNbinsY())
+            (1, hsf.GetZaxis().FindFixBin(ptFitRangeLow + 0.0001), hsf.GetNbinsZ())
         )[
             1
         ]  # must ensure to pick the bin above the given edge
     if ptFitRangeHigh > 0:
         iptFitHigh = sorted(
-            (1, hsf.GetYaxis().FindFixBin(ptFitRangeHigh - 0.0001), hsf.GetNbinsY())
+            (1, hsf.GetZaxis().FindFixBin(ptFitRangeHigh - 0.0001), hsf.GetNbinsZ())
         )[
             1
         ]  # must ensure to pick the bin below the given edge
     ptFitEdges = [
         x
         for x in ptEdges
-        if x >= hsf.GetYaxis().GetBinLowEdge(iptFitLow)
-        and x <= hsf.GetYaxis().GetBinLowEdge(1 + iptFitHigh)
+        if x >= hsf.GetZaxis().GetBinLowEdge(iptFitLow)
+        and x <= hsf.GetZaxis().GetBinLowEdge(1 + iptFitHigh)
     ]
     if ptFitRangeLow > 0 or ptFitRangeHigh > 0:
         logger.warning(f"Step {step}F: fitting this pT range {ptFitEdges}")
 
     # to store the pull versus eta-pt for bins of uT, for some plots
     # if the fit range is restricted, use the narrower pt range here, consistently with the actually fitted histogram define later on
-    # This histogram has been maintained with the axes in this order for 
-    # convenience, pay attention that it is different from the order of the
-    # input files!
     hpull_utEtaPt = ROOT.TH3D(
         "hpull_utEtaPt",
         "",
@@ -437,17 +450,16 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
 
     for ieta in etaBinsToRun:
         # for ieta in range(1, 2):
-        hsf.GetXaxis().SetRange(ieta, ieta)
-        hsf.GetYaxis().SetRange(iptFitLow, iptFitHigh)
-        h = hsf.Project3D("yze")
+        hsf.GetYaxis().SetRange(ieta, ieta)
+        hsf.GetZaxis().SetRange(iptFitLow, iptFitHigh)
+        h = hsf.Project3D("zxe")
         h.SetName(f"{hsf.GetName()}_eta{ieta}")
-        etaLow = round(hsf.GetXaxis().GetBinLowEdge(ieta), 1)
-        etaCenter = hsf.GetXaxis().GetBinCenter(ieta)
-        etaHigh = round(hsf.GetXaxis().GetBinLowEdge(ieta + 1), 1)
+        etaLow = round(hsf.GetYaxis().GetBinLowEdge(ieta), 1)
+        etaCenter = hsf.GetYaxis().GetBinCenter(ieta)
+        etaHigh = round(hsf.GetYaxis().GetBinLowEdge(ieta + 1), 1)
         etaRange = f"{etaLow} < #eta < {etaHigh}"
         eta_index = axis_eta.index(etaCenter)
         logger.warning(f"Going to fit eta bin {ieta}, {etaRange}")
-        print(etaLow, etaCenter, etaHigh)
         h.SetTitle(etaRange)
         hpull = copy.deepcopy(h.Clone(f"{h.GetName()}_pull2Dfit"))
         hpull.Reset("ICESM")
@@ -686,57 +698,54 @@ if __name__ == "__main__":
     # efficiencies made with scripts/analysisTools/w_mass_13TeV/makeWMCefficiency3D.py
     #
     # sfFolder = data_dir + "/muonSF/"
-    # effSmoothFile = f"{sfFolder}efficiencies3D_rebinUt2.pkl.lz4"
-
-    '''
-    sfFolder = data_dir + "/muonSF/"
-    sfFolderVtxAgn = data_dir + "/muonSF/intermediate_vtxAgnosticIso/"
-    effSmoothFile = sfFolderVtxAgn + "efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
-    '''
-
-    inputRootFile_2016PostVFP = {
-        "iso": data_dir + "/muonSF/iso3DSFVQTsingularity.root",
+    
+    default_inputRootFiles = {}
+    default_inputRootFiles["2016PostVFP"] = {
+        "iso": data_dir + "/muonSF/intermediate_vtxAgnosticIso/iso3DSFVQTsingularity.root",
         "isonotrig": data_dir + "/muonSF/intermediate_vtxAgnosticIso/isonotrig3DSFVQTsingularity.root",
         "isoantitrig": data_dir + "/muonSF/intermediate_vtxAgnosticIso/isofailtrig3DSFVQTsingularity.root",
         "triggerplus": data_dir + "/muonSF/triggerplus3DSFVQTextended.root",
         "triggerminus": data_dir + "/muonSF/triggerminus3DSFVQTextended.root",
     }
 
-    inputRootFile = {
-        "iso": "/home/users/ruben/eff3D_Davide_2017/3dsfisolation.root",
-        "isonotrig": "/home/users/ruben/eff3D_Davide_2017/3dsfisonotrig.root",
-        "triggerplus": "/home/users/ruben/eff3D_Davide_2017/3dsftriggerplus.root",
-        "triggerminus": "/home/users/ruben/eff3D_Davide_2017/3dsftriggerminus.root",
+    for yr in ["2017", "2018"]:
+        default_inputRootFiles[yr] = {
+            "iso": data_dir + f"/muonSF/{yr}/3dSF/3dsfisolation.root",
+            "isonotrig": data_dir + f"/muonSF/{yr}/3dSF/3dsfisonotrig.root",
+            "triggerplus": data_dir + f"/muonSF/{yr}/3dSF/3dsftriggerplus.root",
+            "triggerminus": data_dir + f"/muonSF/{yr}/3dSF//3dsftriggerminus.root",
+        }
+
+    histNames_newEras = {
+        "iso": "Isolation",
+        "isonotrig": "IsolationNoTrigger",
+        "isoantitrig": "IsolationAntiTrigger",
+        "triggerplus": "TriggerPlus",
+        "triggerminus": "TriggerMinus",
     }
 
     parser = common_plot_parser()
-
     parser.add_argument(
         "-i",
         "--indir",
+        default = None,
         help="Input directory where the 3d efficiencies measured on data are stored"
     )
-
     parser.add_argument(
-        "-o",
-        "--outdir", 
-        help="Output directory to save things"
+        "outdir", type=str, nargs=1, help="output directory to save things"
     )
-
     parser.add_argument(
         "--era", 
         type=str,
         default="2016PostVFP",
-        choices=["2016PreVFP", "2016PostVFP", "2017", "2018"]
+        choices=["2016PostVFP", "2017", "2018"]
     )
-
     parser.add_argument(
         "--eff_filename",
         type=str,
         default="efficiencies3D.pkl.lz4",
         help="File containing the 3D W MC efficiencies. Extension must be pkl.lz4, which is automatically added if no extension is given",
     )
-
     parser.add_argument(
         "-n",
         "--outfilename",
@@ -776,7 +785,7 @@ if __name__ == "__main__":
         type=str,
         nargs="*",
         default=[],
-        choices=list(inputRootFile_2016PostVFP.keys()),
+        choices=list(default_inputRootFiles["2016PostVFP"].keys()),
         help="Do only these steps (default uses all)",
     )
     parser.add_argument(
@@ -805,35 +814,26 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if not hasattr(args, "indir"):
-        args.indir =  data_dir + "/muonSF/"
-        logger.warning("Input folder for 3d efficiencies not specified. Using the default path.")
-
-
-    if args.era == "2016PreVFP":
-        logger.error("Run 2016 PreVFP is not currently available!")
+    if args.era!="2016PostVFP" and args.isolationDefinition=="iso04":
+        logger.error(f"Only 'iso04vtxAgn' is available for eras 2017 and 2018.")
         quit()
     elif args.era == "2016PostVFP":
         sfFolder = data_dir + "/muonSF/"
-        inputRootFile = inputRootFile_2016PostVFP
         if args.isolationDefinition == "iso04vtxAgn":
             effSmoothFile = sfFolder + "intermediate_vtxAgnosticIso/efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
         else:
             effSmoothFile = sfFolder + "effiencies3D_rebinUt2.pkl.lz4"
     else:
-        if args.isolationDefinition == "iso04":
-            logger.error(f"Only 'iso04vtxAgn' is available for eras 2017 and 2018.")
-            quit()
         sfFolder = data_dir + f"/muonSF/{args.era}/"
-        inputRootFile = {}
         effSmoothFile = sfFolder + args.eff_filename 
+
+    if args.indir is None:
+        inputRootFile = {k:v for k,v in default_inputRootFiles[args.era].items() if k in args.steps}
+    else:
+        inputRootFile = {}
         for eff in args.steps: 
             eff_tag = eff if eff!="iso" else "isolation"
             inputRootFile[eff] = args.indir + f"3dsf{eff_tag}.root"
-
-
-    for k, v in inputRootFile.items():
-        print(k, " ", v)
 
     ROOT.TH1.SetDefaultSumw2()
 
@@ -857,31 +857,15 @@ if __name__ == "__main__":
         effHist[step] = allMCeff[f"Wmunu_MC_eff_{step}_etaptut"]
 
     work = []
-    work.append([inputRootFile["iso"], "Isolation", "iso", effHist["iso"]])
-    work.append(
-        [inputRootFile["isonotrig"], "IsolationNoTrigger", "isonotrig", None]
-    )  # , effHist["isonotrig"]])
-    '''
-    work.append(
-        [inputRootFile["isoantitrig"], "SF3D_nominal_isofailtrig", "isoantitrig", None]
-    )  # , effHist["isoantitrig"]])
-    '''
-    work.append(
-        [
-            inputRootFile["triggerplus"],
-            "TriggerPlus",
-            "triggerplus",
-            effHist["triggerplus"],
-        ]
-    )
-    work.append(
-        [
-            inputRootFile["triggerminus"],
-            "TriggerMinus",
-            "triggerminus",
-            effHist["triggerminus"],
-        ]
-    )
+    steps_noEffHist = ["isonotrig", "isoantitrig"]
+
+    for st in args.steps:
+        histname = f"SF3D_nominal_{st}".replace("antitrig", "failtrig")
+        histname = histname.replace("plus", "_plus").replace("minus", "_minus")
+        work.append([inputRootFile[st], 
+                     histname if args.era=="2016PostVFP" else histNames_newEras[st],
+                     st,
+                     effHist[st] if st not in steps_noEffHist else None])
 
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -891,7 +875,7 @@ if __name__ == "__main__":
         inputfile, histname, step, eff = w
         if len(args.steps) and step not in args.steps:
             continue
-        rets = runSmoothing(inputfile, histname, outdir, step, args, effHist=eff)
+        rets = runSmoothing(inputfile, histname, outdir, step, args, effHist=eff, era=args.era)
         for ret in rets:
             if ret != None:
                 resultDict[ret.name] = ret

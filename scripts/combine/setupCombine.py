@@ -2075,8 +2075,7 @@ def setup(
                         else:
                             if useRefinedVeto:
                                 axes = [
-                                    #"vetoreco-vetotracking-vetoidip",  ## used for 2016, we will have to choose a naming system uniform for all years
-                                    "reco-tracking-veto",  # used for 2017-2018
+                                    "vetoreco-vetotracking-vetoidip",
                                     "n_syst_variations",
                                 ]
                             else:
@@ -2132,8 +2131,7 @@ def setup(
                         mirrorDownVarEqualToNomi = False
                         if useRefinedVeto:
                             axes = [
-                                #"vetoreco-vetotracking-vetoidip",  ## used for 2016, we will have to choose a naming system uniform for all years
-                                "reco-tracking-veto",  # used for 2017-2018
+                                "vetoreco-vetotracking-vetoidip",
                                 "SF eta",
                                 "nPtEigenBins",
                                 "SF charge",
