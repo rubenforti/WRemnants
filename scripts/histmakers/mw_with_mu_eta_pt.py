@@ -125,6 +125,13 @@ parser.add_argument(
     action="store_true",
     help="Add another fit axis with the sign of the uT recoil projection",
 )
+parser.add_argument(
+    "--utAngleCosineCut",
+    nargs=2,
+    type=float,
+    default=None,
+    help="Cut on the cosine of the angle between the lepton and the boson",
+)
 #
 
 args = parser.parse_args()
@@ -1138,6 +1145,14 @@ def build_graph(df, dataset):
         "goodMuons_angleSignUt0",
         "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
     )
+    df = df.Define(
+        "goodMuons_angleCosineUt0",
+        "wrem::zqtproj0_angleCosine(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
+    )
+    if args.utAngleCosineCut is not None:
+        df = df.Filter(
+            f"goodMuons_angleCosineUt0 >= {args.utAngleCosineCut[0]} && goodMuons_angleCosineUt0 < {args.utAngleCosineCut[1]}"
+        )
 
     df = df.Define(
         "ptW",
@@ -1720,6 +1735,22 @@ def build_graph(df, dataset):
     if isQCDMC:
         unweighted = df.HistoBoost("unweighted", axes, cols)
         results.append(unweighted)
+
+    nominal_withUt = df.HistoBoost(
+        "nominal_withUt",
+        [*axes, axis_ut_fine],
+        [*cols, "goodMuons_utReco", "nominal_weight"],
+    )
+    results.append(nominal_withUt)
+    axis_uTAngleCosine = hist.axis.Regular(
+        20, -1, 1, name="uTAngleCosine", overflow=False, underflow=False
+    )
+    nominal_withUtAngleCosine = df.HistoBoost(
+        "nominal_withUt",
+        [*axes, axis_uTAngleCosine],
+        [*cols, "goodMuons_angleCosineUt0", "nominal_weight"],
+    )
+    results.append(nominal_withUtAngleCosine)
 
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)

@@ -16,6 +16,8 @@ justPrint = 1
 foldEtaIntoAbsEta = True
 
 ## histmaker
+# /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/ciprianm/CombineStudies/theoryAgnostic_pol/January2025/x0p50_y3p00_THAGNV0/ --maxFiles -1 --postfix x0p50_y3p00_THAGNV0_utSignAxis --addAxisSignUt --analysisMode theoryAgnosticPolVar --poiAsNoi --theoryAgnosticFilePath /scratch/ciprianm/TheoryAgnosticInputFiles/ --theoryAgnosticFileTag x0p50_y3p00_THAGNV0 --theoryAgnosticSplitOOA -v 4
+
 # /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p40_y3p50_V4/ -v 4  --dataPath root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/ --filterProcs Data Wmunu --maxFiles -1  [ -p splitOOA|splitOOA_oneMCfileEvery2 ] [ --oneMCfileEveryN 2 ] theoryAgnosticPolVar --theoryAgnosticFilePath /path/to/files/  --theoryAgnosticFileTag x0p40_y3p50_V4  --theoryAgnosticSplitOOA
 # --theoryAgnosticSplitOOA should be used by default
 
