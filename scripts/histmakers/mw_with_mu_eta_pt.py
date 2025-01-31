@@ -132,6 +132,11 @@ parser.add_argument(
     default=None,
     help="Cut on the cosine of the angle between the lepton and the boson",
 )
+parser.add_argument(
+    "--useOriginalMuonVarForSF",
+    action="store_true",
+    help="Use original muon variables to evaluate the efficiency scale factors",
+)
 #
 
 args = parser.parse_args()
@@ -1027,22 +1032,47 @@ def build_graph(df, dataset):
 
         # define recoil uT, muon projected on boson pt, the latter is made using preFSR variables
         # TODO: fix it for not W/Z processes
-        columnsForSF = [
-            "goodMuons_pt0",
-            "goodMuons_eta0",
-            "goodMuons_SApt0",
-            "goodMuons_SAeta0",
-            "goodMuons_uT0",
-            "goodMuons_charge0",
-            "passIso",
-        ]
+        useOriginalMuonVarForSF = args.useOriginalMuonVarForSF
+        if useOriginalMuonVarForSF:
+            df = df.Define("goodMuons_originalPt0", "Muon_pt[goodMuons][0]")
+            df = df.Define("goodMuons_originalEta0", "Muon_eta[goodMuons][0]")
+            df = df.Define("goodMuons_originalCharge0", "Muon_charge[goodMuons][0]")
+
+        columnsForSF = (
+            [
+                "goodMuons_originalPt0",
+                "goodMuons_originalEta0",
+                "goodMuons_SApt0",
+                "goodMuons_SAeta0",
+                "goodMuons_originalUT0",
+                "goodMuons_originalCharge0",
+                "passIso",
+            ]
+            if useOriginalMuonVarForSF
+            else [
+                "goodMuons_pt0",
+                "goodMuons_eta0",
+                "goodMuons_SApt0",
+                "goodMuons_SAeta0",
+                "goodMuons_uT0",
+                "goodMuons_charge0",
+                "passIso",
+            ]
+        )
+
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="goodMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="goodMuons",
+            addWithOriginalMuonVar=useOriginalMuonVarForSF,
         )
         # define_muon_uT_variable defined a uT variable using gen information, to get a more precise value for the purpose of applying scale factors
         # for using it as a fit observable we need another definition based only on reco observables, since it is also needed for data
         if not args.smooth3dsf:
-            columnsForSF.remove("goodMuons_uT0")
+            columnsForSF.remove(
+                "goodMuons_originalUT0" if useOriginalMuonVarForSF else "goodMuons_uT0"
+            )
 
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define(
