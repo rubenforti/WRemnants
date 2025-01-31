@@ -44,11 +44,6 @@ parser.add_argument(
     help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)",
 )
 parser.add_argument(
-    "--halfStat",
-    action="store_true",
-    help="Test half data and MC stat, selecting odd events, just for tests",
-)
-parser.add_argument(
     "--makeMCefficiency",
     action="store_true",
     help="Save yields vs eta-pt-ut-passMT-passIso-passTrigger to derive 3D efficiencies for MC isolation and trigger (can run also with --onlyMainHistograms)",
@@ -829,9 +824,6 @@ def build_graph(df, dataset):
     if not args.makeMCefficiency and not args.noTrigger:
         # remove trigger, it will be part of the efficiency selection for passing trigger
         df = df.Filter(muon_selections.hlt_string(era))
-
-    if args.halfStat:
-        df = df.Filter("event % 2 == 1")  # test with odd/even events
 
     df = muon_calibration.define_corrected_muons(
         df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper
