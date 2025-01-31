@@ -213,6 +213,7 @@ class HDF5Writer(object):
                 procsToRead=dg.groups.keys(),
                 label=chanInfo.nominalName,
                 scaleToNewLumi=chanInfo.lumiScale,
+                lumiScaleVarianceLinearly=chanInfo.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not chanInfo.simultaneousABCD,
             )
@@ -447,6 +448,7 @@ class HDF5Writer(object):
                     # Needed to avoid always reading the variation for the fakes, even for procs not specified
                     forceToNominal=forceToNominal,
                     scaleToNewLumi=chanInfo.lumiScale,
+                    lumiScaleVarianceLinearly=chanInfo.lumiScaleVarianceLinearly,
                     nominalIfMissing=not chanInfo.xnorm,  # for masked channels not all systematics exist (we can skip loading nominal since Fake does not exist)
                     sumFakesPartial=not chanInfo.simultaneousABCD,
                 )

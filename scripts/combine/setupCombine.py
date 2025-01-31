@@ -193,7 +193,7 @@ def make_parser(parser=None):
         "--qcdProcessName",
         type=str,
         default=None,
-        help="Name for QCD process (by default taken from datagroups object",
+        help="Name for QCD process (by default taken from datagroups object)",
     )
     # setting on the fit behaviour
     parser.add_argument(
@@ -247,7 +247,7 @@ def make_parser(parser=None):
         nargs="*",
         default=[],
         choices=["data", "mc"],
-        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.",
+        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty. For data, this only has an effect for the data-driven estimate of the QCD multijet background through the uncertainty propagation from them data-MC subtraction.",
     )
     parser.add_argument(
         "--sumChannels", action="store_true", help="Only use one channel"

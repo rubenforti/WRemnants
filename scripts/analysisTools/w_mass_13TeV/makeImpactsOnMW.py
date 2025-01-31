@@ -162,7 +162,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-x",
         "--excludeNuisgroups",
-        default=".*Fake.+|.*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ",
+        default=".*expNoCalib|.*Fake.+|.*eff_(stat|syst).+|.*eff_all|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ",
         type=str,
         help="Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it",
     )

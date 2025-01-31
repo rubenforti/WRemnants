@@ -546,7 +546,7 @@ class Datagroups(object):
                     (procName == self.dataName and "data" in lumiScaleVarianceLinearly)
                     or (procName != self.dataName and "mc" in lumiScaleVarianceLinearly)
                 ):
-                    logger.warning(
+                    logger.debug(
                         f"Scale {procName} hist by {scaleToNewLumi} as a multiplicative luminosity factor, with variance scaled linearly"
                     )
                     h = hh.scaleHist(
