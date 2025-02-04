@@ -1736,7 +1736,7 @@ def build_graph(df, dataset):
     )
     results.append(nominal_withUt)
     nominal_withUtAngleCosine = df.HistoBoost(
-        "nominal_withUt",
+        "nominal_withUtAngleCosine",
         [*axes, axis_uTAngleCosine],
         [*cols, "goodMuons_angleCosineUt0", "nominal_weight"],
     )
