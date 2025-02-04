@@ -30,7 +30,7 @@ def make_muon_efficiency_helpers_newVeto(antiveto=False, era=None):
 
     veto_tag = "antiVeto" if antiveto else "veto"
     charges = {-1.0: "minus", 1.0: "plus"}
-    steps = ["vetoreco", "vetotracking", "vetoidip"] if era not in ["2017", "2018"] else ["reco", "tracking", "veto"]
+    steps = ["vetoreco", "vetotracking", "vetoidip"]
     eff_types_2D = [x for x in steps]
     logger.info(f"{veto_tag} SF steps in 2D (eta-pt): {eff_types_2D}")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name="eff_types_2D_etapt")
@@ -41,6 +41,11 @@ def make_muon_efficiency_helpers_newVeto(antiveto=False, era=None):
         "plus": f"{data_dir}/muonSF/{eradir}/veto_global_SF/allVetoSF_global_plus.pkl.lz4",
         "minus": f"{data_dir}/muonSF/{eradir}/veto_global_SF/allVetoSF_global_minus.pkl.lz4",
     }
+    effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
+    NsystDecorr = len(effSyst_decorrEtaEdges) - 1
+    Nsyst = 1 + NsystDecorr  # 1 inclusive variation + all decorrelated bins
+    Nstat = 4  # from smoothing with pol3
+    inputHist_systBin = -1  # set later
 
     ### first the syst part
     sf_syst_2D = None
@@ -63,14 +68,9 @@ def make_muon_efficiency_helpers_newVeto(antiveto=False, era=None):
         for step in steps:
             hist_hist = dict_veto[f"{veto_tag}SF_global_{step}_{charge_tag}"]
 
-            effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
-            NsystDecorr = len(effSyst_decorrEtaEdges) - 1
-            Nsyst = 1 + NsystDecorr  # 1 inclusive variation + all decorrelated bins
-            Nstat = 4 if not ("tracking" in step and era in ["2017", "2018"]) else 3  # from smoothing with pol3, except for tracking step
             axis_nom_syst = hist.axis.Integer(
                 0, 1 + Nsyst + Nstat, underflow=False, overflow=False, name="nom-systs"
             )  # nominal in first bin
-            inputHist_systBin = -1  # set later
 
             nstat = int(
                 (hist_hist.axes[2].size - 2) / 2
