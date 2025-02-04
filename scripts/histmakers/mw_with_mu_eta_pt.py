@@ -133,9 +133,9 @@ parser.add_argument(
     help="Cut on the cosine of the angle between the lepton and the boson",
 )
 parser.add_argument(
-    "--useOriginalMuonVarForSF",
+    "--useTnpMuonVarForSF",
     action="store_true",
-    help="Use original muon variables to evaluate the efficiency scale factors",
+    help="To read efficiency scale factors, use the same muon variables as used to measure them with tag-and-probe (by default the final corrected ones are used)",
 )
 #
 
@@ -982,15 +982,15 @@ def build_graph(df, dataset):
                 "wrem::charge_from_pdgid(GenPart_pdgId[postfsrMuons_inAcc])",
             )
             df = df.Define(
-                f"vetoMuons_pt0",
+                f"vetoMuons_tnpPt0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
             df = df.Define(
-                f"vetoMuons_eta0",
+                f"vetoMuons_tnpEta0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
             df = df.Define(
-                f"vetoMuons_charge0",
+                f"vetoMuons_tnpCharge0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
     if isQCDMC:
@@ -1030,49 +1030,44 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
+        # Muon variables used to measure tag-and-probe efficiency SF might not be the final corrected ones
+        # TODO: implement an option to choose which vatriables to use (e.g. pt-eta-charge after CVH only ?)
+        useTnpMuonVarForSF = args.useTnpMuonVarForSF
+        if useTnpMuonVarForSF:
+            df = df.Define("goodMuons_tnpPt0", "Muon_pt[goodMuons][0]")
+            df = df.Define("goodMuons_tnpEta0", "Muon_eta[goodMuons][0]")
+            df = df.Define("goodMuons_tnpCharge0", "Muon_charge[goodMuons][0]")
+        else:
+            df = df.Alias("goodMuons_tnpPt0", "goodMuons_pt0")
+            df = df.Alias("goodMuons_tnpEta0", "goodMuons_eta0")
+            df = df.Alias("goodMuons_tnpCharge0", "goodMuons_charge0")
+
+        columnsForSF = [
+            "goodMuons_tnpPt0",
+            "goodMuons_tnpEta0",
+            "goodMuons_SApt0",
+            "goodMuons_SAeta0",
+            "goodMuons_tnpUT0",
+            "goodMuons_tnpCharge0",
+            "passIso",
+        ]
+
         # define recoil uT, muon projected on boson pt, the latter is made using preFSR variables
         # TODO: fix it for not W/Z processes
-        useOriginalMuonVarForSF = args.useOriginalMuonVarForSF
-        if useOriginalMuonVarForSF:
-            df = df.Define("goodMuons_originalPt0", "Muon_pt[goodMuons][0]")
-            df = df.Define("goodMuons_originalEta0", "Muon_eta[goodMuons][0]")
-            df = df.Define("goodMuons_originalCharge0", "Muon_charge[goodMuons][0]")
-
-        columnsForSF = (
-            [
-                "goodMuons_originalPt0",
-                "goodMuons_originalEta0",
-                "goodMuons_SApt0",
-                "goodMuons_SAeta0",
-                "goodMuons_originalUT0",
-                "goodMuons_originalCharge0",
-                "passIso",
-            ]
-            if useOriginalMuonVarForSF
-            else [
-                "goodMuons_pt0",
-                "goodMuons_eta0",
-                "goodMuons_SApt0",
-                "goodMuons_SAeta0",
-                "goodMuons_uT0",
-                "goodMuons_charge0",
-                "passIso",
-            ]
-        )
-
         df = muon_selections.define_muon_uT_variable(
             df,
             isWorZ,
             smooth3dsf=args.smooth3dsf,
             colNamePrefix="goodMuons",
-            addWithOriginalMuonVar=useOriginalMuonVarForSF,
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
+        if not useTnpMuonVarForSF:
+            df = df.Alias("goodMuons_tnpUT0", "goodMuons_uT0")
+
         # define_muon_uT_variable defined a uT variable using gen information, to get a more precise value for the purpose of applying scale factors
         # for using it as a fit observable we need another definition based only on reco observables, since it is also needed for data
         if not args.smooth3dsf:
-            columnsForSF.remove(
-                "goodMuons_originalUT0" if useOriginalMuonVarForSF else "goodMuons_uT0"
-            )
+            columnsForSF.remove("goodMuons_tnpUT0")
 
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define(
@@ -1087,7 +1082,7 @@ def build_graph(df, dataset):
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
                     df = df.Define(
                         "weight_DY",
-                        f"(vetoMuons_charge0 > -99) ? {args.scaleDYvetoFraction} : 1.0",
+                        f"(vetoMuons_tnpCharge0 > -99) ? {args.scaleDYvetoFraction} : 1.0",
                     )
                     weight_expr += "*weight_DY"
 
@@ -1095,7 +1090,11 @@ def build_graph(df, dataset):
                     df = df.Define(
                         "weight_vetoSF_nominal",
                         muon_efficiency_veto_helper,
-                        ["vetoMuons_pt0", "vetoMuons_eta0", "vetoMuons_charge0"],
+                        [
+                            "vetoMuons_tnpPt0",
+                            "vetoMuons_tnpEta0",
+                            "vetoMuons_tnpCharge0",
+                        ],
                     )
                     weight_expr += "*weight_vetoSF_nominal"
 

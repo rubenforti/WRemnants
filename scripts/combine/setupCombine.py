@@ -460,7 +460,12 @@ def make_parser(parser=None):
     parser.add_argument(
         "--pdfUncFromCorr",
         action="store_true",
-        help="Take PDF uncertainty from correction hist (Requires having run that correction)",
+        help="Take PDF uncertainty from correction hist (requires having run that correction)",
+    )
+    parser.add_argument(
+        "--asUncFromUncorr",
+        action="store_true",
+        help="Take alpha_S uncertainty from uncorrected hist (by default it reads it from the correction hist, but requires having run that correction)",
     )
     parser.add_argument(
         "--scaleMinnloScale",
@@ -1557,6 +1562,7 @@ def setup(
             tnp_scale=args.scaleTNP,
             mirror_tnp=False,
             pdf_from_corr=args.pdfUncFromCorr,
+            as_from_corr=not args.asUncFromUncorr,
             scale_pdf_unc=args.scalePdf,
             samples=theorySystSamples,
             minnlo_unc=args.minnloScaleUnc,

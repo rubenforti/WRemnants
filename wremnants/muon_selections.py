@@ -202,8 +202,10 @@ def define_muon_uT_variable(
     isWorZ,
     smooth3dsf=False,
     colNamePrefix="goodMuons",
-    addWithOriginalMuonVar=False,
+    addWithTnpMuonVar=False,
 ):
+    # TODO: instead of having "addWithTnpMuonVar" it might be better to call this function twice
+    # TODO: possibily specifying the target variable name (_uT0 or _tnpUT0) and the input variables
     if smooth3dsf:
         if isWorZ:
             df = theory_tools.define_prefsr_vars(df)
@@ -211,9 +213,9 @@ def define_muon_uT_variable(
                 f"{colNamePrefix}_uT0",
                 f"wrem::zqtproj0_boson({colNamePrefix}_pt0, {colNamePrefix}_phi0, ptVgen, phiVgen)",
             )
-            if addWithOriginalMuonVar:
+            if addWithTnpMuonVar:
                 df = df.Define(
-                    f"{colNamePrefix}_originalUT0",
+                    f"{colNamePrefix}_tnpUT0",
                     f"wrem::zqtproj0_boson(Muon_pt[{colNamePrefix}][0], Muon_phi[{colNamePrefix}][0], ptVgen, phiVgen)",
                 )
         else:
@@ -234,16 +236,16 @@ def define_muon_uT_variable(
                 f"{colNamePrefix}_uT0",
                 f"wrem::zqtproj0_boson({colNamePrefix}_pt0, {colNamePrefix}_phi0, vecSumLeptonAndPhoton_TV2)",
             )
-            if addWithOriginalMuonVar:
+            if addWithTnpMuonVar:
                 df = df.Define(
-                    f"{colNamePrefix}_originalUT0",
+                    f"{colNamePrefix}_tnpUT0",
                     f"wrem::zqtproj0_boson(Muon_pt[{colNamePrefix}][0], Muon_phi[{colNamePrefix}][0], vecSumLeptonAndPhoton_TV2)",
                 )
     else:
         # this is a dummy, the uT axis when present will have a single bin
         df = df.Define(f"{colNamePrefix}_uT0", "0.0f")
-        if addWithOriginalMuonVar:
-            df = df.Define(f"{colNamePrefix}_originalUT0", "0.0f")
+        if addWithTnpMuonVar:
+            df = df.Define(f"{colNamePrefix}_tnpUT0", "0.0f")
 
     return df
 
