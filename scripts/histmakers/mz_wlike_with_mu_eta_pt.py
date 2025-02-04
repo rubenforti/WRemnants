@@ -1106,7 +1106,7 @@ def build_graph(df, dataset):
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
 
-    if useTnpMuonVarForSF:
+    if useTnpMuonVarForSF and not args.onlyMainHistograms and not isUnfolding:
         df = df.Define(
             "trigMuons_deltaPt_corrMinusTnp", "trigMuons_pt0 - trigMuons_tnpPt0"
         )
