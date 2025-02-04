@@ -137,6 +137,11 @@ parser.add_argument(
     action="store_true",
     help="To read efficiency scale factors, use the same muon variables as used to measure them with tag-and-probe (by default the final corrected ones are used)",
 )
+parser.add_argument(
+    "--forceValidCVH",
+    action="store_true",
+    help="When not applying muon scale corrections (--muonCorrData none / --muonCorrMC none), require at list that the CVH corrected variables are valid",
+)
 #
 
 args = parser.parse_args()
@@ -998,6 +1003,21 @@ def build_graph(df, dataset):
         df = df.Filter(
             "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09) == 0"
         )
+
+    if args.forceValidCVH:
+        if dataset.is_data:
+            if args.muonCorrData == "none":
+                logger.warning(
+                    "Requiring valid CVH for data even if CVH is not applied"
+                )
+                df = df.Filter("Muon_cvhPt[goodMuons][0] > 0")
+        else:
+            if args.muonCorrMC == "none":
+                # use CVH with ideal MC geometry for this check
+                logger.warning(
+                    "Requiring valid CVH (ideal geometry) for MC even if CVH is not applied"
+                )
+                df = df.Filter("Muon_cvhidealPt[goodMuons][0] > 0")
 
     ########################################################################
     # define event weights here since they are needed below for some helpers
