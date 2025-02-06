@@ -73,21 +73,21 @@ jobs:
 
       - name: run isort
         run: |
-          scripts/ci/run_with_singularity.sh isort . --check-only --diff --skip narf --skip wremnants-data --profile black --line-length 88
+          scripts/ci/run_with_singularity.sh isort . --check-only --diff --skip narf --skip combinetf2 --skip wremnants-data --profile black --line-length 88
 
       - name: run Flake8
         run: >-
-          scripts/ci/run_with_singularity.sh flake8 . --exclude=narf,wremnants-data --max-line-length 88
+          scripts/ci/run_with_singularity.sh flake8 . --exclude=narf,combinetf2,wremnants-data --max-line-length 88
           --select=F401,F402,F403,F404,F405,F406,F407,F601,F602,F621,F622,F631,F632,F633,F634,F701,F702,F704,F706,F707,F721,F722,F723,F821,F822,F823,F831,F901
 
       - name: run Black
         run: |
-          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|narf|wremnants-data)' --check .
+          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|narf|combinetf2|wremnants-data)' --check .
 
       - name: check Python Files
         run: |
           # Find all Python files and check their syntax in parallel
-          find . -name '*.py' -not -path '*/narf/*' -not -path '*/wremnants-data/*' | \
+          find . -name '*.py' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/*' | \
           xargs -P 16 -I {} bash -c '
             echo "Checking python file: {}"
             scripts/ci/run_with_singularity.sh python -m py_compile "{}" || \
@@ -97,7 +97,7 @@ jobs:
       - name: check JSON Files
         run: |
           # Find all JSON files and check their syntax
-          for FILE in $(find . -name '*.json' -not -path '*/narf/*' -not -path '*/wremnants-data/*'); do
+          for FILE in $(find . -name '*.json' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/*'); do
             echo "Checking JSON file: $FILE"
             scripts/ci/run_with_singularity.sh python -m json.tool "$FILE" > /dev/null
             if [ $? -ne 0 ]; then
@@ -109,7 +109,7 @@ jobs:
       - name: check C++ Files
         run: |
           # Find all C++ files and check their syntax in parallel
-          find . \( -name '*.c' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -not -path '*/narf/*' -not -path '*/wremnants-data/*' | \
+          find . \( -name '*.c' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/*' | \
           xargs -P 16 -I {} bash -c '
             echo "Checking {}"
             scripts/ci/run_with_singularity.sh clang++ -I./narf/narf/include/ -I./wremnants/include/ -std=c++20 -fsyntax-only "{}" || \
