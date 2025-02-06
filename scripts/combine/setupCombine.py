@@ -1036,6 +1036,8 @@ def setup(
 
     cardTool.setExponentialTransform(args.exponentialTransform)
 
+    era = input_tools.args_from_metadata(cardTool, "era")
+
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
         cardTool.setAbsolutePathShapeInCard()
@@ -2277,8 +2279,12 @@ def setup(
         group="muonPrefire",
         splitGroup={f"prefire": f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_stat_m_",
-        systAxes=["downUpVar", "etaPhiRegion"],
-        labelsByAxis=["downUpVar", "etaPhiReg"],
+        systAxes=(
+            ["downUpVar", "etaPhiRegion"] if era == "2016PostVFP" else ["downUpVar"]
+        ),
+        labelsByAxis=(
+            ["downUpVar", "etaPhiReg"] if era == "2016PostVFP" else ["downUpVar"]
+        ),
         passToFakes=passSystToFakes,
     )
     cardTool.addSystematic(

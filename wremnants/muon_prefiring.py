@@ -14,6 +14,9 @@ def make_muon_prefiring_helpers(
     era=None,
 ):
 
+    if not (era is None or "2016" in era):
+        return None, None, None
+
     fin = ROOT.TFile.Open(filename)
 
     eradict = {

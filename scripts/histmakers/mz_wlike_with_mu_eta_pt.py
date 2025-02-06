@@ -639,19 +639,19 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
         df = df.Define("weight_vtx", vertex_helper, ["GenVtx_z", "Pileup_nTrueInt"])
-        df = df.Define(
-            "weight_newMuonPrefiringSF",
-            muon_prefiring_helper,
-            [
-                "Muon_correctedEta",
-                "Muon_correctedPt",
-                "Muon_correctedPhi",
-                "Muon_correctedCharge",
-                "Muon_looseId",
-            ],
-        )
 
         if era == "2016PostVFP":
+            df = df.Define(
+                "weight_newMuonPrefiringSF",
+                muon_prefiring_helper,
+                [
+                    "Muon_correctedEta",
+                    "Muon_correctedPt",
+                    "Muon_correctedPhi",
+                    "Muon_correctedCharge",
+                    "Muon_looseId",
+                ],
+            )
             weight_expr = (
                 "weight_pu*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom"
             )
@@ -1258,10 +1258,10 @@ def build_graph(df, dataset):
         df = syst_tools.add_L1Prefire_unc_hists(
             results,
             df,
-            muon_prefiring_helper_stat,
-            muon_prefiring_helper_syst,
             axes,
             cols,
+            helper_stat=muon_prefiring_helper_stat,
+            helper_syst=muon_prefiring_helper_syst,
         )
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
