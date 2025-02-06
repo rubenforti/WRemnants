@@ -111,7 +111,7 @@ def make_parser(parser=None):
         "--outfolder",
         type=str,
         default=".",
-        help="Output folder with the root file storing all histograms and datacards for single charge (subfolder WMass or ZMassWLike is created automatically inside)",
+        help="Output folder with all the outputs of this script (subfolder WMass or ZMassWLike is created automatically inside)",
     )
     parser.add_argument("-i", "--inputFile", nargs="+", type=str)
     parser.add_argument(
