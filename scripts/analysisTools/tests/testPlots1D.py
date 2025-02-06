@@ -31,7 +31,6 @@ from scripts.analysisTools.plotUtils.utility import (
     createPlotDirAndCopyPhp,
     drawCorrelationPlot,
     drawTH1dataMCstack,
-    h,
     legEntries_plots_,
 )
 
@@ -124,6 +123,13 @@ if __name__ == "__main__":
         help="Choose what processes to plot, otherwise all are done",
     )
     parser.add_argument(
+        "--excludeProcesses",
+        default=None,
+        nargs="*",
+        type=str,
+        help="Don't run over processes belonging to these groups (only accepts exact group names)",
+    )
+    parser.add_argument(
         "--plot", nargs="+", type=str, help="Choose what distribution to plot by name"
     )
     parser.add_argument("-x", "--xAxisName", nargs="+", type=str, help="x axis name")
@@ -193,6 +199,8 @@ if __name__ == "__main__":
         groups.lumi = args.lumi
         logger.warning(f"Renormalizing MC to {args.lumi}/fb")
     datasets = groups.getNames()
+    if args.excludeProcesses is not None and len(args.excludeProcesses):
+        datasets = list(filter(lambda x: x not in args.excludeProcesses, datasets))
     if args.processes is not None and len(args.processes):
         datasets = list(filter(lambda x: x in args.processes, datasets))
     logger.info(f"Will plot datasets {datasets}")
@@ -244,7 +252,7 @@ if __name__ == "__main__":
             if args.project1D:
                 if args.project1D not in hnarf.axes.name:
                     raise ValueError(
-                        f"Histogram has axes {h.axes.name} but requested axis for projection is {args.project1D}"
+                        f"Histogram has axes {hnarf.axes.name} but requested axis for projection is {args.project1D}"
                     )
                 else:
                     if any(ax != args.project1D for ax in hnarf.axes.name):

@@ -111,7 +111,7 @@ def make_parser(parser=None):
         "--outfolder",
         type=str,
         default=".",
-        help="Output folder with the root file storing all histograms and datacards for single charge (subfolder WMass or ZMassWLike is created automatically inside)",
+        help="Output folder with all the outputs of this script (subfolder WMass or ZMassWLike is created automatically inside)",
     )
     parser.add_argument("-i", "--inputFile", nargs="+", type=str)
     parser.add_argument(
@@ -193,7 +193,7 @@ def make_parser(parser=None):
         "--qcdProcessName",
         type=str,
         default=None,
-        help="Name for QCD process (by default taken from datagroups object",
+        help="Name for QCD process (by default taken from datagroups object)",
     )
     # setting on the fit behaviour
     parser.add_argument(
@@ -247,7 +247,7 @@ def make_parser(parser=None):
         nargs="*",
         default=[],
         choices=["data", "mc"],
-        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.",
+        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty. For data, this only has an effect for the data-driven estimate of the QCD multijet background through the uncertainty propagation from them data-MC subtraction.",
     )
     parser.add_argument(
         "--sumChannels", action="store_true", help="Only use one channel"
@@ -460,7 +460,12 @@ def make_parser(parser=None):
     parser.add_argument(
         "--pdfUncFromCorr",
         action="store_true",
-        help="Take PDF uncertainty from correction hist (Requires having run that correction)",
+        help="Take PDF uncertainty from correction hist (requires having run that correction)",
+    )
+    parser.add_argument(
+        "--asUncFromUncorr",
+        action="store_true",
+        help="Take alpha_S uncertainty from uncorrected hist (by default it reads it from the correction hist, but requires having run that correction)",
     )
     parser.add_argument(
         "--scaleMinnloScale",
@@ -1559,6 +1564,7 @@ def setup(
             tnp_scale=args.scaleTNP,
             mirror_tnp=False,
             pdf_from_corr=args.pdfUncFromCorr,
+            as_from_corr=not args.asUncFromUncorr,
             scale_pdf_unc=args.scalePdf,
             samples=theorySystSamples,
             minnlo_unc=args.minnloScaleUnc,

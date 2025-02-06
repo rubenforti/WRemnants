@@ -16,6 +16,8 @@ justPrint = 1
 foldEtaIntoAbsEta = True
 
 ## histmaker
+# /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/ciprianm/CombineStudies/theoryAgnostic_pol/January2025/x0p50_y3p00_THAGNV0/ --maxFiles -1 --postfix x0p50_y3p00_THAGNV0_utSignAxis --addAxisSignUt --analysisMode theoryAgnosticPolVar --poiAsNoi --theoryAgnosticFilePath /scratch/ciprianm/TheoryAgnosticInputFiles/ --theoryAgnosticFileTag x0p50_y3p00_THAGNV0 --theoryAgnosticSplitOOA -v 4
+
 # /usr/bin/time -v python scripts/histmakers/mw_with_mu_eta_pt.py -o /scratch/mciprian/CombineStudies/theoryAgnostic_pol/x0p40_y3p50_V4/ -v 4  --dataPath root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/ --filterProcs Data Wmunu --maxFiles -1  [ -p splitOOA|splitOOA_oneMCfileEvery2 ] [ --oneMCfileEveryN 2 ] theoryAgnosticPolVar --theoryAgnosticFilePath /path/to/files/  --theoryAgnosticFileTag x0p40_y3p50_V4  --theoryAgnosticSplitOOA
 # --theoryAgnosticSplitOOA should be used by default
 
@@ -25,9 +27,10 @@ onlySignalAndOOA = False  # (requires onlySignal=True to be effective) signal on
 doStatOnly = False
 noFake = False  # irrelevant when onlySignal=True
 noPDFandQCDtheorySystOnSignal = False  # irrelevant when doStatOnly=True
-tag = "x0p30_y3p00_V9"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
-oneMCfileEveryN = 1
+tag = "x0p50_y3p00_THAGNV0"  # "x0p40_y3p50_V6" # "x0p40_y3p50_V6" # "x0p40_y3p50_V4" # "x0p30_y3p00_V4"
+oneMCfileEveryN = 2
 testFolder = f"oneMCfileEvery{oneMCfileEveryN}" if oneMCfileEveryN > 1 else "fullStat"
+testFolder += "_utSignAxis"
 projectToNewLumi = -1.0  # set negative to skip it.
 lumiScaleVarianceLinearly = [
     "Data"
@@ -35,7 +38,10 @@ lumiScaleVarianceLinearly = [
 
 splitOOAtag = ""
 setupLumiOption = ""
-setupFakeOption = " --fakeEstimation simple --fakeSmoothingMode binned"
+# setupFakeOption = " --fakeEstimation simple --fakeSmoothingMode binned"
+setupFakeOption = (
+    " --rebinBeforeSelection --noPolVarOnFake  --fakeSmoothingMode fakerate "
+)
 if splitOOA:
     splitOOAtag = "_splitOOA"
     testFolder = f"{testFolder}{splitOOAtag}"
@@ -59,14 +65,13 @@ else:
     doSystTests = {"tag": "allSysts", "exclude": ".*recoil"}
 
 # baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/fromTanmay_09Apr2024/{tag}/"
-baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
+# baseOutdir = f"/scratch/mciprian/CombineStudies/theoryAgnostic_pol/{tag}/"
+baseOutdir = f"/scratch/ciprianm/CombineStudies/theoryAgnostic_pol/{tag}/"
 basePlotDir = "scripts/analysisTools/plots/fromMyWremnants/fitResults/theoryAgnostic_polVar/pdfCT18Z_April2024/"
 
-inputFileHDF5 = (
-    f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}.hdf5"
-)
+inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_utSignAxis.hdf5"
 if oneMCfileEveryN > 1:
-    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_oneMCfileEvery{oneMCfileEveryN}.hdf5"
+    inputFileHDF5 = f"{baseOutdir}/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_{tag}_utSignAxis_oneMCfileEvery{oneMCfileEveryN}.hdf5"
 
 if noPDFandQCDtheorySystOnSignal and not doStatOnly:
     testFolder += "/noPDFandQCDtheorySystOnSignal/"
@@ -92,7 +97,7 @@ if onlySignal:
 elif noFake:
     setupCombineOptions += " --excludeProcGroups Fake"
 
-setupCombineOptionsTraditional = setupCombineOptions
+setupCombineOptionsTraditional = setupCombineOptions.replace("--noPolVarOnFake", "")
 setupCombineOptions += f" {theoryAgnosticOptions}"
 
 baseCoeffs = ["UL", "A0", "A1", "A2", "A3", "A4"]

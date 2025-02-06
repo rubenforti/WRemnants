@@ -77,6 +77,16 @@ parser.add_argument(
     action="store_true",
     help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon",
 )
+parser.add_argument(
+    "--useTnpMuonVarForSF",
+    action="store_true",
+    help="To read efficiency scale factors, use the same muon variables as used to measure them with tag-and-probe (by default the final corrected ones are used)",
+)
+parser.add_argument(
+    "--forceValidCVH",
+    action="store_true",
+    help="When not applying muon scale corrections (--muonCorrData none / --muonCorrMC none), require at list that the CVH corrected variables are valid",
+)
 
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -586,6 +596,44 @@ def build_graph(df, dataset):
 
     df = muon_selections.apply_triggermatching_muon(df, dataset, "trigMuons", era=era)
 
+    useTnpMuonVarForSF = args.useTnpMuonVarForSF
+    # in principle these are only needed for MC,
+    # but one may want to compare tnp and corrected variables also for data
+    if useTnpMuonVarForSF:
+        df = df.Define("trigMuons_tnpPt0", "Muon_pt[trigMuons][0]")
+        df = df.Define("trigMuons_tnpEta0", "Muon_eta[trigMuons][0]")
+        df = df.Define("trigMuons_tnpCharge0", "Muon_charge[trigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpPt0", "Muon_pt[nonTrigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpEta0", "Muon_eta[nonTrigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpCharge0", "Muon_charge[nonTrigMuons][0]")
+    else:
+        df = df.Alias("trigMuons_tnpPt0", "trigMuons_pt0")
+        df = df.Alias("trigMuons_tnpEta0", "trigMuons_eta0")
+        df = df.Alias("trigMuons_tnpCharge0", "trigMuons_charge0")
+        df = df.Alias("nonTrigMuons_tnpPt0", "nonTrigMuons_pt0")
+        df = df.Alias("nonTrigMuons_tnpEta0", "nonTrigMuons_eta0")
+        df = df.Alias("nonTrigMuons_tnpCharge0", "nonTrigMuons_charge0")
+        #
+
+    if args.forceValidCVH:
+        if dataset.is_data:
+            if args.muonCorrData == "none":
+                logger.warning(
+                    "Requiring valid CVH for data even if CVH is not applied"
+                )
+                df = df.Filter(
+                    "Muon_cvhPt[trigMuons][0] > 0 && Muon_cvhPt[nonTrigMuons][0] > 0"
+                )
+        else:
+            if args.muonCorrMC == "none":
+                # use CVH with ideal MC geometry for this check
+                logger.warning(
+                    "Requiring valid CVH (ideal geometry) for MC even if CVH is not applied"
+                )
+                df = df.Filter(
+                    "Muon_cvhidealPt[trigMuons][0] > 0 && Muon_cvhidealPt[nonTrigMuons][0] > 0"
+                )
+
     if dataset.is_data:
         df = df.DefinePerSample("nominal_weight", "1.0")
     else:
@@ -615,20 +663,42 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
-        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+        muonVarsForSF = [
+            "tnpPt0",
+            "tnpEta0",
+            "SApt0",
+            "SAeta0",
+            "tnpUT0",
+            "tnpCharge0",
+            "passIso0",
+        ]
+
         columnsForSF = [
             f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF
         ]
 
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="trigMuons",
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="nonTrigMuons",
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
+        # ut is defined in muon_selections.define_muon_uT_variable
+        if not useTnpMuonVarForSF:
+            df = df.Alias("trigMuons_tnpUT0", "trigMuons_uT0")
+            df = df.Alias("nonTrigMuons_tnpUT0", "nonTrigMuons_uT0")
+
         if not args.smooth3dsf:
-            columnsForSF.remove("trigMuons_uT0")
-            columnsForSF.remove("nonTrigMuons_uT0")
+            columnsForSF.remove("trigMuons_tnpUT0")
+            columnsForSF.remove("nonTrigMuons_tnpUT0")
 
         if not args.noScaleFactors:
             if args.validateVetoSF:
@@ -1035,6 +1105,54 @@ def build_graph(df, dataset):
 
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
+
+    if useTnpMuonVarForSF and not args.onlyMainHistograms and not isUnfolding:
+        df = df.Define(
+            "trigMuons_deltaPt_corrMinusTnp", "trigMuons_pt0 - trigMuons_tnpPt0"
+        )
+        df = df.Define(
+            "nonTrigMuons_deltaPt_corrMinusTnp",
+            "nonTrigMuons_pt0 - nonTrigMuons_tnpPt0",
+        )
+        results.append(
+            df.HistoBoost(
+                "muon_deltaPt_corrMinusTnp",
+                [
+                    hist.axis.Regular(200, -10, 10, name="trigMuons_dpt"),
+                    hist.axis.Regular(200, -10, 10, name="nonTrigMuons_dpt"),
+                    common.axis_charge,
+                ],
+                [
+                    "trigMuons_deltaPt_corrMinusTnp",
+                    "nonTrigMuons_deltaPt_corrMinusTnp",
+                    "trigMuons_charge0",
+                    "nominal_weight",
+                ],
+            )
+        )
+        df = df.Define(
+            "trigMuons_deltaEta_corrMinusTnp", "trigMuons_eta0 - trigMuons_tnpEta0"
+        )
+        df = df.Define(
+            "nonTrigMuons_deltaEta_corrMinusTnp",
+            "nonTrigMuons_eta0 - nonTrigMuons_tnpEta0",
+        )
+        results.append(
+            df.HistoBoost(
+                "muon_deltaEta_corrMinusTnp",
+                [
+                    hist.axis.Regular(120, -3.0, 3.0, name="trigMuons_deta"),
+                    hist.axis.Regular(120, -3.0, 3.0, name="nonTrigMuons_deta"),
+                    common.axis_charge,
+                ],
+                [
+                    "trigMuons_deltaEta_corrMinusTnp",
+                    "nonTrigMuons_deltaEta_corrMinusTnp",
+                    "trigMuons_charge0",
+                    "nominal_weight",
+                ],
+            )
+        )
 
     if isPoiAsNoi and isZ:
         if isTheoryAgnostic and not hasattr(dataset, "out_of_acceptance"):
