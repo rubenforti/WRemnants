@@ -266,16 +266,9 @@ axis_mt = hist.axis.Regular(200, 0.0, 200.0, name="mt", underflow=False, overflo
 axis_eta_mT = hist.axis.Variable([-2.4, 2.4], name="eta")
 
 # define helpers
-if era == "2016PostVFP":
-    muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = (
-        muon_prefiring.make_muon_prefiring_helpers(era=era)
-    )
-else:
-    muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = [
-        None,
-        None,
-        None,
-    ]
+muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = (
+    muon_prefiring.make_muon_prefiring_helpers(era=era)
+)
 
 qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
     is_w_like=True
