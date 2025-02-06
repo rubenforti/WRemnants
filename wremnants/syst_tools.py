@@ -1880,23 +1880,40 @@ def add_muon_efficiency_unc_hists(
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
         muon_columns_stat = [
-            f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "uT0", "charge0"]
+            f"{singleMuonCollection}_{v}"
+            for v in ["tnpPt0", "tnpEta0", "tnpUT0", "tnpCharge0"]
         ]
         muon_columns_syst = [
             f"{singleMuonCollection}_{v}"
-            for v in ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+            for v in [
+                "tnpPt0",
+                "tnpEta0",
+                "SApt0",
+                "SAeta0",
+                "tnpUT0",
+                "tnpCharge0",
+                "passIso0",
+            ]
         ]
     else:
         muvars_stat = [
-            "pt0",
-            "eta0",
-            "uT0",
-            "charge0",
+            "tnpPt0",
+            "tnpEta0",
+            "tnpUT0",
+            "tnpCharge0",
         ]  # passIso0 required only for iso stat variations, added later
         muon_columns_stat_trig = [f"trigMuons_{v}" for v in muvars_stat]
         muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
-        muvars_syst = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+        muvars_syst = [
+            "tnpPt0",
+            "tnpEta0",
+            "SApt0",
+            "SAeta0",
+            "tnpUT0",
+            "tnpCharge0",
+            "passIso0",
+        ]
         muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
 
@@ -1924,12 +1941,12 @@ def add_muon_efficiency_unc_hists(
 
     if not smooth3D:
         # will use different helpers and member functions
-        muon_columns_stat = [x for x in muon_columns_stat if "_uT0" not in x]
-        muon_columns_syst = [x for x in muon_columns_syst if "_uT0" not in x]
+        muon_columns_stat = [x for x in muon_columns_stat if "_tnpUT0" not in x]
+        muon_columns_syst = [x for x in muon_columns_syst if "_tnpUT0" not in x]
 
     # change variables for tracking, to use standalone variables
     muon_columns_stat_tracking = [
-        x.replace("_pt0", "_SApt0").replace("_eta0", "_SAeta0")
+        x.replace("_tnpPt0", "_SApt0").replace("_tnpEta0", "_SAeta0")
         for x in muon_columns_stat
     ]
 
@@ -2017,17 +2034,16 @@ def add_muon_efficiency_unc_hists_altBkg(
     **kwargs,
 ):
 
-    SAvarTag = "SA" if step == "tracking" else ""
-    if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_syst = [
-            f"{singleMuonCollection}_{SAvarTag}pt0",
-            f"{singleMuonCollection}_{SAvarTag}eta0",
-            f"{singleMuonCollection}_charge0",
-        ]
+    if step == "tracking":
+        muon_vars = ["SApt0", "SAeta0", "tnpCharge0"]
     else:
-        muvars_syst = [f"{SAvarTag}pt0", f"{SAvarTag}eta0", "charge0"]
-        muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
-        muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
+        muon_vars = ["tnpPt0", "tnpEta0", "tnpCharge0"]
+
+    if what_analysis == ROOT.wrem.AnalysisType.Wmass:
+        muon_columns_syst = [f"{singleMuonCollection}_{x}" for x in muon_vars]
+    else:
+        muon_columns_syst_trig = [f"trigMuons_{v}" for v in muon_vars]
+        muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muon_vars]
 
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
@@ -2075,8 +2091,9 @@ def add_muon_efficiency_veto_unc_hists(
     **kwargs,
 ):
     # TODO: update for dilepton
-    muon_columns_stat = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
-    muon_columns_syst = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
+    muon_vars = ["tnpPt0", "tnpEta0", "tnpCharge0"]
+    muon_columns_stat = [f"{muons}_{v}" for v in muon_vars]
+    muon_columns_syst = [f"{muons}_{v}" for v in muon_vars]
 
     statNameBase = "effStatTnP"
     if len(customHistNameTag):

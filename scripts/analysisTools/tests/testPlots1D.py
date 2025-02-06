@@ -199,6 +199,8 @@ if __name__ == "__main__":
         groups.lumi = args.lumi
         logger.warning(f"Renormalizing MC to {args.lumi}/fb")
     datasets = groups.getNames()
+    if args.excludeProcesses is not None and len(args.excludeProcesses):
+        datasets = list(filter(lambda x: x not in args.excludeProcesses, datasets))
     if args.processes is not None and len(args.processes):
         datasets = list(filter(lambda x: x in args.processes, datasets))
     logger.info(f"Will plot datasets {datasets}")

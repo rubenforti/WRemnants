@@ -48,10 +48,16 @@ def getBetterLabel(k, isWlike):
         label = "Data stat"
     elif k == "muon_eff_all":
         label = "Muon efficiency"
+    elif k == "muon_eff_stat":
+        label = "Muon efficiency stat"
+    elif k == "muon_eff_syst":
+        label = "Muon efficiency syst"
     elif k == "muonCalibration":
         label = "Muon calibration"
     elif k == "Fake":
         label = "Nonprompt bkg"
+    elif k.startswith("pdf"):
+        label = "PDFs"
     elif k == "angularCoeffs":
         label = "Angular coefficients"
     elif k == "pTModeling":
@@ -336,7 +342,7 @@ if __name__ == "__main__":
     # new version
     h1 = ROOT.TH1D(
         "impactsOnMw_chart",
-        "impacts of nuisance groups on m_{%s}" % boson,
+        "",  # "Impacts of nuisance groups on m_{%s}" % boson,
         nbins,
         0,
         nbins,
@@ -344,7 +350,7 @@ if __name__ == "__main__":
     if compare:
         h2 = h1.Clone("impactsOnMw_chart_alt")
     h1.GetYaxis().SetTitle(
-        "impacts on m_{{{boson}}} {units}".format(
+        "Impacts on m_{{{boson}}} {units}".format(
             boson=boson, units="[MeV]" if args.scaleToMeV else ""
         )
     )
@@ -428,8 +434,12 @@ if __name__ == "__main__":
     c1.SetTicky(1)
     h1.Draw("hbar1")
     if compare:
+        if any(["splitline" in x for x in args.legendEntries]):
+            legYmax = 0.98
+        else:
+            legYmax = 0.95
         h2.Draw("hbar1 SAME")
-        leg = ROOT.TLegend(0.1, 0.9, 0.92, 0.95)
+        leg = ROOT.TLegend(0.1, 0.9, 0.95, legYmax)
         leg.SetNColumns(2)
         leg.SetFillColor(0)
         leg.SetFillColorAlpha(0, 0.6)
