@@ -743,7 +743,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--eff_filename",
         type=str,
-        default="efficiencies3D.pkl.lz4",
+        default=None,
         help="File containing the 3D W MC efficiencies. Extension must be pkl.lz4, which is automatically added if no extension is given",
     )
     parser.add_argument(
@@ -813,19 +813,22 @@ if __name__ == "__main__":
         help="Isolation type (and corresponding scale factors)",
     )
     args = parser.parse_args()
+    
+    sfFolder = data_dir+"/muonSF/" if args.era=="2016PostVFP" else data_dir+"/muonSF/{args.era}/"
 
-    if args.era!="2016PostVFP" and args.isolationDefinition=="iso04":
-        logger.error(f"Only 'iso04vtxAgn' is available for eras 2017 and 2018.")
-        quit()
-    elif args.era == "2016PostVFP":
-        sfFolder = data_dir + "/muonSF/"
-        if args.isolationDefinition == "iso04vtxAgn":
-            effSmoothFile = sfFolder + "intermediate_vtxAgnosticIso/efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
+    if args.eff_filename is not None:
+        effSmoothFile = sfFolder+args.eff_filename
+    else:    
+        if args.era!="2016PostVFP" and args.isolationDefinition!="iso04vtxAgn":
+            logger.error(f"Only 'iso04vtxAgn' is available for eras which are not 2016PostVFP")
+            quit()
+        elif args.era=="2016PostVFP":
+            if args.isolationDefinition == "iso04vtxAgn":
+                effSmoothFile = sfFolder+"intermediate_vtxAgnosticIso/efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
+            else:
+                effSmoothFile = sfFolder+"effiencies3D_rebinUt2.pkl.lz4"
         else:
-            effSmoothFile = sfFolder + "effiencies3D_rebinUt2.pkl.lz4"
-    else:
-        sfFolder = data_dir + f"/muonSF/{args.era}/"
-        effSmoothFile = sfFolder + args.eff_filename 
+            effSmoothFile = sfFolder+"efficiencies3D.pkl.lz4" 
 
     if args.indir is None:
         inputRootFile = {k:v for k,v in default_inputRootFiles[args.era].items() if k in args.steps}
