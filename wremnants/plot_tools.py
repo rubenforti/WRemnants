@@ -826,7 +826,7 @@ def makeStackPlotWithRatio(
             for x in (data_hist.sum(), hh.sumHists(stack).sum())
         ]
         varis = [
-            x.variance if hasattr(x, "variance") else x ** 0.5
+            x.variance if hasattr(x, "variance") else x**0.5
             for x in (data_hist.sum(), hh.sumHists(stack).sum())
         ]
         scale = vals[0] / vals[1]
