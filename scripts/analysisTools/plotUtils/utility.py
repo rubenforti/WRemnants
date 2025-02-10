@@ -15,8 +15,6 @@ import ROOT
 # sys.path.append(os.getcwd() + "/plotUtils/")
 from scripts.analysisTools.plotUtils.CMS_lumi import (
     CMS_lumi,
-    histMCpartialUnc,
-    histMCpartialUncLegEntry,
     setTDRStyle,
 )
 from utilities import logging, parsing

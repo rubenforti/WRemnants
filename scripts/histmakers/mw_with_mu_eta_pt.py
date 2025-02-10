@@ -208,8 +208,18 @@ args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
-
 era = args.era
+
+if "2018" in era and era!="2018":
+    e_sel_list = era.split(",")
+    erasToRun = []
+    for e_sel in e_sel_list:
+        if e_sel not in ["2018A", "2018B", "2018C", "2018D"]:
+            raise ValueError(f"Invalid era selection {era}")
+        erasToRun.append(e_sel.replace("2018", ""))
+    era = "2018"
+else:
+    erasToRun = None
 
 datasets = getDatasets(
     maxFiles=args.maxFiles,
@@ -220,6 +230,7 @@ datasets = getDatasets(
     oneMCfileEveryN=args.oneMCfileEveryN,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
+    eraDataSel=erasToRun
 )
 
 # transverse boson mass cut
@@ -464,7 +475,7 @@ else:
                 muon_efficiency_veto_helper_syst,
                 muon_efficiency_veto_helper_stat,
             ) = muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(
-                antiveto=True
+                antiveto=True, era=era
             )
         else:
             (
