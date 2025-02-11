@@ -50,7 +50,7 @@ jobs:
 
       - name: run Black
         run: |
-          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|narf|combinetf2|wremnants-data)' --check .
+          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|\.ipynb|narf|combinetf2|wremnants-data)' --check .
 
       - name: check Python Files
         run: |
