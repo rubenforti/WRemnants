@@ -87,7 +87,7 @@ jobs:
       - name: check Python Files
         run: |
           # Find all Python files and check their syntax in parallel
-          find . -name '*.py' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/* -not -path '*/wums/*' | \
+          find . -name '*.py' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/*' -not -path '*/wums/*' | \
           xargs -P 16 -I {} bash -c '
             echo "Checking python file: {}"
             scripts/ci/run_with_singularity.sh python -m py_compile "{}" || \
