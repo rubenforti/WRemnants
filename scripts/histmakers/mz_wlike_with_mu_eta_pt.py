@@ -140,7 +140,7 @@ thisAnalysis = (
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
-if "2018" in era and era!="2018":
+if "2018" in era and era != "2018":
     e_sel_list = era.split(",")
     erasToRun = []
     for e_sel in e_sel_list:
@@ -150,7 +150,7 @@ if "2018" in era and era!="2018":
     era = "2018"
 else:
     erasToRun = None
-        
+
 
 datasets = getDatasets(
     maxFiles=args.maxFiles,
@@ -160,7 +160,7 @@ datasets = getDatasets(
     base_path=args.dataPath,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
-    eraDataSel=erasToRun
+    eraDataSel=erasToRun,
 )
 
 # dilepton invariant mass cuts

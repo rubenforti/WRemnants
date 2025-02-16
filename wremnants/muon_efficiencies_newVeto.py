@@ -18,7 +18,7 @@ data_dir = common.data_dir
 
 def make_muon_efficiency_helpers_newVeto(antiveto=False, era=None):
 
-    logger.debug(f"Make efficiency helper for veto (with newer approach)")
+    logger.debug("Make efficiency helper for veto (with newer approach)")
 
     axis_eta_eff = None
     axis_pt_eff = None

@@ -210,5 +210,5 @@ dataDictV9_2017 = {
         "xsec": 238800,
         "group": "QCD",
         "das_name": "/QCD_Pt-20_MuEnrichedPt15_TuneCP5_13TeV-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2017_realistic_v16_L1v1-v2/NANOAODSIM",
-    }
+    },
 }

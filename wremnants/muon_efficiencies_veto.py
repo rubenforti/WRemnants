@@ -15,7 +15,7 @@ data_dir = common.data_dir
 
 def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto=False, era=None):
 
-    logger.debug(f"Make efficiency helper veto")
+    logger.debug("Make efficiency helper veto")
 
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
     Nsyst = 1 + (
@@ -24,21 +24,13 @@ def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto=False, era=None):
 
     eradir = f"{era}" if era in ["2017", "2018"] else ""
 
-    if useGlobalOrTrackerVeto: 
+    if useGlobalOrTrackerVeto:
         # in this way we are hardcoding the file names for the veto SFs, but I don't think we are going to change them in the helpers anyways
-        filename_plus = (
-            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_plus.root"
-        )
-        filename_minus = (
-            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_minus.root"
-        )
+        filename_plus = f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_plus.root"
+        filename_minus = f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_globalortracker_regular_GtoH_minus.root"
     else:
-        filename_plus = (
-            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_plus.root"
-        )
-        filename_minus = (
-            f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_minus.root"
-        )
+        filename_plus = f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_plus.root"
+        filename_minus = f"{data_dir}/muonSF/{eradir}/smoothedSFandEffi_newveto_regular_GtoH_minus.root"
 
     if not useGlobalOrTrackerVeto:
         Steps = 3  # we decided to compute the syst variations on the veto SFs independently for each of the tnp fits (using only global muons in the muon definition we fit reco, "tracking", looseID + dxybs)

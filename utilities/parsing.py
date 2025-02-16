@@ -641,15 +641,13 @@ def common_parser(analysis_label=""):
                     raise NotImplementedError(
                         f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported"
                     )
-                else:
-                    sfFile = "muonSF/2018/allSmooth_2018_vtxAgnIso.root"
+                sfFile = "muonSF/2018/allSmooth_2018_vtxAgnIso.root"
             elif commonargs.era == "2017":
                 if commonargs.isolationDefinition == "iso04":
                     raise NotImplementedError(
                         f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported"
                     )
-                else:
-                    sfFile = "muonSF/2017/allSmooth_2017_vtxAgnIso.root"
+                sfFile = "muonSF/2017/allSmooth_2017_vtxAgnIso.root"
             else:
                 raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
 

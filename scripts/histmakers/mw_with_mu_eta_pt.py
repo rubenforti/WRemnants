@@ -216,7 +216,7 @@ thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
-if "2018" in era and era!="2018":
+if "2018" in era and era != "2018":
     e_sel_list = era.split(",")
     erasToRun = []
     for e_sel in e_sel_list:
@@ -227,6 +227,7 @@ if "2018" in era and era!="2018":
 else:
     erasToRun = None
 
+
 datasets = getDatasets(
     maxFiles=args.maxFiles,
     filt=args.filterProcs,
@@ -236,7 +237,7 @@ datasets = getDatasets(
     oneMCfileEveryN=args.oneMCfileEveryN,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
-    eraDataSel=erasToRun
+    eraDataSel=erasToRun,
 )
 
 # transverse boson mass cut

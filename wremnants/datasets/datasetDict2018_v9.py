@@ -136,7 +136,7 @@ dataDictV9_2018 = {
         "xsec": 134.2,
         "group": "Top",
         "das_name": "/ST_t-channel_top_5f_InclusiveDecays_TuneCP5_13TeV-powheg-pythia8/RunIISummer20UL18NanoAODv9-106X_upgrade2018_realistic_v16_L1v1-v1/NANOAODSIM",
-    }, 
+    },
     # inclusive samples, keep for reference
     # 'WWPostVFP' : {
     #                 'filepaths' :
