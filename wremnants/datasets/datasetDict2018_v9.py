@@ -7,11 +7,35 @@ lumijson = f"{common.data_dir}/Cert_314472-325175_13TeV_UL2018_Collisions18_HLT_
 # BASE_PATH is /scratchnvme/wmass/NANOV9/postVFP (so 2018 BASE path is {BASE_PATH}/../y2018v6/) have to update at some point
 # ZtautauPostVFP sample is one available from centrl production, so
 dataDictV9_2018 = {
-    "dataPostVFP": {
+    "data2018A": {
         "filepaths": [
             "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018A_{NANO_PROD_TAG}",
+        ],
+        "group": "Data",
+        "lumicsv": lumicsv,
+        "lumijson": lumijson,
+        "das_name": "private",
+    },
+    "data2018B": {
+        "filepaths": [
             "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018B_{NANO_PROD_TAG}",
+        ],
+        "group": "Data",
+        "lumicsv": lumicsv,
+        "lumijson": lumijson,
+        "das_name": "private",
+    },
+    "data2018C": {
+        "filepaths": [
             "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018C_{NANO_PROD_TAG}",
+        ],
+        "group": "Data",
+        "lumicsv": lumicsv,
+        "lumijson": lumijson,
+        "das_name": "private",
+    },
+    "data2018D": {
+        "filepaths": [
             "{BASE_PATH}/../y2018v6/SingleMuon/NanoV9Run2018D_{NANO_PROD_TAG}",
         ],
         "group": "Data",
