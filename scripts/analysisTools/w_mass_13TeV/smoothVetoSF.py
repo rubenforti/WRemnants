@@ -6,11 +6,13 @@
 
 import os
 import pickle
+import sys
 import time
 
 import hist
 import lz4.frame
 import numpy as np
+import ROOT
 import tensorflow as tf
 import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
@@ -23,11 +25,8 @@ from utilities import common
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
-import sys
-
 args = sys.argv[:]
 sys.argv = ["-b"]
-import ROOT
 
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
@@ -171,7 +170,13 @@ def makePlots1D(hnomi, hnomiWithStat, hsyst, outputfolder, args, tag="veto"):
 if __name__ == "__main__":
 
     parser = common_plot_parser()
-    # parser.add_argument('inputfile',  type=str, nargs=1, help='input root file with TH2')
+
+    parser.add_argument(
+        "-i",
+        "--indir",
+        default=None,
+        help="Directory containing the smoothed scale factors",
+    )
     parser.add_argument(
         "outdir", type=str, nargs=1, help="output directory to save things"
     )
@@ -189,6 +194,13 @@ if __name__ == "__main__":
         choices=["plus", "minus", "both"],
         help="Charge for veto SF",
     )
+    parser.add_argument(
+        "--era",
+        type=str,
+        default="2016PostVFP",
+        choices=["2016PostVFP", "2017", "2018"],
+    )
+
     args = parser.parse_args()
     logger = logging.setup_logger(os.path.basename(__file__), args.verbose, True)
 
@@ -198,17 +210,23 @@ if __name__ == "__main__":
 
     charge = args.charge
     vetoType = args.vetoType
+
+    if args.indir is None:
+        if args.era == "2016PostVFP":
+            inputfolder = f"{data_dir}/muonSF/veto_{vetoType}_SF/"
+        else:
+            inputfolder = f"{data_dir}/muonSF/{args.era}/veto_{vetoType}_SF/"
+    else:
+        inputfolder = args.indir
+
     outdir_original = f"{args.outdir[0]}/{vetoType}_{charge}/"
     addStringToEnd(outdir_original, "/", notAddIfEndswithMatch=True)
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
-    hists = {}
-    # TODO: move these files and folder to wremnants-data
-    inputfolder = f"{data_dir}/muonSF/veto_{vetoType}_SF/"
     steps = ["vetoreco", "vetotracking", "vetoidip"]
 
     s = hist.tag.Slicer()
-    nomiHists = {}
+    nomiHists, hists = {}, {}
     for step in steps:
         f = f"{inputfolder}/smoothedSFandEffi_{step}_GtoH_{charge}.root"
         tfile = safeOpenFile(f)

@@ -16,16 +16,18 @@
 # --> a summary of bad fits (if any) is printed on stdout for each step, but also in a txt file for easier check
 #     when running multiple steps in series. For the smoothing to make sense, status and covstatus MUST be 0 for all fits
 
-import array
 import copy
 import math
 import os
 import pickle
+import sys
+from array import array
 from functools import partial
 
 import hist
 import lz4.frame
 import numpy as np
+import ROOT
 import tensorflow as tf
 import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
@@ -37,12 +39,8 @@ from utilities import common
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
-import sys
-
 args = sys.argv[:]
 sys.argv = ["-b"]
-import ROOT
-
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -179,9 +177,14 @@ def make1Dhist(namePrefix, h2D, ptbins, step):
         "tracking": "Tracking",
         "idip": "ID + impact parameter",  # "ID + d_{xy}",
         "trigger": "Trigger",
+        "antitrigger": "Failed trigger",
         "iso": "Isolation",
+        "isonotrig": "Isolation w/o trigger",
         "antiiso": "Failed isolation",
         "veto": "Veto",
+        "vetoreco": "Reconstruction (veto)",
+        "vetotracking": "Tracking (veto)",
+        "vetoidip": "ID + impact parameter (veto)",
     }
     stepStr = stepDict[
         step.replace("plus", "").replace("minus", "").replace("both", "")
@@ -1237,6 +1240,9 @@ minmaxSF = {
     "vetoreco": "0.92,1.04",
     "vetorecoplus": "0.92,1.04",
     "vetorecominus": "0.92,1.04",
+    "veto": "0.98,1.02",
+    "vetoplus": "0.98,1.02",
+    "vetominus": "0.98,1.02",
     "vetoidip": "0.98,1.02",
     "vetoidipplus": "0.98,1.02",
     "vetoidipminus": "0.98,1.02",
@@ -1260,7 +1266,7 @@ def mergeFiles(args):
     # if inputDir is read using the eos mount it might fail (should copy files with xrdcp first)
     # for now keep it as it is
     era = args.era
-    outfolder = f"{inputDir}/{era}/"
+    outfolder = f"{inputDir}/{args.correct_era}/"
 
     files = []
     for step in steps:
@@ -1272,7 +1278,7 @@ def mergeFiles(args):
             charge = "minus"
             step = step.replace(charge, "")
         files.append(
-            f"{inputDir}/{era}/mu_{step}_{charge}/smoothedSFandEffi_{step}_{era}_{charge}.root"
+            f"{inputDir}/{args.correct_era}/mu_{step}_{charge}/smoothedSFandEffi_{step}_{era}_{charge}.root"
         )
     outfile = f"{outfolder}/allSmooth_{era}.root"
     mergeCmd = f"hadd -f {outfile} " + " ".join(files)
@@ -1338,7 +1344,7 @@ if __name__ == "__main__":
         "--era",
         dest="era",
         default="GtoH",
-        choices=["GtoH"],
+        choices=["GtoH", "2017", "2018"],
         type=str,
         help="Efficiency era",
     )
@@ -1457,6 +1463,18 @@ if __name__ == "__main__":
 
     ROOT.TH1.SetDefaultSumw2()
 
+    # This is needed in order to not change all the naming conventions of root
+    # files and histograms. The 'args.era' becomes only a placeholder (always
+    # equal to 'GtoH', effectively), while 'args.correct_era' sets the folder
+    # name where the results are stored and actually identifies the era period.
+    # FIXME: change coherently the names here, in the histmakers and maybe also
+    # in the helpers to avoid this ugly solution :)
+    if args.era != "GtoH":
+        args.correct_era = args.era
+        args.era = "GtoH"
+    else:
+        args.correct_era = "GtoH"
+
     if args.runAll:
         runFiles(args)
         quit()
@@ -1479,10 +1497,10 @@ if __name__ == "__main__":
 
     outdir_original = args.outdir[0]
     addStringToEnd(outdir_original, "/", notAddIfEndswithMatch=True)
-    outdir_original += f"{args.era}/{channel}_{args.step}_{args.charge}/"
+    outdir_original += f"{args.correct_era}/{channel}_{args.step}_{args.charge}/"
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
 
-    outfilename = f"smoothedSFandEffi_{args.step}_{args.era}_{args.charge}.root"
+    outfilename = f"smoothedSFandEffi_{args.step}_GtoH_{args.charge}.root"
 
     #########################################
     #########################################
@@ -1532,11 +1550,17 @@ if __name__ == "__main__":
     hist_chosenFunc_SF.GetXaxis().SetBinLabel(3, "pol3_tf")
 
     hist_reducedChi2_data = ROOT.TH1D("reducedChi2_data", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_data.StatOverflows()  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_data.SetStatOverflows(
+        ROOT.TH1.kConsider
+    )  # use underflow and overflow to compute mean and RMS
     hist_reducedChi2_MC = ROOT.TH1D("reducedChi2_MC", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_MC.StatOverflows()  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_MC.SetStatOverflows(
+        ROOT.TH1.kConsider
+    )  # use underflow and overflow to compute mean and RMS
     hist_reducedChi2_sf = ROOT.TH1D("reducedChi2_sf", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_sf.StatOverflows()  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_sf.SetStatOverflows(
+        ROOT.TH1.kConsider
+    )  # use underflow and overflow to compute mean and RMS
 
     ######################
     # to make ratio

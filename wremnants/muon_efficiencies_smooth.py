@@ -52,7 +52,7 @@ def make_muon_efficiency_helpers_smooth(
     isoDefinition="iso04vtxAgn",
 ):
 
-    logger.debug(f"Make efficiency helper smooth")
+    logger.debug("Make efficiency helper smooth")
 
     # need the following hack to call the helpers with this enum class from python
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
@@ -99,6 +99,7 @@ def make_muon_efficiency_helpers_smooth(
     # axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name="eff_types_2D_etapt")
     axis_eff_type_3D = hist.axis.StrCategory(eff_types_3D, name="eff_types_3D_etaptut")
+
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
     Nsyst = 1 + (
         len(effSyst_decorrEtaEdges) - 1
@@ -110,20 +111,25 @@ def make_muon_efficiency_helpers_smooth(
     charges = {-1.0: "minus", 1.0: "plus"}
     chargeDependentSteps = common.muonEfficiency_chargeDependentSteps
 
+    if era == "2017" or era == "2018":
+        filename = data_dir + f"muonSF/{era}/allSmooth_GtoHout_vtxAgnIso.root"
+
     fin = input_tools.safeOpenRootFile(filename)
+    logger.info(f"Scale factors read from {filename}")
 
     dict_SF3D = None
     if len(eff_types_3D):
-        if era == "2018" or era == "2017":
-            raise NotImplementedError(f"3D Efficiency SFs not implemented for {era}")
-        if isoDefinition == "iso04vtxAgn":
-            fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
-        elif isoDefinition == "iso04":
-            fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100.pkl.lz4"
+        if era not in ["2017", "2018"]:
+            if isoDefinition == "iso04vtxAgn":
+                fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
+            elif isoDefinition == "iso04":
+                fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100.pkl.lz4"
+            else:
+                raise NotImplementedError(
+                    f"Isolation definition {isoDefinition} not implemented"
+                )
         else:
-            raise NotImplementedError(
-                f"Isolation definition {isoDefinition} not implemented"
-            )
+            fileSF3D = f"{data_dir}/muonSF/{era}/smoothSF3D.pkl.lz4"
 
         if not os.path.isfile(fileSF3D):
             raise IOError(
@@ -172,7 +178,7 @@ def make_muon_efficiency_helpers_smooth(
                             f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'"
                         )
             hist_root = input_tools.safeGetRootObject(fin, hist_name)
-            # logger.debug(f"syst: {eff_type} -> {hist_name}")
+            logger.debug(f"Syst: {eff_type} {chargeTag} -> {hist_name}")
 
             hist_hist = narf.root_to_hist(
                 hist_root, axis_names=["SF eta", "SF pt", "nomi-statUpDown-syst"]
@@ -268,6 +274,11 @@ def make_muon_efficiency_helpers_smooth(
                     if eff_type in chargeDependentSteps
                     else eff_type
                 )
+                if effTypeNameInHist == "isoantitrig" and era != "2016PostVFP":
+                    logger.warning(
+                        f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead"
+                    )
+                    effTypeNameInHist = "isonotrig"
                 hist_hist = dict_SF3D[f"smoothSF3D_{effTypeNameInHist}"]
                 # logger.debug(f"{charge} {eff_type}: hist_hist = {hist_hist.axes}")
                 if sf_syst_3D is None:
@@ -526,6 +537,11 @@ def make_muon_efficiency_helpers_smooth(
                         if eff_type in chargeDependentSteps
                         else eff_type
                     )
+                    if effTypeNameInHist == "isoantitrig" and era != "2016PostVFP":
+                        logger.warning(
+                            f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead"
+                        )
+                        effTypeNameInHist = "isonotrig"
                     hist_hist = dict_SF3D[
                         f"smoothSF3D_{effTypeNameInHist}"
                     ]  # this is a 4D histogram, eta-pt-ut-var, with NO OVERFLOWS (unlike the standard 2D case where it comes from root)
@@ -542,7 +558,7 @@ def make_muon_efficiency_helpers_smooth(
 
                     # temporary patch for some missing SF histograms in 2D (for the 3D case we have everything)
                     # only relevant for dilepton (no warning needed otherwise)
-                    if isoDefinition != "iso04vtxAgn" or era != "2016PostVFP":
+                    if isoDefinition != "iso04vtxAgn":
                         if eff_type == "antitrigger":
                             hist_name = hist_name.replace("antitrigger", "trigger")
                             if templateAnalysisArg == "wrem::AnalysisType::Dilepton":
@@ -807,12 +823,10 @@ def make_muon_efficiency_helpers_smooth_altSyst(
     era=None,
     what_analysis=ROOT.wrem.AnalysisType.Wmass,
     max_pt=np.inf,
-    effStep="tracking",
+    effStep=["reco", "tracking"],
 ):
 
-    allEff_types = [
-        effStep
-    ]  # if isinstance(effStep, str) else effStep[:] # for now it's only a single step, in the future it could be used for multiple steps
+    allEff_types = [effStep] if isinstance(effStep, str) else effStep[:]
 
     validEffSteps = ["reco", "tracking"]
     for es in allEff_types:
@@ -861,7 +875,11 @@ def make_muon_efficiency_helpers_smooth_altSyst(
     charges = {-1.0: "minus", 1.0: "plus"}
     chargeDependentSteps = common.muonEfficiency_chargeDependentSteps
 
+    if era == "2017" or era == "2018":
+        filename = data_dir + f"/muonSF/{era}/allSmooth_GtoHout_vtxAgnIso_altBkg.root"
+
     fin = input_tools.safeOpenRootFile(filename)
+    logger.info(f"Scale factors read from {filename}")
 
     ## start with NOMI and SYST
     sf_syst_2D = None

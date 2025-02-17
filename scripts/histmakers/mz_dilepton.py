@@ -100,6 +100,7 @@ thisAnalysis = (
 )
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
+
 datasets = getDatasets(
     maxFiles=args.maxFiles,
     filt=args.filterProcs,

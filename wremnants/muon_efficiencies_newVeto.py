@@ -16,9 +16,9 @@ narf.clingutils.Declare('#include "muon_efficiencies_newVeto.hpp"')
 data_dir = common.data_dir
 
 
-def make_muon_efficiency_helpers_newVeto(antiveto=False):
+def make_muon_efficiency_helpers_newVeto(antiveto=False, era=None):
 
-    logger.debug(f"Make efficiency helper for veto (with newer approach)")
+    logger.debug("Make efficiency helper for veto (with newer approach)")
 
     axis_eta_eff = None
     axis_pt_eff = None
@@ -35,19 +35,21 @@ def make_muon_efficiency_helpers_newVeto(antiveto=False):
     logger.info(f"{veto_tag} SF steps in 2D (eta-pt): {eff_types_2D}")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name="eff_types_2D_etapt")
 
-    ## TODO: move these files to wremnants-data
+    eradir = era if era in ["2017", "2018"] else ""
+
     fileVetoSF = {
-        "plus": f"{data_dir}/muonSF/veto_global_SF/allVetoSF_global_plus.pkl.lz4",
-        "minus": f"{data_dir}/muonSF/veto_global_SF/allVetoSF_global_minus.pkl.lz4",
+        "plus": f"{data_dir}/muonSF/{eradir}/veto_global_SF/allVetoSF_global_plus.pkl.lz4",
+        "minus": f"{data_dir}/muonSF/{eradir}/veto_global_SF/allVetoSF_global_minus.pkl.lz4",
     }
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
     NsystDecorr = len(effSyst_decorrEtaEdges) - 1
     Nsyst = 1 + NsystDecorr  # 1 inclusive variation + all decorrelated bins
-    Nstat = 4  # from smoothing with pol3, for any step (checked later on at run time)
+    Nstat = 4  # from smoothing with pol3
+    inputHist_systBin = -1  # set later
+
     axis_nom_syst = hist.axis.Integer(
         0, 1 + Nsyst + Nstat, underflow=False, overflow=False, name="nom-systs"
     )  # nominal in first bin
-    inputHist_systBin = -1  # set later
 
     ### first the syst part
     sf_syst_2D = None
@@ -69,6 +71,7 @@ def make_muon_efficiency_helpers_newVeto(antiveto=False):
         # Regular(10, 0.5, 10.5, name='nomi-statUpDown-syst'))
         for step in steps:
             hist_hist = dict_veto[f"{veto_tag}SF_global_{step}_{charge_tag}"]
+
             nstat = int(
                 (hist_hist.axes[2].size - 2) / 2
             )  # use only statUp, and do mirroring later on at analysis level

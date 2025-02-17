@@ -214,7 +214,6 @@ args = parser.parse_args()
 
 thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
-
 era = args.era
 
 datasets = getDatasets(
@@ -479,7 +478,7 @@ else:
                 muon_efficiency_veto_helper_syst,
                 muon_efficiency_veto_helper_stat,
             ) = muon_efficiencies_newVeto.make_muon_efficiency_helpers_newVeto(
-                antiveto=True
+                antiveto=True, era=era
             )
         else:
             (

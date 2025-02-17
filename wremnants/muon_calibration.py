@@ -28,14 +28,16 @@ def make_muon_calibration_helpers(
     era=None,
 ):
 
-    if era == "2018":
-        data_filename = (
-            data_dir + "/calibration/correctionResults_lbl2018_recjpsidata.root"
-        )
-    elif era == "2017":
+    if era == "2017":
         data_filename = (
             data_dir + "/calibration/correctionResults_lbl2017_recjpsidata.root"
         )
+        mc_filename = data_filename  # dummy declaration, corrections for MC are not used for 2017-18
+    elif era == "2018":
+        data_filename = (
+            data_dir + "/calibration/correctionResults_lbl2018_recjpsidata.root"
+        )
+        mc_filename = data_filename  # dummy declaration, corrections for MC are not used for 2017-18
 
     if args.muonCorrMC in ["trackfit_only", "lbl", "lbl_massfit"]:
         raise NotImplementedError(

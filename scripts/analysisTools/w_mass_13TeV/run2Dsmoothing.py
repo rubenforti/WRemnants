@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import array
 import copy
 import itertools
 import os
@@ -9,12 +8,14 @@ import pickle
 ## safe batch mode
 import sys
 import time
+from array import array
 from functools import partial
 
 import boost_histogram as bh
 import hist
 import lz4.frame
 import numpy as np
+import ROOT
 import tensorflow as tf
 from scipy.interpolate import RegularGridInterpolator
 
@@ -25,9 +26,8 @@ from utilities import common, logging
 
 args = sys.argv[:]
 sys.argv = ["-b"]
-import ROOT
-
 sys.argv = args
+
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
@@ -106,7 +106,9 @@ def polN_2d(
     return ret
 
 
-def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
+def runSmoothing(
+    inputfile, histname, outdir, step, args, effHist=None, era="2016PostVFP"
+):
 
     outdirNew = outdir
     addStringToEnd(outdirNew, "/", notAddIfEndswithMatch=True)
@@ -138,6 +140,15 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
     sfhistname = histname  # "SF3D_nominal_isolation" # uT - eta - pt
     tfile = safeOpenFile(inputfile)
     hsf = safeGetObject(tfile, sfhistname)
+
+    if era != "2016PostVFP":
+        hsf_narf = narf.root_to_hist(hsf, axis_names=["eta", "pt", "uT"])
+        print(type(hsf_narf))
+        hsf_narf = hsf_narf.project("uT", "eta", "pt")
+        print(hsf_narf.axes)
+        hsf = narf.hist_to_root(hsf_narf)
+        hsf.SetName(sfhistname)
+
     uT_binOffset = 1  # 1 to exclude first bin, use 0 to use all
     uT_binOffset_high = uT_binOffset
     if args.utHigh is not None:
@@ -617,7 +628,7 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
         logger.info("-" * 30)
 
     if not len(args.eta):
-        outdir_pull = outdirNew + f"/pulls_etapt_utBins/"
+        outdir_pull = outdirNew + "/pulls_etapt_utBins/"
         createPlotDirAndCopyPhp(outdir_pull)
         for iut in range(1, 1 + hpull_utEtaPt.GetNbinsX()):
             hpull_utEtaPt.GetXaxis().SetRange(iut, iut)
@@ -663,7 +674,7 @@ def runSmoothing(inputfile, histname, outdir, step, args, effHist=None):
             skipLumi=True,
         )
 
-    if effHist != None and step in ["iso", "triggerplus", "triggerminus"]:
+    if effHist is not None and step in ["iso", "triggerplus", "triggerminus"]:
         # compute antiiso_SF = (1-SF*effMC)/ (1-effMC)
         # first make uT axis consistent
         s = bh.tag.Slicer()
@@ -689,22 +700,56 @@ if __name__ == "__main__":
     # efficiencies made with scripts/analysisTools/w_mass_13TeV/makeWMCefficiency3D.py
     #
     # sfFolder = data_dir + "/muonSF/"
-    # effSmoothFile = f"{sfFolder}efficiencies3D_rebinUt2.pkl.lz4"
-    sfFolder = data_dir + "/muonSF/"
-    sfFolderVtxAgn = data_dir + "/muonSF/intermediate_vtxAgnosticIso/"
-    effSmoothFile = sfFolderVtxAgn + "efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
-    #
-    inputRootFile = {
-        "iso": f"{sfFolderVtxAgn}iso3DSFVQTsingularity.root",
-        "isonotrig": f"{sfFolderVtxAgn}isonotrig3DSFVQTsingularity.root",
-        "isoantitrig": f"{sfFolderVtxAgn}isofailtrig3DSFVQTsingularity.root",
-        "triggerplus": f"{sfFolder}triggerplus3DSFVQTextended.root",
-        "triggerminus": f"{sfFolder}triggerminus3DSFVQTextended.root",
+
+    default_inputRootFiles = {}
+    default_inputRootFiles["2016PostVFP"] = {
+        "iso": data_dir
+        + "/muonSF/intermediate_vtxAgnosticIso/iso3DSFVQTsingularity.root",
+        "isonotrig": data_dir
+        + "/muonSF/intermediate_vtxAgnosticIso/isonotrig3DSFVQTsingularity.root",
+        "isoantitrig": data_dir
+        + "/muonSF/intermediate_vtxAgnosticIso/isofailtrig3DSFVQTsingularity.root",
+        "triggerplus": data_dir + "/muonSF/triggerplus3DSFVQTextended.root",
+        "triggerminus": data_dir + "/muonSF/triggerminus3DSFVQTextended.root",
+    }
+
+    for yr in ["2017", "2018"]:
+        default_inputRootFiles[yr] = {
+            "iso": data_dir + f"/muonSF/{yr}/3dSF/3dsfisolation.root",
+            "isonotrig": data_dir + f"/muonSF/{yr}/3dSF/3dsfisonotrig.root",
+            "triggerplus": data_dir + f"/muonSF/{yr}/3dSF/3dsftriggerplus.root",
+            "triggerminus": data_dir + f"/muonSF/{yr}/3dSF//3dsftriggerminus.root",
+        }
+
+    histNames_newEras = {
+        "iso": "Isolation",
+        "isonotrig": "IsolationNoTrigger",
+        "isoantitrig": "IsolationAntiTrigger",
+        "triggerplus": "TriggerPlus",
+        "triggerminus": "TriggerMinus",
     }
 
     parser = common_plot_parser()
     parser.add_argument(
+        "-i",
+        "--indir",
+        default=None,
+        help="Input directory where the 3d efficiencies measured on data are stored",
+    )
+    parser.add_argument(
         "outdir", type=str, nargs=1, help="output directory to save things"
+    )
+    parser.add_argument(
+        "--era",
+        type=str,
+        default="2016PostVFP",
+        choices=["2016PostVFP", "2017", "2018"],
+    )
+    parser.add_argument(
+        "--eff_filename",
+        type=str,
+        default=None,
+        help="File containing the 3D W MC efficiencies. Extension must be pkl.lz4, which is automatically added if no extension is given",
     )
     parser.add_argument(
         "-n",
@@ -741,11 +786,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-s",
-        "--step",
+        "--steps",
         type=str,
         nargs="*",
         default=[],
-        choices=list(inputRootFile.keys()),
+        choices=list(default_inputRootFiles["2016PostVFP"].keys()),
         help="Do only these steps (default uses all)",
     )
     parser.add_argument(
@@ -774,16 +819,40 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.isolationDefinition == "iso04":
-        effSmoothFile = sfFolder + "efficiencies3D_rebinUt2.pkl.lz4"
-        #
+    sfFolder = (
+        data_dir + "/muonSF/"
+        if args.era == "2016PostVFP"
+        else data_dir + "/muonSF/{args.era}/"
+    )
+
+    if args.eff_filename is not None:
+        effSmoothFile = sfFolder + args.eff_filename
+    else:
+        if args.era != "2016PostVFP" and args.isolationDefinition != "iso04vtxAgn":
+            logger.error(
+                "Only 'iso04vtxAgn' is available for eras which are not 2016PostVFP"
+            )
+            quit()
+        elif args.era == "2016PostVFP":
+            if args.isolationDefinition == "iso04vtxAgn":
+                effSmoothFile = (
+                    sfFolder
+                    + "intermediate_vtxAgnosticIso/efficiencies3D_rebinUt2_vtxAgnPfRelIso04.pkl.lz4"
+                )
+            else:
+                effSmoothFile = sfFolder + "effiencies3D_rebinUt2.pkl.lz4"
+        else:
+            effSmoothFile = sfFolder + "efficiencies3D.pkl.lz4"
+
+    if args.indir is None:
         inputRootFile = {
-            "iso": f"{sfFolder}iso3DSFVQTextended.root",
-            "isonotrig": f"{sfFolder}isonotrigger3DSFVQTextended.root",
-            "isoantitrig": f"{sfFolder}isofailtrigger3DSFVQTextended.root",
-            "triggerplus": f"{sfFolder}triggerplus3DSFVQTextended.root",
-            "triggerminus": f"{sfFolder}triggerminus3DSFVQTextended.root",
+            k: v for k, v in default_inputRootFiles[args.era].items() if k in args.steps
         }
+    else:
+        inputRootFile = {}
+        for eff in args.steps:
+            eff_tag = eff if eff != "iso" else "isolation"
+            inputRootFile[eff] = args.indir + f"3dsf{eff_tag}.root"
 
     ROOT.TH1.SetDefaultSumw2()
 
@@ -807,29 +876,19 @@ if __name__ == "__main__":
         effHist[step] = allMCeff[f"Wmunu_MC_eff_{step}_etaptut"]
 
     work = []
-    work.append([inputRootFile["iso"], "SF3D_nominal_iso", "iso", effHist["iso"]])
-    work.append(
-        [inputRootFile["isonotrig"], "SF3D_nominal_isonotrig", "isonotrig", None]
-    )  # , effHist["isonotrig"]])
-    work.append(
-        [inputRootFile["isoantitrig"], "SF3D_nominal_isofailtrig", "isoantitrig", None]
-    )  # , effHist["isoantitrig"]])
-    work.append(
-        [
-            inputRootFile["triggerplus"],
-            "SF3D_nominal_trigger_plus",
-            "triggerplus",
-            effHist["triggerplus"],
-        ]
-    )
-    work.append(
-        [
-            inputRootFile["triggerminus"],
-            "SF3D_nominal_trigger_minus",
-            "triggerminus",
-            effHist["triggerminus"],
-        ]
-    )
+    steps_noEffHist = ["isonotrig", "isoantitrig"]
+
+    for st in args.steps:
+        histname = f"SF3D_nominal_{st}".replace("antitrig", "failtrig")
+        histname = histname.replace("plus", "_plus").replace("minus", "_minus")
+        work.append(
+            [
+                inputRootFile[st],
+                histname if args.era == "2016PostVFP" else histNames_newEras[st],
+                st,
+                effHist[st] if st not in steps_noEffHist else None,
+            ]
+        )
 
     outdir_original = args.outdir[0]
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
@@ -837,11 +896,13 @@ if __name__ == "__main__":
     resultDict = {}
     for w in work:
         inputfile, histname, step, eff = w
-        if len(args.step) and step not in args.step:
+        if len(args.steps) and step not in args.steps:
             continue
-        rets = runSmoothing(inputfile, histname, outdir, step, args, effHist=eff)
+        rets = runSmoothing(
+            inputfile, histname, outdir, step, args, effHist=eff, era=args.era
+        )
         for ret in rets:
-            if ret != None:
+            if ret is not None:
                 resultDict[ret.name] = ret
 
     resultDict.update(
