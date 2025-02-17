@@ -22,7 +22,7 @@ def make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto=False, era=None):
         len(effSyst_decorrEtaEdges) - 1
     )  # 1 inclusive variation + all decorrelated bins
 
-    eradir = f"{era}" if era in ["2017", "2018"] else ""
+    eradir = era if era in ["2017", "2018"] else ""
 
     if useGlobalOrTrackerVeto:
         # in this way we are hardcoding the file names for the veto SFs, but I don't think we are going to change them in the helpers anyways

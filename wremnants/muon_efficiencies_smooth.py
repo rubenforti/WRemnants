@@ -119,7 +119,7 @@ def make_muon_efficiency_helpers_smooth(
 
     dict_SF3D = None
     if len(eff_types_3D):
-        if not (era == "2018" or era == "2017"):
+        if era not in ["2017", "2018"]:
             if isoDefinition == "iso04vtxAgn":
                 fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
             elif isoDefinition == "iso04":
@@ -177,9 +177,8 @@ def make_muon_efficiency_helpers_smooth(
                         logger.warning(
                             f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'"
                         )
-            print(eff_type, chargeTag, hist_name)
             hist_root = input_tools.safeGetRootObject(fin, hist_name)
-            # logger.debug(f"syst: {eff_type} -> {hist_name}")
+            logger.debug(f"Syst: {eff_type} {chargeTag} -> {hist_name}")
 
             hist_hist = narf.root_to_hist(
                 hist_root, axis_names=["SF eta", "SF pt", "nomi-statUpDown-syst"]
