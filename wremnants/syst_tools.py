@@ -1704,6 +1704,28 @@ def add_QCDbkg_jetPt_hist(
     add_syst_hist(results, dQCDbkGVar, name, axes, cols, "nominal_weight", **kwargs)
 
 
+def add_luminosity_unc_hists(
+    results, df, args, axes, cols, base_name="nominal", **kwargs
+):
+    name = Datagroups.histName(base_name, syst="luminosity")
+    df = df.Define(
+        "luminosityScaling",
+        f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})",
+    )
+    add_syst_hist(
+        results,
+        df,
+        name,
+        axes,
+        cols,
+        "luminosityScaling",
+        common.down_up_axis,
+        **kwargs,
+    )
+
+    return df
+
+
 def add_theory_corr_hists(
     results,
     df,
@@ -1794,10 +1816,8 @@ def add_theory_corr_hists(
                     0, 1, name="chargeVgenNP", underflow=False, overflow=False
                 )
 
-            # since the last column might be an additional weight, the extra columns and axes have to go at the appropriate place
-            nax = len(axes)
             axes_FlavDepNP = [*axes, theory_tools.axis_absYVgen, axis_chargegen]
-            cols_FlavDepNP = cols[:nax] + ["absYVgen", "chargeVgen"] + cols[nax:]
+            cols_FlavDepNP = [*cols, "absYVgen", "chargeVgen"]
             name = Datagroups.histName(base_name, syst=tensor_name)
             add_syst_hist(
                 results,
@@ -1880,40 +1900,23 @@ def add_muon_efficiency_unc_hists(
 
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
         muon_columns_stat = [
-            f"{singleMuonCollection}_{v}"
-            for v in ["tnpPt0", "tnpEta0", "tnpUT0", "tnpCharge0"]
+            f"{singleMuonCollection}_{v}" for v in ["pt0", "eta0", "uT0", "charge0"]
         ]
         muon_columns_syst = [
             f"{singleMuonCollection}_{v}"
-            for v in [
-                "tnpPt0",
-                "tnpEta0",
-                "SApt0",
-                "SAeta0",
-                "tnpUT0",
-                "tnpCharge0",
-                "passIso0",
-            ]
+            for v in ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
         ]
     else:
         muvars_stat = [
-            "tnpPt0",
-            "tnpEta0",
-            "tnpUT0",
-            "tnpCharge0",
+            "pt0",
+            "eta0",
+            "uT0",
+            "charge0",
         ]  # passIso0 required only for iso stat variations, added later
         muon_columns_stat_trig = [f"trigMuons_{v}" for v in muvars_stat]
         muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
-        muvars_syst = [
-            "tnpPt0",
-            "tnpEta0",
-            "SApt0",
-            "SAeta0",
-            "tnpUT0",
-            "tnpCharge0",
-            "passIso0",
-        ]
+        muvars_syst = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
         muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
 
@@ -1941,12 +1944,12 @@ def add_muon_efficiency_unc_hists(
 
     if not smooth3D:
         # will use different helpers and member functions
-        muon_columns_stat = [x for x in muon_columns_stat if "_tnpUT0" not in x]
-        muon_columns_syst = [x for x in muon_columns_syst if "_tnpUT0" not in x]
+        muon_columns_stat = [x for x in muon_columns_stat if "_uT0" not in x]
+        muon_columns_syst = [x for x in muon_columns_syst if "_uT0" not in x]
 
     # change variables for tracking, to use standalone variables
     muon_columns_stat_tracking = [
-        x.replace("_tnpPt0", "_SApt0").replace("_tnpEta0", "_SAeta0")
+        x.replace("_pt0", "_SApt0").replace("_eta0", "_SAeta0")
         for x in muon_columns_stat
     ]
 
@@ -2034,16 +2037,17 @@ def add_muon_efficiency_unc_hists_altBkg(
     **kwargs,
 ):
 
-    if step == "tracking":
-        muon_vars = ["SApt0", "SAeta0", "tnpCharge0"]
-    else:
-        muon_vars = ["tnpPt0", "tnpEta0", "tnpCharge0"]
-
+    SAvarTag = "SA" if step == "tracking" else ""
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
-        muon_columns_syst = [f"{singleMuonCollection}_{x}" for x in muon_vars]
+        muon_columns_syst = [
+            f"{singleMuonCollection}_{SAvarTag}pt0",
+            f"{singleMuonCollection}_{SAvarTag}eta0",
+            f"{singleMuonCollection}_charge0",
+        ]
     else:
-        muon_columns_syst_trig = [f"trigMuons_{v}" for v in muon_vars]
-        muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muon_vars]
+        muvars_syst = [f"{SAvarTag}pt0", f"{SAvarTag}eta0", "charge0"]
+        muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
+        muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
 
         if what_analysis == ROOT.wrem.AnalysisType.Wlike:
             muon_columns_syst = [*muon_columns_syst_trig, *muon_columns_syst_nonTrig]
@@ -2091,9 +2095,8 @@ def add_muon_efficiency_veto_unc_hists(
     **kwargs,
 ):
     # TODO: update for dilepton
-    muon_vars = ["tnpPt0", "tnpEta0", "tnpCharge0"]
-    muon_columns_stat = [f"{muons}_{v}" for v in muon_vars]
-    muon_columns_syst = [f"{muons}_{v}" for v in muon_vars]
+    muon_columns_stat = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
+    muon_columns_syst = [f"{muons}_{v}" for v in ["pt0", "eta0", "charge0"]]
 
     statNameBase = "effStatTnP"
     if len(customHistNameTag):
@@ -2140,105 +2143,56 @@ def add_muon_efficiency_veto_unc_hists(
     return df
 
 
-def add_Muon_L1Prefire_unc_hists(
-    results,
-    df,
-    axes,
-    cols,
-    base_name="nominal",
-    helper_stat=None,
-    helper_syst=None,
-    **kwargs,
+def add_L1Prefire_unc_hists(
+    results, df, helper_stat, helper_syst, axes, cols, base_name="nominal", **kwargs
 ):
+    df = df.Define(
+        "muonL1PrefireStat_tensor",
+        helper_stat,
+        [
+            "Muon_correctedEta",
+            "Muon_correctedPt",
+            "Muon_correctedPhi",
+            "Muon_correctedCharge",
+            "Muon_looseId",
+            "nominal_weight",
+        ],
+    )
+    name = Datagroups.histName(base_name, syst="muonL1PrefireStat")
+    add_syst_hist(
+        results,
+        df,
+        name,
+        axes,
+        cols,
+        "muonL1PrefireStat_tensor",
+        helper_stat.tensor_axes,
+        **kwargs,
+    )
 
-    if helper_stat is None:
-        df = df.Define(
-            "muonL1Prefire_stat_tensor",
-            "wrem::twoPointScaling(nominal_weight/L1PreFiringWeight_Muon_Nom, L1PreFiringWeight_Muon_StatDn, L1PreFiringWeight_Muon_StatUp)",
-        )
-        name = Datagroups.histName(base_name, syst="muonL1PrefireStat")
-        add_syst_hist(
-            results,
-            df,
-            name,
-            axes,
-            cols,
-            "muonL1Prefire_stat_tensor",
-            common.down_up_axis,
-            **kwargs,
-        )
-    else:
-        df = df.Define(
-            "muonL1PrefireStat_tensor",
-            helper_stat,
-            [
-                "Muon_correctedEta",
-                "Muon_correctedPt",
-                "Muon_correctedPhi",
-                "Muon_correctedCharge",
-                "Muon_looseId",
-                "nominal_weight",
-            ],
-        )
-        name = Datagroups.histName(base_name, syst="muonL1PrefireStat")
-        add_syst_hist(
-            results,
-            df,
-            name,
-            axes,
-            cols,
-            "muonL1PrefireStat_tensor",
-            helper_stat.tensor_axes,
-            **kwargs,
-        )
-
-    if helper_syst is None:
-        df = df.Define(
-            "muonL1Prefire_syst_tensor",
-            "wrem::twoPointScaling(nominal_weight/L1PreFiringWeight_Muon_Nom, L1PreFiringWeight_Muon_SystDn, L1PreFiringWeight_Muon_SystUp)",
-        )
-        name = Datagroups.histName(base_name, syst="muonL1PrefireSyst")
-        add_syst_hist(
-            results,
-            df,
-            name,
-            axes,
-            cols,
-            "muonL1Prefire_syst_tensor",
-            common.down_up_axis,
-            **kwargs,
-        )
-    else:
-        df = df.Define(
-            "muonL1PrefireSyst_tensor",
-            helper_syst,
-            [
-                "Muon_correctedEta",
-                "Muon_correctedPt",
-                "Muon_correctedPhi",
-                "Muon_correctedCharge",
-                "Muon_looseId",
-                "nominal_weight",
-            ],
-        )
-        name = Datagroups.histName(base_name, syst="muonL1PrefireSyst")
-        add_syst_hist(
-            results,
-            df,
-            name,
-            axes,
-            cols,
-            "muonL1PrefireSyst_tensor",
-            common.down_up_axis,
-            **kwargs,
-        )
-
-    return df
-
-
-def add_ECAL_L1Prefire_unc_hists(
-    results, df, axes, cols, base_name="nominal", **kwargs
-):
+    df = df.Define(
+        "muonL1PrefireSyst_tensor",
+        helper_syst,
+        [
+            "Muon_correctedEta",
+            "Muon_correctedPt",
+            "Muon_correctedPhi",
+            "Muon_correctedCharge",
+            "Muon_looseId",
+            "nominal_weight",
+        ],
+    )
+    name = Datagroups.histName(base_name, syst="muonL1PrefireSyst")
+    add_syst_hist(
+        results,
+        df,
+        name,
+        axes,
+        cols,
+        "muonL1PrefireSyst_tensor",
+        common.down_up_axis,
+        **kwargs,
+    )
 
     df = df.Define(
         "ecalL1Prefire_tensor",
@@ -2256,24 +2210,6 @@ def add_ECAL_L1Prefire_unc_hists(
         **kwargs,
     )
 
-    return df
-
-
-def add_L1Prefire_unc_hists(
-    results,
-    df,
-    axes,
-    cols,
-    base_name="nominal",
-    helper_stat=None,
-    helper_syst=None,
-    **kwargs,
-):
-
-    df = add_Muon_L1Prefire_unc_hists(
-        results, df, axes, cols, base_name, helper_stat, helper_syst, **kwargs
-    )
-    df = add_ECAL_L1Prefire_unc_hists(results, df, axes, cols, base_name, **kwargs)
     return df
 
 
@@ -2605,7 +2541,7 @@ def add_helicity_hists(
         )
 
         gen_theoryAgnostic = df.HistoBoost(
-            "nominal_gen_yieldsTheoryAgnostic",
+            "nominal_gen_helicity_yieldsTheoryAgnostic",
             [*axes, axis_ptV_thag, axis_yV_thag],
             [*cols, "ptVgen", "absYVgen", "helicity_moments_helicity_tensor"],
             tensor_axes=[axis_helicity, helicity_utils.axis_helicity_multidim],

@@ -28,8 +28,7 @@ dfw = pd.DataFrame.from_dict(
         "err_total": [6, 33, 23, 9.4, 32, 15.9, 13.3],
         "err_stat": [6, 25, 11, 6.4, 23, 9.8, 13.3],
         "Reference": [
-            # "Phys. Rev. D 110, 030001",
-            "PRD 110 (2024) 030001",
+            "Phys. Rev. D 110, 030001",
             "Phys. Rep. 532 (2013) 119",
             # "Phys. Rev. Lett. 108 (2012) 151804",
             "PRL 108 (2012) 151804",
@@ -54,14 +53,14 @@ cms_res = combinetf_input.read_groupunc_df(
     name="CMS",
 )
 cms_res["color"] = "#E42536"
-cms_res["Reference"] = "This work"
+cms_res["Reference"] = "This Work"
 dfw_cms = pd.concat((dfw, cms_res), ignore_index=True)
 
 eoscp = output_tools.is_eosuser_path(args.outpath)
 outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=eoscp)
 
 nentries = len(dfw_cms)
-xpos = 80148 + args.pdg * 10
+xpos = 80145 + args.pdg * 10
 top = nentries  # +0.5
 # step = (top+0.25)/nentries
 step = top / nentries
@@ -73,8 +72,8 @@ text_size = 15  #
 fig = plot_tools.make_summary_plot(
     80353,
     6,
-    None,  # Don't plot stat error separately
     r"80353 $\pm$ 6",
+    # Don't plot stat error separately
     dfw_cms[["Name", "value", "err_total"]].iloc[1:, :],
     center_color="#666666",
     colors=list(dfw_cms["color"][1:]),
@@ -84,6 +83,7 @@ fig = plot_tools.make_summary_plot(
     capsize=6,
     width_scale=1.25,
     cms_label=args.cmsDecor,
+    cms_loc=0,
     padding=4,
     point_size=0.24,
     top_offset=0,
@@ -93,7 +93,7 @@ fig = plot_tools.make_summary_plot(
     bbox_to_anchor=(xpos + 105, legtop),
     legtext_size=text_size,
     logoPos=args.logoPos,
-    lumi=None,
+    lumi=16.8,
 )
 
 ax = plt.gca()
@@ -127,7 +127,7 @@ for i, row in dfw_cms.iterrows():
     if not isEW:
         ax.annotate(
             label,
-            (80260, pos),
+            (80265, pos),
             fontsize=text_size,
             ha="left",
             va="center",
@@ -139,7 +139,7 @@ for i, row in dfw_cms.iterrows():
         (xpos, pos - 0.42),
         fontsize=text_size,
         ha="left",
-        color="#666666",
+        color="dimgrey",
         annotation_clip=False,
         style="italic" if isCMS else None,
     )
@@ -153,7 +153,6 @@ ax.xaxis.set_major_locator(ticker.MultipleLocator(50))
 ax.xaxis.set_minor_locator(ticker.MultipleLocator(25))
 ax.xaxis.grid(False, which="both")
 ax.yaxis.grid(False, which="both")
-ax.set_yticks([])
 
 name = "resultsSummary"
 if args.postfix:

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-import copy
+
 import os
+
+## safe batch mode
 import sys
 
 import hist
-import ROOT
 
 import narf
 
@@ -12,13 +13,15 @@ import narf
 from utilities import logging
 from wremnants.datasets.datagroups import Datagroups
 
-## safe batch mode
 args = sys.argv[:]
 sys.argv = ["-b"]
+import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
+import copy
 
 from scripts.analysisTools.plotUtils.utility import (
     adjustSettings_CMS_lumi,
@@ -120,13 +123,6 @@ if __name__ == "__main__":
         help="Choose what processes to plot, otherwise all are done",
     )
     parser.add_argument(
-        "--excludeProcesses",
-        default=None,
-        nargs="*",
-        type=str,
-        help="Don't run over processes belonging to these groups (only accepts exact group names)",
-    )
-    parser.add_argument(
         "--plot", nargs="+", type=str, help="Choose what distribution to plot by name"
     )
     parser.add_argument("-x", "--xAxisName", nargs="+", type=str, help="x axis name")
@@ -196,8 +192,6 @@ if __name__ == "__main__":
         groups.lumi = args.lumi
         logger.warning(f"Renormalizing MC to {args.lumi}/fb")
     datasets = groups.getNames()
-    if args.excludeProcesses is not None and len(args.excludeProcesses):
-        datasets = list(filter(lambda x: x not in args.excludeProcesses, datasets))
     if args.processes is not None and len(args.processes):
         datasets = list(filter(lambda x: x in args.processes, datasets))
     logger.info(f"Will plot datasets {datasets}")
