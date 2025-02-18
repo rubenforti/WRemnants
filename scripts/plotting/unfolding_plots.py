@@ -205,9 +205,10 @@ def plot(
             ylabel = yLabel.replace("[pb]", "[pb/GeV]")
 
     if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(
+        fig, ax1, ratio_axes = plot_tools.figureWithRatio(
             hist_data, "Bin number", ylabel, ylim, "Data/Pred.", rrange
         )
+        ax2 = ratio_axes[-1]
     else:
         fig, ax1 = plot_tools.figure(hist_data, "Bin number", ylabel, ylim)
 

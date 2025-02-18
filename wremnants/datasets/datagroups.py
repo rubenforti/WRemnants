@@ -81,12 +81,14 @@ class Datagroups(object):
             )
 
             self.era = "2017H"
+            self.lumi_uncertainty = 1.017
         else:
             from wremnants.datasets.datagroups2016 import (
                 make_datagroups_2016 as make_datagroups,
             )
 
             self.era = "2016postVFP"
+            self.lumi_uncertainty = 1.012
 
         make_datagroups(self, **kwargs)
 
@@ -544,7 +546,7 @@ class Datagroups(object):
                     (procName == self.dataName and "data" in lumiScaleVarianceLinearly)
                     or (procName != self.dataName and "mc" in lumiScaleVarianceLinearly)
                 ):
-                    logger.warning(
+                    logger.debug(
                         f"Scale {procName} hist by {scaleToNewLumi} as a multiplicative luminosity factor, with variance scaled linearly"
                     )
                     h = hh.scaleHist(

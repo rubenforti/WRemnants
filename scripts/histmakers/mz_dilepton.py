@@ -72,7 +72,11 @@ parser.add_argument(
     action="store_true",
     help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon",
 )
-
+parser.add_argument(
+    "--useTnpMuonVarForSF",
+    action="store_true",
+    help="To read efficiency scale factors, use the same muon variables as used to measure them with tag-and-probe (by default the final corrected ones are used)",
+)
 
 parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
@@ -97,17 +101,6 @@ thisAnalysis = (
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
-if "2018" in era and era!="2018":
-    e_sel_list = era.split(",")
-    erasToRun = []
-    for e_sel in e_sel_list:
-        if e_sel not in ["2018A", "2018B", "2018C", "2018D"]:
-            raise ValueError(f"Invalid era selection {era}")
-        erasToRun.append(e_sel.replace("2018", ""))
-    era = "2018"
-else:
-    erasToRun = None
-
 datasets = getDatasets(
     maxFiles=args.maxFiles,
     filt=args.filterProcs,
@@ -116,7 +109,6 @@ datasets = getDatasets(
     base_path=args.dataPath,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
-    eraDataSel=erasToRun
 )
 
 # dilepton invariant mass cuts
@@ -608,6 +600,25 @@ def build_graph(df, dataset):
             "muonsPlus_mom4", "trigMuon_isNegative ? nonTrigMuons_mom4 : trigMuons_mom4"
         )
 
+    useTnpMuonVarForSF = args.useTnpMuonVarForSF
+    # in principle these are only needed for MC,
+    # but one may want to compare tnp and corrected variables also for data
+    if useTnpMuonVarForSF:
+        df = df.Define("trigMuons_tnpPt0", "Muon_pt[trigMuons][0]")
+        df = df.Define("trigMuons_tnpEta0", "Muon_eta[trigMuons][0]")
+        df = df.Define("trigMuons_tnpCharge0", "Muon_charge[trigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpPt0", "Muon_pt[nonTrigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpEta0", "Muon_eta[nonTrigMuons][0]")
+        df = df.Define("nonTrigMuons_tnpCharge0", "Muon_charge[nonTrigMuons][0]")
+    else:
+        df = df.Alias("trigMuons_tnpPt0", "trigMuons_pt0")
+        df = df.Alias("trigMuons_tnpEta0", "trigMuons_eta0")
+        df = df.Alias("trigMuons_tnpCharge0", "trigMuons_charge0")
+        df = df.Alias("nonTrigMuons_tnpPt0", "nonTrigMuons_pt0")
+        df = df.Alias("nonTrigMuons_tnpEta0", "nonTrigMuons_eta0")
+        df = df.Alias("nonTrigMuons_tnpCharge0", "nonTrigMuons_charge0")
+        #
+
     df = df.Define("ptll", "ll_mom4.pt()")
     df = df.Define("yll", "ll_mom4.Rapidity()")
     df = df.Define("absYll", "std::fabs(yll)")
@@ -669,19 +680,19 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
         df = df.Define("weight_vtx", vertex_helper, ["GenVtx_z", "Pileup_nTrueInt"])
-        df = df.Define(
-            "weight_newMuonPrefiringSF",
-            muon_prefiring_helper,
-            [
-                "Muon_correctedEta",
-                "Muon_correctedPt",
-                "Muon_correctedPhi",
-                "Muon_correctedCharge",
-                "Muon_looseId",
-            ],
-        )
 
         if era == "2016PostVFP":
+            df = df.Define(
+                "weight_newMuonPrefiringSF",
+                muon_prefiring_helper,
+                [
+                    "Muon_correctedEta",
+                    "Muon_correctedPt",
+                    "Muon_correctedPhi",
+                    "Muon_correctedCharge",
+                    "Muon_looseId",
+                ],
+            )
             weight_expr = (
                 "weight_pu*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom"
             )
@@ -693,7 +704,15 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
-        muonVarsForSF = ["pt0", "eta0", "SApt0", "SAeta0", "uT0", "charge0", "passIso0"]
+        muonVarsForSF = [
+            "tnpPt0",
+            "tnpEta0",
+            "SApt0",
+            "SAeta0",
+            "tnpUT0",
+            "tnpCharge0",
+            "passIso0",
+        ]
         if args.useDileptonTriggerSelection:
             muonVarsForSF.append("passTrigger0")
         # careful, first all trig variables, then all nonTrig
@@ -702,14 +721,27 @@ def build_graph(df, dataset):
         ]
 
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="trigMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="trigMuons",
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="nonTrigMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="nonTrigMuons",
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
+        # ut is defined in muon_selections.define_muon_uT_variable
+        if not useTnpMuonVarForSF:
+            df = df.Alias("trigMuons_tnpUT0", "trigMuons_uT0")
+            df = df.Alias("nonTrigMuons_tnpUT0", "nonTrigMuons_uT0")
+
         if not args.smooth3dsf:
-            columnsForSF.remove("trigMuons_uT0")
-            columnsForSF.remove("nonTrigMuons_uT0")
+            columnsForSF.remove("trigMuons_tnpUT0")
+            columnsForSF.remove("nonTrigMuons_tnpUT0")
 
         if not args.noScaleFactors:
             # FIXME: add flags for pass_trigger for both leptons
@@ -1084,10 +1116,10 @@ def build_graph(df, dataset):
         df = syst_tools.add_L1Prefire_unc_hists(
             results,
             df,
-            muon_prefiring_helper_stat,
-            muon_prefiring_helper_syst,
             axes,
             cols,
+            helper_stat=muon_prefiring_helper_stat,
+            helper_syst=muon_prefiring_helper_syst,
         )
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated

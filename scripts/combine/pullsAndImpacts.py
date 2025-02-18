@@ -17,9 +17,11 @@ from plotly.subplots import make_subplots
 
 from narf import ioutils
 from utilities import logging
+from utilities.common import base_dir
 from utilities.io_tools import (
     combinetf_input,
     conversion_tools,
+    hepdata_tools,
     input_tools,
     output_tools,
 )
@@ -448,6 +450,7 @@ def readFitInfoFromFile(
     stat=0.0,
     normalize=False,
     scale=1,
+    saveForHepdata=False,
 ):
     logger.debug("Read impacts for poi from file")
     impacts, labels, norm = combinetf_input.read_impacts_poi(
@@ -469,6 +472,24 @@ def readFitInfoFromFile(
 
     df = pd.DataFrame(np.array(impacts, dtype=np.float64).T * scale, columns=["impact"])
     df["label"] = [translate_label.get(l, l) for l in labels]
+    if saveForHepdata and not group:
+        convert_hepdata_json = (
+            base_dir + "/utilities/styles/nuisance_translate_hepdata.json"
+        )
+        logger.warning(
+            f"Using file {convert_hepdata_json} to convert names of nuisance parameters for HEPData"
+        )
+        with open(convert_hepdata_json) as hepf:
+            translate_label_hepdata = json.load(hepf)
+        labels_hepdata = []
+        for l in labels:
+            new_label = conversion_tools.get_hepdata_label(
+                l, input_dict=translate_label_hepdata
+            )
+            labels_hepdata.append(new_label)
+        df["label_hepdata"] = labels_hepdata
+        logger.warning("HEPData labels were created")
+
     df["absimpact"] = np.abs(df["impact"])
     if not group:
         df["pull"], df["constraint"], df["pull_prefit"] = (
@@ -656,6 +677,11 @@ def parseArgs():
         action="store_true",
         help="Use of xrdcp for eos output rather than the mount",
     )
+    parser.add_argument(
+        "--saveForHepdata",
+        action="store_true",
+        help="Save output as ROOT to prepare HEPData",
+    )
 
     return parser.parse_args()
 
@@ -737,6 +763,7 @@ def producePlots(
             stat=args.stat / 100.0,
             normalize=normalize,
             scale=scale,
+            saveForHepdata=args.saveForHepdata,
         )
     elif group:
         df = readFitInfoFromFile(
@@ -749,6 +776,7 @@ def producePlots(
             normalize=normalize,
             scale=scale,
             grouping=grouping,
+            saveForHepdata=args.saveForHepdata,
         )
 
     if fitresult_ref:
@@ -762,8 +790,21 @@ def producePlots(
             normalize=normalize,
             scale=scale,
             grouping=grouping,
+            saveForHepdata=False,  # can stay false here, it would only create new labels
         )
         df = df.merge(df_ref, how="outer", on="label", suffixes=("", "_ref"))
+
+    if df.empty:
+        logger.warning("Empty dataframe")
+        if group and grouping:
+            logger.warning(
+                f"This can happen if no group is found that belongs to {grouping}"
+            )
+            logger.warning(
+                "Try a different mode for --grouping or use '--mode ungrouped' to skip making impacts for groups"
+            )
+        logger.warning("Skipping this part")
+        return
 
     if args.sort:
         logger.debug("Sort impacts")
@@ -867,7 +908,7 @@ def producePlots(
             show_legend=not group and not args.noImpacts,
         )
 
-        if args.num and args.num < df.size:
+        if args.num and args.num < int(df.shape[0]):
             # in case multiple extensions are given including html, don't do the skimming on html but all other formats
             if "html" in extensions and len(extensions) > 1:
                 fig = plotImpacts(df, legend_pos="right", **kwargs)
@@ -876,6 +917,17 @@ def producePlots(
                 extensions = [e for e in extensions if e != "html"]
                 outfile = outfile.replace(outfile.split(".")[-1], extensions[0])
             df = df[-args.num :]
+
+        # utility output to prepare hepdata
+        if args.saveForHepdata and not group:
+            columns_to_save = ["impact", "pull", "constraint"]
+            if args.referenceFile:
+                columns_to_save.extend(["impact_ref", "pull_ref", "constraint_ref"])
+            outfile_root = outfile.replace(outfile.split(".")[-1], "root")
+            outfile_root = outfile_root.replace(".root", f"_{postfix}.root")
+            hepdata_tools.make_postfit_pulls_and_impacts(
+                df, outfile_root, columns_to_save
+            )
 
         fig = plotImpacts(df, **kwargs)
 
@@ -920,7 +972,7 @@ if __name__ == "__main__":
         pois = combinetf_input.get_poi_names(fitresult, poi_type=args.poiType)
 
     for poi in pois:
-        logger.debug(f"Now at {poi}")
+        logger.info(f"Now at {poi}")
         if args.mode in ["both", "ungrouped"]:
             logger.debug(f"Make impact per nuisance")
             producePlots(
@@ -931,7 +983,7 @@ if __name__ == "__main__":
                 pullrange=args.pullrange,
             )
         if args.mode in ["both", "group"]:
-            logger.debug(f"Make impact my group")
+            logger.debug(f"Make impact by group")
             producePlots(
                 fitresult,
                 args,

@@ -382,6 +382,14 @@ int zqtproj0_angleSign(float pt, float phi, float ptOther, float phiOther) {
   return std::copysign(1, lep * boson);
 }
 
+float zqtproj0_angleCosine(float pt, float phi, float ptOther, float phiOther) {
+  TVector2 lep, boson;
+  lep.SetMagPhi(pt, phi);
+  boson.SetMagPhi(ptOther, phiOther);
+  boson += lep;
+  return (lep * boson) / (pt * boson.Mod());
+}
+
 float zqtproj0_boson(float pt, float phi, float bosonPt, float bosonPhi) {
   TVector2 lep, boson;
   lep.SetMagPhi(pt, phi);
@@ -431,6 +439,14 @@ template <typename T, std::ptrdiff_t N, typename V>
 auto vec_to_tensor_t(const V &vec, std::size_t start = 0) {
   Eigen::TensorFixedSize<T, Eigen::Sizes<N>> res;
   std::copy(vec.begin() + start, vec.begin() + start + N, res.data());
+  return res;
+}
+
+template <typename T, std::ptrdiff_t N>
+std::array<T, N>
+tensor_to_array(const Eigen::TensorFixedSize<T, Eigen::Sizes<N>> &tensor) {
+  std::array<T, N> res;
+  std::copy(tensor.data(), tensor.data() + N, res.data());
   return res;
 }
 
@@ -785,6 +801,12 @@ enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
 std::vector<int> seq_idxs(const int size, const int start = 0) {
   std::vector<int> res(size);
+  std::iota(res.begin(), res.end(), start);
+  return res;
+}
+
+template <int N> std::array<int, N> seq_idxs_array(const int start = 0) {
+  std::array<int, N> res;
   std::iota(res.begin(), res.end(), start);
   return res;
 }

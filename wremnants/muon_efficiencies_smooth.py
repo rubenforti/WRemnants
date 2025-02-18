@@ -52,7 +52,7 @@ def make_muon_efficiency_helpers_smooth(
     isoDefinition="iso04vtxAgn",
 ):
 
-    logger.debug(f"Make efficiency helper smooth")
+    logger.debug("Make efficiency helper smooth")
 
     # need the following hack to call the helpers with this enum class from python
     if what_analysis == ROOT.wrem.AnalysisType.Wmass:
@@ -85,7 +85,10 @@ def make_muon_efficiency_helpers_smooth(
         1, -2.0, 2.0, underflow=False, overflow=False, name="SF charge"
     )  # for isolation and effStat only
     isoEff_types = ["iso", "isonotrig", "antiiso", "isoantitrig"]
-    trigEff_types = ["trigger", "antitrigger"] # antitrigger is P(failTrigger|IDIP), SF obtained from trigger SF as (1-SF*effMC)/(1-effMC), similarly to antiiso
+    trigEff_types = [
+        "trigger",
+        "antitrigger",
+    ]  # antitrigger is P(failTrigger|IDIP), SF obtained from trigger SF as (1-SF*effMC)/(1-effMC), similarly to antiiso
     allEff_types = ["reco", "tracking", "idip"] + trigEff_types + isoEff_types
     eff_types_3D = (
         [] if not smooth3D else [x for x in trigEff_types] + [x for x in isoEff_types]
@@ -96,9 +99,11 @@ def make_muon_efficiency_helpers_smooth(
     # axis_allEff_type = hist.axis.StrCategory(allEff_types, name="allEff_type")
     axis_eff_type_2D = hist.axis.StrCategory(eff_types_2D, name="eff_types_2D_etapt")
     axis_eff_type_3D = hist.axis.StrCategory(eff_types_3D, name="eff_types_3D_etaptut")
-    
+
     effSyst_decorrEtaEdges = [round(-2.4 + 0.1 * i, 1) for i in range(49)]
-    Nsyst = 1 + (len(effSyst_decorrEtaEdges) - 1)  # 1 inclusive variation + all decorrelated bins
+    Nsyst = 1 + (
+        len(effSyst_decorrEtaEdges) - 1
+    )  # 1 inclusive variation + all decorrelated bins
     axis_nom_syst = hist.axis.Integer(
         0, 1 + Nsyst, underflow=False, overflow=False, name="nom-systs"
     )  # nominal in first bin
@@ -114,7 +119,7 @@ def make_muon_efficiency_helpers_smooth(
 
     dict_SF3D = None
     if len(eff_types_3D):
-        if not (era == "2018" or era == "2017"):
+        if era not in ["2017", "2018"]:
             if isoDefinition == "iso04vtxAgn":
                 fileSF3D = f"{data_dir}/muonSF/smoothSF3D_uTm30to100_vtxAgnIso.pkl.lz4"
             elif isoDefinition == "iso04":
@@ -172,9 +177,8 @@ def make_muon_efficiency_helpers_smooth(
                         logger.warning(
                             f"Substituting temporarily missing 2D histogram for 'isoantitrig' with 'isonotrig'"
                         )
-            print(eff_type, chargeTag, hist_name)
             hist_root = input_tools.safeGetRootObject(fin, hist_name)
-            # logger.debug(f"syst: {eff_type} -> {hist_name}")
+            logger.debug(f"Syst: {eff_type} {chargeTag} -> {hist_name}")
 
             hist_hist = narf.root_to_hist(
                 hist_root, axis_names=["SF eta", "SF pt", "nomi-statUpDown-syst"]
@@ -270,8 +274,10 @@ def make_muon_efficiency_helpers_smooth(
                     if eff_type in chargeDependentSteps
                     else eff_type
                 )
-                if effTypeNameInHist=="isoantitrig" and era!="2016PostVFP":
-                    logger.warning(f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead")
+                if effTypeNameInHist == "isoantitrig" and era != "2016PostVFP":
+                    logger.warning(
+                        f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead"
+                    )
                     effTypeNameInHist = "isonotrig"
                 hist_hist = dict_SF3D[f"smoothSF3D_{effTypeNameInHist}"]
                 # logger.debug(f"{charge} {eff_type}: hist_hist = {hist_hist.axes}")
@@ -531,8 +537,10 @@ def make_muon_efficiency_helpers_smooth(
                         if eff_type in chargeDependentSteps
                         else eff_type
                     )
-                    if effTypeNameInHist=="isoantitrig" and era!="2016PostVFP":
-                        logger.warning(f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead")
+                    if effTypeNameInHist == "isoantitrig" and era != "2016PostVFP":
+                        logger.warning(
+                            f"Step 'isoantitrig' not available in 3D SF for {era}, using 'isonotrig' instead"
+                        )
                         effTypeNameInHist = "isonotrig"
                     hist_hist = dict_SF3D[
                         f"smoothSF3D_{effTypeNameInHist}"

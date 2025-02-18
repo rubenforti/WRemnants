@@ -197,7 +197,15 @@ def define_trigger_muons(
     return df
 
 
-def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuons"):
+def define_muon_uT_variable(
+    df,
+    isWorZ,
+    smooth3dsf=False,
+    colNamePrefix="goodMuons",
+    addWithTnpMuonVar=False,
+):
+    # TODO: instead of having "addWithTnpMuonVar" it might be better to call this function twice
+    # TODO: possibily specifying the target variable name (_uT0 or _tnpUT0) and the input variables
     if smooth3dsf:
         if isWorZ:
             df = theory_tools.define_prefsr_vars(df)
@@ -205,6 +213,11 @@ def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuo
                 f"{colNamePrefix}_uT0",
                 f"wrem::zqtproj0_boson({colNamePrefix}_pt0, {colNamePrefix}_phi0, ptVgen, phiVgen)",
             )
+            if addWithTnpMuonVar:
+                df = df.Define(
+                    f"{colNamePrefix}_tnpUT0",
+                    f"wrem::zqtproj0_boson(Muon_pt[{colNamePrefix}][0], Muon_phi[{colNamePrefix}][0], ptVgen, phiVgen)",
+                )
         else:
             # for background processes (Top and Diboson, since Wtaunu and Ztautau are part of isW or isZ)
             # sum all gen e, mu, tau, or neutrinos to define the boson proxy
@@ -223,9 +236,16 @@ def define_muon_uT_variable(df, isWorZ, smooth3dsf=False, colNamePrefix="goodMuo
                 f"{colNamePrefix}_uT0",
                 f"wrem::zqtproj0_boson({colNamePrefix}_pt0, {colNamePrefix}_phi0, vecSumLeptonAndPhoton_TV2)",
             )
+            if addWithTnpMuonVar:
+                df = df.Define(
+                    f"{colNamePrefix}_tnpUT0",
+                    f"wrem::zqtproj0_boson(Muon_pt[{colNamePrefix}][0], Muon_phi[{colNamePrefix}][0], vecSumLeptonAndPhoton_TV2)",
+                )
     else:
         # this is a dummy, the uT axis when present will have a single bin
         df = df.Define(f"{colNamePrefix}_uT0", "0.0f")
+        if addWithTnpMuonVar:
+            df = df.Define(f"{colNamePrefix}_tnpUT0", "0.0f")
 
     return df
 

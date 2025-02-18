@@ -73,21 +73,21 @@ jobs:
 
       - name: run isort
         run: |
-          scripts/ci/run_with_singularity.sh isort . --check-only --diff --skip narf --skip wremnants-data --profile black --line-length 88
+          scripts/ci/run_with_singularity.sh isort . --check-only --diff --skip narf --skip combinetf2 --skip wremnants-data --skip wums --profile black --line-length 88
 
       - name: run Flake8
         run: >-
-          scripts/ci/run_with_singularity.sh flake8 . --exclude=narf,wremnants-data --max-line-length 88
+          scripts/ci/run_with_singularity.sh flake8 . --exclude=narf,combinetf2,wremnants-data,wums --max-line-length 88
           --select=F401,F402,F403,F404,F405,F406,F407,F601,F602,F621,F622,F631,F632,F633,F634,F701,F702,F704,F706,F707,F721,F722,F723,F821,F822,F823,F831,F901
 
       - name: run Black
         run: |
-          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|narf|wremnants-data)' --check .
+          scripts/ci/run_with_singularity.sh black --exclude '(^\.git|\.github|\.ipynb|narf|combinetf2|wremnants-data|wums)' --check .
 
       - name: check Python Files
         run: |
           # Find all Python files and check their syntax in parallel
-          find . -name '*.py' -not -path '*/narf/*' -not -path '*/wremnants-data/*' | \
+          find . -name '*.py' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/*' -not -path '*/wums/*' | \
           xargs -P 16 -I {} bash -c '
             echo "Checking python file: {}"
             scripts/ci/run_with_singularity.sh python -m py_compile "{}" || \
@@ -97,7 +97,7 @@ jobs:
       - name: check JSON Files
         run: |
           # Find all JSON files and check their syntax
-          for FILE in $(find . -name '*.json' -not -path '*/narf/*' -not -path '*/wremnants-data/*'); do
+          for FILE in $(find . -name '*.json' -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/* -not -path '*/wums/*''); do
             echo "Checking JSON file: $FILE"
             scripts/ci/run_with_singularity.sh python -m json.tool "$FILE" > /dev/null
             if [ $? -ne 0 ]; then
@@ -106,22 +106,10 @@ jobs:
             fi
           done
 
-      - name: check YAML Files
-        run: |
-          # Find all YAML files and check their syntax
-          for FILE in $(find . -name '*.yaml' -not -path '*/narf/*' -not -path '*/wremnants-data/*'); do
-            echo "Checking YAML file: $FILE"
-            scripts/ci/run_with_singularity.sh python -c "import yaml, sys; yaml.safe_load(open('$FILE'))" > /dev/null
-            if [ $? -ne 0 ]; then
-              echo "Invalid YAML syntax in $FILE"
-              exit 1
-            fi
-          done
-
       - name: check C++ Files
         run: |
           # Find all C++ files and check their syntax in parallel
-          find . \( -name '*.c' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -not -path '*/narf/*' -not -path '*/wremnants-data/*' | \
+          find . \( -name '*.c' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -not -path '*/narf/*' -not -path '*/combinetf2/*' -not -path '*/wremnants-data/* -not -path '*/wums/*'' | \
           xargs -P 16 -I {} bash -c '
             echo "Checking {}"
             scripts/ci/run_with_singularity.sh clang++ -I./narf/narf/include/ -I./wremnants/include/ -std=c++20 -fsyntax-only "{}" || \
@@ -584,16 +572,25 @@ jobs:
         run: >-
           cmssw-cc7 --command-to-run scripts/ci/setup_and_run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge 
           ZMassWLike.hdf5 -p uncorr --binByBinStat --doImpacts --saveHists --computeHistErrors --postfix uncorr
+      
+      - name: wlike combinetf2 fit
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
+          '$WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/ZMassWLike.hdf5'
+          -t 0 --binByBinStat --computeHistErrors --saveHists
+          -o '$WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults.hdf5'
 
       - name: wlike prefit plot
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2  --prefit --legCol 6 --legSize large --logoPos 1
+          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults.hdf5 
+          -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2  --prefit --legCol 6 --legSize large --logoPos 1
 
       - name: wlike postfit plot
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py
-          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_123456789_uncorr.root -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2 --rrange 1.03 0.97 --binSeparationLines -2.2 -2.1 1.2 1.3
+          $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults.hdf5 
+          -o $WEB_DIR -f $PLOT_DIR --legCols 6 --logoPos 1 --yscale 1.2 --rrange 1.03 0.97 --binSeparationLines -2.2 -2.1 1.2 1.3
 
       - name: wlike combine impacts
         run: >-
@@ -681,10 +678,10 @@ jobs:
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py 
           -i $HIST_FILE --fitvar mll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR --realData
-
+      
       - name: dilepton combine mll fit
-        run: >- 
-          cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
+        run: >-
+          cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/
           dilepton $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll ZMassDilepton.hdf5
 
       - name: dilepton combine impacts
@@ -692,22 +689,25 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.root 
           $WEB_DIR/$PLOT_DIR impactsZ.html
 
+      - name: dilepton combinetf2 mll fit
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
+          '$WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/ZMassDilepton.hdf5'
+          -t -1 --binByBinStat --computeHistErrors --saveHists --computeVariations --project ch0 mll
+          -o '$WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults.hdf5'
+
       - name: dilepton postfit mll-etaAbsEta plot
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR 
+          $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults.hdf5 -o $WEB_DIR -f $PLOT_DIR 
           --yscale 1.4 --binSeparationLines -0.6 0.0 --logoPos 1
 
-      - name: dilepton mll_inc postfit2D
-        run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_mll/ZMassDilepton.hdf5 --externalPostfit $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults_123456789.hdf5 
-          -o $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5 --saveHists --binByBinStat --computeHistErrors
-
-      - name: dilepton postfit mll_inc plot
+      - name: dilepton postfit mll plot
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_mll/postfit_from2D.hdf5 --legCols 1 -o $WEB_DIR -f $PLOT_DIR --yscale 1.25
+          $WREMNANTS_OUTDIR/ZMassDilepton_etaAbsEta_mll/fitresults.hdf5 
+          --rrange 0.99 1.02 --legCols 1 -o $WEB_DIR -f $PLOT_DIR --yscale 1.05 --project ch0 mll
+          --varName massShiftZ100MeV --extraTextLoc '0.05' '0.7' --varLabel '$\mathit{m}_\mathrm{Z}{\pm}1\sigma$'
 
   dilepton:
     # The type of runner that the job will run on
@@ -751,7 +751,14 @@ jobs:
       - name: dilepton combine alphaS fit
         run: >-
           cmssw-cc7 --command-to-run scripts/ci/setup_and_run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5 -t -1 --binByBinStat --doImpacts --saveHists --computeHistErrors
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5 -t -1 --binByBinStat --doImpacts
+
+      - name: dilepton combinetf2 alphaS fit
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh narf/scripts/fitting/combinetf2.py 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/ZMassDilepton.hdf5
+          -t 0 --binByBinStat --computeHistErrors --saveHists
+          -o '$WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5'
 
       - name: dilepton combine alphaS impacts
         run: >- 
@@ -787,10 +794,14 @@ jobs:
         run: echo "The web dir is $WEB_DIR plot dir is ${PLOT_DIR}"
 
       - name: dilepton prefit plot
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --prefit
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2 --prefit
 
       - name: dilepton postfit plot
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults_123456789.root -o $WEB_DIR -f $PLOT_DIR --yscale 1.2
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/postfitPlots.py 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/fitresults.hdf5 -o $WEB_DIR -f $PLOT_DIR --yscale 1.2
 
       - name: dilepton plotting ptll
         run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --yscale 1.3 --legCols 1 --baseName nominal --nominalRef nominal --hists ptll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation --varName nominal_uncorr --varLabel MiNNLO --colors red
@@ -870,18 +881,22 @@ jobs:
           echo "WEB_DIR=${WEB_DIR}" >> $GITHUB_ENV
           echo "PLOT_DIR=${PLOT_DIR}" >> $GITHUB_ENV
           echo "COMBINED_DIR=$WREMNANTS_OUTDIR/WMass_ZDilepton" >> $GITHUB_ENV
+          echo "HIST_FILE_WMASS=${WREMNANTS_OUTDIR}/${OUTFILE_WMASS}" >> $GITHUB_ENV
+          echo "HIST_FILE_DILEPTON=${WREMNANTS_OUTDIR}/${OUTFILE_DILEPTON}" >> $GITHUB_ENV
+          echo "LUMI_SCALE=$LUMI_SCALE" >> $GITHUB_ENV
 
-      - name: aggregate combine inputs
-        run: |
-          mkdir -p $COMBINED_DIR
-          cp -p $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll/* $COMBINED_DIR
-          cp -p $WREMNANTS_OUTDIR/WMass_eta_pt_charge/* $COMBINED_DIR
+      - name: wmass combined setup
+        run: >- 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py
+          -i $HIST_FILE_WMASS $HIST_FILE_DILEPTON --fitvar eta-pt-charge ptll-yll --lumiScale $LUMI_SCALE $LUMI_SCALE -o $COMBINED_DIR
 
-      - name: wmass combined fit 
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass $COMBINED_DIR WMass_plus.txt WMass_minus.txt ZMassDilepton_inclusive.txt
+      - name: wmass combined fit
+        run: >-
+          cmssw-cc7 --command-to-run scripts/ci/setup_and_run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ 
+          $COMBINED_DIR/Combination_WMassZMassDilepton Combination.hdf5 -t -1 --binByBinStat --doImpacts
 
       - name: wmass combine impacts
-        run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $COMBINED_DIR/fitresults_123456789.root $WEB_DIR/$PLOT_DIR impactsW_withZ.html
+        run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $COMBINED_DIR/Combination_WMassZMassDilepton/fitresults_123456789.root $WEB_DIR/$PLOT_DIR impactsW_withZ.html
 
   copy-clean:
     runs-on: [self-hosted, linux, x64]

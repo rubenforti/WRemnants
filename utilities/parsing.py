@@ -3,17 +3,30 @@ import os
 
 from utilities import common, logging
 
+# choices for legend padding
+choices_padding = ["auto", "lower left", "lower right", "upper left", "upper right"]
 
-def set_parser_default(parser, argument, newDefault):
-    # change the default argument of the parser, must be called before parse_arguments
+
+def set_parser_attribute(parser, argument, attribute, newValue):
+    # change an argument of the parser, must be called before parse_arguments
     logger = logging.child_logger(__name__)
     f = next((x for x in parser._actions if x.dest == argument), None)
     if f:
-        logger.info(f" Modifying default of {f.dest} from {f.default} to {newDefault}")
-        f.default = newDefault
+        if hasattr(f, attribute):
+            logger.info(
+                f" Modifying {attribute} of {f.dest} from {getattr(f, attribute)} to {newValue}"
+            )
+            setattr(f, attribute, newValue)
+        else:
+            logger.warning(f" Parser argument {argument} has no attribute {attribute}!")
     else:
         logger.warning(f" Parser argument {argument} not found!")
     return parser
+
+
+def set_parser_default(parser, argument, newDefault):
+    # change the default argument of the parser, must be called before parse_arguments
+    return set_parser_attribute(parser, argument, "default", newDefault)
 
 
 def set_subparsers(subparser, name, analysis_label):
@@ -105,16 +118,7 @@ def set_subparsers(subparser, name, analysis_label):
             subparser.add_argument(
                 "--theoryAgnosticFileTag",
                 type=str,
-                default="x0p30_y3p00_V10",
-                choices=[
-                    "x0p30_y3p00_V4",
-                    "x0p30_y3p00_V5",
-                    "x0p40_y3p50_V6",
-                    "x0p30_y3p00_V7",
-                    "x0p30_y3p00_V8",
-                    "x0p30_y3p00_V9",
-                    "x0p30_y3p00_V10",
-                ],
+                default="x0p50_y3p00_THAGNV0",
                 help="Tag for input files",
             )
             subparser.add_argument(
@@ -369,10 +373,6 @@ def common_parser(analysis_label=""):
             "2017",
             "2017H",
             "2018",
-            "2018A",
-            "2018B",
-            "2018C",
-            "2018D",
             "2023_PUAVE1",
             "2023_PUAVE2",
             "2023_PUAVE5",
@@ -637,15 +637,13 @@ def common_parser(analysis_label=""):
                     raise NotImplementedError(
                         f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported"
                     )
-                else:
-                    sfFile = "muonSF/2018/allSmooth_2018_vtxAgnIso.root"
+                sfFile = "muonSF/2018/allSmooth_2018_vtxAgnIso.root"
             elif commonargs.era == "2017":
                 if commonargs.isolationDefinition == "iso04":
                     raise NotImplementedError(
                         f"For Era {commonargs.era} Isolation Definition {commonargs.isolationDefinition} is not supported"
                     )
-                else:
-                    sfFile = "muonSF/2017/allSmooth_2017_vtxAgnIso.root"
+                sfFile = "muonSF/2017/allSmooth_2017_vtxAgnIso.root"
             else:
                 raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
 
@@ -739,10 +737,27 @@ def plot_parser():
         "--legCols", type=int, default=2, help="Number of columns in legend"
     )
     parser.add_argument(
-        "--lowerLegPos", type=str, default="upper left", help="Set legend position"
+        "--legPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in legend",
     )
     parser.add_argument(
-        "--lowerLegCols", type=int, default=2, help="Number of columns in legend"
+        "--lowerLegPos",
+        type=str,
+        default="upper left",
+        help="Set lower legend position",
+    )
+    parser.add_argument(
+        "--lowerLegCols", type=int, default=2, help="Number of columns in lower legend"
+    )
+    parser.add_argument(
+        "--lowerLegPadding",
+        type=str,
+        default="auto",
+        choices=choices_padding,
+        help="Where to put empty entries in lower legend",
     )
     parser.add_argument(
         "--noSciy",
@@ -767,6 +782,18 @@ def plot_parser():
         nargs=2,
         default=[0.9, 1.1],
         help="y range for ratio plot",
+    )
+    parser.add_argument(
+        "--scaleTextSize",
+        type=float,
+        default=1.0,
+        help="Scale all text sizes by this number",
+    )
+    parser.add_argument(
+        "--customFigureWidth",
+        type=float,
+        default=None,
+        help="Use a custom figure width, otherwise chosen automatic",
     )
 
     return parser

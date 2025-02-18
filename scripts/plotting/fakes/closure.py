@@ -300,7 +300,7 @@ def plot_closure(
         rrange = args.rrange
 
     if ratio:
-        fig, ax1, ax2 = plot_tools.figureWithRatio(
+        fig, ax1, ratio_axes = plot_tools.figureWithRatio(
             hss[0],
             xlabel=xlabel,
             ylabel=ylabel,
@@ -311,6 +311,7 @@ def plot_closure(
             width_scale=1.2,
             ylim=(ymin, ymax),
         )
+        ax2 = ratio_axes[-1]
     else:
         fig, ax1 = plot_tools.figure(
             hss[0],
