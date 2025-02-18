@@ -232,7 +232,6 @@ def getDatasets(
     oneMCfileEveryN=None,
     checkFileForZombie=False,
     era="2016PostVFP",
-    eraDataSel=None, #select specific eras for data
     extended=True,
 ):
 
@@ -285,9 +284,6 @@ def getDatasets(
             base_path = base_path.replace("NanoAOD", "NanoGen")
 
         is_data = info.get("group", "") == "Data"
-
-        if is_data and eraDataSel:
-            info["filepaths"] = [f for f in info["filepaths"] if any(f"Run{era}{e_sel}" in f for e_sel in eraDataSel)]
 
         prod_tags = data_tags if is_data else mc_tags
         nfiles = maxFiles

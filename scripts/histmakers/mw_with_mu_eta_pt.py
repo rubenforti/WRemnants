@@ -39,20 +39,9 @@ from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
 from wremnants.histmaker_tools import aggregate_groups, scale_to_data
 
 parser.add_argument(
-    "--lumiUncertainty",
-    type=float,
-    help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%)",
-    default=1.012,
-)
-parser.add_argument(
     "--noGenMatchMC",
     action="store_true",
     help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)",
-)
-parser.add_argument(
-    "--halfStat",
-    action="store_true",
-    help="Test half data and MC stat, selecting odd events, just for tests",
 )
 parser.add_argument(
     "--makeMCefficiency",
@@ -130,6 +119,23 @@ parser.add_argument(
     "--addAxisSignUt",
     action="store_true",
     help="Add another fit axis with the sign of the uT recoil projection",
+)
+parser.add_argument(
+    "--utAngleCosineCut",
+    nargs=2,
+    type=float,
+    default=None,
+    help="Cut on the cosine of the angle between the lepton and the boson",
+)
+parser.add_argument(
+    "--useTnpMuonVarForSF",
+    action="store_true",
+    help="To read efficiency scale factors, use the same muon variables as used to measure them with tag-and-probe (by default the final corrected ones are used)",
+)
+parser.add_argument(
+    "--forceValidCVH",
+    action="store_true",
+    help="When not applying muon scale corrections (--muonCorrData none / --muonCorrMC none), require at list that the CVH corrected variables are valid",
 )
 #
 
@@ -210,17 +216,6 @@ thisAnalysis = ROOT.wrem.AnalysisType.Wmass
 isoBranch = muon_selections.getIsoBranch(args.isolationDefinition)
 era = args.era
 
-if "2018" in era and era!="2018":
-    e_sel_list = era.split(",")
-    erasToRun = []
-    for e_sel in e_sel_list:
-        if e_sel not in ["2018A", "2018B", "2018C", "2018D"]:
-            raise ValueError(f"Invalid era selection {era}")
-        erasToRun.append(e_sel.replace("2018", ""))
-    era = "2018"
-else:
-    erasToRun = None
-
 datasets = getDatasets(
     maxFiles=args.maxFiles,
     filt=args.filterProcs,
@@ -230,7 +225,6 @@ datasets = getDatasets(
     oneMCfileEveryN=args.oneMCfileEveryN,
     extended="msht20an3lo" not in args.pdfs,
     era=era,
-    eraDataSel=erasToRun
 )
 
 # transverse boson mass cut
@@ -315,7 +309,7 @@ axis_isoCat = hist.axis.Variable(
 )
 axes_abcd = [axis_mtCat, axis_isoCat]
 axis_ut_analysis = hist.axis.Regular(
-    2, -2, 2, underflow=False, overflow=False, name="ut_angleSign"
+    2, -2, 2, underflow=False, overflow=False, name="utAngleSign"
 )  # used only to separate positive/negative uT for now
 
 if args.addAxisSignUt:
@@ -365,7 +359,16 @@ axis_relIso = hist.axis.Regular(
 
 axis_passTrigger = hist.axis.Boolean(name="passTrigger")
 
+# following axis is for MC truth efficiencies
 axis_ut = hist.axis.Regular(40, -100, 100, overflow=True, underflow=True, name="ut")
+# next axis is for dedicated studies
+axis_ut_fine = hist.axis.Regular(
+    70, -40.0, 100.0, name="ut", underflow=True, overflow=True
+)
+axis_uTAngleCosine = hist.axis.Regular(
+    20, -1, 1, name="uTAngleCosine", overflow=False, underflow=False
+)
+
 # sum those groups up in post processing
 groups_to_aggregate = args.aggregateGroups
 
@@ -847,9 +850,6 @@ def build_graph(df, dataset):
         # remove trigger, it will be part of the efficiency selection for passing trigger
         df = df.Filter(muon_selections.hlt_string(era))
 
-    if args.halfStat:
-        df = df.Filter("event % 2 == 1")  # test with odd/even events
-
     df = muon_calibration.define_corrected_muons(
         df, cvh_helper, jpsi_helper, args, dataset, smearing_helper, bias_helper
     )
@@ -987,15 +987,15 @@ def build_graph(df, dataset):
                 "wrem::charge_from_pdgid(GenPart_pdgId[postfsrMuons_inAcc])",
             )
             df = df.Define(
-                f"vetoMuons_pt0",
+                f"vetoMuons_tnpPt0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_pt[postfsrMuons_inAcc],  GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
             df = df.Define(
-                f"vetoMuons_eta0",
+                f"vetoMuons_tnpEta0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_eta[postfsrMuons_inAcc], GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
             df = df.Define(
-                f"vetoMuons_charge0",
+                f"vetoMuons_tnpCharge0",
                 "wrem::unmatched_postfsrMuon_var(GenPart_charge, GenPart_pt[postfsrMuons_inAcc], hasMatchDR2idx)",
             )
     if isQCDMC:
@@ -1004,6 +1004,21 @@ def build_graph(df, dataset):
             "wrem::hasMatchDR2(goodMuons_eta0,goodMuons_phi0,GenPart_eta[postfsrMuons],GenPart_phi[postfsrMuons],0.09) == 0"
         )
 
+    if args.forceValidCVH:
+        if dataset.is_data:
+            if args.muonCorrData == "none":
+                logger.warning(
+                    "Requiring valid CVH for data even if CVH is not applied"
+                )
+                df = df.Filter("Muon_cvhPt[goodMuons][0] > 0")
+        else:
+            if args.muonCorrMC == "none":
+                # use CVH with ideal MC geometry for this check
+                logger.warning(
+                    "Requiring valid CVH (ideal geometry) for MC even if CVH is not applied"
+                )
+                df = df.Filter("Muon_cvhidealPt[goodMuons][0] > 0")
+
     ########################################################################
     # define event weights here since they are needed below for some helpers
     if dataset.is_data:
@@ -1011,19 +1026,18 @@ def build_graph(df, dataset):
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
         df = df.Define("weight_vtx", vertex_helper, ["GenVtx_z", "Pileup_nTrueInt"])
-        df = df.Define(
-            "weight_newMuonPrefiringSF",
-            muon_prefiring_helper,
-            [
-                "Muon_correctedEta",
-                "Muon_correctedPt",
-                "Muon_correctedPhi",
-                "Muon_correctedCharge",
-                "Muon_looseId",
-            ],
-        )
-
         if era == "2016PostVFP":
+            df = df.Define(
+                "weight_newMuonPrefiringSF",
+                muon_prefiring_helper,
+                [
+                    "Muon_correctedEta",
+                    "Muon_correctedPt",
+                    "Muon_correctedPhi",
+                    "Muon_correctedCharge",
+                    "Muon_looseId",
+                ],
+            )
             weight_expr = (
                 "weight_pu*weight_newMuonPrefiringSF*L1PreFiringWeight_ECAL_Nom"
             )
@@ -1035,24 +1049,44 @@ def build_graph(df, dataset):
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
 
-        # define recoil uT, muon projected on boson pt, the latter is made using preFSR variables
-        # TODO: fix it for not W/Z processes
+        # Muon variables used to measure tag-and-probe efficiency SF might not be the final corrected ones
+        # TODO: implement an option to choose which vatriables to use (e.g. pt-eta-charge after CVH only ?)
+        useTnpMuonVarForSF = args.useTnpMuonVarForSF
+        if useTnpMuonVarForSF:
+            df = df.Define("goodMuons_tnpPt0", "Muon_pt[goodMuons][0]")
+            df = df.Define("goodMuons_tnpEta0", "Muon_eta[goodMuons][0]")
+            df = df.Define("goodMuons_tnpCharge0", "Muon_charge[goodMuons][0]")
+        else:
+            df = df.Alias("goodMuons_tnpPt0", "goodMuons_pt0")
+            df = df.Alias("goodMuons_tnpEta0", "goodMuons_eta0")
+            df = df.Alias("goodMuons_tnpCharge0", "goodMuons_charge0")
+
         columnsForSF = [
-            "goodMuons_pt0",
-            "goodMuons_eta0",
+            "goodMuons_tnpPt0",
+            "goodMuons_tnpEta0",
             "goodMuons_SApt0",
             "goodMuons_SAeta0",
-            "goodMuons_uT0",
-            "goodMuons_charge0",
+            "goodMuons_tnpUT0",
+            "goodMuons_tnpCharge0",
             "passIso",
         ]
+
+        # define recoil uT, muon projected on boson pt, the latter is made using preFSR variables
+        # TODO: fix it for not W/Z processes
         df = muon_selections.define_muon_uT_variable(
-            df, isWorZ, smooth3dsf=args.smooth3dsf, colNamePrefix="goodMuons"
+            df,
+            isWorZ,
+            smooth3dsf=args.smooth3dsf,
+            colNamePrefix="goodMuons",
+            addWithTnpMuonVar=useTnpMuonVarForSF,
         )
+        if not useTnpMuonVarForSF:
+            df = df.Alias("goodMuons_tnpUT0", "goodMuons_uT0")
+
         # define_muon_uT_variable defined a uT variable using gen information, to get a more precise value for the purpose of applying scale factors
         # for using it as a fit observable we need another definition based only on reco observables, since it is also needed for data
         if not args.smooth3dsf:
-            columnsForSF.remove("goodMuons_uT0")
+            columnsForSF.remove("goodMuons_tnpUT0")
 
         if not isQCDMC and not args.noScaleFactors:
             df = df.Define(
@@ -1067,7 +1101,7 @@ def build_graph(df, dataset):
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
                     df = df.Define(
                         "weight_DY",
-                        f"(vetoMuons_charge0 > -99) ? {args.scaleDYvetoFraction} : 1.0",
+                        f"(vetoMuons_tnpCharge0 > -99) ? {args.scaleDYvetoFraction} : 1.0",
                     )
                     weight_expr += "*weight_DY"
 
@@ -1075,7 +1109,11 @@ def build_graph(df, dataset):
                     df = df.Define(
                         "weight_vetoSF_nominal",
                         muon_efficiency_veto_helper,
-                        ["vetoMuons_pt0", "vetoMuons_eta0", "vetoMuons_charge0"],
+                        [
+                            "vetoMuons_tnpPt0",
+                            "vetoMuons_tnpEta0",
+                            "vetoMuons_tnpCharge0",
+                        ],
                     )
                     weight_expr += "*weight_vetoSF_nominal"
 
@@ -1151,10 +1189,21 @@ def build_graph(df, dataset):
         df = df.Alias("MET_corr_rec_pt", f"{met}_pt")
         df = df.Alias("MET_corr_rec_phi", f"{met}_phi")
 
-    if args.addAxisSignUt:
-        df = df.Define(
-            "goodMuons_angleSignUt0",
-            "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
+    df = df.Define(
+        "goodMuons_utReco",
+        "wrem::zqtproj0(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
+    )
+    df = df.Define(
+        "goodMuons_angleSignUt0",
+        "wrem::zqtproj0_angleSign(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
+    )
+    df = df.Define(
+        "goodMuons_angleCosineUt0",
+        "wrem::zqtproj0_angleCosine(goodMuons_pt0, goodMuons_phi0, MET_corr_rec_pt, MET_corr_rec_phi)",
+    )
+    if args.utAngleCosineCut is not None:
+        df = df.Filter(
+            f"goodMuons_angleCosineUt0 >= {args.utAngleCosineCut[0]} && goodMuons_angleCosineUt0 < {args.utAngleCosineCut[1]}"
         )
 
     df = df.Define(
@@ -1200,6 +1249,7 @@ def build_graph(df, dataset):
                 axis_leadjetPt_fakes,
                 axis_dphi_fakes,
             ]
+
             df = df.Define("goodMuons_hasJet0", "Muon_jetIdx[goodMuons][0] != -1 ")
             df = df.Define(
                 "goodMuons_jetpt0",
@@ -1295,6 +1345,22 @@ def build_graph(df, dataset):
                 ],
             )
             results.append(postfsrMuonsGenMatchStatus1)
+            df = df.Define(
+                "goodMuons_genPartPt0",
+                "Muon_genPartIdx[goodMuons][0] >= 0 ? GenPart_pt[Muon_genPartIdx[goodMuons][0]] : -1",
+            )
+            genVsRecoPt = df.HistoBoost(
+                "genVsRecoPt",
+                [axis_genPt, axis_pt, axis_genPartFlav, axis_passIso],
+                [
+                    "goodMuons_genPartPt0",
+                    "goodMuons_pt0",
+                    "goodMuons_genPartFlav0",
+                    "passIso",
+                    "nominal_weight",
+                ],
+            )
+            results.append(genVsRecoPt)
             #
             df = df.Define(
                 "postfsrMuonsStatus1prompt", "postfsrMuonsStatus1 && GenPart_isPrompt"
@@ -1443,6 +1509,7 @@ def build_graph(df, dataset):
     df = df.Define("passMT", f"transverseMass >= {mtw_min}")
 
     if auxiliary_histograms:
+
         # control plots, lepton, met, to plot them later (need eta-pt to make fakes)
         results.append(
             df.HistoBoost(
@@ -1652,6 +1719,19 @@ def build_graph(df, dataset):
         unweighted = df.HistoBoost("unweighted", axes, cols)
         results.append(unweighted)
 
+    nominal_withUt = df.HistoBoost(
+        "nominal_withUt",
+        [*axes, axis_ut_fine],
+        [*cols, "goodMuons_utReco", "nominal_weight"],
+    )
+    results.append(nominal_withUt)
+    nominal_withUtAngleCosine = df.HistoBoost(
+        "nominal_withUtAngleCosine",
+        [*axes, axis_uTAngleCosine],
+        [*cols, "goodMuons_angleCosineUt0", "nominal_weight"],
+    )
+    results.append(nominal_withUtAngleCosine)
+
     if dataset.is_data:
         nominal = df.HistoBoost("nominal", axes, cols)
         results.append(nominal)
@@ -1788,15 +1868,11 @@ def build_graph(df, dataset):
             df = syst_tools.add_L1Prefire_unc_hists(
                 results,
                 df,
-                muon_prefiring_helper_stat,
-                muon_prefiring_helper_syst,
                 axes,
                 cols,
+                helper_stat=muon_prefiring_helper_stat,
+                helper_syst=muon_prefiring_helper_syst,
                 storage_type=storage_type,
-            )
-            # luminosity, as shape variation despite being a flat scaling to facilitate propagation to fakes
-            df = syst_tools.add_luminosity_unc_hists(
-                results, df, args, axes, cols, storage_type=storage_type
             )
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
