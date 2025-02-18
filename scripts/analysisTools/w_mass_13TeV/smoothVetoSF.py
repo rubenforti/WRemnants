@@ -6,13 +6,11 @@
 
 import os
 import pickle
-import sys
 import time
 
 import hist
 import lz4.frame
 import numpy as np
-import ROOT
 import tensorflow as tf
 import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
@@ -25,8 +23,11 @@ from utilities import common
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
+import sys
+
 args = sys.argv[:]
 sys.argv = ["-b"]
+import ROOT
 
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
@@ -175,7 +176,7 @@ if __name__ == "__main__":
         "-i",
         "--indir",
         default=None,
-        help="Directory containing the smoothed scale factors",
+        help="Directory containing the smoothed scale factors"
     )
     parser.add_argument(
         "outdir", type=str, nargs=1, help="output directory to save things"
@@ -195,10 +196,10 @@ if __name__ == "__main__":
         help="Charge for veto SF",
     )
     parser.add_argument(
-        "--era",
+        "--era", 
         type=str,
         default="2016PostVFP",
-        choices=["2016PostVFP", "2017", "2018"],
+        choices=["2016PostVFP", "2017", "2018"]
     )
 
     args = parser.parse_args()
@@ -212,12 +213,13 @@ if __name__ == "__main__":
     vetoType = args.vetoType
 
     if args.indir is None:
-        if args.era == "2016PostVFP":
+        if args.era=="2016PostVFP":
             inputfolder = f"{data_dir}/muonSF/veto_{vetoType}_SF/"
         else:
             inputfolder = f"{data_dir}/muonSF/{args.era}/veto_{vetoType}_SF/"
     else:
         inputfolder = args.indir
+
 
     outdir_original = f"{args.outdir[0]}/{vetoType}_{charge}/"
     addStringToEnd(outdir_original, "/", notAddIfEndswithMatch=True)

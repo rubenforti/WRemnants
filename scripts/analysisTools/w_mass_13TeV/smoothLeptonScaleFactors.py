@@ -16,18 +16,16 @@
 # --> a summary of bad fits (if any) is printed on stdout for each step, but also in a txt file for easier check
 #     when running multiple steps in series. For the smoothing to make sense, status and covstatus MUST be 0 for all fits
 
+from array import array
 import copy
 import math
 import os
 import pickle
-import sys
-from array import array
 from functools import partial
 
 import hist
 import lz4.frame
 import numpy as np
-import ROOT
 import tensorflow as tf
 import utilitiesCMG
 from scipy.interpolate import RegularGridInterpolator
@@ -39,8 +37,12 @@ from utilities import common
 utilities = utilitiesCMG.util()
 
 ## safe batch mode
+import sys
+
 args = sys.argv[:]
 sys.argv = ["-b"]
+import ROOT
+
 sys.argv = args
 ROOT.gROOT.SetBatch(True)
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -179,12 +181,12 @@ def make1Dhist(namePrefix, h2D, ptbins, step):
         "trigger": "Trigger",
         "antitrigger": "Failed trigger",
         "iso": "Isolation",
-        "isonotrig": "Isolation w/o trigger",
-        "antiiso": "Failed isolation",
+        "isonotrig" : "Isolation w/o trigger",
+        "antiiso" : "Failed isolation",
         "veto": "Veto",
-        "vetoreco": "Reconstruction (veto)",
-        "vetotracking": "Tracking (veto)",
-        "vetoidip": "ID + impact parameter (veto)",
+        "vetoreco" : "Reconstruction (veto)",
+        "vetotracking" : "Tracking (veto)",
+        "vetoidip" : "ID + impact parameter (veto)",
     }
     stepStr = stepDict[
         step.replace("plus", "").replace("minus", "").replace("both", "")
@@ -1469,7 +1471,7 @@ if __name__ == "__main__":
     # name where the results are stored and actually identifies the era period.
     # FIXME: change coherently the names here, in the histmakers and maybe also
     # in the helpers to avoid this ugly solution :)
-    if args.era != "GtoH":
+    if args.era!="GtoH":
         args.correct_era = args.era
         args.era = "GtoH"
     else:
@@ -1550,17 +1552,11 @@ if __name__ == "__main__":
     hist_chosenFunc_SF.GetXaxis().SetBinLabel(3, "pol3_tf")
 
     hist_reducedChi2_data = ROOT.TH1D("reducedChi2_data", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_data.SetStatOverflows(
-        ROOT.TH1.kConsider
-    )  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_data.SetStatOverflows(ROOT.TH1.kConsider)  # use underflow and overflow to compute mean and RMS
     hist_reducedChi2_MC = ROOT.TH1D("reducedChi2_MC", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_MC.SetStatOverflows(
-        ROOT.TH1.kConsider
-    )  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_MC.SetStatOverflows(ROOT.TH1.kConsider)  # use underflow and overflow to compute mean and RMS
     hist_reducedChi2_sf = ROOT.TH1D("reducedChi2_sf", "Reduced #chi^{2}", 25, 0, 5)
-    hist_reducedChi2_sf.SetStatOverflows(
-        ROOT.TH1.kConsider
-    )  # use underflow and overflow to compute mean and RMS
+    hist_reducedChi2_sf.SetStatOverflows(ROOT.TH1.kConsider)  # use underflow and overflow to compute mean and RMS
 
     ######################
     # to make ratio

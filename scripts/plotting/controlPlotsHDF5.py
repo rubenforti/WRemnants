@@ -199,10 +199,9 @@ def make_plot(
             ylim=args.ylim,
         )
         if add_ratio:
-            fig, ax1, ratio_axes = plot_tools.figureWithRatio(
+            fig, ax1, ax2 = plot_tools.figureWithRatio(
                 h_pred, rlabel=rlabel, rrange=args.rrange, **infos_figure
             )
-            ax2 = ratio_axes[-1]
         else:
             fig, ax1 = plot_tools.figure(h_pred, **infos_figure)
 

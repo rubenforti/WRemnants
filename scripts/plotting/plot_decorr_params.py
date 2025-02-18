@@ -2,7 +2,6 @@ import re
 
 import numpy as np
 import uproot
-from matplotlib.patches import Polygon
 from scipy.stats import chi2
 
 from narf import ioutils
@@ -21,12 +20,6 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Fitresult file from combinetf with inclusive fit",
-    )
-    parser.add_argument(
-        "--infileNominal",
-        type=str,
-        default=None,
-        help="Fitresult file from combinetf with nominal fit",
     )
     parser.add_argument(
         "--data",
@@ -63,6 +56,7 @@ if __name__ == "__main__":
     )
 
     parser = parsing.set_parser_default(parser, "legCols", 1)
+    parser = parsing.set_parser_default(parser, "legPos", None)
 
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -89,15 +83,6 @@ if __name__ == "__main__":
             f"{args.infileInclusive.replace('.hdf5','.root')}:fitresults"
         ) as utree:
             nll_inclusive = utree["nllvalfull"].array(library="np")
-
-    if args.infileNominal:
-        fNominal = combinetf_input.get_fitresult(args.infileNominal)
-        dfNominal = combinetf_input.read_impacts_pois(
-            fNominal,
-            poi_type=args.poiType,
-            group=True,
-            uncertainties=["stat", "muonCalibration"],
-        )
 
     df = combinetf_input.read_impacts_pois(
         fitresult,
@@ -177,7 +162,7 @@ if __name__ == "__main__":
                     axis=1,
                 )
             df_p["yticks"] = df_p["yticks"].apply(lambda x: f"${x}$")
-            ylabel = None
+            ylabel = " "
         elif "etaAbsEta" in axes:
             axis_label = styles.xlabels.get("etaAbsEta", "etaAbsEta")
             axis_ranges = [
@@ -204,7 +189,7 @@ if __name__ == "__main__":
                 .apply(lambda x: round(axis_ranges[x + 1], 1))
                 .astype(str)
             )
-            ylabel = None
+            ylabel = " "
         elif "lumi" in axes:
             axis_ranges = [
                 [278769, 278808],
@@ -229,7 +214,7 @@ if __name__ == "__main__":
                 )
                 .astype(str)
             )
-            ylabel = None
+            ylabel = " "
         elif "etaRegionRange" in axes:
             # axis_ranges = {0:"2",1:"1",2:"0"}
             axis_ranges = {
@@ -260,9 +245,9 @@ if __name__ == "__main__":
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
-        ylabel = None
+        ylabel = " "
 
-        df_p.sort_values(by=axes, ascending=True, inplace=True)
+        df_p.sort_values(by=axes, ascending=False, inplace=True)
 
         xCenter = 0
 
@@ -270,20 +255,6 @@ if __name__ == "__main__":
         err = df_p["err_total"].values * scale
         err_stat = df_p["err_stat"].values * scale
         err_cal = df_p["err_muonCalibration"].values * scale
-
-        if args.infileNominal:
-            if len(dfNominal) > 1:
-                logger.warning(
-                    f"Found {len(dfNominal)} values from the inclusive fit but was expecting 1, take first value"
-                )
-            elif len(dfNominal) == 0:
-                raise RuntimeError(
-                    f"Found 0 values from the inclusive fit but was expecting 1"
-                )
-
-            central = dfNominal["value"].values[0] * scale + offset
-        else:
-            central = 0
 
         if args.infileInclusive:
             if len(dfInclusive) > 1:
@@ -295,17 +266,17 @@ if __name__ == "__main__":
                     f"Found 0 values from the inclusive fit but was expecting 1"
                 )
 
+            central = dfInclusive["value"].values[0] * scale + offset
             c_err_stat = dfInclusive["err_stat"].values[0] * scale
             c_err_cal = dfInclusive["err_muonCalibration"].values[0] * scale
             c_err = dfInclusive["err_total"].values[0] * scale
-            c = dfInclusive["value"].values[0] * scale + offset
 
-            if args.infileNominal:
-                c -= central
+            if args.showMCInput:
+                c = central
             else:
-                if not args.showMCInput:
-                    central = c
-                    c = 0
+                c = 0
+        else:
+            central = 0
 
         val -= central
 
@@ -318,8 +289,12 @@ if __name__ == "__main__":
         else:
             xlim = args.xlim
 
-        ylim = (0.0, len(df_p))
-        y = np.arange(0, len(df)) + 0.5
+        ylim = (
+            -1 * (args.infileInclusive != None),
+            len(df_p) + (args.infileInclusive != None),
+        )
+
+        y = np.arange(0, len(df)) + 0.5 + (args.infileInclusive != None)
 
         fig, ax1 = plot_tools.figure(
             None,
@@ -334,6 +309,38 @@ if __name__ == "__main__":
         )
 
         if args.infileInclusive:
+            ax1.errorbar(
+                [c],
+                [0.0],
+                xerr=c_err_stat,
+                color="red",
+                marker="",
+                linestyle="",
+                zorder=3,
+            )
+            ax1.errorbar(
+                [c],
+                [0.0],
+                xerr=c_err_cal,
+                color="orange",
+                linewidth=5,
+                marker="",
+                linestyle="",
+                zorder=2,
+            )
+            ax1.errorbar(
+                [c],
+                [0.0],
+                xerr=c_err,
+                color="black",
+                marker="o",
+                linestyle="",
+                zorder=1,
+            )
+            ax1.plot(
+                [c], [0.0], color="black", marker="o", linestyle="", zorder=4
+            )  # point on top
+
             ndf = len(df_p) - 1
 
             logger.info(f"nll_inclusive = {nll_inclusive}; nll = {nll}")
@@ -349,14 +356,14 @@ if __name__ == "__main__":
             p_value = 1 - chi2.cdf(chi2_stat, ndf)
             logger.info(f"ndf = {ndf}; Chi2 = {chi2_stat}; p-value={p_value}")
 
-            if args.legPos in [None, "center left", "upper left"]:
+            if args.legPos in [None, "center left"]:
                 x_chi2 = 0.06
                 y_chi2 = 0.15
                 ha = "left"
                 va = "bottom"
             else:
                 raise NotImplementedError(
-                    "Can only plot chi2 if legend is center or upper"
+                    "Can only plot chi2 if legend is 'center left'"
                 )
 
             plot_tools.wrap_text(
@@ -387,9 +394,12 @@ if __name__ == "__main__":
                 color="gray",
                 alpha=0.3,
             )
-            ax1.plot([c, c], ylim, color="black", linewidth=2, linestyle="-")
+            ax1.plot([c, c], ylim, color="black", linestyle="--")
 
-        ytickpositions = y
+            yticks = ["Nominal", *yticks]
+            ytickpositions = [0.0, *y]
+        else:
+            ytickpositions = y
 
         ax1.set_yticks(ytickpositions, labels=yticks)
         ax1.minorticks_off()
@@ -420,36 +430,21 @@ if __name__ == "__main__":
             y,
             xerr=err,
             color="black",
-            marker="o",
+            marker="",
             linestyle="",
             label="Measurement",
             zorder=1,
-            capsize=10,
-            linewidth=3,
         )
         ax1.plot(
             val, y, color="black", marker="o", linestyle="", zorder=4
         )  # point on top
         # ax1.plot(val, y, color='black', marker="o") # plot black points on top
 
-        extra_handles = [
-            (
-                Polygon(
-                    [[0, 0], [0, 0], [0, 0], [0, 0]],
-                    facecolor="gray",
-                    linestyle="solid",
-                    edgecolor="black",
-                    linewidth=2,
-                    alpha=0.3,
-                ),
-            )
-        ]
-
         if args.showMCInput:
             ax1.plot(
                 [offset, offset],
                 ylim,
-                linestyle="-",
+                linestyle="--",
                 marker="none",
                 color="black",
                 label="MC input",
@@ -462,11 +457,8 @@ if __name__ == "__main__":
         plot_tools.addLegend(
             ax1,
             ncols=args.legCols,
-            loc=args.legPos,
+            loc=(0.02, 0.58) if args.legPos is None else args.legPos,
             text_size=args.legSize,
-            extra_handles=extra_handles,
-            extra_labels=["Inclusive"],
-            custom_handlers=["tripleband"],
         )
 
         if args.title:

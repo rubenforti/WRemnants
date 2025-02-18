@@ -366,7 +366,7 @@ def plot_xsec_unfolded(
         ylim = args.ylim
 
     # make plots
-    fig, ax1, ratio_axes = plot_tools.figureWithRatio(
+    fig, ax1, ax2 = plot_tools.figureWithRatio(
         hist_xsec,
         xlabel,
         yLabel,
@@ -376,7 +376,6 @@ def plot_xsec_unfolded(
         automatic_scale=False,
         width_scale=2 if len(axes_names) > 1 else 1,
     )
-    ax2 = ratio_axes[-1]
 
     ax1.hlines(y, edges[:-1], edges[1:], colors="black", label=args.name)
     ax1.bar(
@@ -904,11 +903,9 @@ def plot_uncertainties_with_ratio(
     rrange = args.rrange
 
     # make plots
-    fig, ax1, ratio_axes = plot_tools.figureWithRatio(
+    fig, ax1, ax2 = plot_tools.figureWithRatio(
         hist_err, xlabel, yLabel, ylim, rlabel, rrange, logy=logy, width_scale=2
     )
-    ax2 = ratio_axes[-1]
-
     hep.histplot(
         [hist_err, hist_err_ref],
         yerr=False,

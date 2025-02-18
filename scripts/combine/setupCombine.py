@@ -18,7 +18,6 @@ from wremnants import (
     combine_theoryAgnostic_helper,
     syst_tools,
     theory_corrections,
-    theory_tools,
 )
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
@@ -111,7 +110,7 @@ def make_parser(parser=None):
         "--outfolder",
         type=str,
         default=".",
-        help="Output folder with all the outputs of this script (subfolder WMass or ZMassWLike is created automatically inside)",
+        help="Output folder with the root file storing all histograms and datacards for single charge (subfolder WMass or ZMassWLike is created automatically inside)",
     )
     parser.add_argument("-i", "--inputFile", nargs="+", type=str)
     parser.add_argument(
@@ -193,7 +192,7 @@ def make_parser(parser=None):
         "--qcdProcessName",
         type=str,
         default=None,
-        help="Name for QCD process (by default taken from datagroups object)",
+        help="Name for QCD process (by default taken from datagroups object",
     )
     # setting on the fit behaviour
     parser.add_argument(
@@ -229,12 +228,6 @@ def make_parser(parser=None):
         help="Rebin before the selection operation (e.g. before fake rate computation), default if after",
     )
     parser.add_argument(
-        "--lumiUncertainty",
-        type=float,
-        help=r"Uncertainty for luminosity in excess to 1 (e.g. 1.012 means 1.2%); automatic by default",
-        default=None,
-    )
-    parser.add_argument(
         "--lumiScale",
         type=float,
         nargs="+",
@@ -247,7 +240,7 @@ def make_parser(parser=None):
         nargs="*",
         default=[],
         choices=["data", "mc"],
-        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty. For data, this only has an effect for the data-driven estimate of the QCD multijet background through the uncertainty propagation from them data-MC subtraction.",
+        help="When using --lumiScale, scale variance linearly instead of quadratically, to pretend there is really more data or MC (can specify both as well). Note that statistical fluctuations in histograms cannot be lifted, so this option can lead to spurious constraints of systematic uncertainties when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty.",
     )
     parser.add_argument(
         "--sumChannels", action="store_true", help="Only use one channel"
@@ -460,12 +453,7 @@ def make_parser(parser=None):
     parser.add_argument(
         "--pdfUncFromCorr",
         action="store_true",
-        help="Take PDF uncertainty from correction hist (requires having run that correction)",
-    )
-    parser.add_argument(
-        "--asUncFromUncorr",
-        action="store_true",
-        help="Take alpha_S uncertainty from uncorrected hist (by default it reads it from the correction hist, but requires having run that correction)",
+        help="Take PDF uncertainty from correction hist (Requires having run that correction)",
     )
     parser.add_argument(
         "--scaleMinnloScale",
@@ -599,30 +587,15 @@ def make_parser(parser=None):
     )
     parser.add_argument(
         "--logNormalWmunu",
-        default=0,
+        default=-1,
         type=float,
-        help=r"""Add normalization uncertainty for W signal. 
-            If negative, treat as free floating with the absolute being the size of the variation (e.g. -1.01 means +/-1% of the nominal is varied). 
-            If 0 nothing is added""",
-    )
-    parser.add_argument(
-        "--logNormalWtaunu",
-        default=0,
-        type=float,
-        help=r"""Add normalization uncertainty for W->tau,nu process. 
-            If negative, treat as free floating with the absolute being the size of the variation (e.g. -1.01 means +/-1% of the nominal is varied). 
-            If 0 nothing is added""",
+        help="Add lnN uncertainty for W signal (mainly for tests wifakes in control regions, where W is a subdominant background). If negative nothing is added",
     )
     parser.add_argument(
         "--logNormalFake",
         default=1.05,
         type=float,
-        help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
-    )
-    parser.add_argument(
-        "--passNormUncToFakes",
-        action="store_true",
-        help="Propagate normalization uncertainties into the fake estimation",
+        help="Specify lnN uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
     # pseudodata
     parser.add_argument(
@@ -697,7 +670,7 @@ def make_parser(parser=None):
         help="Events from the same process but from tau final states are added to the signal",
     )
     parser.add_argument(
-        "--helicityFitTheoryUnc",
+        "--noPDFandQCDtheorySystOnSignal",
         action="store_true",
         help="Removes PDF and theory uncertainties on signal processes",
     )
@@ -742,24 +715,13 @@ def make_parser(parser=None):
         action="store_true",
         help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)",
     )
-    parser.add_argument(
-        "--angularCoeffs",
-        action="store_true",
-        help="convert helicity cross sections to angular coefficients",
-    )
     parser = make_subparsers(parser)
 
     return parser
 
 
 def setup(
-    args,
-    inputFile,
-    inputBaseName,
-    inputLumiScale,
-    fitvar,
-    genvar=None,
-    xnorm=False,
+    args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, xnorm=False
 ):
 
     isUnfolding = args.analysisMode == "unfolding"
@@ -791,13 +753,6 @@ def setup(
     datagroups = Datagroups(
         inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup
     )
-
-    if args.angularCoeffs:
-        datagroups.setGlobalAction(
-            lambda h: theory_tools.helicity_xsec_to_angular_coeffs(
-                h, helicity_axis_name="helicitygen"
-            )
-        )
 
     if not xnorm and (args.axlim or args.rebin or args.absval):
         datagroups.set_rebin_action(
@@ -1036,8 +991,6 @@ def setup(
 
     cardTool.setExponentialTransform(args.exponentialTransform)
 
-    era = input_tools.args_from_metadata(cardTool, "era")
-
     logger.debug(f"Making datacards with these processes: {cardTool.getProcesses()}")
     if args.absolutePathInCard:
         cardTool.setAbsolutePathShapeInCard()
@@ -1262,9 +1215,7 @@ def setup(
     )
     cardTool.addProcessGroup(
         "MCnoQCD",
-        lambda x: x
-        not in ["QCD", "Data", "Fake", "Fake_mu", "Fake_e"]
-        + (["Fake"] if simultaneousABCD else []),
+        lambda x: x not in ["QCD", "Data"] + (["Fake"] if simultaneousABCD else []),
     )
     # FIXME/FOLLOWUP: the following groups may actually not exclude the OOA when it is not defined as an independent process with specific name
     cardTool.addProcessGroup(
@@ -1348,13 +1299,8 @@ def setup(
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="dummy",
-            processes=["MCnoQCD"],
-            preOp=hh.scaleHist,
-            preOpArgs={"scale": 1.0001},
-            mirror=True,
+        cardTool.addLnNSystematic(
+            "dummy", processes=["MCnoQCD"], size=1.0001, group="dummy"
         )
 
     decorwidth = args.decorMassWidth or args.fitWidth
@@ -1541,11 +1487,11 @@ def setup(
     if args.fitAlphaS or (not args.doStatOnly and not args.noTheoryUnc):
         theorySystSamples = ["signal_samples_inctau"]
         if wmass:
-            if args.helicityFitTheoryUnc:
+            if args.noPDFandQCDtheorySystOnSignal:
                 theorySystSamples = ["wtau_samples"]
             theorySystSamples.append("single_v_nonsig_samples")
         elif wlike:
-            if args.helicityFitTheoryUnc:
+            if args.noPDFandQCDtheorySystOnSignal:
                 theorySystSamples = []
             theorySystSamples.append("single_v_nonsig_samples")
         if xnorm:
@@ -1564,7 +1510,6 @@ def setup(
             tnp_scale=args.scaleTNP,
             mirror_tnp=False,
             pdf_from_corr=args.pdfUncFromCorr,
-            as_from_corr=not args.asUncFromUncorr,
             scale_pdf_unc=args.scalePdf,
             samples=theorySystSamples,
             minnlo_unc=args.minnloScaleUnc,
@@ -1579,7 +1524,7 @@ def setup(
 
         if not args.doStatOnly and not args.noTheoryUnc:
             theory_helper.add_all_theory_unc(
-                helicity_fit_unc=args.helicityFitTheoryUnc,
+                skipFromSignal=args.noPDFandQCDtheorySystOnSignal,
             )
 
     if args.doStatOnly:
@@ -1639,161 +1584,71 @@ def setup(
         return cardTool
 
     # Below: experimental uncertainties
-
-    if wmass:
-        # mirror hist in linear scale, this was done in the old definition of luminosity uncertainty from a histogram
-        def scale_hist_up_down(h, scale):
-            hUp = hh.scaleHist(h, scale)
-            hDown = hh.scaleHist(h, 1 / scale)
-
-            hVar = hist.Hist(
-                *[a for a in h.axes],
-                common.down_up_axis,
-                storage=hist.storage.Weight(),
-            )
-            hVar.values(flow=True)[...] = np.stack(
-                [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
-            )
-            hVar.variances(flow=True)[...] = np.stack(
-                [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
-            )
-            return hVar
-
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="lumi",
-            processes=["MCnoQCD"],
-            group=f"luminosity",
-            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
-            outNames=["lumiDown", "lumiUp"],
-            systAxes=["downUpVar"],
-            labelsByAxis=["downUpVar"],
-            preOp=scale_hist_up_down,
-            preOpArgs={
-                "scale": (
-                    cardTool.datagroups.lumi_uncertainty
-                    if args.lumiUncertainty is None
-                    else args.lumiUncertainty
-                )
-            },
-        )
-    else:
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="lumi",
-            processes=["MCnoQCD"],
-            group=f"luminosity",
-            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=passSystToFakes,
-            mirror=True,
-            preOp=hh.scaleHist,
-            preOpArgs={
-                "scale": (
-                    cardTool.datagroups.lumi_uncertainty
-                    if args.lumiUncertainty is None
-                    else args.lumiUncertainty
-                )
-            },
-        )
-
     if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="CMS_PhotonInduced",
+        cardTool.addLnNSystematic(
+            "CMS_PhotonInduced",
             processes=["PhotonInduced"],
-            group=f"CMS_background",
+            size=2.0,
+            group="CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=args.passNormUncToFakes,
-            mirror=True,
-            preOp=hh.scaleHist,
-            preOpArgs={"scale": 2.0},
         )
     if wmass:
-        if args.logNormalWmunu != 0:
-            cardTool.addSystematic(
-                cardTool.nominalName,
-                rename="CMS_Wmunu",
+        if args.logNormalWmunu > 0.0:
+            cardTool.addLnNSystematic(
+                f"CMS_Wmunu",
                 processes=["Wmunu"],
-                group=f"CMS_background",
-                splitGroup=(
-                    {"experiment": ".*", "expNoCalib": ".*"}
-                    if args.logNormalWmunu > 0
-                    else {}
-                ),
-                passToFakes=passSystToFakes,
-                mirror=True,
-                noi=args.logNormalWmunu < 0,
-                noConstraint=args.logNormalWmunu < 0,
-                preOp=hh.scaleHist,
-                preOpArgs={"scale": abs(args.logNormalWmunu)},
-            )
-        if args.logNormalWtaunu != 0:
-            cardTool.addSystematic(
-                cardTool.nominalName,
-                rename="CMS_Wtaunu",
-                processes=["Wtaunu"],
-                group=f"CMS_background",
-                splitGroup=(
-                    {"experiment": ".*", "expNoCalib": ".*"}
-                    if args.logNormalWtaunu > 0
-                    else {}
-                ),
-                passToFakes=passSystToFakes,
-                mirror=True,
-                noi=args.logNormalWtaunu < 0,
-                noConstraint=args.logNormalWtaunu < 0,
-                preOp=hh.scaleHist,
-                preOpArgs={"scale": abs(args.logNormalWtaunu)},
-            )
-
-        if args.logNormalFake > 0.0:
-            cardTool.addSystematic(
-                cardTool.nominalName,
-                rename=f"CMS_{cardTool.getFakeName()}",
-                processes=[cardTool.getFakeName()],
-                group=f"Fake",
+                size=args.logNormalWmunu,
+                group="CMS_background",
                 splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-                passToFakes=False,
-                mirror=True,
-                preOp=hh.scaleHist,
-                preOpArgs={"scale": args.logNormalFake},
+            )
+        if args.logNormalFake > 0.0:
+            cardTool.addLnNSystematic(
+                f"CMS_{cardTool.getFakeName()}",
+                processes=[cardTool.getFakeName()],
+                size=args.logNormalFake,
+                group="Fake",
+                splitGroup={"experiment": ".*", "expNoCalib": ".*"},
             )
         elif args.logNormalFake < 0.0:
             cardTool.datagroups.unconstrainedProcesses.append(cardTool.getFakeName())
-
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="CMS_Top",
+        cardTool.addLnNSystematic(
+            "CMS_Top",
             processes=["Top"],
-            group=f"CMS_background",
+            size=1.06,
+            group="CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=args.passNormUncToFakes,
-            mirror=True,
-            preOp=hh.scaleHist,
-            preOpArgs={"scale": 1.06},
+        )
+        cardTool.addLnNSystematic(
+            "CMS_VV",
+            processes=["Diboson"],
+            size=1.16,
+            group="CMS_background",
+            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
         )
         cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="CMS_VV",
-            processes=["Diboson"],
-            group=f"CMS_background",
+            "luminosity",
+            processes=["MCnoQCD"],
+            outNames=["lumiDown", "lumiUp"],
+            group="luminosity",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            passToFakes=args.passNormUncToFakes,
-            mirror=True,
-            preOp=hh.scaleHist,
-            preOpArgs={"scale": 1.16},
+            systAxes=["downUpVar"],
+            labelsByAxis=["downUpVar"],
+            passToFakes=passSystToFakes,
         )
     else:
-        cardTool.addSystematic(
-            cardTool.nominalName,
-            rename="CMS_background",
+        cardTool.addLnNSystematic(
+            "CMS_background",
             processes=["Other"],
-            group=f"CMS_background",
+            size=1.15,
+            group="CMS_background",
             splitGroup={"experiment": ".*", "expNoCalib": ".*"},
-            mirror=True,
-            preOp=hh.scaleHist,
-            preOpArgs={"scale": 1.15},
+        )
+        cardTool.addLnNSystematic(
+            "lumi",
+            processes=["MCnoQCD"],
+            size=1.017 if lowPU else 1.012,
+            group="luminosity",
+            splitGroup={"experiment": ".*", "expNoCalib": ".*"},
         )
 
     if (
@@ -2279,12 +2134,8 @@ def setup(
         group="muonPrefire",
         splitGroup={f"prefire": f".*", "experiment": ".*", "expNoCalib": ".*"},
         baseName="CMS_prefire_stat_m_",
-        systAxes=(
-            ["downUpVar", "etaPhiRegion"] if era == "2016PostVFP" else ["downUpVar"]
-        ),
-        labelsByAxis=(
-            ["downUpVar", "etaPhiReg"] if era == "2016PostVFP" else ["downUpVar"]
-        ),
+        systAxes=["downUpVar", "etaPhiRegion"],
+        labelsByAxis=["downUpVar", "etaPhiReg"],
         passToFakes=passSystToFakes,
     )
     cardTool.addSystematic(

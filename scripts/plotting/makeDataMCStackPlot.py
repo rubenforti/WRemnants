@@ -187,13 +187,6 @@ parser.add_argument(
     default=[],
     help="Scale a variation by this factor",
 )
-parser.add_argument(
-    "--extraTextLoc",
-    type=float,
-    nargs=2,
-    default=(0.05, 0.8),
-    help="Location in (x,y) for additional text, aligned to upper left",
-)
 subparsers = parser.add_subparsers(dest="variation")
 variation = subparsers.add_parser(
     "variation", help="Arguments for adding variation hists"
@@ -475,17 +468,6 @@ prednames = list(
 )
 logger.info(f"Stacked processes are {prednames}")
 
-text_pieces = []
-if args.normToData:
-    text_pieces.append("Prefit" + " (normalized)")
-else:
-    text_pieces.append("Prefit")
-
-if args.channel != "all":
-    text_pieces.append(
-        r"$\mathit{q}^\mu$ = " + ("+1" if args.channel == "plus" else "-1")
-    )
-
 
 def collapseSyst(h):
     if type(h.axes[-1]) == hist.axis.StrCategory:
@@ -534,14 +516,12 @@ for h in args.hists:
 
     if len(h.split("-")) > 1:
         sp = h.split("-")
-        base_action = lambda x: collapseSyst(x[select])
-        action = lambda x: hh.unrolledHist(base_action(x), binwnorm=binwnorm, obs=sp)
+        action = lambda x: hh.unrolledHist(
+            collapseSyst(x[select]), binwnorm=binwnorm, obs=sp
+        )
         xlabel = f"({', '.join([styles.xlabels.get(s,s).replace('(GeV)','') for s in sp])}) bin"
     else:
-        base_action = lambda x: hh.projectNoFlow(
-            collapseSyst(x[select]), h, overflow_ax
-        )
-        action = base_action
+        action = lambda x: hh.projectNoFlow(collapseSyst(x[select]), h, overflow_ax)
         href = h if h != "ptVgen" else ("ptWgen" if "Wmunu" in prednames else "ptZgen")
         xlabel = styles.xlabels.get(href, href)
 
@@ -575,8 +555,6 @@ for h in args.hists:
         no_fill=args.noFill,
         no_stack=args.noStack,
         no_ratio=args.noRatio,
-        extra_text=text_pieces,
-        extra_text_loc=args.extraTextLoc,
         density=args.density,
         flow=args.flow,
         cms_decor=args.cmsDecor,
@@ -590,10 +568,8 @@ for h in args.hists:
         logoPos=args.logoPos,
         width_scale=1.25 if len(h.split("-")) == 1 else 1,
         legPos=args.legPos,
-        leg_padding=args.legPadding,
         lowerLegCols=args.lowerLegCols,
         lowerLegPos=args.lowerLegPos,
-        lower_leg_padding=args.lowerLegPadding,
         subplotsizes=args.subplotSizes,
     )
 
@@ -621,10 +597,10 @@ for h in args.hists:
         action = lambda x: x
 
     stack_yields = groups.make_yields_df(
-        args.baseName, prednames, norm_proc="Data", action=base_action
+        args.baseName, prednames, norm_proc="Data", action=action
     )
     unstacked_yields = groups.make_yields_df(
-        args.baseName, unstack, norm_proc="Data", action=base_action
+        args.baseName, unstack, norm_proc="Data", action=action
     )
     plot_tools.write_index_and_log(
         outdir,
